@@ -3,7 +3,7 @@
 import type { FounderMetricRow } from "@/hooks/useFounderMetrics";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { formatPercent, formatUSD } from "@/utils/formatters";
-import { DASHBOARD_INDEX_TABLE_HEAD } from "./dashboardStyles";
+import { DASHBOARD_INDEX_TABLE_HEAD, DASHBOARD_LINK_CLASS, DASHBOARD_ROW_TEXT_CLASS } from "./dashboardStyles";
 import {
   DASHBOARD_EMPTY_ON_PANEL_CLASS,
   DASHBOARD_PANEL_ROW_SHELL_CLASS,
@@ -36,7 +36,7 @@ function HeaderCellWithTip({
       <SimpleTooltip label={tip} className="cursor-help">
         <span className={`inline-flex items-center gap-1 ${DASHBOARD_INDEX_TABLE_HEAD}`}>
           <span className="truncate">{label}</span>
-          <span className="text-[#1E4775]/40 normal-case shrink-0">ⓘ</span>
+          <span className="text-white/35 normal-case shrink-0">ⓘ</span>
         </span>
       </SimpleTooltip>
     </div>
@@ -87,22 +87,22 @@ function DashboardYieldRow({ row }: { row: FounderMetricRow }) {
     <div className={DASHBOARD_PANEL_ROW_SHELL_CLASS}>
       <div className="overflow-x-auto px-1">
         <div className={DASHBOARD_YIELD_ROW_GRID_CLASS}>
-          <div className="min-w-0 truncate text-[#1E4775]">{row.marketName}</div>
-          <div className="min-w-0 text-right tabular-nums text-[#1E4775]">
+          <div className={`min-w-0 truncate ${DASHBOARD_ROW_TEXT_CLASS}`}>{row.marketName}</div>
+          <div className={`min-w-0 text-right tabular-nums ${DASHBOARD_ROW_TEXT_CLASS}`}>
             {formatPercent(row.ownershipSharePct, { decimals: 2 })}
           </div>
-          <div className="min-w-0 text-right tabular-nums text-[#1E4775]">
+          <div className={`min-w-0 text-right tabular-nums ${DASHBOARD_ROW_TEXT_CLASS}`}>
             {row.ownershipSharePct > 0
               ? formatMaidenVoyageBoost(row.boostMultiplier)
               : "—"}
           </div>
-          <div className="min-w-0 text-right tabular-nums text-[#1E4775]">
+          <div className={`min-w-0 text-right tabular-nums ${DASHBOARD_ROW_TEXT_CLASS}`}>
             {formatPercent(row.yieldSharePct, { decimals: 4 })}
           </div>
-          <div className="min-w-0 text-right tabular-nums text-[#1E4775]">
+          <div className={`min-w-0 text-right tabular-nums ${DASHBOARD_ROW_TEXT_CLASS}`}>
             {formatUSD(row.paidUSD, { compact: false })}
           </div>
-          <div className="min-w-0 text-right tabular-nums text-[#1E4775]">
+          <div className={`min-w-0 text-right tabular-nums ${DASHBOARD_ROW_TEXT_CLASS}`}>
             {formatUSD(row.outstandingUSD, { compact: false })}
           </div>
         </div>
@@ -141,10 +141,7 @@ export function DashboardYieldShareList({
     return (
       <p className={DASHBOARD_EMPTY_ON_PANEL_CLASS}>
         No yield share rows for this wallet. If you have deposits, check{" "}
-        <a
-          href="/genesis"
-          className="font-medium text-[#1E4775] underline underline-offset-2 hover:text-[#153B63]"
-        >
+        <a href="/genesis" className={DASHBOARD_LINK_CLASS}>
           Maiden voyage
         </a>{" "}
         after genesis ends so final ownership is written on-chain.

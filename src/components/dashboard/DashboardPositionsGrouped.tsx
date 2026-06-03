@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
+import { DASHBOARD_GROUP_LABEL_CLASS } from "./dashboardStyles";
 import { DashboardPositionsList } from "./DashboardPositionsList";
 
 export type DashboardPositionGroup = {
@@ -23,9 +24,7 @@ export function DashboardPositionsGrouped({ groups }: DashboardPositionsGroupedP
     <div className="space-y-5">
       {groups.map((group, index) => (
         <div key={group.id} className="space-y-2">
-          <h3 className="text-[11px] font-medium uppercase tracking-widest text-[#1E4775]/55">
-            {group.title}
-          </h3>
+          <h3 className={DASHBOARD_GROUP_LABEL_CLASS}>{group.title}</h3>
           {group.error ? (
             <IndexMarksSubgraphErrorBanner error={new Error(group.error)} />
           ) : null}

@@ -30,6 +30,9 @@ import {
   DASHBOARD_SECTION_ICON_CLASS,
   DASHBOARD_SECTION_TITLE_BTN_CLASS,
   DASHBOARD_SECTION_TITLE_CLASS,
+  DASHBOARD_SECTION_ACTION_BTN_CLASS,
+  DASHBOARD_INFO_ICON_CLASS,
+  DASHBOARD_LINK_CLASS,
 } from "@/components/dashboard/dashboardStyles";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
 import SimpleTooltip from "@/components/SimpleTooltip";
@@ -45,14 +48,11 @@ function sumRowsUsd(rows: DashboardPositionRow[]): number {
 const POSITIONS_DATA_SOURCE_TOOLTIP =
   "From Harbor marks and Sail subgraphs. USD is indexer-reported; use Manage for full detail.";
 
-const EMPTY_LINK_CLASS =
-  "font-medium text-[#1E4775] underline underline-offset-2 hover:text-[#153B63]";
-
 function emptyHintWithLink(message: string, href: string, linkLabel: string): ReactNode {
   return (
     <>
       {message}{" "}
-      <Link href={href} className={EMPTY_LINK_CLASS}>
+      <Link href={href} className={DASHBOARD_LINK_CLASS}>
         {linkLabel}
       </Link>
     </>
@@ -199,7 +199,7 @@ export default function DashboardPage() {
                   className="cursor-help"
                 >
                   <InformationCircleIcon
-                    className="h-4 w-4 text-[#1E4775]/45"
+                    className={DASHBOARD_INFO_ICON_CLASS}
                     aria-label="About position data"
                   />
                 </SimpleTooltip>
@@ -222,7 +222,7 @@ export default function DashboardPage() {
             <div className={DASHBOARD_SECTION_HEADER_ACTIONS_CELL_CLASS}>
               <button
                 type="button"
-                className="shrink-0 rounded-md p-1 hover:bg-[#1E4775]/5"
+                className={DASHBOARD_SECTION_ACTION_BTN_CLASS}
                 aria-expanded={positionsExpanded}
                 aria-label={
                   positionsExpanded ? "Collapse positions" : "Expand positions"
@@ -277,7 +277,7 @@ export default function DashboardPage() {
             <div className={DASHBOARD_SECTION_HEADER_ACTIONS_CELL_CLASS}>
               <button
                 type="button"
-                className="rounded-md p-1 hover:bg-[#1E4775]/5"
+                className={DASHBOARD_SECTION_ACTION_BTN_CLASS}
                 aria-expanded={yieldShareExpanded}
                 aria-label={
                   yieldShareExpanded ? "Collapse yield share" : "Expand yield share"

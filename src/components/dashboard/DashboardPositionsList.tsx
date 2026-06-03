@@ -8,6 +8,10 @@ import { INDEX_MANAGE_BUTTON_CLASS_COMPACT } from "@/utils/indexPageManageButton
 import { formatUSD } from "@/utils/formatters";
 import { DashboardStatusPill } from "./DashboardStatusPill";
 import {
+  DASHBOARD_ROW_MUTED_CLASS,
+  DASHBOARD_ROW_TEXT_CLASS,
+} from "./dashboardStyles";
+import {
   DASHBOARD_EMPTY_ON_PANEL_CLASS,
   DASHBOARD_PANEL_ROW_SHELL_CLASS,
   DASHBOARD_POSITIONS_HEADER_GRID_CLASS,
@@ -44,12 +48,14 @@ function DashboardPositionRow({ row }: { row: DashboardPositionRow }) {
       <div className={`${DASHBOARD_POSITIONS_ROW_GRID_CLASS} px-1`}>
         <div className="flex min-w-0 items-center gap-2">
           <TokenLogo symbol={row.iconSymbol} size={24} className="shrink-0 ring-0" />
-          <span className="truncate font-medium text-[#1E4775]">{row.marketLabel}</span>
+          <span className={`truncate font-medium ${DASHBOARD_ROW_TEXT_CLASS}`}>
+            {row.marketLabel}
+          </span>
         </div>
         <div className="min-w-0">
           <DashboardStatusPill label={row.statusLabel} tone={row.statusTone} />
         </div>
-        <div className="min-w-0 text-right tabular-nums font-medium text-[#1E4775]">
+        <div className={`min-w-0 text-right tabular-nums font-medium ${DASHBOARD_ROW_TEXT_CLASS}`}>
           {formatUSD(row.usd, { compact: false })}
         </div>
         <div className="flex justify-end">
@@ -63,13 +69,17 @@ function DashboardPositionRow({ row }: { row: DashboardPositionRow }) {
         <div className="flex min-w-0 items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <TokenLogo symbol={row.iconSymbol} size={24} className="shrink-0 ring-0" />
-            <span className="truncate font-medium text-[#1E4775]">{row.marketLabel}</span>
+            <span className={`truncate font-medium ${DASHBOARD_ROW_TEXT_CLASS}`}>
+            {row.marketLabel}
+          </span>
           </div>
           <DashboardStatusPill label={row.statusLabel} tone={row.statusTone} />
         </div>
         <div className="flex items-center justify-between gap-2">
-          <span className="text-xs uppercase tracking-wide text-[#1E4775]/60">Notional</span>
-          <span className="tabular-nums font-medium text-[#1E4775]">
+          <span className={`text-xs uppercase tracking-wide ${DASHBOARD_ROW_MUTED_CLASS}`}>
+            Notional
+          </span>
+          <span className={`tabular-nums font-medium ${DASHBOARD_ROW_TEXT_CLASS}`}>
             {formatUSD(row.usd, { compact: false })}
           </span>
         </div>
