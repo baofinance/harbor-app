@@ -1,7 +1,7 @@
 "use client";
 
 import type { MaidenVoyageStatsBarData } from "@/utils/maidenVoyageStatsBar";
-import { MV_INSET_PANEL } from "./maidenVoyageLayoutStyles";
+import { MV_STAT_TILE } from "./maidenVoyageLayoutStyles";
 
 export type GenesisMaidenVoyageKpiStripProps = {
   stats: MaidenVoyageStatsBarData;
@@ -18,7 +18,7 @@ function KpiMetrics({
   const tvlLabel = stats.featuredTvlLabel;
   return (
     <>
-      <div>
+      <div className={`${MV_STAT_TILE} px-3 py-2.5`}>
         <p className="text-[10px] uppercase tracking-wide text-white/45">
           Featured TVL
         </p>
@@ -30,7 +30,7 @@ function KpiMetrics({
           {tvlLabel}
         </p>
       </div>
-      <div>
+      <div className={`${MV_STAT_TILE} px-3 py-2.5`}>
         <p className="text-[10px] uppercase tracking-wide text-white/45">
           Markets launched
         </p>
@@ -42,7 +42,7 @@ function KpiMetrics({
           {stats.completedLaunchesCount}
         </p>
       </div>
-      <div>
+      <div className={`${MV_STAT_TILE} px-3 py-2.5`}>
         <p className="text-[10px] uppercase tracking-wide text-white/45">
           Maiden Voyages
         </p>
@@ -68,10 +68,8 @@ export function GenesisMaidenVoyageKpiStrip({
   }
 
   return (
-    <div className={`${MV_INSET_PANEL} px-4 py-3`}>
-      <div className="grid grid-cols-3 gap-3">
-        <KpiMetrics stats={stats} />
-      </div>
+    <div className="grid grid-cols-3 gap-2">
+      <KpiMetrics stats={stats} />
     </div>
   );
 }

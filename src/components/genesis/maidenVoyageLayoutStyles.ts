@@ -4,9 +4,16 @@
 export const MV_GLASS_SURFACE =
   "border border-white/12 bg-[#2a5580]/38 backdrop-blur-xl shadow-[0_8px_32px_-10px_rgba(0,0,0,0.22),inset_0_1px_0_0_rgba(255,255,255,0.1)]";
 
-/** Nested glass inside a card — lighter than MV_GLASS_SURFACE. */
-export const MV_GLASS_INSET =
+/** Nested glass inside a card — lighter frost for position/list rows. */
+export const MV_GLASS_INSET_LIGHT =
   "border border-white/16 bg-white/[0.11] backdrop-blur-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.14)]";
+
+/** Darker navy glass for stat/KPI tiles. */
+export const MV_GLASS_INSET_DARK =
+  "border border-white/[0.07] bg-[#0a1929]/48 backdrop-blur-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]";
+
+/** @deprecated Prefer MV_GLASS_INSET_LIGHT or MV_GLASS_INSET_DARK */
+export const MV_GLASS_INSET = MV_GLASS_INSET_LIGHT;
 
 /** Primary card shell. */
 export const MV_CARD_SHELL = `rounded-2xl ${MV_GLASS_SURFACE}`;
@@ -14,10 +21,17 @@ export const MV_CARD_SHELL = `rounded-2xl ${MV_GLASS_SURFACE}`;
 export const MV_CARD_INNER_GRADIENT =
   "bg-gradient-to-b from-white/[0.03] via-transparent to-transparent";
 
-export const MV_INSET_PANEL = `rounded-xl ${MV_GLASS_INSET}`;
+/** Stat/KPI tile shell. */
+export const MV_STAT_TILE = `rounded-xl ${MV_GLASS_INSET_DARK}`;
+
+/** @deprecated Use MV_STAT_TILE for stats; MV_POSITION_ROW for list rows */
+export const MV_INSET_PANEL = MV_STAT_TILE;
+
+/** Position/list row shell inside cards and explorer. */
+export const MV_POSITION_ROW = `rounded-xl ${MV_GLASS_INSET_LIGHT}`;
 
 export const MV_STATS_BAND =
-  "border-y border-white/12 bg-[#2a5580]/30 backdrop-blur-lg";
+  "border-y border-white/[0.08] bg-[#0a1929]/40 backdrop-blur-lg";
 
 export const MV_FOOTER_PANEL =
   "border-t border-white/12 bg-white/[0.08] backdrop-blur-sm";
@@ -71,9 +85,9 @@ export const MV_ICON_BADGE =
 export const MV_ICON_BADGE_LG =
   "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#FF8A7A]/30 bg-[#FF8A7A]/10 text-[#FF8A7A] backdrop-blur-sm";
 
-export const MV_DETAILS_PANEL = `rounded-xl ${MV_GLASS_SURFACE}`;
+export const MV_DETAILS_PANEL = MV_POSITION_ROW;
 
-export const MV_GLASS_HOVER = "transition hover:bg-[#2a5580]/48";
+export const MV_GLASS_HOVER = "transition hover:bg-white/[0.14]";
 
 export const MV_COUNTDOWN_PANEL =
   "rounded-lg border border-[#FF8A7A]/22 bg-[#FF8A7A]/12 backdrop-blur-sm";
@@ -81,7 +95,7 @@ export const MV_COUNTDOWN_PANEL =
 export const MV_TABLE_HEADER =
   "hidden md:grid gap-3 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/45 lg:text-[11px]";
 
-export const MV_TABLE_ROW = `grid grid-cols-1 gap-3 rounded-xl px-3 py-3 md:items-center md:gap-3 md:py-2.5 ${MV_GLASS_SURFACE}`;
+export const MV_TABLE_ROW = `grid grid-cols-1 gap-3 px-3 py-3 md:items-center md:gap-3 md:py-2.5 ${MV_POSITION_ROW}`;
 
 export const MV_EXPLORER_TABS =
   "inline-flex rounded-full border border-white/12 bg-white/[0.08] p-0.5 backdrop-blur-md";

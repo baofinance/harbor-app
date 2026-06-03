@@ -3,7 +3,7 @@
 import { maidenVoyageCapUsd } from "@/config/maidenVoyageCap";
 import type { GenesisVoyageCapDisplay } from "@/utils/genesisVoyageCapDisplay";
 import { formatUSD } from "@/utils/formatters";
-import { MV_INSET_PANEL } from "./maidenVoyageLayoutStyles";
+import { MV_STAT_TILE } from "./maidenVoyageLayoutStyles";
 
 function stripLabel(symbol: string): string {
   const s = symbol.trim();
@@ -44,7 +44,7 @@ export function GenesisActiveVoyageQuickStats({
       : "—";
 
   return (
-    <div className={`${MV_INSET_PANEL} mb-4 grid grid-cols-3 gap-3 p-2.5`}>
+    <div className={`${MV_STAT_TILE} mb-4 grid grid-cols-3 gap-3 p-2.5`}>
       <div>
         <p className="text-[10px] uppercase tracking-wide text-white/45">
           Capacity

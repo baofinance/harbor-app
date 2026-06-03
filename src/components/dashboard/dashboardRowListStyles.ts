@@ -2,10 +2,10 @@
  * Dashboard row-list layout — panel rows and column headers inside glass sections.
  */
 
-import { DASHBOARD_GLASS_INSET } from "./dashboardStyles";
+import { DASHBOARD_GLASS_INSET_LIGHT } from "./dashboardStyles";
 
 /** Row shell inside glass dashboard panels. */
-export const DASHBOARD_PANEL_ROW_SHELL_CLASS = `rounded-md py-2.5 px-2 min-h-[52px] ${DASHBOARD_GLASS_INSET}`;
+export const DASHBOARD_PANEL_ROW_SHELL_CLASS = `rounded-md py-2.5 px-2 min-h-[52px] ${DASHBOARD_GLASS_INSET_LIGHT}`;
 
 /** Column labels inside a glass panel. */
 export const DASHBOARD_TABLE_HEADER_WRAP_CLASS =

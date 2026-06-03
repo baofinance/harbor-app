@@ -4,9 +4,16 @@
 export const DASHBOARD_GLASS_SURFACE =
   "border border-white/[0.08] bg-[#153B63]/62 backdrop-blur-xl shadow-[0_8px_32px_-10px_rgba(0,0,0,0.45),inset_0_1px_0_0_rgba(255,255,255,0.06)]";
 
-/** Nested glass inside a section — darker inset for rows and chips. */
+/** Nested glass inside a section — default section depth (unchanged). */
 export const DASHBOARD_GLASS_INSET =
   "border border-white/[0.07] bg-[#0a1929]/48 backdrop-blur-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]";
+
+/** Lighter frosted glass for position/list row tiles. */
+export const DASHBOARD_GLASS_INSET_LIGHT =
+  "border border-white/14 bg-white/[0.11] backdrop-blur-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]";
+
+/** Darker navy glass for header stat chips. */
+export const DASHBOARD_GLASS_INSET_DARK = DASHBOARD_GLASS_INSET;
 
 /** Large section container (Your positions, Yield share). */
 export const DASHBOARD_SECTION_CLASS = `rounded-2xl overflow-hidden ${DASHBOARD_GLASS_SURFACE}`;
@@ -55,7 +62,7 @@ export const DASHBOARD_METRIC_STRIP_INLINE_CLASS =
   "flex min-w-0 flex-wrap items-center justify-center gap-1.5 sm:gap-2";
 
 /** Metric tiles on glass section headers. */
-export const DASHBOARD_METRIC_CHIP_CLASS = `flex h-[3.5rem] w-[7.25rem] shrink-0 flex-col items-center justify-center overflow-hidden rounded-md px-2 py-1.5 text-center sm:w-[7.5rem] ${DASHBOARD_GLASS_INSET}`;
+export const DASHBOARD_METRIC_CHIP_CLASS = `flex h-[3.5rem] w-[7.25rem] shrink-0 flex-col items-center justify-center overflow-hidden rounded-md px-2 py-1.5 text-center sm:w-[7.5rem] ${DASHBOARD_GLASS_INSET_DARK}`;
 
 export const DASHBOARD_METRIC_CHIP_INLINE_CLASS = DASHBOARD_METRIC_CHIP_CLASS;
 
@@ -65,7 +72,7 @@ export const DASHBOARD_METRIC_CHIP_LABEL_CLASS =
 export const DASHBOARD_METRIC_CHIP_VALUE_CLASS = "text-white/90";
 
 export const DASHBOARD_METRIC_CHIP_EMPHASIZED_CLASS =
-  "border-white/12 bg-[#1E4775]/40";
+  "border-white/10 bg-[#06101f]/55";
 
 /** Uppercase labels on glass table headers. */
 export const DASHBOARD_INDEX_TABLE_HEAD =

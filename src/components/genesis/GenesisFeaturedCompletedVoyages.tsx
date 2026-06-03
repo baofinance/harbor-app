@@ -20,7 +20,7 @@ import { GenesisMarketRowClaimActions } from "./GenesisMarketRowClaimActions";
 import { GenesisMarketCollateralEquationStrip } from "./GenesisMarketSharedRowCells";
 import { readContractRowResult } from "./readContractRow";
 import type { GenesisClaimMarketArgs } from "./GenesisCompletedMarketsSection";
-import { MV_CARD_SHELL, MV_COMPLETED_PILL, MV_TYPE_TAG } from "./maidenVoyageLayoutStyles";
+import { MV_COMPLETED_PILL, MV_TABLE_ROW, MV_TYPE_TAG } from "./maidenVoyageLayoutStyles";
 
 export type GenesisFeaturedCompletedVoyagesProps = {
   genesisMarkets: Array<[string, GenesisMarketConfig]>;
@@ -169,7 +169,7 @@ export function GenesisFeaturedCompletedVoyages({
           return (
             <div
               key={id}
-              className={`${MV_CARD_SHELL} grid grid-cols-1 gap-3 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_auto_auto_auto_auto] md:items-center md:gap-4`}
+              className={`${MV_TABLE_ROW} px-4 md:grid-cols-[minmax(0,1.4fr)_auto_auto_auto_auto] md:gap-4`}
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
