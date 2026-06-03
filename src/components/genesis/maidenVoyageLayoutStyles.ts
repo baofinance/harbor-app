@@ -28,7 +28,7 @@ export const MV_SECTION_LABEL =
   "text-xs font-medium uppercase tracking-wider text-white/55";
 
 export const MV_HEADLINE =
-  "font-mono text-5xl font-bold leading-[1.08] sm:text-6xl lg:text-7xl";
+  "font-mono text-4xl font-bold leading-[1.1] sm:text-5xl lg:text-6xl";
 
 export const MV_HEADLINE_PRIMARY = "block text-white";
 

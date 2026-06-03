@@ -27,7 +27,7 @@ import {
   MV_TYPE_TAG,
 } from "./maidenVoyageLayoutStyles";
 
-const STRIP_ICON_PX = 24;
+const STRIP_ICON_PX = 18;
 
 function stripLabel(symbol: string): string {
   const s = symbol.trim();
@@ -103,44 +103,45 @@ export function GenesisActiveVoyageCard({
       className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} overflow-hidden`}
       aria-label="Active maiden voyage"
     >
-      <div className="px-4 py-4 sm:px-6 sm:py-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <GenesisVoyageStatusBadge status={voyageStatus} />
-            <span className="text-sm font-semibold text-white/95">
-              Maiden Voyage #{voyageNumber}
-            </span>
+      <div className="px-4 py-3 sm:px-5">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <GenesisVoyageStatusBadge status={voyageStatus} />
+              <span className="text-sm font-semibold text-white/95">
+                Maiden Voyage #{voyageNumber}
+              </span>
+            </div>
+            <div
+              className="mt-1.5 flex flex-wrap items-center gap-1"
+              aria-label={`${stripLabel(collateralSymbol)} to ${stripLabel(peggedSymbol)} and ${stripLabel(leveragedSymbol)}`}
+            >
+              <div className="flex items-center gap-1">
+                <TokenLogo symbol={collateralSymbol} size={STRIP_ICON_PX} />
+                <span className="font-mono text-[11px] font-semibold text-white/75">
+                  {stripLabel(collateralSymbol)}
+                </span>
+              </div>
+              <ArrowRightIcon className="h-3 w-3 shrink-0 text-white/35" aria-hidden />
+              <div className="flex items-center gap-1">
+                <TokenLogo symbol={peggedSymbol} size={STRIP_ICON_PX} />
+                <span className="font-mono text-[11px] font-semibold text-white/75">
+                  {stripLabel(peggedSymbol)}
+                </span>
+              </div>
+              <span className="text-[11px] font-light text-white/35">+</span>
+              <div className="flex items-center gap-1">
+                <TokenLogo symbol={leveragedSymbol} size={STRIP_ICON_PX} />
+                <span className="font-mono text-[11px] font-semibold text-white/75">
+                  {stripLabel(leveragedSymbol)}
+                </span>
+              </div>
+            </div>
           </div>
           <span className={MV_TYPE_TAG}>{marketTypeLabel}</span>
         </div>
 
-        <div
-          className="mt-3 flex flex-wrap items-center gap-1.5"
-          aria-label={`${stripLabel(collateralSymbol)} to ${stripLabel(peggedSymbol)} and ${stripLabel(leveragedSymbol)}`}
-        >
-          <div className="flex items-center gap-1">
-            <TokenLogo symbol={collateralSymbol} size={STRIP_ICON_PX} />
-            <span className="font-mono text-xs font-semibold text-white/80">
-              {stripLabel(collateralSymbol)}
-            </span>
-          </div>
-          <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 text-white/40" aria-hidden />
-          <div className="flex items-center gap-1">
-            <TokenLogo symbol={peggedSymbol} size={STRIP_ICON_PX} />
-            <span className="font-mono text-xs font-semibold text-white/80">
-              {stripLabel(peggedSymbol)}
-            </span>
-          </div>
-          <span className="text-xs font-light text-white/40">+</span>
-          <div className="flex items-center gap-1">
-            <TokenLogo symbol={leveragedSymbol} size={STRIP_ICON_PX} />
-            <span className="font-mono text-xs font-semibold text-white/80">
-              {stripLabel(leveragedSymbol)}
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-5">
+        <div className="mt-3 border-t border-white/10 pt-3">
           <GenesisActiveVoyageMetrics
             capDisplay={capDisplay}
             isLoading={capLoading}
@@ -151,9 +152,9 @@ export function GenesisActiveVoyageCard({
           />
         </div>
 
-        <div className="mt-4">
+        <div className="mt-3 border-t border-white/10 pt-3">
           {userDepositDisplay ? (
-            <p className="mb-3 text-sm text-white/75">
+            <p className="mb-2 text-xs text-white/70">
               Your deposit:{" "}
               <span className="font-semibold text-white/95">
                 {userDepositDisplay}
@@ -161,10 +162,10 @@ export function GenesisActiveVoyageCard({
             </p>
           ) : null}
 
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <button
               type="button"
-              className={`${MV_PRIMARY_CTA} min-h-[44px] sm:flex-1`}
+              className={`${MV_PRIMARY_CTA} min-h-[40px] sm:flex-1`}
               disabled={cta.disabled}
               onClick={handleCtaClick}
             >
@@ -174,19 +175,21 @@ export function GenesisActiveVoyageCard({
               href={MAIDEN_VOYAGE_DOCS_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className={`${MV_OUTLINE_BUTTON} min-h-[44px] justify-center px-5`}
+              className={`${MV_OUTLINE_BUTTON} min-h-[40px] justify-center px-4 sm:shrink-0`}
             >
               How it works
             </a>
           </div>
 
           {footnote ? (
-            <p className="mt-2 text-center text-xs text-white/50">{footnote}</p>
+            <p className="mt-1.5 text-center text-[11px] text-white/45 sm:text-left">
+              {footnote}
+            </p>
           ) : null}
         </div>
       </div>
 
-      <footer className={`${MV_FOOTER_PANEL} px-4 py-3 sm:px-6`}>
+      <footer className={`${MV_FOOTER_PANEL} px-4 py-2 sm:px-5`}>
         <GenesisMaidenVoyageStageStrip status={voyageStatus} />
       </footer>
     </section>

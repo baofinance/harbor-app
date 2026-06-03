@@ -1,14 +1,16 @@
 "use client";
 
+import { maidenVoyageCapUsd } from "@/config/maidenVoyageCap";
 import type { ActiveVoyageStatus } from "@/utils/activeVoyageStatus";
 import { getActiveVoyageZeroStateCopy } from "@/utils/activeVoyageStatus";
 import type { GenesisVoyageCapDisplay } from "@/utils/genesisVoyageCapDisplay";
 import { formatUSD } from "@/utils/formatters";
-import { GenesisActiveVoyageQuickStats } from "./GenesisActiveVoyageQuickStats";
 import {
+  MV_ACCENT_GRADIENT,
   MV_PROGRESS_FILL,
   MV_PROGRESS_FILL_COMPLETE,
   MV_PROGRESS_TRACK,
+  MV_SECTION_LABEL,
 } from "./maidenVoyageLayoutStyles";
 
 function stripLabel(symbol: string): string {
@@ -20,6 +22,33 @@ function stripLabel(symbol: string): string {
   if (lower.startsWith("hs")) return `hs${s.slice(2)}`;
   if (lower.startsWith("ha")) return `ha${s.slice(2)}`;
   return s;
+}
+
+function resolveOwnershipLabel(
+  capDisplay: GenesisVoyageCapDisplay,
+  genesisAddress?: string,
+): { label: string; caption: string } {
+  const capUsd =
+    maidenVoyageCapUsd(genesisAddress?.toLowerCase() ?? null) ??
+    (capDisplay.capTotalUsd > 0 ? capDisplay.capTotalUsd : null);
+  const estimatedOwnershipPct =
+    capUsd && capUsd > 0 ? (Math.min(1000, capUsd) / capUsd) * 100 : null;
+  const hasUserOwnership = capDisplay.ownershipShare > 0;
+
+  if (hasUserOwnership) {
+    return {
+      label: `${(capDisplay.ownershipShare * 100).toFixed(2)}%`,
+      caption: "Your current share",
+    };
+  }
+
+  return {
+    label:
+      estimatedOwnershipPct != null
+        ? `${estimatedOwnershipPct.toFixed(2)}%`
+        : "—",
+    caption: "With $1,000 deposit",
+  };
 }
 
 export type GenesisActiveVoyageMetricsProps = {
@@ -42,7 +71,7 @@ export function GenesisActiveVoyageMetrics({
   if (isLoading) {
     return (
       <div
-        className="h-28 animate-pulse rounded-xl bg-white/[0.08]"
+        className="h-20 animate-pulse rounded-xl bg-white/[0.08]"
         aria-label="Loading capacity"
       />
     );
@@ -66,50 +95,64 @@ export function GenesisActiveVoyageMetrics({
     : `${formatUSD(capDisplay.remainingUsd)} remaining`;
 
   const zeroState = getActiveVoyageZeroStateCopy(voyageStatus, filledPct);
+  const ownership = resolveOwnershipLabel(capDisplay, genesisAddress);
 
   return (
-    <div className="min-w-0">
-      <p className="font-mono text-3xl font-bold tabular-nums tracking-tight text-[#FF8A7A] sm:text-4xl">
-        {filledPct.toFixed(0)}%{" "}
-        <span className="text-xl uppercase sm:text-2xl">filled</span>
-      </p>
-
-      <div
-        className={`mt-3 ${MV_PROGRESS_TRACK}`}
-        role="progressbar"
-        aria-valuenow={Math.round(filledPct)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label="Deposit cap progress"
-      >
-        <div
-          className={capFilled ? MV_PROGRESS_FILL_COMPLETE : MV_PROGRESS_FILL}
-          style={{ width: progressWidth }}
-        />
-      </div>
-
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-        <span className="font-mono font-semibold tabular-nums text-white/75">
-          {capacityFractionLabel}
-        </span>
-        <span className="font-mono font-semibold tabular-nums text-[#FF8A7A]">
-          {remainingLabel}
-        </span>
-      </div>
-
-      <div className="mt-4">
-        <GenesisActiveVoyageQuickStats
-          capDisplay={capDisplay}
-          yieldRevSharePct={yieldRevSharePct}
-          genesisAddress={genesisAddress}
-        />
-      </div>
-
-      {zeroState ? (
-        <p className="mt-2 text-xs leading-snug text-[#4A9784]/90">
-          {zeroState.line1}
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.5fr)_minmax(0,0.75fr)_minmax(0,0.75fr)] md:gap-0">
+      <div className="min-w-0 md:pr-4">
+        <p className={MV_SECTION_LABEL}>Voyage Capacity</p>
+        <p className="mt-0.5 font-mono text-2xl font-bold tabular-nums leading-none sm:text-3xl">
+          <span className={MV_ACCENT_GRADIENT}>{filledPct.toFixed(0)}%</span>{" "}
+          <span className="text-lg font-bold uppercase text-white/90 sm:text-xl">
+            filled
+          </span>
         </p>
-      ) : null}
+
+        <div
+          className={`mt-2 h-3 ${MV_PROGRESS_TRACK}`}
+          role="progressbar"
+          aria-valuenow={Math.round(filledPct)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Deposit cap progress"
+        >
+          <div
+            className={capFilled ? MV_PROGRESS_FILL_COMPLETE : MV_PROGRESS_FILL}
+            style={{ width: progressWidth }}
+          />
+        </div>
+
+        <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[11px]">
+          <span className="font-mono font-semibold tabular-nums text-white/70">
+            {capacityFractionLabel}
+          </span>
+          <span className="font-mono font-semibold tabular-nums text-[#FF8A7A]">
+            {remainingLabel}
+          </span>
+        </div>
+
+        {zeroState ? (
+          <p className="mt-1.5 text-[11px] leading-snug text-[#4A9784]/90">
+            {zeroState.line1}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="min-w-0 border-t border-white/10 pt-3 md:border-l md:border-t-0 md:px-4 md:pt-0">
+        <p className={MV_SECTION_LABEL}>Est. Your Share</p>
+        <p className="mt-0.5 font-mono text-2xl font-bold tabular-nums text-white/95 sm:text-3xl">
+          {ownership.label}
+        </p>
+        <p className="mt-0.5 text-[11px] text-white/50">{ownership.caption}</p>
+      </div>
+
+      <div className="min-w-0 border-t border-white/10 pt-3 md:border-l md:border-t-0 md:pl-4 md:pt-0">
+        <p className={MV_SECTION_LABEL}>Revenue Share</p>
+        <p className="mt-0.5 font-mono text-2xl font-bold tabular-nums text-white/95 sm:text-3xl">
+          {yieldRevSharePct != null ? `${yieldRevSharePct}%` : "—"}
+        </p>
+        <p className="mt-0.5 text-[11px] text-white/50">Eligible pool share</p>
+      </div>
     </div>
   );
 }

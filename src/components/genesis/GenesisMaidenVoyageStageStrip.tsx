@@ -37,22 +37,31 @@ export function GenesisMaidenVoyageStageStrip({
   status,
 }: GenesisMaidenVoyageStageStripProps) {
   const activeOrder = activeStageOrder(status);
+  const activeStage = STAGES.find((stage) => stage.order === activeOrder);
 
   return (
-    <div className="overflow-x-auto pb-1">
-      <div className="min-w-[640px] lg:min-w-0">
-        <div className="mb-2 grid grid-cols-5 gap-2">
+    <div className="overflow-x-auto">
+      <div className="min-w-[560px] lg:min-w-0">
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-white/45">
+            Stage:{" "}
+            <span className="text-[#C6F6E4]">
+              {activeStage?.label ?? "Deposits Open"}
+            </span>
+          </p>
+        </div>
+        <div className="mb-1 grid grid-cols-5 gap-1">
           {STAGES.map((stage) => {
             const isCompleted = stage.order < activeOrder;
             const isActive = stage.order === activeOrder;
             return (
               <div
                 key={stage.key}
-                className={`text-center text-[10px] font-semibold uppercase tracking-wide ${
+                className={`text-center text-[9px] font-semibold uppercase tracking-wide sm:text-[10px] ${
                   isActive
                     ? "text-[#C6F6E4]"
                     : isCompleted
-                      ? "text-white/75"
+                      ? "text-white/70"
                       : "text-white/35"
                 }`}
               >
@@ -61,14 +70,14 @@ export function GenesisMaidenVoyageStageStrip({
             );
           })}
         </div>
-        <div className="grid grid-cols-5 items-center gap-2">
+        <div className="grid grid-cols-5 items-center gap-1">
           {STAGES.map((stage) => {
             const isCompleted = stage.order < activeOrder;
             const isActive = stage.order === activeOrder;
             return (
               <div key={`${stage.key}-node`} className="flex items-center">
                 <span
-                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold ${
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[9px] font-semibold sm:h-6 sm:w-6 sm:text-[10px] ${
                     isActive
                       ? "border-[#4A9784]/60 bg-[#4A9784]/20 text-[#C6F6E4]"
                       : isCompleted
