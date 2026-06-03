@@ -1,12 +1,12 @@
 /** Shared layout tokens for the wallet dashboard page. */
 
-/** Outer glass panel — matches Maiden Voyage cards over page bg #1E4775. */
+/** Outer glass panel — dark navy tint over page bg #1E4775. */
 export const DASHBOARD_GLASS_SURFACE =
-  "border border-white/12 bg-[#2a5580]/38 backdrop-blur-xl shadow-[0_8px_32px_-10px_rgba(0,0,0,0.22),inset_0_1px_0_0_rgba(255,255,255,0.1)]";
+  "border border-white/[0.08] bg-[#153B63]/62 backdrop-blur-xl shadow-[0_8px_32px_-10px_rgba(0,0,0,0.45),inset_0_1px_0_0_rgba(255,255,255,0.06)]";
 
-/** Nested glass inside a section — lighter inset for rows and chips. */
+/** Nested glass inside a section — darker inset for rows and chips. */
 export const DASHBOARD_GLASS_INSET =
-  "border border-white/16 bg-white/[0.11] backdrop-blur-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.14)]";
+  "border border-white/[0.07] bg-[#0a1929]/48 backdrop-blur-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]";
 
 /** Large section container (Your positions, Yield share). */
 export const DASHBOARD_SECTION_CLASS = `rounded-2xl overflow-hidden ${DASHBOARD_GLASS_SURFACE}`;
@@ -14,7 +14,7 @@ export const DASHBOARD_SECTION_CLASS = `rounded-2xl overflow-hidden ${DASHBOARD_
 export const DASHBOARD_SECTION_HEADER_INNER_CLASS =
   "grid w-full grid-cols-[1fr_auto] grid-rows-[auto_auto] gap-x-3 gap-y-3 px-4 py-3 sm:grid-cols-[minmax(0,max-content)_1fr_minmax(0,max-content)] sm:grid-rows-1 sm:items-center sm:gap-x-4 sm:px-6 sm:py-4";
 
-export const DASHBOARD_SECTION_HEADER_EXPANDED_CLASS = "border-b border-white/10";
+export const DASHBOARD_SECTION_HEADER_EXPANDED_CLASS = "border-b border-white/[0.08]";
 
 export const DASHBOARD_SECTION_HEADER_TITLE_CELL_CLASS = "col-start-1 row-start-1";
 
@@ -25,7 +25,7 @@ export const DASHBOARD_SECTION_HEADER_ACTIONS_CELL_CLASS =
   "col-start-2 row-start-1 flex items-center justify-end gap-1 sm:col-start-3";
 
 export const DASHBOARD_SECTION_TITLE_BTN_CLASS =
-  "flex shrink-0 items-center gap-2 rounded-md text-left hover:bg-white/[0.06]";
+  "flex shrink-0 items-center gap-2 rounded-md text-left hover:bg-white/[0.05]";
 
 export const DASHBOARD_SECTION_TITLE_CLASS =
   "text-lg font-medium text-white font-geo";
@@ -37,7 +37,7 @@ export const DASHBOARD_SECTION_CHEVRON_CLASS = "h-5 w-5 text-white/55";
 export const DASHBOARD_SECTION_BODY_CLASS = "space-y-3 p-3 sm:p-4";
 
 export const DASHBOARD_SECTION_ACTION_BTN_CLASS =
-  "shrink-0 rounded-md p-1 hover:bg-white/[0.06]";
+  "shrink-0 rounded-md p-1 hover:bg-white/[0.05]";
 
 export const DASHBOARD_INFO_ICON_CLASS = "h-4 w-4 text-white/45";
 
@@ -65,7 +65,7 @@ export const DASHBOARD_METRIC_CHIP_LABEL_CLASS =
 export const DASHBOARD_METRIC_CHIP_VALUE_CLASS = "text-white/90";
 
 export const DASHBOARD_METRIC_CHIP_EMPHASIZED_CLASS =
-  "border-white/22 bg-white/[0.14]";
+  "border-white/12 bg-[#1E4775]/40";
 
 /** Uppercase labels on glass table headers. */
 export const DASHBOARD_INDEX_TABLE_HEAD =
@@ -73,13 +73,13 @@ export const DASHBOARD_INDEX_TABLE_HEAD =
 
 /** Status pills on glass row bars. */
 export const DASHBOARD_STATUS_PILL_ENDED_LIGHT =
-  "inline-flex items-center rounded-md border border-white/12 bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium text-white/50 sm:text-xs";
+  "inline-flex items-center rounded-md border border-white/[0.08] bg-[#0a1929]/40 px-2 py-0.5 text-[10px] font-medium text-white/50 sm:text-xs";
 
 export const DASHBOARD_STATUS_PILL_ACTIVE_LIGHT =
   "inline-flex items-center rounded-md border border-[#B8EBD5]/35 bg-[#B8EBD5]/15 px-2 py-0.5 text-[10px] font-medium text-[#B8EBD5] sm:text-xs";
 
 export const DASHBOARD_STATUS_PILL_NEUTRAL_LIGHT =
-  "inline-flex items-center rounded-md border border-white/14 bg-white/[0.08] px-2 py-0.5 text-[10px] font-medium text-white/70 sm:text-xs";
+  "inline-flex items-center rounded-md border border-white/[0.09] bg-[#0a1929]/35 px-2 py-0.5 text-[10px] font-medium text-white/70 sm:text-xs";
 
 /** Group labels inside section bodies (Maiden Voyage, Earn, etc.). */
 export const DASHBOARD_GROUP_LABEL_CLASS =

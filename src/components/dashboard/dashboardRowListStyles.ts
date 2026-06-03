@@ -9,7 +9,7 @@ export const DASHBOARD_PANEL_ROW_SHELL_CLASS = `rounded-md py-2.5 px-2 min-h-[52
 
 /** Column labels inside a glass panel. */
 export const DASHBOARD_TABLE_HEADER_WRAP_CLASS =
-  "hidden md:block py-1.5 px-2 border-b border-white/10 mb-2 overflow-x-auto";
+  "hidden md:block py-1.5 px-2 border-b border-white/[0.08] mb-2 overflow-x-auto";
 
 export const DASHBOARD_POSITIONS_LIST_CLASS = "space-y-2";
 
@@ -33,4 +33,4 @@ export const DASHBOARD_EMPTY_ON_PANEL_CLASS = "text-sm text-white/55";
 export const DASHBOARD_EMPTY_ON_DARK_CLASS = DASHBOARD_EMPTY_ON_PANEL_CLASS;
 
 export const DASHBOARD_SKELETON_BAR_CLASS =
-  "h-4 w-full max-w-md animate-pulse rounded bg-white/10";
+  "h-4 w-full max-w-md animate-pulse rounded bg-white/[0.08]";
