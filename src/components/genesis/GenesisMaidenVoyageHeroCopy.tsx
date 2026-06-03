@@ -1,7 +1,7 @@
 "use client";
 
 import { getFeaturedVoyageNumber } from "@/config/maidenVoyageFeatured";
-import { MV_HEADLINE, MV_HEADLINE_ACCENT, MV_HEADLINE_PRIMARY } from "./maidenVoyageLayoutStyles";
+import { MV_HEADLINE, MV_HEADLINE_ACCENT, MV_HEADLINE_PRIMARY, MV_SUBHEAD, MV_SUBHEAD_ACCENT } from "./maidenVoyageLayoutStyles";
 
 export type GenesisMaidenVoyageHeroCopyProps = {
   yieldRevSharePct?: number | null;
@@ -17,13 +17,13 @@ export function GenesisMaidenVoyageHeroCopy({
         <span className={MV_HEADLINE_ACCENT}>Earn forever.</span>
       </h1>
       {yieldRevSharePct != null ? (
-        <p className="mt-4 max-w-lg text-base font-medium leading-snug text-white/70 sm:text-lg">
+        <p className={MV_SUBHEAD}>
           Help bootstrap a market and earn{" "}
-          <span className="text-[#FF8A7A]">{yieldRevSharePct}%</span> of its
+          <span className={MV_SUBHEAD_ACCENT}>{yieldRevSharePct}%</span> of its
           revenue forever.
         </p>
       ) : (
-        <p className="mt-4 max-w-lg text-base font-medium leading-snug text-white/70 sm:text-lg">
+        <p className={MV_SUBHEAD}>
           Help bootstrap a market. Earn from it forever.
         </p>
       )}

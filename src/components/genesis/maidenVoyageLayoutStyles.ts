@@ -4,13 +4,12 @@
 export const MV_GLASS_CARD_SHADOW =
   "shadow-[0_8px_32px_-10px_rgba(0,0,0,0.22),inset_0_1px_0_0_rgba(255,255,255,0.1)]";
 
-/** Outer card glass — lighter frost over page bg #1E4775. */
-export const MV_GLASS_SURFACE =
-  `border border-white/12 bg-[#2a5580]/38 backdrop-blur-xl ${MV_GLASS_CARD_SHADOW}`;
-
-/** Lighter frosted glass for position/list rows — borderless with card shadow. */
+/** Lighter frosted glass for position/list rows and large cards — borderless with card shadow. */
 export const MV_GLASS_INSET_LIGHT =
   `bg-white/[0.11] backdrop-blur-md ${MV_GLASS_CARD_SHADOW}`;
+
+/** Outer card glass — same borderless frost as voyage rows. */
+export const MV_GLASS_SURFACE = MV_GLASS_INSET_LIGHT;
 
 /** Unified stat/KPI tile glass — matches dashboard stat chips. */
 export const MV_GLASS_INSET_DARK =
@@ -49,7 +48,7 @@ export const MV_HEADLINE = "font-mono font-bold leading-[1.1]";
 
 /** Scales with hero column width so the primary line stays on one row. */
 export const MV_HEADLINE_SIZE =
-  "text-[length:clamp(0.875rem,5.5cqi,2.625rem)]";
+  "text-[length:clamp(0.9375rem,calc(100cqi/17.8),2.875rem)]";
 
 export const MV_HEADLINE_PRIMARY = `block whitespace-nowrap text-white ${MV_HEADLINE_SIZE}`;
 
@@ -58,6 +57,15 @@ export const MV_ACCENT_GRADIENT =
   "bg-gradient-to-r from-[#FF8A7A] via-[#FF9A88] to-[#FFB4C8] bg-clip-text text-transparent [-webkit-text-fill-color:transparent]";
 
 export const MV_HEADLINE_ACCENT = `mt-1 block ${MV_HEADLINE_SIZE} ${MV_ACCENT_GRADIENT}`;
+
+/** Scales with hero column width so the subhead stays on one row. */
+export const MV_SUBHEAD_SIZE =
+  "text-[length:clamp(0.8125rem,calc(100cqi/29),1.125rem)]";
+
+export const MV_SUBHEAD =
+  `mt-4 font-medium leading-snug text-white/70 whitespace-nowrap ${MV_SUBHEAD_SIZE}`;
+
+export const MV_SUBHEAD_ACCENT = "text-[#FF8A7A]";
 
 export const MV_PROGRESS_TRACK =
   "h-4 overflow-hidden rounded-full border border-white/12 bg-white/[0.08] backdrop-blur-sm";
