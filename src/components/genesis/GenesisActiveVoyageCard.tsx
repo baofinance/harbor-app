@@ -21,7 +21,9 @@ import { GenesisVoyageStatusBadge } from "./GenesisVoyageStatusBadge";
 import {
   MV_CARD_INNER_GRADIENT,
   MV_CARD_SHELL,
+  MV_CAPTION_TEXT,
   MV_FOOTER_PANEL,
+  MV_META_TEXT,
   MV_OUTLINE_BUTTON,
   MV_PRIMARY_CTA,
   MV_TYPE_TAG,
@@ -118,21 +120,21 @@ export function GenesisActiveVoyageCard({
             >
               <div className="flex items-center gap-1">
                 <TokenLogo symbol={collateralSymbol} size={STRIP_ICON_PX} />
-                <span className="font-mono text-[11px] font-semibold text-white/75">
+                <span className={`font-mono ${MV_CAPTION_TEXT} font-semibold text-white/85`}>
                   {stripLabel(collateralSymbol)}
                 </span>
               </div>
-              <ArrowRightIcon className="h-3 w-3 shrink-0 text-white/35" aria-hidden />
+              <ArrowRightIcon className="h-3 w-3 shrink-0 text-white/50" aria-hidden />
               <div className="flex items-center gap-1">
                 <TokenLogo symbol={peggedSymbol} size={STRIP_ICON_PX} />
-                <span className="font-mono text-[11px] font-semibold text-white/75">
+                <span className={`font-mono ${MV_CAPTION_TEXT} font-semibold text-white/85`}>
                   {stripLabel(peggedSymbol)}
                 </span>
               </div>
-              <span className="text-[11px] font-light text-white/35">+</span>
+              <span className={`${MV_CAPTION_TEXT} font-light text-white/50`}>+</span>
               <div className="flex items-center gap-1">
                 <TokenLogo symbol={leveragedSymbol} size={STRIP_ICON_PX} />
-                <span className="font-mono text-[11px] font-semibold text-white/75">
+                <span className={`font-mono ${MV_CAPTION_TEXT} font-semibold text-white/85`}>
                   {stripLabel(leveragedSymbol)}
                 </span>
               </div>
@@ -154,7 +156,7 @@ export function GenesisActiveVoyageCard({
 
         <div className="mt-3 border-t border-white/10 pt-3">
           {userDepositDisplay ? (
-            <p className="mb-2 text-xs text-white/70">
+            <p className={`mb-2 ${MV_CAPTION_TEXT} text-white/80`}>
               Your deposit:{" "}
               <span className="font-semibold text-white/95">
                 {userDepositDisplay}
@@ -182,7 +184,7 @@ export function GenesisActiveVoyageCard({
           </div>
 
           {footnote ? (
-            <p className="mt-1.5 text-center text-[11px] text-white/45 sm:text-left">
+            <p className={`mt-1.5 text-center sm:text-left ${MV_META_TEXT}`}>
               {footnote}
             </p>
           ) : null}

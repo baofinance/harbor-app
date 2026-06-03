@@ -7,8 +7,8 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import {
+  MV_CAPTION_TEXT,
   MV_ICON_BADGE,
-  MV_MUTED_TEXT,
   MV_SECTION_LABEL,
 } from "./maidenVoyageLayoutStyles";
 
@@ -50,7 +50,7 @@ export function GenesisVoyageBenefitsWithLayout({
     return (
       <div>
         <h3 className={`mb-3 ${MV_SECTION_LABEL}`}>What you receive</h3>
-        <ul className="space-y-2.5">
+        <ul className="space-y-3">
           {BENEFITS.map(({ title, description, icon: Icon }) => (
             <li key={title} className="flex items-start gap-2.5">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#FF8A7A]/30 bg-[#FF8A7A]/10 text-[#FF8A7A]">
@@ -58,9 +58,7 @@ export function GenesisVoyageBenefitsWithLayout({
               </span>
               <div>
                 <p className="text-sm font-semibold text-white/90">{title}</p>
-                <p className={`text-xs leading-snug ${MV_MUTED_TEXT}`}>
-                  {description}
-                </p>
+                <p className={MV_CAPTION_TEXT}>{description}</p>
               </div>
             </li>
           ))}
@@ -81,7 +79,7 @@ export function GenesisVoyageBenefitsWithLayout({
               </span>
               <div>
                 <p className="text-sm font-semibold text-white/90">{title}</p>
-                <p className="text-xs leading-snug text-white/50">{description}</p>
+                <p className={MV_CAPTION_TEXT}>{description}</p>
               </div>
             </li>
           ))}
@@ -103,9 +101,7 @@ export function GenesisVoyageBenefitsWithLayout({
               <Icon className="h-5 w-5" aria-hidden />
             </span>
             <p className="mt-2 text-sm font-semibold text-white/90">{title}</p>
-            <p className="mt-0.5 text-xs leading-snug text-white/50">
-              {description}
-            </p>
+            <p className={`mt-0.5 ${MV_CAPTION_TEXT}`}>{description}</p>
           </div>
         ))}
       </div>

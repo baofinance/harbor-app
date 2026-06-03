@@ -2,7 +2,7 @@
 
 import { CheckCircleIcon } from "@heroicons/react/24/outline";
 import { MAIDEN_VOYAGE_WHY_JOIN_BULLETS } from "@/config/maidenVoyageEducation";
-import { MV_CARD_INNER_GRADIENT, MV_CARD_SHELL } from "./maidenVoyageLayoutStyles";
+import { MV_BODY_TEXT, MV_CARD_INNER_GRADIENT, MV_CARD_SHELL } from "./maidenVoyageLayoutStyles";
 
 export function GenesisMaidenVoyageWhyJoinCard() {
   return (
@@ -15,7 +15,7 @@ export function GenesisMaidenVoyageWhyJoinCard() {
       </h3>
       <ul className="mt-2 space-y-1.5">
         {MAIDEN_VOYAGE_WHY_JOIN_BULLETS.map((bullet) => (
-          <li key={bullet} className="flex items-start gap-2 text-xs text-white/75">
+          <li key={bullet} className={`flex items-start gap-2 ${MV_BODY_TEXT}`}>
             <CheckCircleIcon
               className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#4A9784]"
               aria-hidden

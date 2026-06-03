@@ -6,6 +6,7 @@ import type { ActiveVoyageStatus } from "@/utils/activeVoyageStatus";
 import { formatVoyageCountdown } from "@/utils/formatters";
 import { GenesisVoyageBenefitsWithLayout } from "./GenesisVoyageBenefits";
 import {
+  MV_BODY_TEXT,
   MV_CARD_INNER_GRADIENT,
   MV_CARD_SHELL,
   MV_COUNTDOWN_PANEL,
@@ -81,7 +82,7 @@ export function GenesisVoyageRewardsCard({
       {showCountdown && countdownLabel ? (
         <div className={`${MV_COUNTDOWN_PANEL} mx-4 mb-4 flex items-center gap-2 px-3 py-2.5 sm:mx-5`}>
           <ClockIcon className="h-4 w-4 shrink-0 text-[#FF8A7A]" aria-hidden />
-          <p className="text-xs font-semibold text-white/90">
+          <p className={`${MV_BODY_TEXT} font-semibold text-white/90`}>
             Voyage closes in{" "}
             <span className="font-mono tabular-nums text-[#FF8A7A]">
               {countdownLabel}

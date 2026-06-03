@@ -39,31 +39,49 @@ export const MV_STATS_BAND =
 export const MV_FOOTER_PANEL =
   "border-t border-white/12 bg-white/[0.08] backdrop-blur-sm";
 
-export const MV_MUTED_TEXT = "text-[#9AA5B8]";
+export const MV_MUTED_TEXT = "text-white/75";
 
+/** Section and metric column labels. */
 export const MV_SECTION_LABEL =
-  "text-xs font-medium uppercase tracking-wider text-white/55";
+  "text-xs font-medium tracking-wide text-white/70";
+
+/** Secondary body copy on glass panels. */
+export const MV_BODY_TEXT = "text-sm leading-relaxed text-white/80";
+
+/** Small captions under metrics and list items (12px minimum). */
+export const MV_CAPTION_TEXT = "text-xs leading-relaxed text-white/75";
+
+/** Footnotes and tertiary hints. */
+export const MV_META_TEXT = "text-xs leading-snug text-white/60";
+
+/** Stage strip — active stage callout. */
+export const MV_STAGE_ACTIVE_TEXT = "text-xs font-medium text-white/70";
+
+/** Stage strip — step labels and node chrome. */
+export const MV_STAGE_STEP_TEXT = "text-xs font-medium tracking-wide";
+
+/** Subtle shadow for small text on frosted glass (use sparingly). */
+export const MV_TEXT_ON_GLASS = "[text-shadow:0_1px_2px_rgba(0,0,0,0.22)]";
 
 export const MV_HEADLINE = "font-mono font-bold leading-[1.1]";
 
 /** Scales with hero column width so the primary line stays on one row. */
 export const MV_HEADLINE_SIZE =
-  "text-[length:clamp(0.9375rem,calc(100cqi/17.8),2.875rem)]";
+  "text-[length:clamp(1rem,calc(100cqi/16.5),3.125rem)]";
 
 export const MV_HEADLINE_PRIMARY = `block whitespace-nowrap text-white ${MV_HEADLINE_SIZE}`;
 
 /** Hero accent line — orange → pink gradient (mockup). */
-export const MV_ACCENT_GRADIENT =
-  "bg-gradient-to-r from-[#FF8A7A] via-[#FF9A88] to-[#FFB4C8] bg-clip-text text-transparent [-webkit-text-fill-color:transparent]";
+export const MV_ACCENT_GRADIENT = "mv-text-accent-gradient";
 
-export const MV_HEADLINE_ACCENT = `mt-1 block ${MV_HEADLINE_SIZE} ${MV_ACCENT_GRADIENT}`;
+export const MV_HEADLINE_ACCENT = `mt-1 block whitespace-nowrap ${MV_HEADLINE_SIZE} ${MV_ACCENT_GRADIENT}`;
 
 /** Scales with hero column width so the subhead stays on one row. */
 export const MV_SUBHEAD_SIZE =
   "text-[length:clamp(0.8125rem,calc(100cqi/29),1.125rem)]";
 
 export const MV_SUBHEAD =
-  `mt-4 font-medium leading-snug text-white/70 whitespace-nowrap ${MV_SUBHEAD_SIZE}`;
+  `mt-4 font-medium leading-snug text-white/75 whitespace-nowrap ${MV_SUBHEAD_SIZE} ${MV_TEXT_ON_GLASS}`;
 
 export const MV_SUBHEAD_ACCENT = "text-[#FF8A7A]";
 

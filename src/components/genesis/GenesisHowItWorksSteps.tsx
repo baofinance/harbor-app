@@ -8,9 +8,9 @@ import {
 import {
   MV_CARD_INNER_GRADIENT,
   MV_CARD_SHELL,
+  MV_CAPTION_TEXT,
   MV_ICON_BADGE,
   MV_ICON_BADGE_LG,
-  MV_MUTED_TEXT,
 } from "./maidenVoyageLayoutStyles";
 
 const STEPS = [
@@ -58,13 +58,7 @@ function StepColumn({
       >
         {title}
       </h2>
-      <p
-        className={`mt-1 leading-snug ${MV_MUTED_TEXT} ${
-          compact ? "text-[10px]" : "text-xs"
-        }`}
-      >
-        {body}
-      </p>
+      <p className={`mt-1 ${MV_CAPTION_TEXT}`}>{body}</p>
     </li>
   );
 }

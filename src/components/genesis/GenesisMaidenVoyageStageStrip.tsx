@@ -1,6 +1,11 @@
 "use client";
 
 import type { ActiveVoyageStatus } from "@/utils/activeVoyageStatus";
+import {
+  MV_STAGE_ACTIVE_TEXT,
+  MV_STAGE_STEP_TEXT,
+  MV_TEXT_ON_GLASS,
+} from "./maidenVoyageLayoutStyles";
 
 const STAGES = [
   { key: "deposits_open", label: "Deposits Open", order: 1 },
@@ -42,27 +47,27 @@ export function GenesisMaidenVoyageStageStrip({
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[560px] lg:min-w-0">
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-white/45">
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <p className={`${MV_STAGE_ACTIVE_TEXT} ${MV_TEXT_ON_GLASS}`}>
             Stage:{" "}
-            <span className="text-[#C6F6E4]">
+            <span className="font-semibold text-[#C6F6E4]">
               {activeStage?.label ?? "Deposits Open"}
             </span>
           </p>
         </div>
-        <div className="mb-1 grid grid-cols-5 gap-1">
+        <div className={`mb-1.5 hidden grid-cols-5 gap-1 sm:grid ${MV_STAGE_STEP_TEXT}`}>
           {STAGES.map((stage) => {
             const isCompleted = stage.order < activeOrder;
             const isActive = stage.order === activeOrder;
             return (
               <div
                 key={stage.key}
-                className={`text-center text-[9px] font-semibold uppercase tracking-wide sm:text-[10px] ${
+                className={`text-center uppercase ${
                   isActive
                     ? "text-[#C6F6E4]"
                     : isCompleted
-                      ? "text-white/70"
-                      : "text-white/35"
+                      ? "text-white/75"
+                      : "text-white/50"
                 }`}
               >
                 {stage.label}
@@ -77,12 +82,12 @@ export function GenesisMaidenVoyageStageStrip({
             return (
               <div key={`${stage.key}-node`} className="flex items-center">
                 <span
-                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[9px] font-semibold sm:h-6 sm:w-6 sm:text-[10px] ${
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${MV_TEXT_ON_GLASS} ${
                     isActive
                       ? "border-[#4A9784]/60 bg-[#4A9784]/20 text-[#C6F6E4]"
                       : isCompleted
-                        ? "border-white/25 bg-white/10 text-white/80"
-                        : "border-white/15 bg-transparent text-white/35"
+                        ? "border-white/25 bg-white/10 text-white/85"
+                        : "border-white/20 bg-transparent text-white/50"
                   }`}
                 >
                   {stage.order}
@@ -90,7 +95,7 @@ export function GenesisMaidenVoyageStageStrip({
                 {stage.order !== STAGES.length ? (
                   <span
                     className={`h-px w-full ${
-                      stage.order < activeOrder ? "bg-white/45" : "bg-white/15"
+                      stage.order < activeOrder ? "bg-white/50" : "bg-white/20"
                     }`}
                     aria-hidden
                   />

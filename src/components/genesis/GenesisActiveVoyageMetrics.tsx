@@ -7,10 +7,12 @@ import type { GenesisVoyageCapDisplay } from "@/utils/genesisVoyageCapDisplay";
 import { formatUSD } from "@/utils/formatters";
 import {
   MV_ACCENT_GRADIENT,
+  MV_CAPTION_TEXT,
   MV_PROGRESS_FILL,
   MV_PROGRESS_FILL_COMPLETE,
   MV_PROGRESS_TRACK,
   MV_SECTION_LABEL,
+  MV_TEXT_ON_GLASS,
 } from "./maidenVoyageLayoutStyles";
 
 function stripLabel(symbol: string): string {
@@ -122,8 +124,10 @@ export function GenesisActiveVoyageMetrics({
           />
         </div>
 
-        <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[11px]">
-          <span className="font-mono font-semibold tabular-nums text-white/70">
+        <div
+          className={`mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 ${MV_CAPTION_TEXT} ${MV_TEXT_ON_GLASS}`}
+        >
+          <span className="font-mono font-semibold tabular-nums text-white/80">
             {capacityFractionLabel}
           </span>
           <span className="font-mono font-semibold tabular-nums text-[#FF8A7A]">
@@ -132,7 +136,7 @@ export function GenesisActiveVoyageMetrics({
         </div>
 
         {zeroState ? (
-          <p className="mt-1.5 text-[11px] leading-snug text-[#4A9784]/90">
+          <p className={`mt-1.5 ${MV_CAPTION_TEXT} text-[#B8EBD5]`}>
             {zeroState.line1}
           </p>
         ) : null}
@@ -143,7 +147,7 @@ export function GenesisActiveVoyageMetrics({
         <p className="mt-0.5 font-mono text-2xl font-bold tabular-nums text-white/95 sm:text-3xl">
           {ownership.label}
         </p>
-        <p className="mt-0.5 text-[11px] text-white/50">{ownership.caption}</p>
+        <p className={`mt-0.5 ${MV_CAPTION_TEXT}`}>{ownership.caption}</p>
       </div>
 
       <div className="min-w-0 border-t border-white/10 pt-3 md:border-l md:border-t-0 md:pl-4 md:pt-0">
@@ -151,7 +155,7 @@ export function GenesisActiveVoyageMetrics({
         <p className="mt-0.5 font-mono text-2xl font-bold tabular-nums text-white/95 sm:text-3xl">
           {yieldRevSharePct != null ? `${yieldRevSharePct}%` : "—"}
         </p>
-        <p className="mt-0.5 text-[11px] text-white/50">Eligible pool share</p>
+        <p className={`mt-0.5 ${MV_CAPTION_TEXT}`}>Eligible pool share</p>
       </div>
     </div>
   );
