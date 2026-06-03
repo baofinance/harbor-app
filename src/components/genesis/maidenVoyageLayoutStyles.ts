@@ -1,16 +1,20 @@
 /** Shared Maiden Voyage 2.0 landing layout tokens (dark campaign theme). */
 
+/** Shared drop shadow for large cards and borderless position rows. */
+export const MV_GLASS_CARD_SHADOW =
+  "shadow-[0_8px_32px_-10px_rgba(0,0,0,0.22),inset_0_1px_0_0_rgba(255,255,255,0.1)]";
+
 /** Outer card glass — lighter frost over page bg #1E4775. */
 export const MV_GLASS_SURFACE =
-  "border border-white/12 bg-[#2a5580]/38 backdrop-blur-xl shadow-[0_8px_32px_-10px_rgba(0,0,0,0.22),inset_0_1px_0_0_rgba(255,255,255,0.1)]";
+  `border border-white/12 bg-[#2a5580]/38 backdrop-blur-xl ${MV_GLASS_CARD_SHADOW}`;
 
-/** Nested glass inside a card — lighter frost for position/list rows. */
+/** Lighter frosted glass for position/list rows — borderless with card shadow. */
 export const MV_GLASS_INSET_LIGHT =
-  "border border-white/16 bg-white/[0.11] backdrop-blur-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.14)]";
+  `bg-white/[0.11] backdrop-blur-md ${MV_GLASS_CARD_SHADOW}`;
 
-/** Darker navy glass for stat/KPI tiles. */
+/** Unified stat/KPI tile glass — matches dashboard stat chips. */
 export const MV_GLASS_INSET_DARK =
-  "border border-white/[0.07] bg-[#0a1929]/48 backdrop-blur-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]";
+  "border border-white/[0.08] bg-[#122a47]/46 backdrop-blur-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]";
 
 /** @deprecated Prefer MV_GLASS_INSET_LIGHT or MV_GLASS_INSET_DARK */
 export const MV_GLASS_INSET = MV_GLASS_INSET_LIGHT;

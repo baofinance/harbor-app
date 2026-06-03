@@ -29,7 +29,6 @@ export function DashboardSummaryCards({
       <DashboardMetricChip
         label="Total exposure"
         value={isConnected ? formatUSD(totalExposure, { compact: false }) : dash}
-        emphasized
         inline
       />
       <DashboardMetricChip
