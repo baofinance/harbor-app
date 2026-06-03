@@ -21,7 +21,7 @@ export const MV_SECTION_LABEL =
   "text-xs font-medium uppercase tracking-wider text-white/55";
 
 export const MV_HEADLINE =
-  "font-mono text-4xl font-bold leading-[1.1] text-white lg:text-5xl";
+  "font-mono text-5xl font-bold leading-[1.08] text-white sm:text-6xl lg:text-7xl";
 
 export const MV_ACCENT_GRADIENT =
   "bg-gradient-to-r from-[#FF8A7A] to-[#ffb4a8] bg-clip-text text-transparent";

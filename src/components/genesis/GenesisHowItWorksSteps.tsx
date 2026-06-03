@@ -31,44 +31,43 @@ function StepColumn({
   body,
 }: (typeof STEPS)[number]) {
   return (
-    <li className="flex flex-col items-center text-center">
+    <li className="flex w-[9.5rem] shrink-0 flex-col items-center text-center sm:w-[10.5rem]">
       <span className={MV_ICON_BADGE_LG}>
         <Icon className="h-5 w-5" aria-hidden />
       </span>
       <h2 className="mt-2 text-sm font-semibold text-white/95">{title}</h2>
-      <p className={`mt-1 max-w-[11rem] text-xs leading-snug ${MV_MUTED_TEXT}`}>
-        {body}
-      </p>
+      <p className={`mt-1 text-xs leading-snug ${MV_MUTED_TEXT}`}>{body}</p>
     </li>
+  );
+}
+
+function StepArrow() {
+  return (
+    <span
+      className="flex shrink-0 items-center self-center pb-8 text-base text-white/25 sm:text-lg"
+      aria-hidden
+    >
+      →
+    </span>
   );
 }
 
 export function GenesisHowItWorksSteps() {
   return (
-    <div className="mt-3">
-      <ol className="flex flex-col gap-4 md:hidden">
+    <div className="mt-5 md:mt-6">
+      <ol className="flex flex-col items-center gap-4 md:hidden">
         {STEPS.map((step) => (
           <StepColumn key={step.title} {...step} />
         ))}
       </ol>
       <ol
-        className="hidden md:grid md:grid-cols-[minmax(0,1fr)_1.25rem_minmax(0,1fr)_1.25rem_minmax(0,1fr)] md:items-center md:gap-x-1"
+        className="hidden md:flex md:items-start md:justify-center md:gap-1 lg:gap-2"
         aria-label="How Maiden Voyage works"
       >
         <StepColumn {...STEPS[0]} />
-        <span
-          className="flex items-center justify-center text-lg text-white/25"
-          aria-hidden
-        >
-          →
-        </span>
+        <StepArrow />
         <StepColumn {...STEPS[1]} />
-        <span
-          className="flex items-center justify-center text-lg text-white/25"
-          aria-hidden
-        >
-          →
-        </span>
+        <StepArrow />
         <StepColumn {...STEPS[2]} />
       </ol>
     </div>
