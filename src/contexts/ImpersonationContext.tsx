@@ -9,6 +9,7 @@ import React, {
   useState,
 } from "react";
 import { isAddress } from "viem";
+import { IMPERSONATION_ENABLED } from "@/config/impersonation";
 
 const STORAGE_KEY = "harbor.impersonateAddress";
 
@@ -73,6 +74,10 @@ export function ImpersonationProvider({
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    if (!IMPERSONATION_ENABLED) {
+      setHydrated(true);
+      return;
+    }
     setImpersonatedAddressState(readStoredAddress());
     setRecentAddresses(readRecentAddresses());
     setHydrated(true);
@@ -80,6 +85,7 @@ export function ImpersonationProvider({
 
   const setImpersonatedAddress = useCallback(
     (address: `0x${string}` | null) => {
+      if (!IMPERSONATION_ENABLED) return;
       setImpersonatedAddressState(address);
       try {
         if (address) {
@@ -102,8 +108,12 @@ export function ImpersonationProvider({
 
   const value = useMemo(
     () => ({
-      impersonatedAddress: hydrated ? impersonatedAddress : null,
-      isImpersonating: hydrated && impersonatedAddress !== null,
+      impersonatedAddress:
+        IMPERSONATION_ENABLED && hydrated ? impersonatedAddress : null,
+      isImpersonating:
+        IMPERSONATION_ENABLED &&
+        hydrated &&
+        impersonatedAddress !== null,
       setImpersonatedAddress,
       clearImpersonation,
       recentAddresses: hydrated ? recentAddresses : [],
