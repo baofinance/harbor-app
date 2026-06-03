@@ -11,7 +11,7 @@ export function GenesisMaidenVoyageHeroCopy({
   yieldRevSharePct = null,
 }: GenesisMaidenVoyageHeroCopyProps) {
   return (
-    <div className="flex flex-col justify-center">
+    <div className="flex flex-col justify-center [container-type:inline-size]">
       <h1 className={MV_HEADLINE}>
         <span className={MV_HEADLINE_PRIMARY}>Own a piece of the market.</span>
         <span className={MV_HEADLINE_ACCENT}>Earn forever.</span>

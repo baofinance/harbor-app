@@ -27,16 +27,19 @@ export const MV_MUTED_TEXT = "text-[#9AA5B8]";
 export const MV_SECTION_LABEL =
   "text-xs font-medium uppercase tracking-wider text-white/55";
 
-export const MV_HEADLINE =
-  "font-mono text-4xl font-bold leading-[1.1] sm:text-5xl lg:text-6xl";
+export const MV_HEADLINE = "font-mono font-bold leading-[1.1]";
 
-export const MV_HEADLINE_PRIMARY = "block text-white";
+/** Scales with hero column width so the primary line stays on one row. */
+export const MV_HEADLINE_SIZE =
+  "text-[length:clamp(0.875rem,5.5cqi,2.625rem)]";
+
+export const MV_HEADLINE_PRIMARY = `block whitespace-nowrap text-white ${MV_HEADLINE_SIZE}`;
 
 /** Hero accent line — orange → pink gradient (mockup). */
 export const MV_ACCENT_GRADIENT =
   "bg-gradient-to-r from-[#FF8A7A] via-[#FF9A88] to-[#FFB4C8] bg-clip-text text-transparent [-webkit-text-fill-color:transparent]";
 
-export const MV_HEADLINE_ACCENT = `mt-1 block ${MV_ACCENT_GRADIENT}`;
+export const MV_HEADLINE_ACCENT = `mt-1 block ${MV_HEADLINE_SIZE} ${MV_ACCENT_GRADIENT}`;
 
 export const MV_PROGRESS_TRACK =
   "h-4 overflow-hidden rounded-full border border-white/12 bg-white/[0.08] backdrop-blur-sm";
