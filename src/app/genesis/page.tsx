@@ -482,7 +482,6 @@ export default function GenesisIndexPage() {
         ) : null}
 
         <GenesisMaidenVoyageHeroBand
-          stats={statsBarData}
           yieldRevSharePct={activeMarketData?.yieldRevSharePct ?? null}
         />
 

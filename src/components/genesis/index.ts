@@ -30,6 +30,7 @@ export type { GenesisMaidenVoyageCommandPanelProps } from "./GenesisMaidenVoyage
 export { GenesisMaidenVoyageStageStrip } from "./GenesisMaidenVoyageStageStrip";
 export type { GenesisMaidenVoyageStageStripProps } from "./GenesisMaidenVoyageStageStrip";
 export { GenesisHowItWorksSteps } from "./GenesisHowItWorksSteps";
+export type { GenesisHowItWorksStepsProps } from "./GenesisHowItWorksSteps";
 export { GenesisMaidenVoyageLifecycle } from "./GenesisMaidenVoyageLifecycle";
 export { GenesisMaidenVoyageFaq } from "./GenesisMaidenVoyageFaq";
 export { GenesisRevenueShareSection } from "./GenesisRevenueShareSection";

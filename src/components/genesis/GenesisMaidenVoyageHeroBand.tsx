@@ -2,17 +2,13 @@
 
 import { GenesisHowItWorksSteps } from "./GenesisHowItWorksSteps";
 import { GenesisMaidenVoyageHeroCopy } from "./GenesisMaidenVoyageHeroCopy";
-import { GenesisMaidenVoyageSidebarStats } from "./GenesisMaidenVoyageSidebarStats";
 import { GenesisMaidenVoyageWhyJoinCard } from "./GenesisMaidenVoyageWhyJoinCard";
-import type { MaidenVoyageStatsBarData } from "@/utils/maidenVoyageStatsBar";
 
 export type GenesisMaidenVoyageHeroBandProps = {
-  stats: MaidenVoyageStatsBarData;
   yieldRevSharePct?: number | null;
 };
 
 export function GenesisMaidenVoyageHeroBand({
-  stats,
   yieldRevSharePct = null,
 }: GenesisMaidenVoyageHeroBandProps) {
   return (
@@ -22,10 +18,9 @@ export function GenesisMaidenVoyageHeroBand({
     >
       <div className="min-w-0">
         <GenesisMaidenVoyageHeroCopy yieldRevSharePct={yieldRevSharePct} />
-        <GenesisHowItWorksSteps />
       </div>
       <aside className="flex flex-col gap-3">
-        <GenesisMaidenVoyageSidebarStats stats={stats} />
+        <GenesisHowItWorksSteps variant="sidebarCard" />
         <GenesisMaidenVoyageWhyJoinCard />
       </aside>
     </section>
