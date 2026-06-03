@@ -17,7 +17,7 @@ export function GenesisMaidenVoyageWhyJoinCard() {
         {MAIDEN_VOYAGE_WHY_JOIN_BULLETS.map((bullet) => (
           <li key={bullet} className="flex items-start gap-2 text-xs text-white/75">
             <CheckCircleIcon
-              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#FF8A7A]"
+              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#4A9784]"
               aria-hidden
             />
             <span>{bullet}</span>

@@ -9,7 +9,6 @@ import {
   MV_PROGRESS_FILL,
   MV_PROGRESS_FILL_COMPLETE,
   MV_PROGRESS_TRACK,
-  MV_SECTION_LABEL,
 } from "./maidenVoyageLayoutStyles";
 
 function stripLabel(symbol: string): string {
@@ -58,6 +57,10 @@ export function GenesisActiveVoyageMetrics({
   const { filledPct, capFilled } = capDisplay;
   const progressWidth = `${Math.min(100, Math.max(0, filledPct))}%`;
 
+  const capacityFractionLabel = capDisplay.useTokenCap
+    ? `${capDisplay.capCurrent.toFixed(2)} / ${capDisplay.capTotal.toFixed(0)} ${stripLabel(capDisplay.collateralSymbol)}`
+    : `${formatUSD(capDisplay.capCurrentUsd)} / ${formatUSD(capDisplay.capTotalUsd)}`;
+
   const remainingLabel = capDisplay.useTokenCap
     ? `${formatRemainingToken(capDisplay.remaining)} ${stripLabel(capDisplay.collateralSymbol)} remaining`
     : `${formatUSD(capDisplay.remainingUsd)} remaining`;
@@ -66,16 +69,9 @@ export function GenesisActiveVoyageMetrics({
 
   return (
     <div className="min-w-0">
-      <GenesisActiveVoyageQuickStats
-        capDisplay={capDisplay}
-        yieldRevSharePct={yieldRevSharePct}
-        genesisAddress={genesisAddress}
-      />
-
-      <p className={MV_SECTION_LABEL}>Capacity progress</p>
-      <p className="mt-1 font-mono text-3xl font-bold tabular-nums tracking-tight text-[#FF8A7A] sm:text-4xl">
+      <p className="font-mono text-3xl font-bold tabular-nums tracking-tight text-[#FF8A7A] sm:text-4xl">
         {filledPct.toFixed(0)}%{" "}
-        <span className="text-xl uppercase sm:text-2xl">FILLED</span>
+        <span className="text-xl uppercase sm:text-2xl">filled</span>
       </p>
 
       <div
@@ -92,9 +88,22 @@ export function GenesisActiveVoyageMetrics({
         />
       </div>
 
-      <p className="mt-2 text-right font-mono text-xs font-semibold tabular-nums text-[#FF8A7A]">
-        {remainingLabel.toUpperCase()}
-      </p>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <span className="font-mono font-semibold tabular-nums text-white/75">
+          {capacityFractionLabel}
+        </span>
+        <span className="font-mono font-semibold tabular-nums text-[#FF8A7A]">
+          {remainingLabel}
+        </span>
+      </div>
+
+      <div className="mt-4">
+        <GenesisActiveVoyageQuickStats
+          capDisplay={capDisplay}
+          yieldRevSharePct={yieldRevSharePct}
+          genesisAddress={genesisAddress}
+        />
+      </div>
 
       {zeroState ? (
         <p className="mt-2 text-xs leading-snug text-[#4A9784]/90">

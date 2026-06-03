@@ -15,8 +15,8 @@ const STEPS = [
   },
   {
     icon: SparklesIcon,
-    title: "Launch",
-    body: "Market launches when the cap is reached.",
+    title: "Market Launch",
+    body: "Once the cap is reached, the market goes live.",
   },
   {
     icon: ArrowPathIcon,

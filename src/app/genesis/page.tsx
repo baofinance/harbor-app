@@ -10,15 +10,14 @@ import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
 import { useSortedGenesisMarkets } from "@/hooks/useSortedGenesisMarkets";
 import {
   GenesisClaimProgressModal,
-  GenesisFeaturedCompletedVoyages,
   GenesisMaidenVoyageComingSoon,
+  GenesisMaidenVoyageExplorer,
   GenesisMaidenVoyageFaq,
-  GenesisMaidenVoyageHeroRow,
+  GenesisMaidenVoyageHeroBand,
   GenesisMaidenVoyageLifecycle,
+  GenesisMaidenVoyageMainGrid,
   GenesisMaidenVoyagePageHeader,
-  GenesisMaidenVoyageStatsBand,
   GenesisMaidenVoyageStatsBar,
-  GenesisOtherVoyagesSection,
   GenesisRevenueShareSection,
   GenesisVoyageFooterNotice,
   GenesisYieldShareRulesCard,
@@ -126,6 +125,7 @@ export default function GenesisIndexPage() {
     hasOraclePricingError,
     marketsWithOraclePricingError,
     getMarketName,
+    comingSoonMarkets,
   } = useGenesisPageData();
 
   const queryClient = useQueryClient();
@@ -445,7 +445,6 @@ export default function GenesisIndexPage() {
     <div className="relative mx-auto flex min-h-0 w-full max-w-[1300px] flex-1 flex-col font-sans text-white">
       <main className="container mx-auto px-4 pb-6 pt-2 sm:px-10 sm:pt-4">
         <GenesisMaidenVoyagePageHeader />
-        <GenesisMaidenVoyageStatsBand stats={statsBarData} />
 
         {combinedHasIndexerErrors ? (
           <GenesisErrorBanner
@@ -481,9 +480,14 @@ export default function GenesisIndexPage() {
           </div>
         ) : null}
 
-        <GenesisMaidenVoyageHeroRow
-          stats={statsBarData}
+        <GenesisMaidenVoyageHeroBand
           yieldRevSharePct={activeMarketData?.yieldRevSharePct ?? null}
+        />
+
+        <GenesisMaidenVoyageStatsBar stats={statsBarData} />
+
+        <GenesisMaidenVoyageMainGrid
+          stats={statsBarData}
           activeCard={
             activeMarketData
               ? {
@@ -518,10 +522,11 @@ export default function GenesisIndexPage() {
           }
         />
 
-        <GenesisMaidenVoyageStatsBar stats={statsBarData} />
-
-        <GenesisFeaturedCompletedVoyages
+        <GenesisMaidenVoyageExplorer
           genesisMarkets={genesisMarkets as Array<[string, GenesisMarketConfig]>}
+          comingSoonMarkets={
+            comingSoonMarkets as Array<[string, GenesisMarketConfig]>
+          }
           reads={reads}
           totalDepositsReads={totalDepositsReads}
           isConnected={isConnected}
@@ -533,22 +538,7 @@ export default function GenesisIndexPage() {
           chainlinkBtcPrice={null}
           onClaim={claimMarket}
           onManage={handleOpenManageModal}
-        />
-
-        <GenesisOtherVoyagesSection
-          genesisMarkets={genesisMarkets as Array<[string, GenesisMarketConfig]>}
-          reads={reads}
-          totalDepositsReads={totalDepositsReads}
-          isConnected={isConnected}
-          address={address}
-          claimingMarket={claimingMarket}
-          collateralPricesMap={collateralPricesMap}
-          coinGeckoPrices={coinGeckoPrices}
-          coinGeckoLoading={coinGeckoLoading}
-          chainlinkBtcPrice={null}
-          onClaim={claimMarket}
-          onManage={handleOpenManageModal}
-          defaultExpanded={hasArchivedUserDeposit}
+          defaultArchivedExpanded={hasArchivedUserDeposit}
         />
 
         <GenesisVoyageFooterNotice />

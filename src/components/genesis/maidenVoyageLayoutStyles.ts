@@ -58,3 +58,24 @@ export const MV_ICON_BADGE_LG =
 
 export const MV_DETAILS_PANEL =
   "rounded-xl border border-white/10 bg-[#0f2340]";
+
+export const MV_COUNTDOWN_PANEL =
+  "rounded-lg border border-[#FF8A7A]/25 bg-[#FF8A7A]/10";
+
+export const MV_TABLE_HEADER =
+  "hidden md:grid gap-3 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/45 lg:text-[11px]";
+
+export const MV_TABLE_ROW =
+  "grid grid-cols-1 gap-3 rounded-xl border border-white/10 bg-[#0f2340] px-3 py-3 md:items-center md:gap-3 md:py-2.5";
+
+export const MV_EXPLORER_TABS =
+  "inline-flex rounded-full border border-white/10 bg-black/20 p-0.5";
+
+export const MV_EXPLORER_TAB_ACTIVE =
+  "rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#1E4775]";
+
+export const MV_EXPLORER_TAB_INACTIVE =
+  "rounded-full px-3 py-1.5 text-xs font-semibold text-white/55 transition hover:text-white/80";
+
+export const MV_UPCOMING_BADGE =
+  "inline-flex items-center rounded-full border border-[#5B8FD4]/40 bg-[#5B8FD4]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#9EC5F5]";
