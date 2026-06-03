@@ -1,23 +1,26 @@
 /** Shared Maiden Voyage 2.0 landing layout tokens (dark campaign theme). */
 
-/** Dark glass surface — frosted panel over page bg #1E4775. */
+/** Outer card glass — lighter frost over page bg #1E4775. */
 export const MV_GLASS_SURFACE =
-  "border border-white/10 bg-[#06101f]/50 backdrop-blur-xl shadow-[0_8px_32px_-10px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.07)]";
+  "border border-white/12 bg-[#2a5580]/38 backdrop-blur-xl shadow-[0_8px_32px_-10px_rgba(0,0,0,0.22),inset_0_1px_0_0_rgba(255,255,255,0.1)]";
+
+/** Nested glass inside a card — lighter than MV_GLASS_SURFACE. */
+export const MV_GLASS_INSET =
+  "border border-white/16 bg-white/[0.11] backdrop-blur-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.14)]";
 
 /** Primary card shell. */
 export const MV_CARD_SHELL = `rounded-2xl ${MV_GLASS_SURFACE}`;
 
 export const MV_CARD_INNER_GRADIENT =
-  "bg-gradient-to-b from-white/[0.05] via-transparent to-black/[0.12]";
+  "bg-gradient-to-b from-white/[0.03] via-transparent to-transparent";
 
-export const MV_INSET_PANEL =
-  "rounded-xl border border-white/[0.08] bg-black/25 backdrop-blur-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]";
+export const MV_INSET_PANEL = `rounded-xl ${MV_GLASS_INSET}`;
 
 export const MV_STATS_BAND =
-  "border-y border-white/10 bg-[#06101f]/40 backdrop-blur-lg";
+  "border-y border-white/12 bg-[#2a5580]/30 backdrop-blur-lg";
 
 export const MV_FOOTER_PANEL =
-  "border-t border-white/[0.08] bg-black/20 backdrop-blur-sm";
+  "border-t border-white/12 bg-white/[0.08] backdrop-blur-sm";
 
 export const MV_MUTED_TEXT = "text-[#9AA5B8]";
 
@@ -25,13 +28,18 @@ export const MV_SECTION_LABEL =
   "text-xs font-medium uppercase tracking-wider text-white/55";
 
 export const MV_HEADLINE =
-  "font-mono text-5xl font-bold leading-[1.08] text-white sm:text-6xl lg:text-7xl";
+  "font-mono text-5xl font-bold leading-[1.08] sm:text-6xl lg:text-7xl";
 
+export const MV_HEADLINE_PRIMARY = "block text-white";
+
+/** Hero accent line — orange → pink gradient (mockup). */
 export const MV_ACCENT_GRADIENT =
-  "bg-gradient-to-r from-[#FF8A7A] to-[#ffb4a8] bg-clip-text text-transparent";
+  "bg-gradient-to-r from-[#FF8A7A] via-[#FF9A88] to-[#FFB4C8] bg-clip-text text-transparent [-webkit-text-fill-color:transparent]";
+
+export const MV_HEADLINE_ACCENT = `mt-1 block ${MV_ACCENT_GRADIENT}`;
 
 export const MV_PROGRESS_TRACK =
-  "h-4 overflow-hidden rounded-full border border-white/10 bg-black/30 backdrop-blur-sm";
+  "h-4 overflow-hidden rounded-full border border-white/12 bg-white/[0.08] backdrop-blur-sm";
 
 export const MV_PROGRESS_FILL =
   "h-full rounded-full bg-gradient-to-r from-[#FF8A7A] to-[#ffb4a8] transition-[width]";
@@ -43,10 +51,10 @@ export const MV_PRIMARY_CTA =
   "w-full rounded-xl bg-gradient-to-r from-[#FF8A7A] to-[#ffb4a8] px-4 py-3 text-sm font-semibold text-[#1a0f0d] shadow-[0_8px_24px_-12px_rgba(255,138,122,0.65)] transition hover:brightness-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8A7A]/40 disabled:cursor-not-allowed disabled:opacity-45";
 
 export const MV_OUTLINE_BUTTON =
-  "inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/90 backdrop-blur-sm transition hover:border-white/35 hover:bg-white/[0.08]";
+  "inline-flex items-center gap-1.5 rounded-full border border-white/22 bg-white/[0.06] px-4 py-2 text-sm font-semibold text-white/90 backdrop-blur-sm transition hover:border-white/35 hover:bg-white/[0.1]";
 
 export const MV_TYPE_TAG =
-  "rounded-full border border-white/15 bg-black/20 px-2.5 py-0.5 text-[11px] font-semibold text-white/80 backdrop-blur-sm";
+  "rounded-full border border-white/18 bg-white/[0.08] px-2.5 py-0.5 text-[11px] font-semibold text-white/85 backdrop-blur-sm";
 
 export const MV_LIVE_BADGE =
   "inline-flex items-center gap-1.5 rounded-full border border-[#FF8A7A]/50 bg-[#FF8A7A]/30 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-[0_0_20px_-4px_rgba(255,138,122,0.55)]";
@@ -62,10 +70,10 @@ export const MV_ICON_BADGE_LG =
 
 export const MV_DETAILS_PANEL = `rounded-xl ${MV_GLASS_SURFACE}`;
 
-export const MV_GLASS_HOVER = "transition hover:bg-[#06101f]/65";
+export const MV_GLASS_HOVER = "transition hover:bg-[#2a5580]/48";
 
 export const MV_COUNTDOWN_PANEL =
-  "rounded-lg border border-[#FF8A7A]/20 bg-[#FF8A7A]/10 backdrop-blur-sm";
+  "rounded-lg border border-[#FF8A7A]/22 bg-[#FF8A7A]/12 backdrop-blur-sm";
 
 export const MV_TABLE_HEADER =
   "hidden md:grid gap-3 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/45 lg:text-[11px]";
@@ -73,7 +81,7 @@ export const MV_TABLE_HEADER =
 export const MV_TABLE_ROW = `grid grid-cols-1 gap-3 rounded-xl px-3 py-3 md:items-center md:gap-3 md:py-2.5 ${MV_GLASS_SURFACE}`;
 
 export const MV_EXPLORER_TABS =
-  "inline-flex rounded-full border border-white/10 bg-black/30 p-0.5 backdrop-blur-md";
+  "inline-flex rounded-full border border-white/12 bg-white/[0.08] p-0.5 backdrop-blur-md";
 
 export const MV_EXPLORER_TAB_ACTIVE =
   "rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#1E4775]";

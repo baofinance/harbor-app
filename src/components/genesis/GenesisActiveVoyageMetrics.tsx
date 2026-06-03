@@ -42,7 +42,7 @@ export function GenesisActiveVoyageMetrics({
   if (isLoading) {
     return (
       <div
-        className="h-28 animate-pulse rounded-xl bg-black/25"
+        className="h-28 animate-pulse rounded-xl bg-white/[0.08]"
         aria-label="Loading capacity"
       />
     );
