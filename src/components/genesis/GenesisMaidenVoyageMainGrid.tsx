@@ -2,18 +2,13 @@
 
 import type { GenesisActiveVoyageCardProps } from "./GenesisActiveVoyageCard";
 import { GenesisActiveVoyageCard } from "./GenesisActiveVoyageCard";
-import { GenesisMaidenVoyageSidebarStats } from "./GenesisMaidenVoyageSidebarStats";
-import { GenesisMaidenVoyageWhyJoinCard } from "./GenesisMaidenVoyageWhyJoinCard";
 import { GenesisVoyageRewardsCard } from "./GenesisVoyageRewardsCard";
-import type { MaidenVoyageStatsBarData } from "@/utils/maidenVoyageStatsBar";
 
 export type GenesisMaidenVoyageMainGridProps = {
-  stats: MaidenVoyageStatsBarData;
   activeCard: GenesisActiveVoyageCardProps | null;
 };
 
 export function GenesisMaidenVoyageMainGrid({
-  stats,
   activeCard,
 }: GenesisMaidenVoyageMainGridProps) {
   return (
@@ -27,9 +22,7 @@ export function GenesisMaidenVoyageMainGrid({
           <GenesisActiveVoyageCard {...activeCard} />
         ) : null}
       </div>
-      <aside className="flex flex-col gap-3">
-        <GenesisMaidenVoyageSidebarStats stats={stats} />
-        <GenesisMaidenVoyageWhyJoinCard />
+      <aside className="min-w-0">
         {activeCard ? (
           <GenesisVoyageRewardsCard
             endDate={activeCard.endDate}

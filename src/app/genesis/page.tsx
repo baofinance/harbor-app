@@ -22,6 +22,7 @@ import {
   GenesisVoyageFooterNotice,
   GenesisYieldShareRulesCard,
 } from "@/components/genesis";
+import { MV_DETAILS_PANEL } from "@/components/genesis/maidenVoyageLayoutStyles";
 import { computeMaidenVoyageConfidenceStats } from "@/utils/maidenVoyageConfidenceStats";
 import { computeMaidenVoyageStatsBarData } from "@/utils/maidenVoyageStatsBar";
 import type { GenesisMarketConfig } from "@/types/genesisMarket";
@@ -481,13 +482,13 @@ export default function GenesisIndexPage() {
         ) : null}
 
         <GenesisMaidenVoyageHeroBand
+          stats={statsBarData}
           yieldRevSharePct={activeMarketData?.yieldRevSharePct ?? null}
         />
 
         <GenesisMaidenVoyageStatsBar stats={statsBarData} />
 
         <GenesisMaidenVoyageMainGrid
-          stats={statsBarData}
           activeCard={
             activeMarketData
               ? {
@@ -551,7 +552,7 @@ export default function GenesisIndexPage() {
           <h2 className="mb-6 text-xs font-medium uppercase tracking-wider text-white/50">
             Learn more
           </h2>
-          <details className="mb-4 rounded-xl border border-white/10 bg-[#0f2340] px-4 py-3">
+          <details className={`mb-4 ${MV_DETAILS_PANEL} px-4 py-3`}>
             <summary className="cursor-pointer text-sm font-semibold text-white/90">
               How a voyage works
             </summary>
@@ -559,7 +560,7 @@ export default function GenesisIndexPage() {
               <GenesisMaidenVoyageLifecycle />
             </div>
           </details>
-          <details className="mb-4 rounded-xl border border-white/10 bg-[#0f2340] px-4 py-3">
+          <details className={`mb-4 ${MV_DETAILS_PANEL} px-4 py-3`}>
             <summary className="cursor-pointer text-sm font-semibold text-white/90">
               Revenue &amp; rules
             </summary>
@@ -570,7 +571,7 @@ export default function GenesisIndexPage() {
               />
             </div>
           </details>
-          <details className="rounded-xl border border-white/10 bg-[#0f2340] px-4 py-3">
+          <details className={`${MV_DETAILS_PANEL} px-4 py-3`}>
             <summary className="cursor-pointer text-sm font-semibold text-white/90">
               FAQ
             </summary>

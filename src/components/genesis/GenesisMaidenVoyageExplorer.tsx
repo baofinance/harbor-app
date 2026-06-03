@@ -33,6 +33,7 @@ import {
   MV_TABLE_ROW,
   MV_TYPE_TAG,
   MV_UPCOMING_BADGE,
+  MV_DETAILS_PANEL,
 } from "./maidenVoyageLayoutStyles";
 
 const EXPLORER_TABS = [
@@ -253,9 +254,9 @@ export function GenesisMaidenVoyageExplorer({
       </div>
 
       {!hasRows && !(showArchivedSection && archivedExpanded) ? (
-        <p className="rounded-xl border border-white/10 bg-[#0f2340] px-4 py-6 text-center text-sm text-white/50">
+        <div className={`${MV_DETAILS_PANEL} px-4 py-6 text-center text-sm text-white/50`}>
           No voyages in this view yet.
-        </p>
+        </div>
       ) : null}
 
       <div className="space-y-2">
@@ -288,7 +289,7 @@ export function GenesisMaidenVoyageExplorer({
         <div className="mt-4" id="maiden-voyage-archived">
           <button
             type="button"
-            className="flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-[#0f2340] px-4 py-3 text-left transition hover:bg-[#132a4a]"
+            className={`flex w-full items-center justify-between gap-2 ${MV_DETAILS_PANEL} px-4 py-3 text-left transition hover:bg-white/[0.06]`}
             onClick={() => setArchivedExpanded((v) => !v)}
             aria-expanded={archivedExpanded}
           >
