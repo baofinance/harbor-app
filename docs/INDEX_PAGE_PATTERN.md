@@ -17,21 +17,32 @@ Do not duplicate long explanations across READMEs — link here instead.
 
 ---
 
-## 2. Layout regions (Genesis index)
+## 2. Layout regions (Genesis index — Maiden Voyage 2.0 landing)
 
-Order in [`src/app/genesis/page.tsx`](../src/app/genesis/page.tsx):
+Order in [`src/app/genesis/page.tsx`](../src/app/genesis/page.tsx) (Maiden Voyage 2.0 — mockup layout):
 
-| Region | Component | UI+ | UI− |
-|--------|-----------|-----|-----|
-| Title | `GenesisPageTitleSection` | Yes | Yes |
-| Divider | — | After title in UI− only | — |
-| Intro cards | `GenesisHeroIntroCards` | Yes | No |
-| Campaign / marks stats | `GenesisCampaignStats` | Yes | No |
-| Toolbar + sections | `GenesisMarketsSections` (+ toolbar props) | Yes | Yes |
-| Market rows | Inline in `page.tsx` (large) | Yes | Yes |
-| Completed campaigns | Same page | Yes | Yes |
+| Region | Component |
+|--------|-----------|
+| Page header | `GenesisMaidenVoyagePageHeader` — brand + docs link |
+| Error banners (when needed) | `GenesisErrorBanner` |
+| Hero band (full width) | `GenesisMaidenVoyageHeroBand` — headline + `GenesisHowItWorksSteps` |
+| Mobile stats bar | `GenesisMaidenVoyageStatsBar` (scroll toggle; `lg:hidden`) |
+| Main grid (`lg`: ~2/3 + ~1/3) | `GenesisMaidenVoyageMainGrid` — left: `GenesisActiveVoyageCard`; right: `GenesisMaidenVoyageSidebarStats`, `GenesisMaidenVoyageWhyJoinCard`, `GenesisVoyageRewardsCard` |
+| Voyages explorer | `GenesisMaidenVoyageExplorer` — pill tabs (All / Ongoing / Upcoming / Completed) + dark table rows; archived collapse footer |
+| Footer callout + protocol line | `GenesisVoyageFooterNotice` |
+| Learn more (below funnel) | Collapsed `<details>` groups for lifecycle, revenue/rules, and FAQ (`#maiden-voyage-learn`) |
 
-**Full hero** (`GenesisPageHero` / `GenesisHeaderSummary`) = title + intro cards for reuse elsewhere; the index composes title + cards separately for UI−.
+Active voyage card: single column — large `% filled` + progress bar + capacity fraction, inset quick stats below bar, CTAs, full-width footer with `GenesisMaidenVoyageStageStrip` only. Rewards + live countdown live in `GenesisVoyageRewardsCard` (sidebar). Card surfaces use `bg-[#0f2340]` (darker than page `#1E4775`).
+
+Shared dark tokens: [`maidenVoyageLayoutStyles.ts`](../src/components/genesis/maidenVoyageLayoutStyles.ts) (`MV_CARD_SHELL`, `MV_INSET_PANEL`, `MV_COUNTDOWN_PANEL`, `MV_TABLE_*`, `MV_EXPLORER_*`). Stats derivation: [`maidenVoyageStatsBar.ts`](../src/utils/maidenVoyageStatsBar.ts) + [`maidenVoyageConfidenceStats.ts`](../src/utils/maidenVoyageConfidenceStats.ts).
+
+Featured market IDs live in [`src/config/maidenVoyageFeatured.ts`](../src/config/maidenVoyageFeatured.ts). Static education copy lives in [`src/config/maidenVoyageEducation.ts`](../src/config/maidenVoyageEducation.ts).
+
+**Legacy components** (`GenesisPageTitleSection`, `GenesisHeroIntroCards`, `GenesisCampaignHero`, `GenesisVoyageConfidenceSignals`, `GenesisMarketsSections`, `GenesisActiveMarketsSection`, toolbar, coming-next) remain in the repo for reference or detail routes but are not composed on the index after the mockup layout pass.
+
+**Full hero** (`GenesisPageHero` / `GenesisHeaderSummary`) = older title + intro cards bundle; prefer `GenesisMaidenVoyagePageHeader` + `GenesisMaidenVoyageHeroBand` + `GenesisMaidenVoyageMainGrid` on the index.
+
+**Legacy layout pieces** (`GenesisMaidenVoyageHeroRow`, `GenesisMaidenVoyageCommandPanel`, `GenesisMaidenVoyageStatsBand`, `GenesisFeaturedCompletedVoyages`, `GenesisOtherVoyagesSection`) remain in the repo but are not composed on the index after the mockup restructure.
 
 ---
 

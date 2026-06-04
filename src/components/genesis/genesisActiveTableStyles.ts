@@ -46,3 +46,11 @@ export const GENESIS_COMPLETED_GRID_COLS_MD =
 export const GENESIS_COMPLETED_HEADER_INNER_GRID_CLASS = `grid ${GENESIS_COMPLETED_GRID_COLS_LG} ${GENESIS_COMPLETED_GRID_COLS_MD} gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold`;
 
 export const GENESIS_COMPLETED_DESKTOP_ROW_GRID_CLASS = `hidden md:grid ${GENESIS_COMPLETED_GRID_COLS_LG} ${GENESIS_COMPLETED_GRID_COLS_MD} gap-4 items-center`;
+
+/** Shared table row shell — matches active Ongoing row height and radius. */
+export const GENESIS_TABLE_ROW_SHELL_CLASS =
+  "bg-white py-2.5 px-2 rounded-lg min-h-[52px]";
+
+/** White header strip above archived/completed rows. */
+export const GENESIS_TABLE_HEADER_SHELL_CLASS =
+  "hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0 rounded-lg";

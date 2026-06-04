@@ -1,79 +1,81 @@
 'use client'
 
 import * as React from 'react'
-import {Connector, useConnect, useAccount} from 'wagmi'
-import {Account} from '@/components/Account'
-import {useEffect, useMemo, useState} from 'react'
+import type { Connector } from 'wagmi'
+import { useAccount } from 'wagmi'
+import { Account } from '@/components/Account'
+import { useEffect, useMemo, useState } from 'react'
 import WalletIconClient from '@/components/WalletIconClient'
-import {Wallet} from "lucide-react";
+import { Wallet } from "lucide-react";
 import DecryptedText from "@/components/DecryptedText";
+import { useHarborWalletConnectors } from '@/hooks/useHarborWalletConnectors'
 
 function formatAddress(addr?: string) {
     if (!addr) return "";
     return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
 }
 
-function WalletOptions() {
-    const {connectors, connect} = useConnect()
-    const [ready, setReady] = useState<Set<string>>(new Set())
-
-    useEffect(() => {
-        let mounted = true
-
-        Promise.allSettled(
-            connectors.map(async (c) => {
-                const provider = await c.getProvider()
-                return provider ? c.uid : null
-            })
-        ).then((results) => {
-            if (!mounted) return
-
-            setReady(
-                new Set(
-                    results
-                        .filter(
-                            (r): r is PromiseFulfilledResult<string | null> =>
-                                r.status === 'fulfilled'
-                        )
-                        .map((r) => r.value)
-                        .filter((uid): uid is string => uid !== null)
-                )
-            )
-        })
-
-        return () => {
-            mounted = false
-        }
-    }, [connectors])
+function WalletOptions({ onConnected }: { onConnected?: () => void }) {
+    const {
+        visibleConnectors,
+        connect,
+        error,
+        isPending,
+        isError,
+        reset,
+        canConnect,
+    } = useHarborWalletConnectors()
 
     return (
-        <ul className="space-y-1">
-            {connectors.map((connector) => (
-                <li key={connector.uid}>
-                    <WalletOption
-                        connector={connector}
-                        ready={ready.has(connector.uid)}
-                        onClick={() => connect({connector})}
-                    />
-                </li>
-            ))}
-        </ul>
+        <div className="space-y-3">
+            {isError ? (
+                <div className="rounded-md border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                    {error?.message || "Could not connect wallet. Try again."}
+                </div>
+            ) : null}
+            <ul className="space-y-1">
+                {visibleConnectors.map((connector) => (
+                    <li key={connector.uid}>
+                        <WalletOption
+                            connector={connector}
+                            disabled={isPending || !canConnect(connector)}
+                            onClick={() => {
+                                reset()
+                                connect(
+                                    { connector },
+                                    {
+                                        onSuccess: () => onConnected?.(),
+                                    },
+                                )
+                            }}
+                        />
+                    </li>
+                ))}
+            </ul>
+            {visibleConnectors.length === 0 ? (
+                <p className="text-sm text-white/60">
+                    No wallet connectors available. Install a browser wallet or configure WalletConnect.
+                </p>
+            ) : null}
+        </div>
     )
 }
 
-function WalletOption({connector, onClick}: { connector: Connector; onClick: () => void }) {
-    const [ready, setReady] = React.useState(false)
-    const shouldGateByProvider = connector.id === "injected"
-
-    React.useEffect(() => {
-        connector.getProvider().then((provider) => setReady(!!provider))
-    }, [connector])
-
-    const canConnect = shouldGateByProvider ? ready : true
-
+function WalletOption({
+    connector,
+    disabled,
+    onClick,
+}: {
+    connector: Connector
+    disabled: boolean
+    onClick: () => void
+}) {
     return (
-        <button disabled={!canConnect} onClick={onClick}
-                className="w-full flex items-center gap-2 px-3 py-2 bg-white/10 text-white enabled:hover:bg-[#FF8A7A]/20 text-md disabled:opacity-50 rounded-md"
+        <button
+            type="button"
+            disabled={disabled}
+            onClick={onClick}
+            className="w-full flex items-center gap-2 px-3 py-2 bg-white/10 text-white enabled:hover:bg-[#FF8A7A]/20 text-md disabled:opacity-50 rounded-md"
         >
             <WalletIcon name={connector.name}/> {connector.name}
         </button>
@@ -100,18 +102,28 @@ function WalletIcon({name}: { name: string }) {
 
 function ConnectButton() {
     const [showModal, setShowModal] = useState(false)
-    const {address} = useAccount()
+    const { address, isConnected } = useAccount()
+    const { reset } = useHarborWalletConnectors()
 
     const displayAddr = useMemo(
         () => (address ? formatAddress(address) : ""),
         [address]
     );
 
+    useEffect(() => {
+        if (isConnected) {
+            setShowModal(false)
+        }
+    }, [isConnected])
+
     return (
         <>
 
             <button
-                onClick={() => setShowModal(true)}
+                onClick={() => {
+                    reset()
+                    setShowModal(true)
+                }}
                 className="relative inline-flex items-center gap-2 px-2.5 sm:px-3 py-2 text-sm font-medium text-[#1E4775] bg-white shadow-sm hover:bg-white/90 rounded-md"
             >
                 <Wallet className="h-4 w-4 shrink-0 text-[#1E4775]/80" />
@@ -130,16 +142,26 @@ function ConnectButton() {
                 )}
             </button>
 
-            {showModal && <WalletModal onClose={() => setShowModal(false)}/>}
+            {showModal ? (
+                <WalletModal
+                    onClose={() => {
+                        reset()
+                        setShowModal(false)
+                    }}
+                    onConnected={() => setShowModal(false)}
+                />
+            ) : null}
 
         </>
     )
 }
 
 const WalletModal = React.memo(function WalletModal({
-                                                        onClose,
-                                                    }: {
+    onClose,
+    onConnected,
+}: {
     onClose: () => void
+    onConnected: () => void
 }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pt-28">
@@ -174,7 +196,7 @@ const WalletModal = React.memo(function WalletModal({
                 </div>
 
                 <div className="p-6 overflow-y-auto flex-1">
-                    <WalletOptions/>
+                    <WalletOptions onConnected={onConnected} />
                 </div>
             </div>
         </div>

@@ -314,6 +314,16 @@ body.app-bg-megaeth .app-index-manage-btn:hover {
   .touch-target {
     @apply min-h-[44px] min-w-[44px];
   }
+
+  /* Maiden Voyage hero accent — reliable gradient text (Tailwind clip utilities can fail on inherited color). */
+  .mv-text-accent-gradient {
+    display: inline-block;
+    background-image: linear-gradient(to right, #ff8a7a, #ff9a88, #ffb4c8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
 }
 
 .wallet-icon:has(.wallet-icon-client) .wallet-placeholder {
