@@ -110,10 +110,10 @@ export function GenesisActiveVoyageCard({
   return (
     <section
       key={marketId}
-      className={`${MV_MAIN_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} overflow-hidden ${className}`}
+      className={`${MV_MAIN_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} flex flex-col overflow-hidden ${className}`}
       aria-label="Active maiden voyage"
     >
-      <div className="px-4 py-3 sm:px-5">
+      <div className="shrink-0 px-4 py-3 sm:px-5">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/15 pb-3">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <FeaturedVoyageChainMark chainName={chainName} chainLogo={chainLogo} />
@@ -215,7 +215,9 @@ export function GenesisActiveVoyageCard({
         </div>
       </div>
 
-      <footer className={`${MV_FOOTER_PANEL} px-4 py-3 sm:px-5`}>
+      <footer
+        className={`${MV_FOOTER_PANEL} flex min-h-0 flex-1 flex-col justify-center px-4 py-3 sm:px-5`}
+      >
         <GenesisMaidenVoyageStageStrip status={voyageStatus} showHeading={false} />
       </footer>
     </section>
