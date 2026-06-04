@@ -27,8 +27,7 @@ export const MV_GLASS_INSET = MV_GLASS_INSET_LIGHT;
 export const MV_CARD_SHELL = `rounded-2xl ${MV_GLASS_SURFACE}`;
 
 /** Active voyage / primary campaign card — frosted glass with visible outline. */
-export const MV_MAIN_CARD_SHELL =
-  `rounded-2xl border border-white/12 ${MV_GLASS_SURFACE}`;
+export const MV_MAIN_CARD_SHELL = `rounded-2xl ${MV_GLASS_SURFACE}`;
 
 export const MV_CARD_INNER_GRADIENT =
   "bg-gradient-to-b from-white/[0.03] via-transparent to-transparent";

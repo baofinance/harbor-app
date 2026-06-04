@@ -54,6 +54,7 @@ export type GenesisActiveVoyageCardProps = {
   onNextMarket?: () => void;
   /** @deprecated Card always renders with shell; kept for call-site compatibility. */
   embedded?: boolean;
+  className?: string;
 };
 
 export function GenesisActiveVoyageCard({
@@ -73,6 +74,7 @@ export function GenesisActiveVoyageCard({
   onDeposit,
   onClaim,
   onNextMarket,
+  className = "",
 }: GenesisActiveVoyageCardProps) {
   const collateralSymbol =
     market.collateral?.underlyingSymbol ||
@@ -108,7 +110,7 @@ export function GenesisActiveVoyageCard({
   return (
     <section
       key={marketId}
-      className={`${MV_MAIN_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} overflow-hidden`}
+      className={`${MV_MAIN_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} overflow-hidden ${className}`}
       aria-label="Active maiden voyage"
     >
       <div className="px-4 py-3 sm:px-5">
