@@ -142,6 +142,25 @@ export function formatTimeRemaining(
   }
 }
 
+export function formatVoyageCountdown(
+  endDate: string,
+  currentTime: Date = new Date()
+): string | null {
+  const end = new Date(endDate);
+  if (Number.isNaN(end.getTime())) return null;
+  const diffMs = end.getTime() - currentTime.getTime();
+  if (diffMs <= 0) return null;
+
+  const totalMinutes = Math.floor(diffMs / (1000 * 60));
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+
+  if (days > 0) return `Voyage closes in ${days}d ${hours}h`;
+  if (hours > 0) return `Voyage closes in ${hours}h ${minutes}m`;
+  return `Voyage closes in ${minutes}m`;
+}
+
 /**
  * Format a date/time string for display
  */

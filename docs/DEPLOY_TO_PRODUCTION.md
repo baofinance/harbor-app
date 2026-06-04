@@ -106,6 +106,7 @@ NEXT_PUBLIC_ARBITRUM_RPC_URL = [your Arbitrum RPC URL]
 
 ```
 NEXT_PUBLIC_USE_BASEPATH = false (or leave unset)
+NEXT_PUBLIC_ENABLE_IMPERSONATION = false (or leave unset; only set `true` on staging for internal wallet preview)
 ```
 
 ### How to Add Variables in Vercel:

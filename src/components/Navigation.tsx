@@ -1,5 +1,5 @@
 "use client";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import {
   Disclosure,
   DisclosureButton,
@@ -15,6 +15,10 @@ import Image from "next/image";
 import { ConnectWallet } from "@/components/Wallet";
 import { PageLayoutToggle } from "@/components/PageLayoutToggle";
 import { useAppBackground } from "@/contexts/AppBackgroundContext";
+import { ImpersonateDialog } from "@/components/ImpersonateDialog";
+import { ImpersonationBanner } from "@/components/ImpersonationBanner";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { IMPERSONATION_ENABLED } from "@/config/impersonation";
 
 /** Desktop popover + mobile “More”: lower-traffic destinations only. */
 const MORE_NAV: ReadonlyArray<{ href: string; label: string }> = [
@@ -25,6 +29,8 @@ const MORE_NAV: ReadonlyArray<{ href: string; label: string }> = [
 export default function Example() {
   const pathname = usePathname();
   const { mode: backgroundMode } = useAppBackground();
+  const { isImpersonating } = useImpersonation();
+  const [impersonateOpen, setImpersonateOpen] = useState(false);
   const navBgClass =
     backgroundMode === "megaeth" ? "bg-[#10141A]" : "bg-[#1E4775]";
 
@@ -41,6 +47,16 @@ export default function Example() {
     }`;
 
   return (
+    <>
+    {IMPERSONATION_ENABLED ? (
+      <>
+        <ImpersonationBanner />
+        <ImpersonateDialog
+          isOpen={impersonateOpen}
+          onClose={() => setImpersonateOpen(false)}
+        />
+      </>
+    ) : null}
     <Disclosure<"nav">
       as="nav"
       className={`app-nav-shell relative w-full max-w-[1300px] shrink-0 ${navBgClass} after:pointer-events-none mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/20 mb-4 sm:mb-6`}
@@ -140,6 +156,27 @@ export default function Example() {
                     {label}
                   </Link>
                 ))}
+                {IMPERSONATION_ENABLED ? (
+                  <>
+                    <div className="my-1 border-t border-[#1E4775]/10" />
+                    <button
+                      type="button"
+                      onClick={() => setImpersonateOpen(true)}
+                      className={`block w-full px-4 py-2.5 text-left text-sm font-medium ${
+                        isImpersonating
+                          ? "bg-[#FF8A7A]/10 text-[#1E4775]"
+                          : "text-[#1E4775] hover:bg-gray-100"
+                      }`}
+                    >
+                      Impersonate
+                      {isImpersonating ? (
+                        <span className="ml-1 text-xs font-normal text-[#1E4775]/60">
+                          (active)
+                        </span>
+                      ) : null}
+                    </button>
+                  </>
+                ) : null}
               </PopoverPanel>
             </Popover>
           </div>
@@ -270,11 +307,27 @@ export default function Example() {
                     {label}
                   </DisclosureButton>
                 ))}
+                {IMPERSONATION_ENABLED ? (
+                  <DisclosureButton
+                    as="button"
+                    type="button"
+                    onClick={() => setImpersonateOpen(true)}
+                    className={`block w-full px-6 py-3.5 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+                      isImpersonating
+                        ? "text-[#1E4775] bg-[#FF8A7A]/30"
+                        : "text-white bg-white/10 hover:bg-white/20"
+                    }`}
+                  >
+                    Impersonate
+                    {isImpersonating ? " (active)" : ""}
+                  </DisclosureButton>
+                ) : null}
               </div>
             </div>
           </div>
         </div>
       </DisclosurePanel>
     </Disclosure>
+    </>
   );
 }

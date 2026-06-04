@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import type { DefinedMarket } from "@/config/markets";
 import type { AnchorMarketTuple } from "@/types/anchor";
-import { useAccount, useContractReads } from "wagmi";
+import { useContractReads } from "wagmi";
+import { useHarborAccount } from "@/hooks/useHarborAccount";
 import { ERC20_ABI } from "@/abis/shared";
 import { POLLING_INTERVALS } from "@/config/polling";
 
@@ -18,7 +19,7 @@ export function useAnchorUserDeposits(
   options?: { enabled?: boolean }
 ) {
   const enabledOverride = options?.enabled ?? true;
-  const { address } = useAccount();
+  const { address } = useHarborAccount();
 
   // Create contracts for user deposit reads (per-market chainId for multi-chain)
   const userDepositContracts = useMemo(() => {

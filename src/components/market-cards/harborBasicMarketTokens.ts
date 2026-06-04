@@ -19,8 +19,15 @@ export const BASIC_MARKET_TOKEN_STRIP_OUTER_CLASS =
   "rounded-xl border border-[#1E4775]/12 bg-[#f8fafc] px-3 py-2";
 export const BASIC_MARKET_TOKEN_STRIP_ROW_CLASS =
   "flex min-h-[44px] w-full flex-nowrap items-center justify-evenly gap-2 text-[#1E4775]";
+/** Maiden Voyage active card — same rhythm as light strip on dark glass. */
+export const BASIC_MARKET_TOKEN_STRIP_DARK_OUTER_CLASS =
+  "rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2";
+export const BASIC_MARKET_TOKEN_STRIP_DARK_ROW_CLASS =
+  "flex min-h-[44px] w-full flex-nowrap items-center justify-center gap-2 text-white/85";
 export const BASIC_MARKET_FLOW_ARROW_CLASS =
   "h-4 w-4 shrink-0 text-[#1E4775]/35";
+export const BASIC_MARKET_TOKEN_STRIP_DARK_ARROW_CLASS =
+  "h-4 w-4 shrink-0 text-white/35";
 /** Icon wells for bullets + strip anchors (Genesis / Anchor aligned). */
 export const BASIC_MARKET_ICON_WELL_CLASS =
   "flex h-5 w-5 shrink-0 items-center justify-center";
@@ -46,6 +53,10 @@ export const BASIC_MARKET_FEE_COLUMN_LABEL_CLASS =
 
 export const BASIC_MARKET_NETWORK_FOOTER_DIVIDER_CLASS =
   "mt-3 w-full border-t border-[#e2e8f0]";
+export const BASIC_MARKET_NETWORK_FOOTER_DARK_DIVIDER_CLASS =
+  "mt-3 w-full border-t border-white/10";
+export const BASIC_MARKET_NETWORK_FOOTER_DARK_TEXT_CLASS =
+  "text-base font-semibold text-white/55";
 /** Chain label + icon row (Sail / Anchor basic cards): two steps up from `text-xs` for legibility. */
 export const BASIC_MARKET_NETWORK_FOOTER_ICON_PX = 24;
 export const BASIC_MARKET_NETWORK_FOOTER_TEXT_CLASS =
@@ -70,11 +81,25 @@ export const BASIC_MARKET_DIRECTION_LONG_DOT_CLASS =
 export const BASIC_MARKET_DIRECTION_SHORT_DOT_CLASS =
   "h-2 w-2 rounded-full bg-[#FF8A7A] shadow-[0_0_0_3px_rgba(255,138,122,0.22)]";
 
-/** Match active “Market active” row height in basic cards (Anchor + Sail grids). */
+/** Match active status row height in basic cards (Anchor + Sail grids). */
 export const BASIC_MARKET_COMING_SOON_CHIP_CLASS =
   "flex w-full items-center justify-center gap-2 rounded-xl bg-[#f1f5f9] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#64748b] ring-1 ring-[#1E4775]/10 leading-none";
 export const BASIC_MARKET_COMING_SOON_NEUTRAL_DOT_CLASS =
   "h-2 w-2 rounded-full bg-[#94a3b8] shadow-[0_0_0_3px_rgba(148,163,184,0.22)]";
+
+/** Dot + label row (replaces “Market active” / green deposit pill). */
+export const BASIC_MARKET_STATUS_ROW_CLASS =
+  "inline-flex items-center gap-1.5";
+/** Deposit / active market — seafoam (same as former “Market active”). */
+export const BASIC_MARKET_STATUS_DEPOSIT_DOT_CLASS =
+  "h-2 w-2 shrink-0 rounded-full bg-[#4A9784] shadow-[0_0_0_3px_rgba(74,151,132,0.22)]";
+export const BASIC_MARKET_STATUS_DEPOSIT_TEXT_CLASS =
+  "text-xs font-semibold uppercase tracking-wide text-[#4A9784]";
+/** Live market, no user deposit — pearl slate on white (pairs with coming-soon chip greys). */
+export const BASIC_MARKET_STATUS_NEUTRAL_DOT_CLASS =
+  "h-2 w-2 shrink-0 rounded-full bg-[#94a3b8] shadow-[0_0_0_3px_rgba(148,163,184,0.22)]";
+export const BASIC_MARKET_STATUS_NEUTRAL_TEXT_CLASS =
+  "text-xs font-semibold uppercase tracking-wide text-[#64748b]";
 
 /** Primary CTA: Nautical Blue (all basic market primary buttons). */
 export const HARBOR_PRIMARY_CTA_CLASS =
@@ -88,6 +113,9 @@ export const HARBOR_DISABLED_PRIMARY_CTA_CLASS = HARBOR_COMING_SOON_CTA_SURFACE_
 /** Inline text link (“Learn more →”) unified. */
 export const HARBOR_LEARN_MORE_INLINE_LINK_CLASS =
   "inline-flex items-center justify-center gap-1 underline decoration-[#1E4775]/30 underline-offset-2 text-center text-xs font-semibold text-[#1E4775] transition hover:text-[#0c2a4a] hover:decoration-[#1E4775]/50";
+/** Learn-more link on dark campaign surfaces (Maiden Voyage card). */
+export const HARBOR_LEARN_MORE_DARK_LINK_CLASS =
+  "inline-flex items-center justify-center gap-1 underline decoration-white/25 underline-offset-2 text-center text-xs font-semibold text-white/80 transition hover:text-white hover:decoration-white/40";
 
 /** Translucent veil for unavailable markets (Coming soon overlays). */
 export const BASIC_MARKET_COMING_SOON_VEIL_CLASS =

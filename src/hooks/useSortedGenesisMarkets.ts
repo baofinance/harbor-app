@@ -1,5 +1,8 @@
 import { useMemo } from "react";
-import { isMarketArchived } from "@/config/markets";
+import {
+  isGenesisOpenForActiveCampaign,
+  isMarketArchived,
+} from "@/config/markets";
 
 interface UseSortedGenesisMarketsParams {
   genesisMarkets: Array<[string, any]>;
@@ -17,12 +20,56 @@ function cleanCampaignLabel(label: string): string {
   return label.replace(/\s+Maiden Voyage.*/i, "").trim() || label;
 }
 
+function resolveGenesisEnded(
+  id: string,
+  mkt: unknown,
+  genesisMarkets: Array<[string, any]>,
+  reads: Array<any> | undefined,
+  isConnected: boolean,
+  marksResults: Array<any> | undefined
+): boolean {
+  const mi = getMarketIndex(genesisMarkets, id);
+  const baseOffset = mi * (isConnected ? 3 : 1);
+  const contractReadResult = reads?.[baseOffset];
+  const contractSaysEnded =
+    contractReadResult?.status === "success"
+      ? (contractReadResult.result as boolean)
+      : undefined;
+
+  const marksForMarket = marksResults?.find(
+    (marks) =>
+      marks.genesisAddress?.toLowerCase() ===
+      (mkt as { addresses?: { genesis?: string } }).addresses?.genesis?.toLowerCase()
+  );
+  const userMarksData = marksForMarket?.data?.userHarborMarks;
+  const marks = Array.isArray(userMarksData) ? userMarksData[0] : userMarksData;
+  const subgraphSaysEnded = marks?.genesisEnded;
+
+  return contractSaysEnded !== undefined
+    ? contractSaysEnded
+    : subgraphSaysEnded ?? false;
+}
+
 function collectActiveCampaignNames(
-  activeMarkets: Array<[string, any]>
+  activeMarkets: Array<[string, any]>,
+  genesisMarkets: Array<[string, any]>,
+  reads: Array<any> | undefined,
+  isConnected: boolean,
+  marksResults: Array<any> | undefined
 ): string[] {
   const seen = new Set<string>();
   const names: string[] = [];
-  for (const [, mkt] of activeMarkets) {
+  for (const [id, mkt] of activeMarkets) {
+    const isEnded = resolveGenesisEnded(
+      id,
+      mkt,
+      genesisMarkets,
+      reads,
+      isConnected,
+      marksResults
+    );
+    if (!isGenesisOpenForActiveCampaign(mkt, isEnded)) continue;
+
     const raw = (mkt as { marksCampaign?: { label?: string } }).marksCampaign
       ?.label;
     if (!raw) continue;
@@ -138,7 +185,13 @@ export const useSortedGenesisMarkets = ({
       }
     });
 
-    const activeCampaignNames = collectActiveCampaignNames(activeMarkets);
+    const activeCampaignNames = collectActiveCampaignNames(
+      activeMarkets,
+      genesisMarkets,
+      reads,
+      isConnected,
+      marksResults
+    );
 
     return {
       sortedMarkets,

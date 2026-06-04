@@ -8,9 +8,7 @@ import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
 import { getLogoPath } from "@/components/shared";
 import {
   BASIC_MARKET_CARD_SHELL_CLASS,
-  BASIC_MARKET_COMING_SOON_CHIP_CLASS,
   BASIC_MARKET_COMING_SOON_CONTENT_DIM_CLASS,
-  BASIC_MARKET_COMING_SOON_NEUTRAL_DOT_CLASS,
   BASIC_MARKET_COMING_SOON_VEIL_CLASS,
   BASIC_MARKET_DIRECTION_LONG_CHIP_CLASS,
   BASIC_MARKET_DIRECTION_LONG_DOT_CLASS,
@@ -33,6 +31,7 @@ import {
   harborMarketChainKey,
   type HarborBasicMarketChain,
 } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
+import { HarborBasicMarketStatusRow } from "@/components/market-cards/HarborBasicMarketStatusRow";
 import { formatLeverage } from "@/utils/sailDisplayFormat";
 import type { SailMarketCardModel } from "@/utils/sailMarketCardModel";
 import { SailMintRedeemFeeColumn } from "./SailMintRedeemFeeColumn";
@@ -55,6 +54,7 @@ export function SailBasicMarketCard({
   networkChains,
   selectedChainKey,
   onChainSelect,
+  positionLabel,
 }: {
   marketId: string;
   market: DefinedMarket;
@@ -65,6 +65,7 @@ export function SailBasicMarketCard({
   networkChains?: HarborBasicMarketChain[];
   selectedChainKey?: string;
   onChainSelect?: (chainKey: string) => void;
+  positionLabel?: string;
 }) {
   const showMaintenance = isMarketInMaintenance(market);
   const { longSide, shortSide, collateralSymbol } = model;
@@ -86,11 +87,11 @@ export function SailBasicMarketCard({
     "fxUSD";
 
   const comingSoonChip = (
-    <span className={BASIC_MARKET_COMING_SOON_CHIP_CLASS}>
-      <span className={BASIC_MARKET_COMING_SOON_NEUTRAL_DOT_CLASS} />
-      <span>Coming soon</span>
-    </span>
+    <HarborBasicMarketStatusRow variant="coming-soon" />
   );
+
+  const CARD_STATUS_SLOT =
+    "mt-1.5 flex h-9 w-full items-center justify-center";
 
   const normalizeSideLabel = (value: string): string => {
     const v = (value || "").trim().toLowerCase();
@@ -164,6 +165,17 @@ export function SailBasicMarketCard({
             </div>
           )}
         </div>
+
+        {!isComingSoon && (
+          <div className={CARD_STATUS_SLOT}>
+            <HarborBasicMarketStatusRow
+              variant={
+                isConnected && positionLabel ? "deposit" : "no-deposit"
+              }
+              label={positionLabel}
+            />
+          </div>
+        )}
 
         <p className={`mt-3 ${BASIC_MARKET_METRIC_PRIMARY_CLASS}`}>
           {leverageDisplay}

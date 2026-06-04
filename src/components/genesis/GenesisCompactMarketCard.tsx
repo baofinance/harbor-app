@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useLayoutEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowDownIcon,
   ChevronDownIcon,
@@ -142,61 +137,68 @@ export function GenesisCompactMarketCard({
   );
 
   const showClaimAction = isEnded && !showMaintenanceTag;
-  const disableClaim =
-    !hasClaimable || isClaiming || previewSoon;
-  const disableManage = isProcessing || showMaintenanceTag || isEnded || blockConfiguredDeposits;
-  const progressPct = capData ? Math.min(100, Math.max(0, capData.progressPct)) : 0;
-  const availablePct = capData ? Math.min(100, Math.max(0, 100 - progressPct)) : 0;
-  const statusVisual: { variant: "open" | "warning" | "neutral" | "claim"; dotClass: string; text: string } =
-    (() => {
-      if (previewSoon) {
-        return {
-          variant: "neutral",
-          dotClass: "bg-slate-400",
-          text: "Opening soon",
-        };
-      }
-      if (claimOnlyCfg && !isEnded) {
-        return {
-          variant: "neutral",
-          dotClass: "bg-slate-500",
-          text: "Deposits closed",
-        };
-      }
-      if (showMaintenanceTag || statusText === "Maintenance") {
-        return {
-          variant: "neutral",
-          dotClass: "bg-[#7B8794]",
-          text: "Maintenance",
-        };
-      }
-      if (isEnded || statusText === "Ended") {
-        return {
-          variant: "neutral",
-          dotClass: "bg-[#7B8794]",
-          text: "Ended",
-        };
-      }
-      if (statusText === "Processing") {
-        return {
-          variant: "warning",
-          dotClass: "bg-[#E8922E]",
-          text: "Processing",
-        };
-      }
-      if (statusText === "Claim available") {
-        return {
-          variant: "claim",
-          dotClass: "bg-[#E85D4F]",
-          text: "Claim available",
-        };
-      }
+  const disableClaim = !hasClaimable || isClaiming || previewSoon;
+  const disableManage =
+    isProcessing || showMaintenanceTag || isEnded || blockConfiguredDeposits;
+  const progressPct = capData
+    ? Math.min(100, Math.max(0, capData.progressPct))
+    : 0;
+  const availablePct = capData
+    ? Math.min(100, Math.max(0, 100 - progressPct))
+    : 0;
+  const statusVisual: {
+    variant: "open" | "warning" | "neutral" | "claim";
+    dotClass: string;
+    text: string;
+  } = (() => {
+    if (previewSoon) {
       return {
-        variant: "open",
-        dotClass: "bg-[#4A9784]",
-        text: "Genesis Open",
+        variant: "neutral",
+        dotClass: "bg-slate-400",
+        text: "Opening soon",
       };
-    })();
+    }
+    if (claimOnlyCfg && !isEnded) {
+      return {
+        variant: "neutral",
+        dotClass: "bg-slate-500",
+        text: "Deposits closed",
+      };
+    }
+    if (showMaintenanceTag || statusText === "Maintenance") {
+      return {
+        variant: "neutral",
+        dotClass: "bg-[#7B8794]",
+        text: "Maintenance",
+      };
+    }
+    if (isEnded || statusText === "Ended") {
+      return {
+        variant: "neutral",
+        dotClass: "bg-[#7B8794]",
+        text: "Ended",
+      };
+    }
+    if (statusText === "Processing") {
+      return {
+        variant: "warning",
+        dotClass: "bg-[#E8922E]",
+        text: "Processing",
+      };
+    }
+    if (statusText === "Claim available") {
+      return {
+        variant: "claim",
+        dotClass: "bg-[#E85D4F]",
+        text: "Claim available",
+      };
+    }
+    return {
+      variant: "open",
+      dotClass: "bg-[#4A9784]",
+      text: "Genesis Open",
+    };
+  })();
 
   const statusPillSurfaceClass =
     statusVisual.variant === "open"
@@ -235,9 +237,9 @@ export function GenesisCompactMarketCard({
 
   /** Icon + market title row only — chain, status, and token strip match this width (left: icon edge, right: title edge). */
   const headerTitleRowRef = useRef<HTMLDivElement>(null);
-  const [statusBarTotalWidthPx, setStatusBarTotalWidthPx] = useState<number | undefined>(
-    undefined,
-  );
+  const [statusBarTotalWidthPx, setStatusBarTotalWidthPx] = useState<
+    number | undefined
+  >(undefined);
 
   useLayoutEffect(() => {
     const el = headerTitleRowRef.current;
@@ -246,7 +248,10 @@ export function GenesisCompactMarketCard({
     const measure = () => {
       const w = Math.ceil(el.getBoundingClientRect().width);
       setStatusBarTotalWidthPx(
-        Math.max(w + LEFT_RAIL_WIDTH_BUFFER_PX, COMPACT_CARD_STATUS_RAIL_MIN_PX)
+        Math.max(
+          w + LEFT_RAIL_WIDTH_BUFFER_PX,
+          COMPACT_CARD_STATUS_RAIL_MIN_PX,
+        ),
       );
     };
 
@@ -321,7 +326,9 @@ export function GenesisCompactMarketCard({
                   <NetworkIconCell
                     chainName={chainName}
                     chainLogo={chainLogo}
-                    size={isMegaEthChainBadge ? MEGAETH_CHAIN_NETWORK_ICON_PX : 22}
+                    size={
+                      isMegaEthChainBadge ? MEGAETH_CHAIN_NETWORK_ICON_PX : 22
+                    }
                   />
                 </span>
                 <span className={chainBadgeLabelClass}>{chainName}</span>
@@ -376,41 +383,67 @@ export function GenesisCompactMarketCard({
               )}
             </button>
           </div>
-          <ul className={`mt-2 flex min-h-0 flex-1 flex-col justify-between gap-y-2 lg:mt-2 lg:gap-y-0 ${BASIC_MARKET_FEATURE_BODY_CLASS}`}>
+          <ul
+            className={`mt-2 flex min-h-0 flex-1 flex-col justify-between gap-y-2 lg:mt-2 lg:gap-y-0 ${BASIC_MARKET_FEATURE_BODY_CLASS}`}
+          >
             <li className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10141A]/35" aria-hidden />
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10141A]/35"
+                aria-hidden
+              />
               <span>
                 Deposit {collateralSymbol} into the {marketName} market.
               </span>
             </li>
             <li className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10141A]/35" aria-hidden />
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10141A]/35"
+                aria-hidden
+              />
               <span>
-                Your deposit is automatically split into {peggedSymbol} + {leveragedSymbol} when
-                genesis ends.
+                Your deposit is automatically split into {peggedSymbol} +{" "}
+                {leveragedSymbol} when genesis ends.
               </span>
             </li>
             <li className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10141A]/35" aria-hidden />
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10141A]/35"
+                aria-hidden
+              />
               <span className="leading-snug">
                 <strong className="text-[#FF8A7A]">
-                  The depositor pool owns 5% of this market&apos;s revenue forever.
+                  The depositor pool owns 5% of this market&apos;s revenue
+                  forever.
                 </strong>
               </span>
             </li>
             <li className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10141A]/35" aria-hidden />
-              <span>Your share is set by final ownership at Genesis close.</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10141A]/35" aria-hidden />
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10141A]/35"
+                aria-hidden
+              />
               <span>
-                Exit anytime: burn {peggedSymbol} or {leveragedSymbol} to redeem collateral.
+                Your share is set by final ownership at Genesis close.
               </span>
             </li>
             <li className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10141A]/35" aria-hidden />
-              <span>Keep your positions to ride volatility and earn yield.</span>
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10141A]/35"
+                aria-hidden
+              />
+              <span>
+                Exit anytime: burn {peggedSymbol} or {leveragedSymbol} to redeem
+                collateral.
+              </span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10141A]/35"
+                aria-hidden
+              />
+              <span>
+                Keep your positions to ride volatility and earn yield.
+              </span>
             </li>
           </ul>
         </div>
@@ -467,7 +500,9 @@ export function GenesisCompactMarketCard({
             <div className={`${sectionHeaderClass} leading-none`}>
               Your deposit
             </div>
-            <div className="text-xl leading-none font-semibold">{userDepositDisplay}</div>
+            <div className="text-xl leading-none font-semibold">
+              {userDepositDisplay}
+            </div>
           </div>
 
           {showMaintenanceTag ? (
@@ -514,7 +549,9 @@ export function GenesisCompactMarketCard({
                   className={`h-full rounded-full ${
                     capData.capFilled ? "bg-[#9AA5B8]" : "bg-[#B8EBD5]"
                   }`}
-                  style={{ width: `${Math.max(0, 100 - capData.progressPct)}%` }}
+                  style={{
+                    width: `${Math.max(0, 100 - capData.progressPct)}%`,
+                  }}
                 />
               </div>
               <p className="text-[11px] leading-snug text-[#1E4775]/55">
@@ -535,20 +572,22 @@ export function GenesisCompactMarketCard({
               label={
                 <span className="flex max-w-xs flex-col gap-2 text-xs leading-relaxed">
                   <span>
-                    Deposits count toward this market&apos;s cap. At genesis close,
-                    your counted deposit share sets your maiden-yield ownership share.
+                    Deposits count toward this market&apos;s cap. At genesis
+                    close, your counted deposit share sets your maiden-yield
+                    ownership share.
                   </span>
                   {capData.useTokenCap ? (
                     <span className="font-medium leading-snug text-[#FF8A7A]">
-                      {availablePct.toFixed(0)}% of {capData.tokenCapAmount.toFixed(0)}{" "}
-                      {compactStripTokenLabel(capData.collateralSymbol)} still available for
-                      early depositors.
+                      {availablePct.toFixed(0)}% of{" "}
+                      {capData.tokenCapAmount.toFixed(0)}{" "}
+                      {compactStripTokenLabel(capData.collateralSymbol)} still
+                      available for early depositors.
                     </span>
                   ) : (
                     <span className="font-medium leading-snug text-[#FF8A7A]">
                       {formatUSD(capData.capCurrentUsd)} cumulative toward a{" "}
-                      {formatUSD(capData.capTotalUsd)} cap ({availablePct.toFixed(0)}% headroom
-                      for early depositors).
+                      {formatUSD(capData.capTotalUsd)} cap (
+                      {availablePct.toFixed(0)}% headroom for early depositors).
                     </span>
                   )}
                 </span>
@@ -579,7 +618,8 @@ export function GenesisCompactMarketCard({
                   </>
                 ) : (
                   <>
-                    {formatUSD(capData.capCurrentUsd)} / {formatUSD(capData.capTotalUsd)}
+                    {formatUSD(capData.capCurrentUsd)} /{" "}
+                    {formatUSD(capData.capTotalUsd)}
                   </>
                 )}
               </span>
@@ -587,8 +627,8 @@ export function GenesisCompactMarketCard({
           </div>
           {capData.yieldRevSharePct != null && (
             <p className="mt-1 text-[11px] text-[#1E4775]/80">
-              {capData.yieldRevSharePct}% of attributed fee/carry is distributed to
-              owners.
+              {capData.yieldRevSharePct}% of attributed fee/carry is distributed
+              to owners.
             </p>
           )}
           {(capData.ownershipShare > 0 ||

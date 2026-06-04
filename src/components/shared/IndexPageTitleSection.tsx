@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
  */
 export type IndexPageTitleSectionProps = {
   title: string;
-  subtitle: ReactNode;
+  subtitle?: ReactNode;
   /** Renders after `title` (e.g. version tag for Maiden voyage 2.0; Genesis uses white). */
   titleAccentSuffix?: string;
   /**
@@ -36,11 +36,13 @@ export function IndexPageTitleSection({
           ) : null}
         </h1>
       </div>
-      <div className="flex items-center justify-center px-4 pb-1 mt-1 sm:mt-2">
-        <p className="text-white/85 text-lg sm:text-xl text-center max-w-2xl leading-snug font-medium tracking-tight">
-          {subtitle}
-        </p>
-      </div>
+      {subtitle ? (
+        <div className="flex items-center justify-center px-4 pb-1 mt-1 sm:mt-2">
+          <p className="text-white/85 text-lg sm:text-xl text-center max-w-2xl leading-snug font-medium tracking-tight">
+            {subtitle}
+          </p>
+        </div>
+      ) : null}
     </>
   );
 

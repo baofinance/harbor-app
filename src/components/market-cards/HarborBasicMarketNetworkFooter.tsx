@@ -1,5 +1,7 @@
 import NetworkIconCell from "@/components/NetworkIconCell";
 import {
+  BASIC_MARKET_NETWORK_FOOTER_DARK_DIVIDER_CLASS,
+  BASIC_MARKET_NETWORK_FOOTER_DARK_TEXT_CLASS,
   BASIC_MARKET_NETWORK_FOOTER_DIVIDER_CLASS,
   BASIC_MARKET_NETWORK_FOOTER_ICON_BUTTON_CLASS,
   BASIC_MARKET_NETWORK_FOOTER_ICON_IDLE_CLASS,
@@ -40,12 +42,22 @@ export function HarborBasicMarketNetworkFooter({
   chains,
   selectedChainKey,
   onChainSelect,
+  theme = "light",
 }: {
   chains: HarborBasicMarketChain[];
   /** Active chain `key`; required when `onChainSelect` is set. */
   selectedChainKey?: string;
   onChainSelect?: (chainKey: string) => void;
+  theme?: "light" | "dark";
 }) {
+  const dividerClass =
+    theme === "dark"
+      ? BASIC_MARKET_NETWORK_FOOTER_DARK_DIVIDER_CLASS
+      : BASIC_MARKET_NETWORK_FOOTER_DIVIDER_CLASS;
+  const textClass =
+    theme === "dark"
+      ? BASIC_MARKET_NETWORK_FOOTER_DARK_TEXT_CLASS
+      : BASIC_MARKET_NETWORK_FOOTER_TEXT_CLASS;
   const list =
     chains.length > 0
       ? chains
@@ -60,7 +72,7 @@ export function HarborBasicMarketNetworkFooter({
 
   return (
     <>
-      <div className={BASIC_MARKET_NETWORK_FOOTER_DIVIDER_CLASS} />
+      <div className={dividerClass} />
       <div className="flex min-h-[3rem] items-center justify-center pt-3">
         {isMultichain || isSelectable ? (
           <div
@@ -116,7 +128,7 @@ export function HarborBasicMarketNetworkFooter({
           </div>
         ) : (
           <span
-            className={`inline-flex items-center justify-center gap-2.5 ${BASIC_MARKET_NETWORK_FOOTER_TEXT_CLASS}`}
+            className={`inline-flex items-center justify-center gap-2.5 ${textClass}`}
           >
             <NetworkIconCell
               chainName={list[0]?.name || "Ethereum"}

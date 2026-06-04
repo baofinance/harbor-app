@@ -41,6 +41,7 @@ NODE_ENV=production
 ```
 
 **Additional variables you may need:**
+- `NEXT_PUBLIC_ENABLE_IMPERSONATION=true` (read-only wallet preview in More menu; keep unset or `false` in production)
 - `NEXT_PUBLIC_GRAPH_URL` (if using subgraph)
 - `NEXT_PUBLIC_MAINNET_RPC_URL` (if custom RPC)
 - `NEXT_PUBLIC_BASE_RPC_URL` (if custom RPC)

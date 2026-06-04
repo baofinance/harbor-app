@@ -46,6 +46,12 @@ import { InfoCallout } from "@/components/InfoCallout";
 import { ModalNotificationsPanel } from "@/components/ModalNotificationsPanel";
 import { isMarketArchived } from "@/config/markets";
 import { DepositModalShell } from "@/components/DepositModalShell";
+import { DepositModalFlowOverview } from "@/components/DepositModalFlowOverview";
+import { genesisDepositFlowParts } from "@/components/depositModalFlowSteps";
+import {
+  depositModalNotificationBadgeClass,
+  pickHeaviestDepositModalNotificationBadge,
+} from "@/components/depositModalNotificationStyles";
 import {
   AlertOctagon,
   Banknote,
@@ -1950,11 +1956,9 @@ const successFmt = formatTokenAmount(
   // Deposit form content
   const formContent = (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3 border-b border-[#d1d7e5]">
-        <div className="text-[#1E4775] font-semibold">
-          Deposit Collateral & Amount
-        </div>
-      </div>
+      {!embedded ? (
+        <DepositModalFlowOverview parts={genesisDepositFlowParts()} />
+      ) : null}
  {/* Genesis Status Warning */}
  {genesisEnded && (
  <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm">
@@ -2007,17 +2011,21 @@ const successFmt = formatTokenAmount(
      validTokenInfo: isCustomToken && customTokenSymbol ? `${customTokenName || customTokenSymbol} (${customTokenSymbol})` : null,
    } : undefined}
    betweenTokenAndAmount={
+     embedded ? undefined : (
      <ModalNotificationsPanel
        expanded={showNotifications}
        onToggle={() => setShowNotifications((prev) => !prev)}
        className="mt-2 space-y-2"
        badge={(() => {
-         const highestRiskColor = isNonCollateralAsset ? "orange" : "blue";
-         const notificationCount = (!needsSwap ? 1 : 0) + 1 + (isNonCollateralAsset ? 1 : 0);
-         const badgeBgColor = highestRiskColor === "orange" ? "bg-[#FF8A7A]/20" : "bg-blue-100";
-         const badgeTextColor = highestRiskColor === "orange" ? "text-[#FF8A7A]" : "text-blue-600";
+         const severities: Array<"navy" | "green" | "coral"> = ["navy"];
+         if (!needsSwap && !collateralOnly) severities.push("green");
+         if (isNonCollateralAsset) severities.push("coral");
+         const notificationCount = severities.length;
+         const badgeSeverity = pickHeaviestDepositModalNotificationBadge(severities);
          return (
-           <span className={`flex items-center gap-1 ${badgeBgColor} px-2 py-0.5 text-xs ${badgeTextColor}`}>
+           <span
+             className={`flex items-center gap-1 px-2 py-0.5 text-xs ${depositModalNotificationBadgeClass[badgeSeverity]}`}
+           >
              <Bell className="h-3 w-3" />
              {notificationCount}
            </span>
@@ -2038,6 +2046,7 @@ const successFmt = formatTokenAmount(
          </InfoCallout>
        )}
      </ModalNotificationsPanel>
+     )
    }
    amount={{
      value: amount,

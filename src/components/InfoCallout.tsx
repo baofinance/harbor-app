@@ -1,6 +1,6 @@
 import React from "react";
 
-type InfoCalloutTone = "info" | "success" | "warning" | "pearl";
+export type InfoCalloutTone = "info" | "success" | "warning" | "pearl";
 
 const toneStyles: Record<InfoCalloutTone, { wrapper: string; icon: string }> = {
   info: {

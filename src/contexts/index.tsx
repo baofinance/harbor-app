@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React, { type ReactNode } from "react";
 import { cookieToInitialState, WagmiProvider, type Config } from "wagmi";
 import { CurrencyProvider, type CurrencyCode } from "./CurrencyContext";
+import { ImpersonationProvider } from "./ImpersonationContext";
 import { SafeAppProviderWrapper } from "@/components/SafeAppProvider";
 
 // Set up queryClient
@@ -66,9 +67,11 @@ function ContextProvider({
  >
  <QueryClientProvider client={queryClient}>
 <SafeAppProviderWrapper>
+ <ImpersonationProvider>
  <CurrencyProvider initialCode={initialCurrency}>
  {children}
  </CurrencyProvider>
+ </ImpersonationProvider>
 </SafeAppProviderWrapper>
  </QueryClientProvider>
  </WagmiProvider>

@@ -24,16 +24,16 @@ export function DepositModalTabHeader({
   tabDisabled,
 }: DepositModalTabHeaderProps) {
   return (
-    <div className="flex flex-1 mr-2 sm:mr-4 overflow-hidden rounded-t-md border border-[#1E4775]/20 border-b-0">
+    <div className="flex w-full gap-1 rounded-md bg-[#1E4775] p-0.5">
       {tabs.map(({ value, label }) => (
         <button
           key={value}
           onClick={() => onTabChange(value)}
           disabled={disabled || tabDisabled?.[value]}
-          className={`flex-1 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-colors touch-target ${
+          className={`flex-1 rounded-md py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors touch-target ${
             activeTab === value
-              ? "bg-[#153B63] text-white"
-              : "bg-[#eef2f7] text-[#153B63]"
+              ? "bg-white text-[#1E4775] shadow-sm"
+              : "text-white hover:bg-white/20"
           } disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           {label}

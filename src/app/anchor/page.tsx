@@ -8,17 +8,18 @@ import React, {
   useCallback,
 } from "react";
 import {
-  useAccount,
   useChainId,
   useWriteContract,
   usePublicClient,
   useSwitchChain,
 } from "wagmi";
+import { useHarborAccount } from "@/hooks/useHarborAccount";
 import { formatEther, parseEther } from "viem";
 import {
   isAnchorSoonUi,
   isMarketArchived,
   isMarketInMaintenance,
+  markets as marketsConfig,
   type DefinedMarket,
 } from "@/config/markets";
 import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
@@ -166,7 +167,7 @@ type AnchorManageModalPayload = {
 // Group expanded panel: [`AnchorMarketGroupExpandedSection`](../../components/anchor/AnchorMarketGroupExpandedSection.tsx).
 
 export default function AnchorPage() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useHarborAccount();
   const connectedChainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();

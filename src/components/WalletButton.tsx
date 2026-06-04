@@ -3,7 +3,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
  useAccount,
- useConnect,
  useDisconnect,
  useBalance,
  useChainId,
@@ -13,17 +12,7 @@ import {
 import { Copy, Check, LogOut, Wallet, AlertTriangle } from "lucide-react";
 import { mainnet } from "wagmi/chains";
 import DecryptedText from "./DecryptedText";
-import { useSafeApp } from "./SafeAppProvider";
-
-// Sort connectors to show Safe first when in Safe mode
-function sortConnectors(connectors: any[], isSafeApp: boolean) {
-  if (!isSafeApp) return connectors;
-  return [...connectors].sort((a, b) => {
-    if (a.id === "safe" || a.type === "safe") return -1;
-    if (b.id === "safe" || b.type === "safe") return 1;
-    return 0;
-  });
-}
+import { useHarborWalletConnectors } from "@/hooks/useHarborWalletConnectors";
 
 function formatAddress(addr?: string) {
   if (!addr) return "";
@@ -32,9 +21,16 @@ function formatAddress(addr?: string) {
 
 export default function WalletButton() {
  const { address, isConnected } = useAccount();
- const { connectors, connect, isPending } = useConnect();
+ const {
+   visibleConnectors,
+   connect,
+   error,
+   isPending,
+   isError,
+   reset,
+   canConnect,
+ } = useHarborWalletConnectors();
  const { disconnect } = useDisconnect();
- const { isSafeApp } = useSafeApp();
  const chainId = useChainId();
  const configuredChains = useChains();
  const { data: balance } = useBalance({
@@ -46,39 +42,16 @@ export default function WalletButton() {
  const [open, setOpen] = useState(false);
  const [copied, setCopied] = useState(false);
  const [isMounted, setIsMounted] = useState(false);
-  const [readyConnectors, setReadyConnectors] = useState<string[]>([]);
 
  useEffect(() => {
  setIsMounted(true);
  }, []);
 
-  // Check which connectors are ready (have providers available)
-  useEffect(() => {
-    const checkConnectors = async () => {
-      const ready: string[] = [];
-      for (const connector of connectors) {
-        try {
-          const provider = await connector.getProvider();
-          if (provider) {
-            ready.push(connector.uid);
-          }
-        } catch {
-          // Connector not ready
-        }
-      }
-      setReadyConnectors(ready);
-    };
-    if (isMounted) {
-      checkConnectors();
-    }
-  }, [connectors, isMounted]);
-
-  // Filter to show all connectors, marking which are ready
-  // Sort to show Safe first when in Safe mode
- const available = useMemo(
-    () => sortConnectors(connectors, isSafeApp),
- [connectors, isSafeApp]
- );
+ useEffect(() => {
+   if (isConnected) {
+     setOpen(false);
+   }
+ }, [isConnected]);
 
  /** Any chain configured in wagmi (e.g. mainnet + MegaETH) is valid for browsing the app. */
  const wrongNetwork =
@@ -100,7 +73,10 @@ export default function WalletButton() {
  return (
  <>
  <button
- onClick={() => setOpen(true)}
+ onClick={() => {
+   reset();
+   setOpen(true);
+ }}
  className={
 "relative inline-flex items-center gap-4 px-3 py-1.5 text-sm text-white bg-white/10 hover:bg-[#FF8A7A]/20 rounded-full" +
  (wrongNetwork ?"bg-red-500/20" :"")
@@ -133,7 +109,10 @@ export default function WalletButton() {
  <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
  <div
  className="absolute inset-0 bg-black/60 backdrop-blur-sm opacity-100 transition-opacity"
- onClick={() => setOpen(false)}
+ onClick={() => {
+   reset();
+   setOpen(false);
+ }}
  />
  <div className="relative z-10 w-full max-w-sm bg-[#0c0d0d] text-white shadow-2xl">
  <div className="border-b border-white/10 p-4 flex items-center justify-between">
@@ -141,7 +120,10 @@ export default function WalletButton() {
  {isConnected ?"Wallet" :"Connect Wallet"}
  </h3>
  <button
- onClick={() => setOpen(false)}
+ onClick={() => {
+   reset();
+   setOpen(false);
+ }}
  className="text-white/60 hover:text-white"
  aria-label="Close"
  >
@@ -224,36 +206,44 @@ export default function WalletButton() {
  </div>
  ) : (
  <div className="p-3">
+ {isError ? (
+   <div className="mb-3 rounded-md border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+     {error?.message || "Could not connect wallet. Try again."}
+   </div>
+ ) : null}
  <div className="space-y-2">
-                    {available.map((c) => {
-                      const isReady = readyConnectors.includes(c.uid);
+                    {visibleConnectors.map((c) => {
+                      const isReady = canConnect(c);
                       return (
  <button
  key={c.uid}
- onClick={async () => {
-                          try {
-                            console.log("Connecting with:", c.name, c.id);
-                            connect({ connector: c });
-                            // Close modal after initiating connection
-                            // wagmi will handle the state updates
-                            setTimeout(() => setOpen(false), 200);
-                          } catch (error) {
-                            console.error("Failed to connect:", error);
-                          }
+ type="button"
+ onClick={() => {
+                          reset();
+                          connect(
+                            { connector: c },
+                            {
+                              onSuccess: () => setOpen(false),
+                            },
+                          );
  }}
- disabled={isPending}
+ disabled={isPending || !isReady}
  className="w-full flex items-center justify-between px-3 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 rounded-full"
  >
  <span className="text-left">{c.name}</span>
-                          {isReady && (
+                          {isReady ? (
                             <span className="text-green-400 text-xs">
                               Ready
  </span>
+                          ) : (
+                            <span className="text-white/40 text-xs">
+                              Unavailable
+                            </span>
                           )}
  </button>
                       );
                     })}
- {available.length === 0 && (
+ {visibleConnectors.length === 0 && (
  <div className="text-sm text-white/60 p-2 text-center">
                         No wallet connectors configured.
  </div>

@@ -22,6 +22,8 @@ export const MAIDEN_VOYAGE_CAP_USD_BY_GENESIS_HEX: Record<string, number> = {
   "0x8ad6b177137a6c33070c27d98355717849ce526c": 100_000, // GOLD / stETH
   "0x66d18b9dd5d1cd51957dfea0e0373b54e06118c8": 100_000, // SILVER / fxUSD
   "0x8f655ca32a1fa8032955989c19e91886f26439dc": 100_000, // SILVER / stETH
+  "0x40ff767ff4055d53b1bc1b0141221a37b25905fd": 100_000, // stETH / USD (mainnet)
+  "0x004c7091051bbd43dd1c26e3e37c85f869a987e7": 100_000, // stETH / USD (MegaETH)
   // Test / legacy
   "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073": 100_000, // ETH / fxUSD (test2)
   "0x288c61c3b3684ff21adf38d878c81457b19bd2fe": 100_000, // BTC / fxUSD (test2)

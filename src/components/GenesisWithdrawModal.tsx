@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { AlertTriangle, Bell } from "lucide-react";
+import { AlertOctagon, AlertTriangle, Bell } from "lucide-react";
 import { parseEther, formatEther } from "viem";
 import {
  useAccount,
@@ -18,11 +18,14 @@ import {
  TransactionStep,
 } from "./TransactionProgressModal";
 import { useTransactionProgress } from "@/hooks/useTransactionProgress";
-import { formatTokenAmount, formatBalance } from "@/utils/formatters";
+import { formatTokenAmount } from "@/utils/formatters";
 import { useWrappedCollateralPrice } from "@/hooks/useWrappedCollateralPrice";
-import { AmountInputBlock } from "@/components/AmountInputBlock";
+import { TokenAmountSection } from "@/components/TokenAmountSection";
 import { ModalNotificationsPanel } from "@/components/ModalNotificationsPanel";
 import { DepositModalShell } from "@/components/DepositModalShell";
+import { DepositModalFlowOverview } from "@/components/DepositModalFlowOverview";
+import { genesisWithdrawFlowParts } from "@/components/depositModalFlowSteps";
+import { depositModalNotificationBadgeClass } from "@/components/depositModalNotificationStyles";
 import { InfoCallout } from "@/components/InfoCallout";
 
 interface GenesisWithdrawalModalProps {
@@ -272,181 +275,207 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
 
  if (!isOpen && !progress.isOpen) return null;
 
-  // Withdraw form content
-  const formContent = (
-    <div className="space-y-4 sm:space-y-6">
- {/* Balance */}
-{(() => {
   const depositFmt = formatTokenAmount(
     userDeposit,
     collateralSymbol,
     collateralPriceUSD
   );
-  return (
- <div className="text-sm text-[#1E4775]/70">
-      Your Deposit:{" "}
- <span className="font-medium text-[#1E4775]">
-        {depositFmt.display}
-        {depositFmt.usd && <span className="text-[#1E4775]/50 ml-1">({depositFmt.usd})</span>}
- </span>
- </div>
-  );
-})()}
+  const hasWithdrawPreview = Boolean(amount && parseFloat(amount) > 0);
+  const isProcessing = step === "withdrawing";
+  const withdrawDisabled =
+    step === "error"
+      ? false
+      : isProcessing ||
+        !amount ||
+        parseFloat(amount) <= 0 ||
+        userDeposit === 0n ||
+        !!simulateError;
 
- {/* Amount Input */}
- <AmountInputBlock
-   value={amount}
-   onChange={handleAmountChange}
-   onMax={handleMaxClick}
-   disabled={step === "withdrawing"}
-   error={error}
-   balanceContent={
-     <>
-       Available: {formatTokenAmount(userDeposit, collateralSymbol).display}
-     </>
-   }
-   inputClassName={`w-full h-12 px-4 pr-20 bg-white text-[#1E4775] border ${
-     error ? "border-red-500" : "border-[#1E4775]/30"
-   } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`}
- />
+  // Withdraw form content (aligned with Sail redeem / Genesis deposit manage modals)
+  const formContent = (
+    <div className="space-y-4">
+      {!embedded ? (
+        <DepositModalFlowOverview parts={genesisWithdrawFlowParts()} />
+      ) : null}
 
- {/* Notifications - Harbor Marks Warning */}
- <ModalNotificationsPanel
-   expanded={showNotifications}
-   onToggle={() => setShowNotifications((prev) => !prev)}
-   badge={
-     <span className="flex items-center gap-1 bg-[#FF8A7A]/20 px-2 py-0.5 text-xs text-[#FF8A7A]">
-       <Bell className="h-3 w-3" />
-       1
-     </span>
-   }
- >
-   <InfoCallout
-     tone="pearl"
-     icon={<AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#D57A3D]" />}
-     title="Harbor Marks Warning:"
-   >
-     Withdrawing forfeits any <span className="font-semibold">Harbor Marks</span> for withdrawn
-     assets. Only assets still deposited at genesis close are eligible for
-     completion bonus marks earned during the genesis period.
-   </InfoCallout>
- </ModalNotificationsPanel>
+      {!embedded ? (
+        <ModalNotificationsPanel
+          expanded={showNotifications}
+          onToggle={() => setShowNotifications((prev) => !prev)}
+          badge={
+            <span
+              className={`flex items-center gap-1 px-2 py-0.5 text-xs ${depositModalNotificationBadgeClass.coral}`}
+            >
+              <Bell className="h-3 w-3" />
+              1
+            </span>
+          }
+        >
+          <InfoCallout
+            tone="pearl"
+            icon={
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#D57A3D]" />
+            }
+            title="Harbor Marks Warning:"
+          >
+            Withdrawing forfeits any <span className="font-semibold">Harbor Marks</span>{" "}
+            for withdrawn assets. Only assets still deposited at genesis close are
+            eligible for completion bonus marks earned during the genesis period.
+          </InfoCallout>
+        </ModalNotificationsPanel>
+      ) : null}
 
- {/* Transaction Preview */}
- {amount && parseFloat(amount ||"0") > 0 && (
- <div className="space-y-3">
- <div className="p-3 bg-[#17395F]/10 border border-[#1E4775]/20 space-y-2 text-sm">
- <div className="font-medium text-[#1E4775]">
- Transaction Preview:
- </div>
-{(() => {
-  const currentFmt = formatTokenAmount(
-    userDeposit,
-    collateralSymbol,
-    collateralPriceUSD
-  );
-  return (
-    <div className="flex justify-between items-baseline">
-      <span className="text-[#1E4775]/70">Current Deposit:</span>
- <span className="text-[#1E4775]">
-        {currentFmt.display}
-        {currentFmt.usd && <span className="text-[#1E4775]/50 ml-1">({currentFmt.usd})</span>}
- </span>
- </div>
-  );
-})()}
-{(() => {
-  const withdrawAmt = isMaxWithdrawal ? userDeposit : amountBigInt;
-  const withdrawFmt = formatTokenAmount(
-    withdrawAmt,
-    collateralSymbol,
-    collateralPriceUSD
-  );
-  return (
-    <div className="flex justify-between items-baseline">
-      <span className="text-[#1E4775]/70">- Withdraw Amount:</span>
- <span className="text-red-600">
-        -{withdrawFmt.display}
-        {withdrawFmt.usd && <span className="text-red-400 ml-1">(-{withdrawFmt.usd})</span>}
- </span>
- </div>
-  );
-})()}
- <div className="border-t border-[#1E4775]/20 pt-2">
-{(() => {
-  const remainingFmt = formatTokenAmount(
-    remainingDeposit,
-    collateralSymbol,
-    collateralPriceUSD
-  );
-  return (
-    <div className="flex justify-between items-baseline font-medium">
-      <span className="text-[#1E4775]">Remaining Deposit:</span>
-      <span className={remainingDeposit === 0n ? "text-orange-600" : "text-[#1E4775]"}>
-        {remainingFmt.display}
-        {remainingFmt.usd && <span className={`font-normal ml-1 ${remainingDeposit === 0n ? "text-orange-400" : "text-[#1E4775]/50"}`}>({remainingFmt.usd})</span>}
- </span>
- </div>
-  );
-})()}
- </div>
- </div>
- </div>
- )}
+      <TokenAmountSection
+        amount={{
+          value: amount,
+          setValue: setAmount,
+          balance: userDeposit,
+          decimals: 18,
+          label: "Enter Amount",
+          disabled: isProcessing,
+          error,
+          capAtBalance: false,
+          onErrorClear: () => setError(null),
+          balanceSymbol: collateralSymbol,
+          balanceMaxDecimals: 6,
+          customHandleChange: handleAmountChange,
+          customHandleMax: handleMaxClick,
+          balanceContent: (
+            <>
+              Available: {formatTokenAmount(userDeposit, collateralSymbol).display}
+            </>
+          ),
+        }}
+        betweenTokenAndAmount={
+          <div className="rounded-md border border-[#1E4775]/10 bg-[#17395F]/5 px-3 py-2 text-sm">
+            <span className="text-[#1E4775]/70">Your deposit: </span>
+            <span className="font-medium font-mono text-[#1E4775]">
+              {depositFmt.display}
+              {depositFmt.usd ? (
+                <span className="font-sans font-normal text-[#1E4775]/50 ml-1">
+                  ({depositFmt.usd})
+                </span>
+              ) : null}
+            </span>
+          </div>
+        }
+      />
 
- {/* Error */}
- {error && (
- <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm">
- {error}
- </div>
- )}
-
- {/* Transaction Hash */}
- {txHash && (
- <div className="text-xs text-center text-[#1E4775]/70">
- Tx:{" "}
- <a
- href={`https://etherscan.io/tx/${txHash}`}
- target="_blank"
- rel="noopener noreferrer"
- className="underline hover:text-[#1E4775]"
- >
- {txHash.slice(0, 10)}...{txHash.slice(-8)}
- </a>
- </div>
- )}
-
- {/* Success Message */}
- {step ==="success" && (
- <div className="p-3 bg-[rgb(var(--surface-selected-rgb))]/30 border border-[rgb(var(--surface-selected-border-rgb))]/50 text-[#1E4775] text-sm text-center">
- ✅ Withdrawal successful!
- </div>
- )}
-
-      {/* Submit Button */}
-      <div>
- <button
- onClick={handleWithdraw}
- disabled={
-            step === "withdrawing" ||
- !amount ||
- parseFloat(amount) <= 0 ||
- userDeposit === 0n ||
- !!simulateError
- }
-          className={`w-full py-3 px-4 font-medium transition-colors rounded-full ${
-            step === "success"
-              ? "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
-              : "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-gray-300 disabled:text-gray-500"
- }`}
- >
-          {step === "withdrawing"
-            ? "Withdrawing..."
-            : step === "error"
-            ? "Try Again"
-            : "Withdraw"}
- </button>
+      <div className="space-y-2 mb-4">
+        <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
+          Transaction Overview
+        </label>
+        <div className="rounded-md border border-[#1E4775]/10 bg-[#17395F]/5 p-2.5">
+          {hasWithdrawPreview ? (
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between items-baseline">
+                <span className="text-[#1E4775]/70">Current deposit:</span>
+                <span className="font-mono text-[#1E4775]">
+                  {depositFmt.display}
+                  {depositFmt.usd ? (
+                    <span className="font-sans text-[#1E4775]/50 ml-1">
+                      ({depositFmt.usd})
+                    </span>
+                  ) : null}
+                </span>
+              </div>
+              {(() => {
+                const withdrawAmt = isMaxWithdrawal ? userDeposit : amountBigInt;
+                const withdrawFmt = formatTokenAmount(
+                  withdrawAmt,
+                  collateralSymbol,
+                  collateralPriceUSD
+                );
+                return (
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-[#1E4775]/70">You will receive:</span>
+                    <span className="font-mono font-semibold text-[#1E4775]">
+                      {withdrawFmt.display}
+                      {withdrawFmt.usd ? (
+                        <span className="font-sans font-normal text-[#1E4775]/50 ml-1">
+                          ({withdrawFmt.usd})
+                        </span>
+                      ) : null}
+                    </span>
+                  </div>
+                );
+              })()}
+              <div className="border-t border-[#1E4775]/20 pt-2">
+                {(() => {
+                  const remainingFmt = formatTokenAmount(
+                    remainingDeposit,
+                    collateralSymbol,
+                    collateralPriceUSD
+                  );
+                  return (
+                    <div className="flex justify-between items-baseline">
+                      <span className="font-medium text-[#1E4775]/70">
+                        Remaining deposit:
+                      </span>
+                      <span
+                        className={`font-mono font-semibold ${
+                          remainingDeposit === 0n ? "text-orange-600" : "text-[#1E4775]"
+                        }`}
+                      >
+                        {remainingFmt.display}
+                        {remainingFmt.usd ? (
+                          <span
+                            className={`font-sans font-normal ml-1 ${
+                              remainingDeposit === 0n
+                                ? "text-orange-400"
+                                : "text-[#1E4775]/50"
+                            }`}
+                          >
+                            ({remainingFmt.usd})
+                          </span>
+                        ) : null}
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-[#1E4775]/50 italic">
+              Enter an amount to see withdrawal preview
+            </p>
+          )}
+        </div>
       </div>
+
+      {error ? (
+        <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm text-center flex items-center justify-center gap-2">
+          <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
+          {error}
+        </div>
+      ) : null}
+
+      {isProcessing && !progress.isOpen ? (
+        <div className="text-center py-4">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-b-2 border-[#1E4775]" />
+          <p className="mt-2 text-sm text-[#1E4775]">Withdrawing collateral...</p>
+        </div>
+      ) : null}
+
+      {!isProcessing ? (
+        <div className="flex flex-col-reverse gap-2 sm:flex-row mt-4">
+          <button
+            type="button"
+            onClick={handleClose}
+            className="flex-1 rounded-md py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleWithdraw}
+            disabled={withdrawDisabled}
+            className="flex-1 rounded-md py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+          >
+            {step === "error" ? "Try Again" : "Withdraw"}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 

@@ -18,14 +18,25 @@ import {
   SailBasicMarketCardsGrid,
 } from "@/components/sail";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
-import { isSailSoonUi, type DefinedMarket } from "@/config/markets";
+import {
+  isMarketArchived,
+  isSailSoonUi,
+  markets as marketsConfig,
+  type DefinedMarket,
+} from "@/config/markets";
 import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
 import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
 import { IndexMarketsLoadError } from "@/components/shared/IndexMarketsLoadError";
 import { useExpandedMarketIds } from "@/hooks/useExpandedMarketIds";
-import { ensureMarketWalletChain } from "@/utils/ensureMarketWalletChain";
+import { useOpenMarketManageModal } from "@/hooks/useOpenMarketManageModal";
 import { formatCompactUSD } from "@/utils/anchor";
 import { isValidContractAddress } from "@/utils/isValidContractAddress";
+
+type SailManageModalPayload = {
+  marketId: string;
+  market: DefinedMarket;
+  initialTab: "mint" | "redeem";
+};
 
 export default function SailPage() {
   const connectedChainId = useChainId();
@@ -85,15 +96,37 @@ export default function SailPage() {
 
   const { expandedMarkets, toggleExpandedMarket: handleToggleMarketExpand } =
     useExpandedMarketIds();
-  const [manageModalOpen, setManageModalOpen] = useState(false);
-  const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
-  const [selectedMarket, setSelectedMarket] = useState<DefinedMarket | null>(
+  const [manageModal, setManageModal] = useState<SailManageModalPayload | null>(
     null
   );
-  const [manageModalTab, setManageModalTab] = useState<"mint" | "redeem">(
-    "mint"
-  );
   const [showArchivedSail, setShowArchivedSail] = useState(false);
+
+  const openManageModalBase = useOpenMarketManageModal<SailManageModalPayload>({
+    isConnected,
+    connectedChainId,
+    switchChain,
+    setManageModal,
+    logLabel: "Sail",
+  });
+
+  const openManageModal = useCallback(
+    async (
+      marketId: string,
+      market: DefinedMarket,
+      initialTab: "mint" | "redeem" = "mint"
+    ) => {
+      const resolvedTab =
+        isMarketArchived(market) && initialTab === "mint"
+          ? "redeem"
+          : initialTab;
+      await openManageModalBase({
+        marketId,
+        market,
+        initialTab: resolvedTab,
+      });
+    },
+    [openManageModalBase]
+  );
 
   const queryClient = useQueryClient();
 
@@ -109,32 +142,9 @@ export default function SailPage() {
 
   const handleManageMarketOpen = useCallback(
     (marketId: string, m: DefinedMarket) => {
-      void (async () => {
-        const marketChainId =
-          (m as DefinedMarket & { chainId?: number }).chainId ?? 1;
-        const isReady = await ensureMarketWalletChain({
-          isConnected,
-          connectedChainId,
-          marketChainId,
-          switchChain,
-          onSwitchRejected: (err) => {
-            if (process.env.NODE_ENV === "development") {
-              console.warn(
-                "[Sail] Network switch rejected before opening manage modal:",
-                err
-              );
-            }
-          },
-        });
-        if (!isReady) return;
-
-        setSelectedMarketId(marketId);
-        setSelectedMarket(m);
-        setManageModalTab("mint");
-        setManageModalOpen(true);
-      })();
+      void openManageModal(marketId, m, "mint");
     },
-    [connectedChainId, isConnected, switchChain]
+    [openManageModal]
   );
 
   return (
@@ -206,6 +216,8 @@ export default function SailPage() {
                   minterConfigByMarketId={minterConfigByMarketId}
                   isConnected={isConnected}
                   onExploreMarket={handleManageMarketOpen}
+                  userDepositMap={userDepositMap}
+                  tokenPricesByMarket={tokenPricesByMarket}
                 />
               ) : (
                 <>
@@ -267,29 +279,20 @@ export default function SailPage() {
             onManage={(marketId) => {
               const m = (marketsConfig as Record<string, DefinedMarket>)[marketId];
               if (!m) return;
-              setSelectedMarketId(marketId);
-              setSelectedMarket(m);
-              setManageModalTab("redeem");
-              setManageModalOpen(true);
+              void openManageModal(marketId, m, "redeem");
             }}
           />
         </main>
 
-        {selectedMarketId && selectedMarket && (
+        {manageModal && (
           <SailManageModal
-            isOpen={manageModalOpen}
-            onClose={() => {
-              setManageModalOpen(false);
-              setSelectedMarketId(null);
-              setSelectedMarket(null);
-            }}
-            marketId={selectedMarketId}
-            market={selectedMarket}
-            initialTab={manageModalTab}
+            isOpen={!!manageModal}
+            onClose={() => setManageModal(null)}
+            marketId={manageModal.marketId}
+            market={manageModal.market}
+            initialTab={manageModal.initialTab}
             onSuccess={async () => {
-              setManageModalOpen(false);
-              setSelectedMarketId(null);
-              setSelectedMarket(null);
+              setManageModal(null);
               await Promise.all([
                 refetchReads(),
                 refetchUserDeposits(),
@@ -305,7 +308,7 @@ export default function SailPage() {
               });
             }}
             leveragedTokenPriceUSD={
-              tokenPricesByMarket[selectedMarketId]?.leveragedPriceUSD
+              tokenPricesByMarket[manageModal.marketId]?.leveragedPriceUSD
             }
             ethPrice={sailPageEthPrice}
             wstETHPrice={sailPageWstETHPrice}

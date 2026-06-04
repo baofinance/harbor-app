@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAccount } from "wagmi";
+import { useHarborAccount } from "@/hooks/useHarborAccount";
 import { useQuery } from "@tanstack/react-query";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import { useMarketBoostWindows } from "@/hooks/useMarketBoostWindows";
@@ -31,7 +31,7 @@ import { partitionMarketsByArchived } from "@/utils/marketPartitions";
  * UI-only state (modal, expanded rows, layout toggle) stays in `page.tsx`.
  */
 export function useSailPageData(layoutIsBasic: boolean) {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useHarborAccount();
 
   const [longFilterSelected, setLongFilterSelected] = useState<string[]>([]);
   const [shortFilterSelected, setShortFilterSelected] = useState<string[]>([]);
