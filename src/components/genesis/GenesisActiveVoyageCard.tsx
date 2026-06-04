@@ -20,7 +20,7 @@ import { GenesisMaidenVoyageStageStrip } from "./GenesisMaidenVoyageStageStrip";
 import { GenesisVoyageStatusBadge } from "./GenesisVoyageStatusBadge";
 import {
   MV_CARD_INNER_GRADIENT,
-  MV_CARD_SHELL,
+  MV_MAIN_CARD_SHELL,
   MV_CAPTION_TEXT,
   MV_FOOTER_PANEL,
   MV_META_TEXT,
@@ -102,7 +102,7 @@ export function GenesisActiveVoyageCard({
 
   return (
     <section
-      className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} overflow-hidden`}
+      className={`${MV_MAIN_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} overflow-hidden`}
       aria-label="Active maiden voyage"
     >
       <div className="px-4 py-3 sm:px-5">

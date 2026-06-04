@@ -101,7 +101,7 @@ export function GenesisActiveVoyageMetrics({
   const ownership = resolveOwnershipLabel(capDisplay, genesisAddress);
 
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.5fr)_minmax(0,0.75fr)_minmax(0,0.75fr)] md:gap-0">
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.5fr)_minmax(0,0.75fr)_minmax(0,0.75fr)] md:items-center md:gap-0">
       <div className="min-w-0 md:pr-4">
         <p className={MV_SECTION_LABEL}>Voyage Capacity</p>
         <p className="mt-0.5 font-mono text-2xl font-bold tabular-nums leading-none sm:text-3xl">

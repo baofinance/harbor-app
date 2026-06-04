@@ -21,6 +21,10 @@ export const MV_GLASS_INSET = MV_GLASS_INSET_LIGHT;
 /** Primary card shell. */
 export const MV_CARD_SHELL = `rounded-2xl ${MV_GLASS_SURFACE}`;
 
+/** Active voyage / primary campaign card — frosted glass with visible outline. */
+export const MV_MAIN_CARD_SHELL =
+  `rounded-2xl border border-white/12 ${MV_GLASS_SURFACE}`;
+
 export const MV_CARD_INNER_GRADIENT =
   "bg-gradient-to-b from-white/[0.03] via-transparent to-transparent";
 
@@ -70,7 +74,7 @@ export const MV_HEADLINE = "font-mono font-bold leading-[1.1]";
 export const MV_HEADLINE_SIZE =
   "text-[length:clamp(1.0625rem,calc(100cqi/15),3.5rem)]";
 
-/** Centered stat columns in the active voyage metrics row. */
+/** Centered stat columns in the active voyage metrics row (horizontal + vertical). */
 export const MV_METRIC_STAT_COLUMN = "text-center";
 
 export const MV_HEADLINE_PRIMARY = `block whitespace-nowrap text-white ${MV_HEADLINE_SIZE}`;
