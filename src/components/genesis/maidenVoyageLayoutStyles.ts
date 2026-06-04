@@ -36,8 +36,9 @@ export const MV_POSITION_ROW = `rounded-xl ${MV_GLASS_INSET_LIGHT}`;
 export const MV_STATS_BAND =
   "border-y border-white/[0.08] bg-[#0a1929]/40 backdrop-blur-lg";
 
+/** Active voyage card stage strip — darker inset at card bottom. */
 export const MV_FOOTER_PANEL =
-  "border-t border-white/12 bg-white/[0.08] backdrop-blur-sm";
+  "border-t border-white/[0.08] bg-[#0a1929]/55 backdrop-blur-md";
 
 export const MV_MUTED_TEXT = "text-white/75";
 
@@ -67,7 +68,10 @@ export const MV_HEADLINE = "font-mono font-bold leading-[1.1]";
 
 /** Scales with hero column width so the primary line stays on one row. */
 export const MV_HEADLINE_SIZE =
-  "text-[length:clamp(1rem,calc(100cqi/16.5),3.125rem)]";
+  "text-[length:clamp(1.0625rem,calc(100cqi/15),3.5rem)]";
+
+/** Centered stat columns in the active voyage metrics row. */
+export const MV_METRIC_STAT_COLUMN = "text-center";
 
 export const MV_HEADLINE_PRIMARY = `block whitespace-nowrap text-white ${MV_HEADLINE_SIZE}`;
 

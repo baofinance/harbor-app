@@ -11,6 +11,7 @@ import {
   MV_PROGRESS_FILL,
   MV_PROGRESS_FILL_COMPLETE,
   MV_PROGRESS_TRACK,
+  MV_METRIC_STAT_COLUMN,
   MV_SECTION_LABEL,
   MV_TEXT_ON_GLASS,
 } from "./maidenVoyageLayoutStyles";
@@ -142,7 +143,9 @@ export function GenesisActiveVoyageMetrics({
         ) : null}
       </div>
 
-      <div className="min-w-0 border-t border-white/10 pt-3 md:border-l md:border-t-0 md:px-4 md:pt-0">
+      <div
+        className={`min-w-0 border-t border-white/10 pt-3 md:border-l md:border-t-0 md:px-4 md:pt-0 ${MV_METRIC_STAT_COLUMN}`}
+      >
         <p className={MV_SECTION_LABEL}>Est. Your Share</p>
         <p className="mt-0.5 font-mono text-2xl font-bold tabular-nums text-white/95 sm:text-3xl">
           {ownership.label}
@@ -150,7 +153,9 @@ export function GenesisActiveVoyageMetrics({
         <p className={`mt-0.5 ${MV_CAPTION_TEXT}`}>{ownership.caption}</p>
       </div>
 
-      <div className="min-w-0 border-t border-white/10 pt-3 md:border-l md:border-t-0 md:pl-4 md:pt-0">
+      <div
+        className={`min-w-0 border-t border-white/10 pt-3 md:border-l md:border-t-0 md:pl-4 md:pt-0 ${MV_METRIC_STAT_COLUMN}`}
+      >
         <p className={MV_SECTION_LABEL}>Revenue Share</p>
         <p className="mt-0.5 font-mono text-2xl font-bold tabular-nums text-white/95 sm:text-3xl">
           {yieldRevSharePct != null ? `${yieldRevSharePct}%` : "—"}

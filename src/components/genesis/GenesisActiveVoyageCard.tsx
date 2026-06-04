@@ -191,7 +191,7 @@ export function GenesisActiveVoyageCard({
         </div>
       </div>
 
-      <footer className={`${MV_FOOTER_PANEL} px-4 py-2 sm:px-5`}>
+      <footer className={`${MV_FOOTER_PANEL} px-4 py-3 sm:px-5`}>
         <GenesisMaidenVoyageStageStrip status={voyageStatus} />
       </footer>
     </section>
