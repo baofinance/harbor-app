@@ -1,3 +1,8 @@
+import {
+  BASIC_MARKET_DIRECTION_LONG_CHIP_CLASS,
+  BASIC_MARKET_DIRECTION_SHORT_CHIP_CLASS,
+} from "@/components/market-cards/harborBasicMarketTokens";
+
 /** Shared Maiden Voyage 2.0 landing layout tokens (dark campaign theme). */
 
 /** Shared drop shadow for large cards and borderless position rows. */
@@ -114,8 +119,13 @@ export const MV_TYPE_TAG =
 export const MV_LIVE_BADGE =
   "inline-flex items-center gap-1.5 rounded-full border border-[#FF8A7A]/50 bg-[#FF8A7A]/30 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-[0_0_20px_-4px_rgba(255,138,122,0.55)]";
 
-export const MV_COMPLETED_PILL =
-  "inline-flex items-center gap-1 rounded-full border border-[#4A9784]/40 bg-[#4A9784]/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#B8EBD5]";
+/** Lifecycle pills — match Sail Long / Short direction chips (icon replaces dot). */
+const MV_LIFECYCLE_PILL_BASE =
+  "inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[10px] font-black uppercase leading-none tracking-[0.03em]";
+
+export const MV_COMPLETED_PILL = `${MV_LIFECYCLE_PILL_BASE} ${BASIC_MARKET_DIRECTION_LONG_CHIP_CLASS}`;
+
+export const MV_ARCHIVED_PILL = `${MV_LIFECYCLE_PILL_BASE} ${BASIC_MARKET_DIRECTION_SHORT_CHIP_CLASS}`;
 
 /** Uniform vertical gap between right-rail cards (steps, why join, rewards). */
 export const MV_SIDEBAR_STACK = "flex flex-col gap-4 lg:gap-6";

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
-import { BellIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
+import { BellIcon } from "@heroicons/react/24/outline";
 import {
   FEATURED_COMPLETED_MARKET_IDS,
   getGenesisMarketTypeLabel,
@@ -50,7 +50,11 @@ import {
   MV_EXPLORER_TABLE_SCROLL_WRAP_CLASSNAME,
   MV_EXPLORER_TYPE_CHIP_CLASSNAME,
 } from "./genesisMaidenVoyageTableGrid";
-import { MV_COMPLETED_PILL, MV_UPCOMING_BADGE } from "./maidenVoyageLayoutStyles";
+import {
+  GenesisVoyageArchivedBadge,
+  GenesisVoyageCompletedBadge,
+} from "./GenesisVoyageLifecycleBadge";
+import { MV_UPCOMING_BADGE } from "./maidenVoyageLayoutStyles";
 
 const EXPLORER_NETWORK_ICON_PX = 20;
 
@@ -466,16 +470,14 @@ function GenesisExplorerRow({
         ? "Ended"
         : "Open";
 
-  const lifecycleCell = showCompleted ? (
-    <span className={MV_COMPLETED_PILL}>
-      <CheckCircleIcon className="h-3.5 w-3.5" aria-hidden />
-      Completed
-    </span>
-  ) : (
-    <span className={MV_EXPLORER_OPEN_STATUS_CLASSNAME}>
-      {archived ? "Archived" : "Open"}
-    </span>
-  );
+  const lifecycleCell =
+    showCompleted && !archived ? (
+      <GenesisVoyageCompletedBadge />
+    ) : archived ? (
+      <GenesisVoyageArchivedBadge />
+    ) : (
+      <span className={MV_EXPLORER_OPEN_STATUS_CLASSNAME}>Open</span>
+    );
 
   const voyageInner = (
     <div className={MV_EXPLORER_COL_VOYAGE_INNER_CLASSNAME}>

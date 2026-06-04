@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { formatEther } from "viem";
-import { CheckCircleIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import {
   FEATURED_COMPLETED_MARKET_IDS,
   getGenesisMarketTypeLabel,
@@ -20,7 +20,8 @@ import { GenesisMarketRowClaimActions } from "./GenesisMarketRowClaimActions";
 import { GenesisMarketCollateralEquationStrip } from "./GenesisMarketSharedRowCells";
 import { readContractRowResult } from "./readContractRow";
 import type { GenesisClaimMarketArgs } from "./GenesisCompletedMarketsSection";
-import { MV_COMPLETED_PILL, MV_TABLE_ROW, MV_TYPE_TAG } from "./maidenVoyageLayoutStyles";
+import { GenesisVoyageCompletedBadge } from "./GenesisVoyageLifecycleBadge";
+import { MV_TABLE_ROW, MV_TYPE_TAG } from "./maidenVoyageLayoutStyles";
 
 export type GenesisFeaturedCompletedVoyagesProps = {
   genesisMarkets: Array<[string, GenesisMarketConfig]>;
@@ -215,12 +216,7 @@ export function GenesisFeaturedCompletedVoyages({
               )}
 
               <div className="flex items-center md:justify-end">
-                {showCompletedPill ? (
-                  <span className={MV_COMPLETED_PILL}>
-                    <CheckCircleIcon className="h-3.5 w-3.5" aria-hidden />
-                    Completed
-                  </span>
-                ) : null}
+                {showCompletedPill ? <GenesisVoyageCompletedBadge /> : null}
               </div>
 
               <div className="flex shrink-0 items-center justify-between gap-2 md:justify-end">
