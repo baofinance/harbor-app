@@ -148,7 +148,7 @@ export function getActiveVoyageFootnote(status: ActiveVoyageStatus): string {
   switch (status) {
     case "deposits_open":
     case "almost_full":
-      return "Deposits close when capacity is reached.";
+      return "";
     case "capacity_reached":
       return "Waiting for the market to launch.";
     case "preparing_launch":
