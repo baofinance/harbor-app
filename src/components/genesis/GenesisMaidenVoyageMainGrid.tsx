@@ -26,10 +26,7 @@ export function GenesisMaidenVoyageMainGrid({
       </div>
       <aside className="min-w-0">
         {activeCard ? (
-          <GenesisVoyageRewardsCard
-            endDate={activeCard.endDate}
-            voyageStatus={activeCard.voyageStatus}
-          />
+          <GenesisVoyageRewardsCard />
         ) : null}
       </aside>
     </section>

@@ -124,9 +124,6 @@ export const MV_DETAILS_PANEL = MV_POSITION_ROW;
 
 export const MV_GLASS_HOVER = "transition hover:bg-white/[0.14]";
 
-export const MV_COUNTDOWN_PANEL =
-  "rounded-lg border border-white/[0.08] bg-[#0a1929]/55 backdrop-blur-md";
-
 export const MV_TABLE_HEADER =
   "hidden md:grid gap-3 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/45 lg:text-[11px]";
 

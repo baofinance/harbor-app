@@ -9,7 +9,6 @@ export type { GenesisMaidenVoyageMainGridProps } from "./GenesisMaidenVoyageMain
 export { GenesisMaidenVoyageSidebarStats } from "./GenesisMaidenVoyageSidebarStats";
 export type { GenesisMaidenVoyageSidebarStatsProps } from "./GenesisMaidenVoyageSidebarStats";
 export { GenesisVoyageRewardsCard } from "./GenesisVoyageRewardsCard";
-export type { GenesisVoyageRewardsCardProps } from "./GenesisVoyageRewardsCard";
 export { GenesisMaidenVoyageExplorer } from "./GenesisMaidenVoyageExplorer";
 export type { GenesisMaidenVoyageExplorerProps } from "./GenesisMaidenVoyageExplorer";
 export { GenesisMaidenVoyageStatsBand } from "./GenesisMaidenVoyageStatsBand";
