@@ -21,6 +21,31 @@ export function GenesisMarketChainCell({
   );
 }
 
+const FEATURED_CHAIN_PILL_CLASS =
+  "inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-white pl-2 pr-3.5 text-[#1E4775] shadow-sm ring-1 ring-white/25";
+
+/**
+ * Featured voyage header (dark glass): icon + chain name in a white pill (Ethereum & MegaETH).
+ */
+export function FeaturedVoyageChainMark({
+  chainName,
+  chainLogo = "icons/eth.png",
+  iconSize = 20,
+}: {
+  chainName: string;
+  chainLogo?: string;
+  iconSize?: number;
+}) {
+  return (
+    <span className={FEATURED_CHAIN_PILL_CLASS}>
+      <NetworkIconCell chainName={chainName} chainLogo={chainLogo} size={iconSize} />
+      <span className="text-sm font-semibold leading-none tracking-tight">
+        {chainName}
+      </span>
+    </span>
+  );
+}
+
 /** Collateral = pegged + leveraged logos; shared by completed rows and similar compact layouts. */
 export function GenesisMarketCollateralEquationStrip({
   collateralSymbol,

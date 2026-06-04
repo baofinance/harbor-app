@@ -6,7 +6,6 @@ import { BellIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
 import {
   FEATURED_COMPLETED_MARKET_IDS,
   getGenesisMarketTypeLabel,
-  isFeaturedActiveMarket,
   isFeaturedCompletedMarket,
   MAIDEN_VOYAGE_DOCS_URL,
 } from "@/config/maidenVoyageFeatured";
@@ -152,10 +151,8 @@ export function GenesisMaidenVoyageExplorer({
 
   const statusFilter = tab;
 
-  const tableMarkets = useMemo(
-    () => genesisMarkets.filter(([id]) => !isFeaturedActiveMarket(id)),
-    [genesisMarkets],
-  );
+  /** Include all live genesis markets (ETH + MegaETH, etc.) — featured hero does not remove rows. */
+  const tableMarkets = genesisMarkets;
 
   const archivedMarkets = useMemo(
     () => tableMarkets.filter(([, mkt]) => isMarketArchived(mkt)),

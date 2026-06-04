@@ -1166,7 +1166,7 @@ export const markets = {
           sailActive: "soon",
           test: false,
           status: "genesis" as const,
-          genesisActive: "soon" as GenesisActiveSetting,
+          genesisActive: true as GenesisActiveSetting,
           pegTarget: "USD",
           chainId: 4326,
           zapper: false,
@@ -1196,12 +1196,21 @@ export const markets = {
             wrappedCollateralToken: contractsMarkets["wsteth-usd-megaeth"].addresses.wrappedCollateralToken,
           },
           startBlock: contractsMarkets["wsteth-usd-megaeth"].startBlock,
-          peggedToken: { name: "Harbor Anchored USD", symbol: "haUSD", description: "Pegged token" },
-          leveragedToken: { name: "Harbor Sail stETH-USD", symbol: "hsSTETH-USD", description: "Leveraged token" },
-          rewardPoints: { pointsPerDollar: 100, description: "Ledger marks per dollar" },
+          peggedToken: {
+            name: "Harbor Anchored USD",
+            symbol: "haUSD",
+            description: "Pegged token",
+          },
+          leveragedToken: {
+            name: "Harbor Sail stETH-USD",
+            symbol: "hsSTETH-USD",
+            description: "Leveraged token",
+          },
+          rewardPoints: {
+            pointsPerDollar: 100,
+            description: "Ledger marks per dollar",
+          },
           marksCampaign: { id: "megaeth", label: "MegaETH" },
-          /** wstETH-denominated early depositor cap (see `getGenesisDepositCapData` / Genesis index row). */
-          genesisTokenCapAmount: 50,
           coinGeckoId: "wrapped-steth",
           genesis: {
             startDate: contractsMarkets["wsteth-usd-megaeth"].genesis.startDate,

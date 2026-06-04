@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightIcon } from "@heroicons/react/24/outline";
+import { ArrowRightIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { HarborBasicMarketStatusRow } from "@/components/market-cards/HarborBasicMarketStatusRow";
 import { HarborMarketTokenFlowStrip } from "@/components/market-cards/HarborMarketTokenFlowStrip";
 import {
@@ -19,7 +19,7 @@ import type { MaidenVoyageStatsBarData } from "@/utils/maidenVoyageStatsBar";
 import { INDEX_CORAL_INFO_TAG_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
 import { HARBOR_LEARN_MORE_DARK_LINK_CLASS } from "@/components/market-cards/harborBasicMarketTokens";
 import { GenesisActiveVoyageMetrics } from "./GenesisActiveVoyageMetrics";
-import { GenesisMarketChainCell } from "./GenesisMarketSharedRowCells";
+import { FeaturedVoyageChainMark } from "./GenesisMarketSharedRowCells";
 import {
   GenesisMaidenVoyageStageLabel,
   GenesisMaidenVoyageStageStrip,
@@ -50,6 +50,8 @@ export type GenesisActiveVoyageCardProps = {
   isClaiming: boolean;
   onDeposit: () => void;
   onClaim: () => void;
+  /** Cycles featured hero among active campaigns (e.g. ETH → MegaETH). */
+  onNextMarket?: () => void;
   /** @deprecated Card always renders with shell; kept for call-site compatibility. */
   embedded?: boolean;
 };
@@ -70,6 +72,7 @@ export function GenesisActiveVoyageCard({
   isClaiming,
   onDeposit,
   onClaim,
+  onNextMarket,
 }: GenesisActiveVoyageCardProps) {
   const collateralSymbol =
     market.collateral?.underlyingSymbol ||
@@ -99,19 +102,19 @@ export function GenesisActiveVoyageCard({
     ? `Your deposit · ${userDepositDisplay}`
     : undefined;
 
+  const chainName = market.chain?.name ?? "Ethereum";
+  const chainLogo = market.chain?.logo ?? "icons/eth.png";
+
   return (
     <section
+      key={marketId}
       className={`${MV_MAIN_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} overflow-hidden`}
       aria-label="Active maiden voyage"
     >
       <div className="px-4 py-3 sm:px-5">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/15 pb-3">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-            <GenesisMarketChainCell
-              chainName={market.chain?.name ?? "Ethereum"}
-              chainLogo={market.chain?.logo ?? "icons/eth.png"}
-              size={40}
-            />
+            <FeaturedVoyageChainMark chainName={chainName} chainLogo={chainLogo} />
             <GenesisVoyageStatusBadge status={voyageStatus} />
             <span className="shrink-0 text-sm font-semibold text-white/95">
               Maiden Voyage #{voyageNumber}
@@ -121,13 +124,23 @@ export function GenesisActiveVoyageCard({
               className="shrink-0"
             />
           </div>
-          <span className={`${INDEX_CORAL_INFO_TAG_CLASS} shrink-0`}>
-            {marketTypeLabel}
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className={INDEX_CORAL_INFO_TAG_CLASS}>{marketTypeLabel}</span>
+            {onNextMarket ? (
+              <button
+                type="button"
+                onClick={onNextMarket}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 bg-white/[0.06] text-white/80 transition hover:bg-white/[0.12] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
+                aria-label="Next Maiden Voyage market"
+              >
+                <ChevronRightIcon className="h-4 w-4 shrink-0" aria-hidden />
+              </button>
+            ) : null}
+          </div>
         </div>
 
         <div className="flex min-h-[52px] w-full items-stretch border-b border-white/15 py-3 sm:py-3.5">
-          <div className="flex min-w-[6.5rem] flex-1 items-center justify-center px-4 sm:min-w-[7.5rem] sm:px-6">
+          <div className="flex min-w-[6.5rem] flex-1 items-center justify-center px-3 sm:min-w-[7rem] sm:px-4">
             {isConnected && depositStatusLabel ? (
               <HarborBasicMarketStatusRow
                 theme="dark"
@@ -147,7 +160,7 @@ export function GenesisActiveVoyageCard({
             className="w-px shrink-0 self-stretch bg-white/15"
             aria-hidden
           />
-          <div className="flex min-w-0 flex-[1.2] items-center justify-center px-3 sm:px-6">
+          <div className="flex min-w-0 flex-[1.2] items-center justify-center px-2 sm:px-3">
             <HarborMarketTokenFlowStrip
               theme="dark"
               variant="inline"

@@ -57,8 +57,8 @@ export function HarborMarketTokenFlowStrip({
     : BASIC_MARKET_TOKEN_STRIP_OUTER_CLASS;
   const row = isInline
     ? isDark
-      ? "flex min-h-[44px] w-full flex-nowrap items-center justify-center gap-3 sm:gap-4 text-white/85"
-      : "flex min-h-[44px] w-full flex-nowrap items-center justify-center gap-3 sm:gap-4 text-[#1E4775]"
+      ? "flex min-h-[44px] w-full flex-nowrap items-center justify-evenly gap-0 px-0.5 text-white/85 sm:px-1"
+      : "flex min-h-[44px] w-full flex-nowrap items-center justify-evenly gap-0 px-0.5 text-[#1E4775] sm:px-1"
     : isDark
       ? BASIC_MARKET_TOKEN_STRIP_DARK_ROW_CLASS
       : BASIC_MARKET_TOKEN_STRIP_ROW_CLASS;
@@ -75,7 +75,15 @@ export function HarborMarketTokenFlowStrip({
     : null;
 
   const iconColumnClass =
-    "flex min-w-[3.25rem] shrink-0 flex-col items-center gap-0.5 px-0.5 sm:min-w-[3.75rem] sm:px-1";
+    "flex min-w-[2.75rem] shrink-0 flex-col items-center gap-0.5 sm:min-w-[3rem]";
+  const leveragedIconColumnClass =
+    "flex min-w-[4.5rem] shrink-0 flex-col items-center gap-0.5 sm:min-w-[5.25rem]";
+  const operatorClass =
+    isInline && isDark
+      ? "shrink-0 min-w-[0.875rem] px-1 text-center text-sm font-semibold leading-none text-white/80"
+      : isInline
+        ? "shrink-0 min-w-[0.875rem] px-1 text-center text-sm font-semibold leading-none text-[#1E4775]/75"
+        : `shrink-0 text-xs font-light ${mutedText}`;
 
   const ariaLabel = leveraged
     ? `${collateral} to ${pegged} and ${leveraged}`
@@ -103,7 +111,7 @@ export function HarborMarketTokenFlowStrip({
 
         {leveraged ? (
           <>
-            <span className={`shrink-0 text-xs font-light ${mutedText}`} aria-hidden>
+            <span className={operatorClass} aria-hidden>
               =
             </span>
             <span className={isInline && isDark ? iconColumnClass : `${BASIC_MARKET_ICON_WELL_CLASS} flex flex-col items-center gap-0.5`}>
@@ -118,15 +126,21 @@ export function HarborMarketTokenFlowStrip({
                 </span>
               ) : null}
             </span>
-            <span className={`shrink-0 text-xs font-light ${mutedText}`} aria-hidden>
+            <span className={operatorClass} aria-hidden>
               +
             </span>
-            <span className={isInline && isDark ? iconColumnClass : `${BASIC_MARKET_ICON_WELL_CLASS} flex flex-col items-center gap-0.5`}>
+            <span
+              className={
+                isInline
+                  ? leveragedIconColumnClass
+                  : `${BASIC_MARKET_ICON_WELL_CLASS} flex flex-col items-center gap-0.5`
+              }
+            >
               <TokenLogo symbol={leveragedSymbol!} size={BASIC_MARKET_FLOW_LOGO_PX} />
               {isDark ? (
                 <span
                   className={`font-mono text-[9px] font-semibold leading-tight sm:text-[10px] ${mutedText} ${
-                    isInline ? "max-w-[5.5rem] whitespace-nowrap text-center sm:max-w-none" : ""
+                    isInline ? "whitespace-nowrap text-center" : ""
                   }`}
                 >
                   {leveraged}

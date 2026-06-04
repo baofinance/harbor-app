@@ -1,5 +1,11 @@
 /** Featured Maiden Voyage 2.0 landing markets (Phase 1). */
-export const FEATURED_ACTIVE_MARKET_ID = "steth-usd" as const;
+export const FEATURED_ACTIVE_MARKET_IDS = [
+  "steth-usd",
+  "wsteth-usd-megaeth",
+] as const;
+
+/** @deprecated Prefer `FEATURED_ACTIVE_MARKET_IDS[0]` or selected featured id. */
+export const FEATURED_ACTIVE_MARKET_ID = FEATURED_ACTIVE_MARKET_IDS[0];
 
 export const FEATURED_COMPLETED_MARKET_IDS = [
   "eth-fxusd",
@@ -7,13 +13,17 @@ export const FEATURED_COMPLETED_MARKET_IDS = [
   "btc-steth",
 ] as const;
 
+export type FeaturedActiveMarketId =
+  (typeof FEATURED_ACTIVE_MARKET_IDS)[number];
+
 export type FeaturedCompletedMarketId =
   (typeof FEATURED_COMPLETED_MARKET_IDS)[number];
 
 const FEATURED_COMPLETED_SET = new Set<string>(FEATURED_COMPLETED_MARKET_IDS);
+const FEATURED_ACTIVE_SET = new Set<string>(FEATURED_ACTIVE_MARKET_IDS);
 
 export function isFeaturedActiveMarket(marketId: string): boolean {
-  return marketId === FEATURED_ACTIVE_MARKET_ID;
+  return FEATURED_ACTIVE_SET.has(marketId);
 }
 
 export function isFeaturedCompletedMarket(marketId: string): boolean {
@@ -24,9 +34,34 @@ export function isFeaturedMaidenVoyageMarket(marketId: string): boolean {
   return isFeaturedActiveMarket(marketId) || isFeaturedCompletedMarket(marketId);
 }
 
-/** Voyage index for the active card (launch trio count + 1). */
-export function getFeaturedVoyageNumber(_marketId?: string): number {
-  return FEATURED_COMPLETED_MARKET_IDS.length + 1;
+/** Active featured ids that exist on the current genesis index (config + genesis address). */
+export function resolveFeaturedActiveMarketIds(
+  genesisMarketIds: readonly string[]
+): FeaturedActiveMarketId[] {
+  const available = new Set(genesisMarketIds);
+  return FEATURED_ACTIVE_MARKET_IDS.filter((id) => available.has(id));
+}
+
+export function getNextFeaturedActiveMarketId(
+  currentId: string,
+  availableIds: readonly string[] = FEATURED_ACTIVE_MARKET_IDS
+): string {
+  if (availableIds.length === 0) return FEATURED_ACTIVE_MARKET_ID;
+  if (availableIds.length === 1) return availableIds[0]!;
+  const idx = availableIds.indexOf(currentId);
+  const next = idx < 0 ? 0 : (idx + 1) % availableIds.length;
+  return availableIds[next]!;
+}
+
+/** Voyage index for the active card (launch trio count + slot among active campaigns). */
+export function getFeaturedVoyageNumber(marketId?: string): number {
+  const base = FEATURED_COMPLETED_MARKET_IDS.length + 1;
+  if (!marketId) return base;
+  const idx = FEATURED_ACTIVE_MARKET_IDS.indexOf(
+    marketId as FeaturedActiveMarketId
+  );
+  if (idx >= 0) return base + idx;
+  return base;
 }
 
 export function getGenesisMarketTypeLabel(pegTarget?: string): string {

@@ -30,7 +30,11 @@ import { useGenesisPageData } from "@/hooks/useGenesisPageData";
 import { useOpenMarketManageModal } from "@/hooks/useOpenMarketManageModal";
 import { useGenesisContractReads } from "@/hooks/useGenesisContractReads";
 import { useGenesisManageRefetch } from "@/hooks/useGenesisManageRefetch";
-import { FEATURED_ACTIVE_MARKET_ID } from "@/config/maidenVoyageFeatured";
+import {
+  FEATURED_ACTIVE_MARKET_ID,
+  getNextFeaturedActiveMarketId,
+  resolveFeaturedActiveMarketIds,
+} from "@/config/maidenVoyageFeatured";
 import { maidenVoyageYieldOwnerSharePercent } from "@/config/maidenVoyageYield";
 import {
   getGenesisStatus,
@@ -78,6 +82,9 @@ export default function GenesisIndexPage() {
     marketName?: string;
     peggedSymbol?: string;
   }>({ open: false });
+  const [featuredMarketId, setFeaturedMarketId] = useState<string>(
+    FEATURED_ACTIVE_MARKET_ID,
+  );
 
   const openManageModalBase = useOpenMarketManageModal<{
     marketId: string;
@@ -242,17 +249,42 @@ export default function GenesisIndexPage() {
     });
   }, [reads, isConnected, genesisMarkets, archivedCompletedMarkets]);
 
+  const featuredActiveMarketIds = useMemo(
+    () => resolveFeaturedActiveMarketIds(genesisMarkets.map(([id]) => id)),
+    [genesisMarkets],
+  );
+
+  useEffect(() => {
+    if (featuredActiveMarketIds.length === 0) return;
+    if (!featuredActiveMarketIds.includes(featuredMarketId as (typeof featuredActiveMarketIds)[number])) {
+      setFeaturedMarketId(featuredActiveMarketIds[0]!);
+    }
+  }, [featuredActiveMarketIds, featuredMarketId]);
+
   const activeMarketEntry = useMemo((): [string, GenesisMarketConfig] | null => {
-    const fromList = genesisMarkets.find(([id]) => id === FEATURED_ACTIVE_MARKET_ID);
+    const resolvedId =
+      featuredActiveMarketIds.includes(
+        featuredMarketId as (typeof featuredActiveMarketIds)[number],
+      )
+        ? featuredMarketId
+        : featuredActiveMarketIds[0] ?? FEATURED_ACTIVE_MARKET_ID;
+
+    const fromList = genesisMarkets.find(([id]) => id === resolvedId);
     if (fromList) return fromList as [string, GenesisMarketConfig];
-    const mkt = markets[FEATURED_ACTIVE_MARKET_ID as keyof typeof markets] as
+    const mkt = markets[resolvedId as keyof typeof markets] as
       | GenesisMarketConfig
       | undefined;
     if (mkt?.addresses?.genesis) {
-      return [FEATURED_ACTIVE_MARKET_ID, mkt];
+      return [resolvedId, mkt];
     }
     return null;
-  }, [genesisMarkets]);
+  }, [genesisMarkets, featuredMarketId, featuredActiveMarketIds]);
+
+  const handleNextFeaturedMarket = useCallback(() => {
+    setFeaturedMarketId((current) =>
+      getNextFeaturedActiveMarketId(current, featuredActiveMarketIds),
+    );
+  }, [featuredActiveMarketIds]);
 
   const activeMarketData = useMemo(() => {
     if (!activeMarketEntry) return null;
@@ -519,6 +551,10 @@ export default function GenesisIndexPage() {
                       displayMarketName: activeMarketData.displayMarketName,
                       peggedSymbolForShare: activeMarketData.peggedNoPrefix,
                     }),
+                  onNextMarket:
+                    featuredActiveMarketIds.length > 1
+                      ? handleNextFeaturedMarket
+                      : undefined,
                 }
               : null
           }
