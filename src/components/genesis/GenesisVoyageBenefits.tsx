@@ -9,6 +9,7 @@ import {
 import {
   MV_CAPTION_TEXT,
   MV_ICON_BADGE,
+  MV_ICON_BADGE_SM,
   MV_SECTION_LABEL,
 } from "./maidenVoyageLayoutStyles";
 
@@ -53,7 +54,7 @@ export function GenesisVoyageBenefitsWithLayout({
         <ul className="space-y-3">
           {BENEFITS.map(({ title, description, icon: Icon }) => (
             <li key={title} className="flex items-start gap-2.5">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#FF8A7A]/30 bg-[#FF8A7A]/10 text-[#FF8A7A]">
+              <span className={MV_ICON_BADGE_SM}>
                 <Icon className="h-4 w-4" aria-hidden />
               </span>
               <div>
@@ -74,7 +75,7 @@ export function GenesisVoyageBenefitsWithLayout({
         <ul className="space-y-2.5">
           {BENEFITS.map(({ title, description, icon: Icon }) => (
             <li key={title} className="flex items-start gap-2.5">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#FF8A7A]/30 bg-[#FF8A7A]/10 text-[#FF8A7A]">
+              <span className={MV_ICON_BADGE_SM}>
                 <Icon className="h-4 w-4" aria-hidden />
               </span>
               <div>

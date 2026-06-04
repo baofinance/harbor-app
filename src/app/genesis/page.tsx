@@ -13,9 +13,8 @@ import {
   GenesisMaidenVoyageComingSoon,
   GenesisMaidenVoyageExplorer,
   GenesisMaidenVoyageFaq,
-  GenesisMaidenVoyageHeroBand,
+  GenesisMaidenVoyageFeaturedSection,
   GenesisMaidenVoyageLifecycle,
-  GenesisMaidenVoyageMainGrid,
   GenesisMaidenVoyagePageHeader,
   GenesisMaidenVoyageStatsBar,
   GenesisRevenueShareSection,
@@ -481,13 +480,10 @@ export default function GenesisIndexPage() {
           </div>
         ) : null}
 
-        <GenesisMaidenVoyageHeroBand
-          yieldRevSharePct={activeMarketData?.yieldRevSharePct ?? null}
-        />
-
         <GenesisMaidenVoyageStatsBar stats={statsBarData} />
 
-        <GenesisMaidenVoyageMainGrid
+        <GenesisMaidenVoyageFeaturedSection
+          yieldRevSharePct={activeMarketData?.yieldRevSharePct ?? null}
           activeCard={
             activeMarketData
               ? {

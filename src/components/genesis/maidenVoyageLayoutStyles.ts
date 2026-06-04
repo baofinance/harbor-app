@@ -117,12 +117,19 @@ export const MV_LIVE_BADGE =
 export const MV_COMPLETED_PILL =
   "inline-flex items-center gap-1 rounded-full border border-[#4A9784]/40 bg-[#4A9784]/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#B8EBD5]";
 
+/** Uniform vertical gap between right-rail cards (steps, why join, rewards). */
+export const MV_SIDEBAR_STACK = "flex flex-col gap-4 lg:gap-6";
+
 /** Step icon circles (Deposit, Market Launch, Claim & Earn). */
 export const MV_ICON_BADGE =
   "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[#0a1929]/55 text-[#FF8A7A] backdrop-blur-md";
 
 export const MV_ICON_BADGE_LG =
   "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[#0a1929]/55 text-[#FF8A7A] backdrop-blur-md";
+
+/** Compact list-row benefit icons (What you receive). */
+export const MV_ICON_BADGE_SM =
+  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[#0a1929]/55 text-[#FF8A7A] backdrop-blur-md";
 
 export const MV_DETAILS_PANEL = MV_POSITION_ROW;
 

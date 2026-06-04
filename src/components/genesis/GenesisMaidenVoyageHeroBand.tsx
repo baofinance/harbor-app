@@ -3,6 +3,7 @@
 import { GenesisHowItWorksSteps } from "./GenesisHowItWorksSteps";
 import { GenesisMaidenVoyageHeroCopy } from "./GenesisMaidenVoyageHeroCopy";
 import { GenesisMaidenVoyageWhyJoinCard } from "./GenesisMaidenVoyageWhyJoinCard";
+import { MV_SIDEBAR_STACK } from "./maidenVoyageLayoutStyles";
 
 export type GenesisMaidenVoyageHeroBandProps = {
   yieldRevSharePct?: number | null;
@@ -19,7 +20,7 @@ export function GenesisMaidenVoyageHeroBand({
       <div className="min-w-0">
         <GenesisMaidenVoyageHeroCopy yieldRevSharePct={yieldRevSharePct} />
       </div>
-      <aside className="flex flex-col gap-3">
+      <aside className={MV_SIDEBAR_STACK}>
         <GenesisHowItWorksSteps variant="sidebarCard" />
         <GenesisMaidenVoyageWhyJoinCard />
       </aside>

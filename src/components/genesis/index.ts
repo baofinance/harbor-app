@@ -4,6 +4,8 @@ export { GenesisCampaignHero } from "./GenesisCampaignHero";
 export { GenesisMaidenVoyagePageHeader } from "./GenesisMaidenVoyagePageHeader";
 export { GenesisMaidenVoyageHeroBand } from "./GenesisMaidenVoyageHeroBand";
 export type { GenesisMaidenVoyageHeroBandProps } from "./GenesisMaidenVoyageHeroBand";
+export { GenesisMaidenVoyageFeaturedSection } from "./GenesisMaidenVoyageFeaturedSection";
+export type { GenesisMaidenVoyageFeaturedSectionProps } from "./GenesisMaidenVoyageFeaturedSection";
 export { GenesisMaidenVoyageMainGrid } from "./GenesisMaidenVoyageMainGrid";
 export type { GenesisMaidenVoyageMainGridProps } from "./GenesisMaidenVoyageMainGrid";
 export { GenesisMaidenVoyageSidebarStats } from "./GenesisMaidenVoyageSidebarStats";
