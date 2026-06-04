@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import LedgerMarksCompactBadge from "@/components/LedgerMarksCompactBadge";
 import {
   INDEX_MARKETS_TOOLBAR_FILTERS_ROW_CLASS,
   INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS,
@@ -12,7 +11,7 @@ import type { NetworkFilterOption } from "@/utils/networkFilter";
 import IndexToolbarNetworkFilter from "@/components/shared/IndexToolbarNetworkFilter";
 import IndexToolbarClearFiltersButton from "@/components/shared/IndexToolbarClearFiltersButton";
 
-/** Shown in Basic (UI−) layout between filters and Ledger Marks — matches toolbar label/value scale. */
+/** Shown in Basic (UI−) layout on the toolbar right — matches toolbar label/value scale. */
 export type AnchorBasicClaimToolbarProps = {
   claimableUsdDisplay: string;
   leftMetrics?: Array<{
@@ -28,12 +27,12 @@ export type AnchorMarketsToolbarProps = {
   chainFilterSelected: string[];
   onChainFilterChange: (next: string[]) => void;
   onClearFilters: () => void;
-  /** Basic (UI−) only: claimable total + Claim (coral), between clear (X) and Ledger Marks. */
+  /** Basic (UI−) only: claimable total + Claim (coral) on the toolbar right. */
   basicClaimToolbar?: AnchorBasicClaimToolbarProps;
 };
 
 /**
- * Network filter + Ledger Marks strip above the Anchor stability-pool table.
+ * Network filter row above the Anchor stability-pool table.
  */
 export function AnchorMarketsToolbar({
   anchorChainOptions,
@@ -69,8 +68,8 @@ export function AnchorMarketsToolbar({
         )}
         </div>
       </div>
-      <div className="w-full lg:ml-auto lg:w-auto lg:min-w-0 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-end">
-        {basicClaimToolbar ? (
+      {basicClaimToolbar ? (
+        <div className="w-full lg:ml-auto lg:w-auto lg:min-w-0 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-end">
           <div className="w-full lg:w-auto">
             <IndexToolbarMetricsGroup
               metrics={[
@@ -93,30 +92,8 @@ export function AnchorMarketsToolbar({
               className="w-full lg:w-auto"
             />
           </div>
-        ) : null}
-        <LedgerMarksCompactBadge
-          centerOnMobile
-          className="w-full lg:w-auto"
-          pillClassName="w-full lg:w-auto min-h-[52px] px-3 py-1.5 justify-center lg:justify-start"
-          body={
-            <>
-              <div className="font-semibold">Ledger Marks</div>
-              <div>
-                Earned by holding anchor tokens and depositing into stability
-                pools. Used to qualify for future rewards.
-              </div>
-            </>
-          }
-          earnSummary={
-            <>
-              <span className="font-semibold text-white">
-                All positions earn Ledger Marks
-              </span>{" "}
-              <span className="text-white/80">• 1 / $ / day</span>
-            </>
-          }
-        />
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

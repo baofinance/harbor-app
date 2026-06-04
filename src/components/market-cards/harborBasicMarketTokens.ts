@@ -19,8 +19,15 @@ export const BASIC_MARKET_TOKEN_STRIP_OUTER_CLASS =
   "rounded-xl border border-[#1E4775]/12 bg-[#f8fafc] px-3 py-2";
 export const BASIC_MARKET_TOKEN_STRIP_ROW_CLASS =
   "flex min-h-[44px] w-full flex-nowrap items-center justify-evenly gap-2 text-[#1E4775]";
+/** Maiden Voyage active card — same rhythm as light strip on dark glass. */
+export const BASIC_MARKET_TOKEN_STRIP_DARK_OUTER_CLASS =
+  "rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2";
+export const BASIC_MARKET_TOKEN_STRIP_DARK_ROW_CLASS =
+  "flex min-h-[44px] w-full flex-nowrap items-center justify-center gap-2 text-white/85";
 export const BASIC_MARKET_FLOW_ARROW_CLASS =
   "h-4 w-4 shrink-0 text-[#1E4775]/35";
+export const BASIC_MARKET_TOKEN_STRIP_DARK_ARROW_CLASS =
+  "h-4 w-4 shrink-0 text-white/35";
 /** Icon wells for bullets + strip anchors (Genesis / Anchor aligned). */
 export const BASIC_MARKET_ICON_WELL_CLASS =
   "flex h-5 w-5 shrink-0 items-center justify-center";
@@ -46,6 +53,10 @@ export const BASIC_MARKET_FEE_COLUMN_LABEL_CLASS =
 
 export const BASIC_MARKET_NETWORK_FOOTER_DIVIDER_CLASS =
   "mt-3 w-full border-t border-[#e2e8f0]";
+export const BASIC_MARKET_NETWORK_FOOTER_DARK_DIVIDER_CLASS =
+  "mt-3 w-full border-t border-white/10";
+export const BASIC_MARKET_NETWORK_FOOTER_DARK_TEXT_CLASS =
+  "text-base font-semibold text-white/55";
 /** Chain label + icon row (Sail / Anchor basic cards): two steps up from `text-xs` for legibility. */
 export const BASIC_MARKET_NETWORK_FOOTER_ICON_PX = 24;
 export const BASIC_MARKET_NETWORK_FOOTER_TEXT_CLASS =
@@ -102,6 +113,9 @@ export const HARBOR_DISABLED_PRIMARY_CTA_CLASS = HARBOR_COMING_SOON_CTA_SURFACE_
 /** Inline text link (“Learn more →”) unified. */
 export const HARBOR_LEARN_MORE_INLINE_LINK_CLASS =
   "inline-flex items-center justify-center gap-1 underline decoration-[#1E4775]/30 underline-offset-2 text-center text-xs font-semibold text-[#1E4775] transition hover:text-[#0c2a4a] hover:decoration-[#1E4775]/50";
+/** Learn-more link on dark campaign surfaces (Maiden Voyage card). */
+export const HARBOR_LEARN_MORE_DARK_LINK_CLASS =
+  "inline-flex items-center justify-center gap-1 underline decoration-white/25 underline-offset-2 text-center text-xs font-semibold text-white/80 transition hover:text-white hover:decoration-white/40";
 
 /** Translucent veil for unavailable markets (Coming soon overlays). */
 export const BASIC_MARKET_COMING_SOON_VEIL_CLASS =

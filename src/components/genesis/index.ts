@@ -13,6 +13,12 @@ export type { GenesisMaidenVoyageSidebarStatsProps } from "./GenesisMaidenVoyage
 export { GenesisVoyageRewardsCard } from "./GenesisVoyageRewardsCard";
 export { GenesisMaidenVoyageExplorer } from "./GenesisMaidenVoyageExplorer";
 export type { GenesisMaidenVoyageExplorerProps } from "./GenesisMaidenVoyageExplorer";
+export { GenesisMaidenVoyageToolbar } from "./GenesisMaidenVoyageToolbar";
+export type {
+  GenesisMaidenVoyageToolbarProps,
+  MaidenVoyageStatusFilter,
+} from "./GenesisMaidenVoyageToolbar";
+export { GenesisMaidenVoyageTableHeader } from "./GenesisMaidenVoyageTableHeader";
 export { GenesisMaidenVoyageStatsBand } from "./GenesisMaidenVoyageStatsBand";
 export type { GenesisMaidenVoyageStatsBandProps } from "./GenesisMaidenVoyageStatsBand";
 export { GenesisMaidenVoyageWhyJoinCard } from "./GenesisMaidenVoyageWhyJoinCard";

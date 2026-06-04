@@ -4,7 +4,7 @@ import {
   ArrowTrendingUpIcon,
   BanknotesIcon,
   CurrencyDollarIcon,
-  SparklesIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import {
   MV_CAPTION_TEXT,
@@ -32,7 +32,7 @@ const BENEFITS = [
   {
     title: "Founding Status",
     description: "Early depositor recognition on this maiden voyage.",
-    icon: SparklesIcon,
+    icon: UserGroupIcon,
   },
 ] as const;
 

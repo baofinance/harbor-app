@@ -2,8 +2,8 @@
 
 import {
   ArrowPathIcon,
-  BanknotesIcon,
-  SparklesIcon,
+  ChartBarIcon,
+  WalletIcon,
 } from "@heroicons/react/24/outline";
 import {
   MV_CARD_INNER_GRADIENT,
@@ -15,12 +15,12 @@ import {
 
 const STEPS = [
   {
-    icon: BanknotesIcon,
+    icon: WalletIcon,
     title: "Deposit",
     body: "Add assets while capacity lasts.",
   },
   {
-    icon: SparklesIcon,
+    icon: ChartBarIcon,
     title: "Market Launch",
     body: "Once the cap is reached, the market goes live.",
   },

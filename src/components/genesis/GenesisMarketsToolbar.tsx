@@ -1,10 +1,9 @@
 "use client";
 
 /**
- * Filter / controls row: active campaign pill, Genesis Ongoing/All, network filter, Ledger Marks badge.
+ * Filter / controls row: active campaign pill, Genesis Ongoing/All, network filter.
  * @see docs/routes/genesis.md
  */
-import LedgerMarksCompactBadge from "@/components/LedgerMarksCompactBadge";
 import IndexToolbarSegmentedToggle from "@/components/shared/IndexToolbarSegmentedToggle";
 import IndexToolbarNetworkFilter from "@/components/shared/IndexToolbarNetworkFilter";
 import IndexToolbarClearFiltersButton from "@/components/shared/IndexToolbarClearFiltersButton";
@@ -85,65 +84,13 @@ export function GenesisMarketsToolbar({
           </div>
         </div>
       </div>
-      <div className="w-full lg:ml-auto lg:w-auto lg:min-w-0 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-end">
-        {metrics && metrics.length > 0 ? (
+      {metrics && metrics.length > 0 ? (
+        <div className="w-full lg:ml-auto lg:w-auto lg:min-w-0 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-end">
           <div className="w-full lg:w-auto">
             <IndexToolbarMetricsGroup metrics={metrics} className="w-full lg:w-auto" />
           </div>
-        ) : null}
-        <LedgerMarksCompactBadge
-          className="max-w-full lg:w-auto"
-          pillClassName="text-xs sm:text-sm max-w-full min-h-[52px] px-3 py-1.5 justify-center lg:justify-start"
-          tooltipMaxWidth="min(90vw, 22rem)"
-          intro={
-            <p>
-              Active genesis campaigns use the mark rates below. USD caps set
-              pool ownership; bonuses depend on the campaign you joined.
-            </p>
-          }
-          body={
-            <div className="space-y-3 text-xs leading-relaxed">
-              <div>
-                <div className="font-semibold text-white text-sm mb-1">
-                  Ledger Marks
-                </div>
-                <p className="text-white/90">
-                  <span className="font-semibold text-white">Earn 10</span>{" "}
-                  Ledger Marks per{" "}
-                  <span className="font-semibold text-white">$</span> deposited
-                  per day, plus{" "}
-                  <span className="font-semibold text-white">100</span> bonus
-                  marks at genesis close (where the campaign offers it).
-                </p>
-              </div>
-              <div className="border-t border-white/20 pt-2">
-                <p className="text-white/90">
-                  <span className="font-semibold text-white">
-                    Early Deposit Bonus!
-                  </span>{" "}
-                  Eligible early deposits can earn extra marks—for example{" "}
-                  <span className="font-semibold text-white">100</span> marks
-                  per{" "}
-                  <span className="font-semibold text-white">$</span> during the
-                  bonus window, when your market&apos;s campaign includes it.
-                </p>
-              </div>
-            </div>
-          }
-          earnSummary={
-            <>
-              <span className="font-semibold text-white">
-                Maiden voyage 2.0: 10 marks / $ / day
-              </span>
-              <span className="text-white/80">
-                {" "}
-                • +100 marks bonus on completion • early-deposit bonus where
-                shown
-              </span>
-            </>
-          }
-        />
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
 import { BellIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
 import {
   FEATURED_COMPLETED_MARKET_IDS,
@@ -21,35 +22,50 @@ import type { GenesisMarketConfig } from "@/types/genesisMarket";
 import { formatUSD } from "@/utils/formatters";
 import { formatGenesisMarketDisplayName } from "@/utils/genesisDisplay";
 import { GenesisMarketRowClaimActions } from "./GenesisMarketRowClaimActions";
-import { GenesisMarketCollateralEquationStrip } from "./GenesisMarketSharedRowCells";
+import {
+  GenesisMarketChainCell,
+  GenesisMarketCollateralEquationStrip,
+} from "./GenesisMarketSharedRowCells";
 import { readContractRowResult } from "./readContractRow";
 import type { GenesisClaimMarketArgs } from "./GenesisCompletedMarketsSection";
 import {
-  MV_COMPLETED_PILL,
-  MV_EXPLORER_TAB_ACTIVE,
-  MV_EXPLORER_TAB_INACTIVE,
-  MV_EXPLORER_TABS,
-  MV_TABLE_HEADER,
-  MV_TABLE_ROW,
-  MV_TYPE_TAG,
-  MV_UPCOMING_BADGE,
-  MV_DETAILS_PANEL,
-  MV_GLASS_HOVER,
-} from "./maidenVoyageLayoutStyles";
+  GenesisMaidenVoyageToolbar,
+  type MaidenVoyageStatusFilter,
+} from "./GenesisMaidenVoyageToolbar";
+import { GenesisMaidenVoyageTableHeader } from "./GenesisMaidenVoyageTableHeader";
+import {
+  MV_EXPLORER_COL_ACTION_CLASSNAME,
+  MV_EXPLORER_COL_CAPACITY_CLASSNAME,
+  MV_EXPLORER_COL_LAUNCH_CLASSNAME,
+  MV_EXPLORER_COL_LIFECYCLE_CLASSNAME,
+  MV_EXPLORER_COL_NETWORK_CLASSNAME,
+  MV_EXPLORER_COL_PHASE_CLASSNAME,
+  MV_EXPLORER_COL_TYPE_CLASSNAME,
+  MV_EXPLORER_COL_VOYAGE_CLASSNAME,
+  MV_EXPLORER_COL_VOYAGE_INNER_CLASSNAME,
+  MV_EXPLORER_OPEN_STATUS_CLASSNAME,
+  MV_EXPLORER_TABLE_INNER_CLASSNAME,
+  MV_EXPLORER_TABLE_ROW_DESKTOP_CLASSNAME,
+  MV_EXPLORER_TABLE_ROW_MOBILE_CLASSNAME,
+  MV_EXPLORER_TABLE_ROW_SHELL_CLASSNAME,
+  MV_EXPLORER_TABLE_SCROLL_WRAP_CLASSNAME,
+  MV_EXPLORER_TYPE_CHIP_CLASSNAME,
+} from "./genesisMaidenVoyageTableGrid";
+import { MV_COMPLETED_PILL, MV_UPCOMING_BADGE } from "./maidenVoyageLayoutStyles";
 
-const EXPLORER_TABS = [
-  { id: "all", label: "All Voyages" },
-  { id: "ongoing", label: "Ongoing" },
-  { id: "upcoming", label: "Upcoming" },
-  { id: "completed", label: "Completed" },
-] as const;
+const EXPLORER_NETWORK_ICON_PX = 20;
 
-type ExplorerTab = (typeof EXPLORER_TABS)[number]["id"];
-
-const TABLE_COLS_LG =
-  "lg:grid-cols-[88px_minmax(0,1.4fr)_100px_minmax(0,0.9fr)_100px_110px_auto]";
-const TABLE_COLS_MD =
-  "md:grid-cols-[72px_minmax(0,1fr)_88px_minmax(0,0.8fr)_88px_96px_auto]";
+function ExplorerRowNetworkCell({ mkt }: { mkt: GenesisMarketConfig }) {
+  return (
+    <div className={MV_EXPLORER_COL_NETWORK_CLASSNAME}>
+      <GenesisMarketChainCell
+        chainName={mkt.chain?.name ?? "Ethereum"}
+        chainLogo={mkt.chain?.logo ?? "icons/eth.png"}
+        size={EXPLORER_NETWORK_ICON_PX}
+      />
+    </div>
+  );
+}
 
 export type GenesisMaidenVoyageExplorerProps = {
   genesisMarkets: Array<[string, GenesisMarketConfig]>;
@@ -70,7 +86,14 @@ export type GenesisMaidenVoyageExplorerProps = {
     initialTab?: "deposit" | "withdraw",
   ) => void;
   defaultArchivedExpanded?: boolean;
+  /** Basic (UI): Ongoing / Upcoming filters only; no archived block. */
+  viewBasic?: boolean;
 };
+
+const BASIC_STATUS_FILTERS = new Set<MaidenVoyageStatusFilter>([
+  "ongoing",
+  "upcoming",
+]);
 
 function resolveDisplayName(mkt: GenesisMarketConfig): string {
   const rowLeveragedSymbol = mkt.leveragedToken?.symbol;
@@ -101,22 +124,33 @@ export function GenesisMaidenVoyageExplorer({
   genesisMarkets,
   comingSoonMarkets,
   reads,
-  totalDepositsReads,
+  totalDepositsReads: _totalDepositsReads,
   isConnected,
   address,
   claimingMarket,
-  collateralPricesMap,
-  coinGeckoPrices,
-  coinGeckoLoading,
-  chainlinkBtcPrice,
+  collateralPricesMap: _collateralPricesMap,
+  coinGeckoPrices: _coinGeckoPrices,
+  coinGeckoLoading: _coinGeckoLoading,
+  chainlinkBtcPrice: _chainlinkBtcPrice,
   onClaim,
   onManage,
   defaultArchivedExpanded = false,
+  viewBasic = false,
 }: GenesisMaidenVoyageExplorerProps) {
-  const [tab, setTab] = useState<ExplorerTab>("all");
+  const [tab, setTab] = useState<MaidenVoyageStatusFilter>(
+    viewBasic ? "ongoing" : "all",
+  );
   const [archivedExpanded, setArchivedExpanded] = useState(
     defaultArchivedExpanded,
   );
+
+  useEffect(() => {
+    if (viewBasic && !BASIC_STATUS_FILTERS.has(tab)) {
+      setTab("ongoing");
+    }
+  }, [viewBasic, tab]);
+
+  const statusFilter = tab;
 
   const tableMarkets = useMemo(
     () => genesisMarkets.filter(([id]) => !isFeaturedActiveMarket(id)),
@@ -140,7 +174,7 @@ export function GenesisMaidenVoyageExplorer({
       const isEnded =
         readContractRowResult<boolean>(reads, baseOffset) ?? false;
 
-      switch (tab) {
+      switch (statusFilter) {
         case "upcoming":
           return false;
         case "ongoing":
@@ -156,11 +190,11 @@ export function GenesisMaidenVoyageExplorer({
           return true;
       }
     },
-    [tab, genesisMarkets, reads, isConnected],
+    [statusFilter, genesisMarkets, reads, isConnected],
   );
 
   const visibleGenesisRows = useMemo(() => {
-    if (tab === "completed") {
+    if (statusFilter === "completed") {
       const featuredRows = FEATURED_COMPLETED_MARKET_IDS.map((id) => {
         const entry = genesisMarkets.find(([mid]) => mid === id);
         return entry ? ([id, entry[1]] as [string, GenesisMarketConfig]) : null;
@@ -180,7 +214,7 @@ export function GenesisMaidenVoyageExplorer({
 
     return nonArchivedTableMarkets.filter(([id, mkt]) => filterByTab(id, mkt));
   }, [
-    tab,
+    statusFilter,
     genesisMarkets,
     tableMarkets,
     nonArchivedTableMarkets,
@@ -189,17 +223,16 @@ export function GenesisMaidenVoyageExplorer({
     isConnected,
   ]);
 
-  const visibleUpcoming = tab === "ongoing" ? [] : comingSoonMarkets;
+  const visibleUpcoming =
+    statusFilter === "ongoing" ? [] : comingSoonMarkets;
 
-  const showArchivedSection =
-    (tab === "all" || tab === "completed") && archivedMarkets.length > 0;
+  const hasArchivedMarkets = archivedMarkets.length > 0;
 
   const scrollToArchived = useCallback(() => {
-    setTab("completed");
     setArchivedExpanded(true);
     requestAnimationFrame(() => {
       document
-        .getElementById("maiden-voyage-archived-list")
+        .getElementById("maiden-voyage-archived")
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }, []);
@@ -210,100 +243,71 @@ export function GenesisMaidenVoyageExplorer({
     <section
       id="maiden-voyage-explorer"
       className="mb-8 scroll-mt-24"
-      aria-label="All Maiden Voyages"
+      aria-label="Maiden Voyage markets"
     >
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className={MV_EXPLORER_TABS} role="tablist" aria-label="Voyage filters">
-          {EXPLORER_TABS.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === option.id}
-              className={
-                tab === option.id
-                  ? MV_EXPLORER_TAB_ACTIVE
-                  : MV_EXPLORER_TAB_INACTIVE
-              }
-              onClick={() => setTab(option.id)}
-            >
-              {option.label}
-            </button>
+      <GenesisMaidenVoyageToolbar
+        viewBasic={viewBasic}
+        statusFilter={tab}
+        onStatusFilterChange={setTab}
+        archivedCount={archivedMarkets.length}
+        showArchivedLink={hasArchivedMarkets && !archivedExpanded}
+        onViewArchived={scrollToArchived}
+      />
+
+      <div className={MV_EXPLORER_TABLE_SCROLL_WRAP_CLASSNAME}>
+        <div className={MV_EXPLORER_TABLE_INNER_CLASSNAME}>
+          <GenesisMaidenVoyageTableHeader />
+
+          {!hasRows && !(hasArchivedMarkets && archivedExpanded) ? (
+            <div className="rounded-md border border-[#1E4775]/15 bg-white px-4 py-6 text-center text-sm text-[#1E4775]/60 shadow-sm">
+              No voyages in this view yet.
+            </div>
+          ) : null}
+
+          {visibleUpcoming.map(([id, mkt], index) => (
+            <UpcomingExplorerRow
+              key={id}
+              voyageLabel={`Maiden Voyage #${FEATURED_COMPLETED_MARKET_IDS.length + 2 + index}`}
+              mkt={mkt}
+            />
+          ))}
+
+          {visibleGenesisRows.map(([id, mkt]) => (
+            <GenesisExplorerRow
+              key={id}
+              marketId={id}
+              mkt={mkt}
+              genesisMarkets={genesisMarkets}
+              reads={reads}
+              isConnected={isConnected}
+              address={address}
+              claimingMarket={claimingMarket}
+              onClaim={onClaim}
+              onManage={onManage}
+            />
           ))}
         </div>
-        {showArchivedSection && !archivedExpanded ? (
-          <button
-            type="button"
-            onClick={scrollToArchived}
-            className="text-xs font-semibold text-[#FF8A7A]/90 hover:text-[#ffb4a8]"
-          >
-            View archived ({archivedMarkets.length})
-          </button>
-        ) : null}
       </div>
 
-      <div
-        className={`${MV_TABLE_HEADER} ${TABLE_COLS_LG} ${TABLE_COLS_MD} mb-2`}
-      >
-        <div>Status</div>
-        <div>Voyage</div>
-        <div>Type</div>
-        <div>Status</div>
-        <div className="text-right">Est. capacity</div>
-        <div className="text-right">Launch window</div>
-        <div className="text-right">Action</div>
-      </div>
-
-      {!hasRows && !(showArchivedSection && archivedExpanded) ? (
-        <div className={`${MV_DETAILS_PANEL} px-4 py-6 text-center text-sm text-white/50`}>
-          No voyages in this view yet.
-        </div>
-      ) : null}
-
-      <div className="space-y-2">
-        {visibleUpcoming.map(([id, mkt], index) => (
-          <UpcomingExplorerRow
-            key={id}
-            voyageLabel={`Maiden Voyage #${FEATURED_COMPLETED_MARKET_IDS.length + 2 + index}`}
-            mkt={mkt}
-          />
-        ))}
-
-        {visibleGenesisRows.map(([id, mkt]) => (
-          <GenesisExplorerRow
-            key={id}
-            marketId={id}
-            mkt={mkt}
-            genesisMarkets={genesisMarkets}
-            reads={reads}
-            isConnected={isConnected}
-            address={address}
-            claimingMarket={claimingMarket}
-            collateralPricesMap={collateralPricesMap}
-            onClaim={onClaim}
-            onManage={onManage}
-          />
-        ))}
-      </div>
-
-      {showArchivedSection ? (
-        <div className="mt-4" id="maiden-voyage-archived">
-          <button
-            type="button"
-            className={`flex w-full items-center justify-between gap-2 ${MV_DETAILS_PANEL} ${MV_GLASS_HOVER} px-4 py-3 text-left`}
-            onClick={() => setArchivedExpanded((v) => !v)}
-            aria-expanded={archivedExpanded}
-          >
-            <span className="text-xs font-medium uppercase tracking-wider text-white/55">
-              Archived voyages ({archivedMarkets.length})
-            </span>
-            <span className="text-xs text-white/40">
-              {archivedExpanded ? "Hide" : "View all"}
-            </span>
-          </button>
-          {archivedExpanded ? (
-            <div id="maiden-voyage-archived-list" className="mt-2 space-y-2">
-              {archivedMarkets.map(([id, mkt]) => (
+      {!viewBasic && hasArchivedMarkets ? (
+        <ArchivedMarketsListSection
+          sectionId="maiden-voyage-archived"
+          heading="Archived voyages"
+          subtitle="Deposits disabled · withdrawals and claims still available"
+          markets={archivedMarkets.map(([id, mkt]) => [
+            id,
+            { name: resolveDisplayName(mkt) },
+          ])}
+          showSection={archivedExpanded}
+          onToggleShow={() => setArchivedExpanded((v) => !v)}
+          expandedContent={
+            <div
+              id="maiden-voyage-archived-list"
+              className={MV_EXPLORER_TABLE_SCROLL_WRAP_CLASSNAME}
+            >
+              <div className={MV_EXPLORER_TABLE_INNER_CLASSNAME}>
+                <GenesisMaidenVoyageTableHeader />
+                {archivedMarkets.map(([id, mkt]) => (
                 <GenesisExplorerRow
                   key={id}
                   marketId={id}
@@ -313,15 +317,15 @@ export function GenesisMaidenVoyageExplorer({
                   isConnected={isConnected}
                   address={address}
                   claimingMarket={claimingMarket}
-                  collateralPricesMap={collateralPricesMap}
                   onClaim={onClaim}
                   onManage={onManage}
                   archived
                 />
-              ))}
+                ))}
+              </div>
             </div>
-          ) : null}
-        </div>
+          }
+        />
       ) : null}
     </section>
   );
@@ -339,44 +343,67 @@ function UpcomingExplorerRow({ voyageLabel, mkt }: UpcomingExplorerRowProps) {
   const genesisAddress = mkt.addresses?.genesis;
   const launchWindow = formatLaunchWindow(mkt.genesis?.endDate);
 
-  return (
-    <div className={`${MV_TABLE_ROW} ${TABLE_COLS_LG} ${TABLE_COLS_MD}`}>
-      <div>
-        <span className={MV_UPCOMING_BADGE}>Upcoming</span>
+  const voyageInner = (
+    <div className={MV_EXPLORER_COL_VOYAGE_INNER_CLASSNAME}>
+      <p className="font-medium text-sm truncate max-w-full text-[#1E4775]">
+        {voyageLabel}
+      </p>
+      <div className="flex justify-center">
+        <GenesisMarketCollateralEquationStrip
+          collateralSymbol={collateralSymbol}
+          peggedSymbol={peggedSymbol}
+          leveragedSymbol={leveragedSymbol}
+          iconSize={18}
+        />
       </div>
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-white/90">{voyageLabel}</p>
-        <div className="mt-1">
-          <GenesisMarketCollateralEquationStrip
-            collateralSymbol={collateralSymbol}
-            peggedSymbol={peggedSymbol}
-            leveragedSymbol={leveragedSymbol}
-            iconSize={18}
-          />
+    </div>
+  );
+
+  return (
+    <div className={MV_EXPLORER_TABLE_ROW_SHELL_CLASSNAME}>
+      <div className={MV_EXPLORER_TABLE_ROW_MOBILE_CLASSNAME}>
+        <div className="flex items-center gap-2">
+          <ExplorerRowNetworkCell mkt={mkt} />
+          <span className={MV_UPCOMING_BADGE}>Upcoming</span>
+        </div>
+        {voyageInner}
+        <div className="flex flex-wrap items-center gap-2 justify-between">
+          <span className={MV_EXPLORER_TYPE_CHIP_CLASSNAME}>
+            {getGenesisMarketTypeLabel(mkt.pegTarget)}
+          </span>
+          <span className={MV_EXPLORER_COL_PHASE_CLASSNAME}>Opening soon</span>
         </div>
       </div>
-      <div>
-        <span className={MV_TYPE_TAG}>
-          {getGenesisMarketTypeLabel(mkt.pegTarget)}
-        </span>
-      </div>
-      <div className="text-sm text-white/55">Opening soon</div>
-      <div className="font-mono text-sm font-semibold tabular-nums text-white/80 md:text-right">
-        {formatEstCapacityUsd(genesisAddress)}
-      </div>
-      <div className="text-sm text-white/55 md:text-right">
-        {launchWindow ?? "TBD"}
-      </div>
-      <div className="flex justify-end">
-        <a
-          href={MAIDEN_VOYAGE_DOCS_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-xs font-semibold text-white/70 transition hover:border-white/35 hover:text-white/90"
-        >
-          <BellIcon className="h-3.5 w-3.5" aria-hidden />
-          Notify me
-        </a>
+
+      <div className={MV_EXPLORER_TABLE_ROW_DESKTOP_CLASSNAME}>
+        <ExplorerRowNetworkCell mkt={mkt} />
+        <div className={MV_EXPLORER_COL_LIFECYCLE_CLASSNAME}>
+          <span className={MV_UPCOMING_BADGE}>Upcoming</span>
+        </div>
+        <div className={MV_EXPLORER_COL_VOYAGE_CLASSNAME}>{voyageInner}</div>
+        <div className={MV_EXPLORER_COL_TYPE_CLASSNAME}>
+          <span className={MV_EXPLORER_TYPE_CHIP_CLASSNAME}>
+            {getGenesisMarketTypeLabel(mkt.pegTarget)}
+          </span>
+        </div>
+        <div className={MV_EXPLORER_COL_PHASE_CLASSNAME}>Opening soon</div>
+        <div className={MV_EXPLORER_COL_CAPACITY_CLASSNAME}>
+          {formatEstCapacityUsd(genesisAddress)}
+        </div>
+        <div className={MV_EXPLORER_COL_LAUNCH_CLASSNAME}>
+          {launchWindow ?? "TBD"}
+        </div>
+        <div className={MV_EXPLORER_COL_ACTION_CLASSNAME}>
+          <a
+            href={MAIDEN_VOYAGE_DOCS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[#1E4775]/25 px-3 py-1.5 text-xs font-semibold text-[#1E4775] transition hover:border-[#1E4775]/40 hover:bg-[#1E4775]/5"
+          >
+            <BellIcon className="h-3.5 w-3.5" aria-hidden />
+            Notify me
+          </a>
+        </div>
       </div>
     </div>
   );
@@ -442,71 +469,100 @@ function GenesisExplorerRow({
         ? "Ended"
         : "Open";
 
-  return (
-    <div className={`${MV_TABLE_ROW} ${TABLE_COLS_LG} ${TABLE_COLS_MD}`}>
-      <div>
-        {showCompleted ? (
-          <span className={MV_COMPLETED_PILL}>
-            <CheckCircleIcon className="h-3.5 w-3.5" aria-hidden />
-            Completed
-          </span>
-        ) : (
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#4A9784]">
-            {archived ? "Archived" : "Open"}
-          </span>
-        )}
-      </div>
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-white/90">{displayMarketName}</p>
-        <div className="mt-1">
-          <GenesisMarketCollateralEquationStrip
-            collateralSymbol={collateralSymbol}
-            peggedSymbol={peggedSymbol}
-            leveragedSymbol={leveragedSymbol}
-            iconSize={18}
-          />
-        </div>
-      </div>
-      <div>
-        <span className={MV_TYPE_TAG}>
-          {getGenesisMarketTypeLabel(mkt.pegTarget)}
-        </span>
-      </div>
-      <div className="text-sm text-white/55">{statusLabel}</div>
-      <div className="font-mono text-sm font-semibold tabular-nums text-white/80 md:text-right">
-        {formatEstCapacityUsd(genesisAddress)}
-      </div>
-      <div className="text-sm text-white/55 md:text-right">
-        {launchWindow ?? "—"}
-      </div>
-      <div className="flex justify-end">
-        <GenesisMarketRowClaimActions
-          variant="responsive"
-          isEnded={isEnded}
-          showMaintenanceTag={isMarketInMaintenance(mkt)}
-          hasClaimable={hasClaimable}
-          genesisAddress={genesisAddress}
-          walletAddress={address}
-          isClaimingThisMarket={claimingMarket === marketId}
-          onClaim={() =>
-            onClaim({
-              marketId,
-              genesisAddress,
-              displayMarketName,
-              peggedSymbolForShare: peggedNoPrefix,
-            })
-          }
-          onManage={() =>
-            onManage(
-              marketId,
-              mkt,
-              archived || depositBlocked ? "withdraw" : "deposit",
-            )
-          }
-          manageButtonLabel={
-            archived || depositBlocked ? "Withdraw" : "Manage"
-          }
+  const lifecycleCell = showCompleted ? (
+    <span className={MV_COMPLETED_PILL}>
+      <CheckCircleIcon className="h-3.5 w-3.5" aria-hidden />
+      Completed
+    </span>
+  ) : (
+    <span className={MV_EXPLORER_OPEN_STATUS_CLASSNAME}>
+      {archived ? "Archived" : "Open"}
+    </span>
+  );
+
+  const voyageInner = (
+    <div className={MV_EXPLORER_COL_VOYAGE_INNER_CLASSNAME}>
+      <p
+        className="font-medium text-sm lg:text-base truncate max-w-full text-[#1E4775]"
+        title={displayMarketName}
+      >
+        {displayMarketName}
+      </p>
+      <div className="flex justify-center">
+        <GenesisMarketCollateralEquationStrip
+          collateralSymbol={collateralSymbol}
+          peggedSymbol={peggedSymbol}
+          leveragedSymbol={leveragedSymbol}
+          iconSize={18}
         />
+      </div>
+    </div>
+  );
+
+  const actionCell = (
+    <GenesisMarketRowClaimActions
+      variant="desktop"
+      isEnded={isEnded}
+      showMaintenanceTag={isMarketInMaintenance(mkt)}
+      hasClaimable={hasClaimable}
+      genesisAddress={genesisAddress}
+      walletAddress={address}
+      isClaimingThisMarket={claimingMarket === marketId}
+      onClaim={() =>
+        onClaim({
+          marketId,
+          genesisAddress,
+          displayMarketName,
+          peggedSymbolForShare: peggedNoPrefix,
+        })
+      }
+      onManage={() =>
+        onManage(
+          marketId,
+          mkt,
+          archived || depositBlocked ? "withdraw" : "deposit",
+        )
+      }
+      manageButtonLabel={
+        archived || depositBlocked ? "Withdraw" : "Manage"
+      }
+    />
+  );
+
+  return (
+    <div className={MV_EXPLORER_TABLE_ROW_SHELL_CLASSNAME}>
+      <div className={MV_EXPLORER_TABLE_ROW_MOBILE_CLASSNAME}>
+        <div className="flex items-center gap-2">
+          <ExplorerRowNetworkCell mkt={mkt} />
+          {lifecycleCell}
+        </div>
+        {voyageInner}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className={MV_EXPLORER_TYPE_CHIP_CLASSNAME}>
+            {getGenesisMarketTypeLabel(mkt.pegTarget)}
+          </span>
+          <span>{statusLabel}</span>
+        </div>
+        <div className="flex justify-end">{actionCell}</div>
+      </div>
+
+      <div className={MV_EXPLORER_TABLE_ROW_DESKTOP_CLASSNAME}>
+        <ExplorerRowNetworkCell mkt={mkt} />
+        <div className={MV_EXPLORER_COL_LIFECYCLE_CLASSNAME}>{lifecycleCell}</div>
+        <div className={MV_EXPLORER_COL_VOYAGE_CLASSNAME}>{voyageInner}</div>
+        <div className={MV_EXPLORER_COL_TYPE_CLASSNAME}>
+          <span className={MV_EXPLORER_TYPE_CHIP_CLASSNAME}>
+            {getGenesisMarketTypeLabel(mkt.pegTarget)}
+          </span>
+        </div>
+        <div className={MV_EXPLORER_COL_PHASE_CLASSNAME}>{statusLabel}</div>
+        <div className={MV_EXPLORER_COL_CAPACITY_CLASSNAME}>
+          {formatEstCapacityUsd(genesisAddress)}
+        </div>
+        <div className={MV_EXPLORER_COL_LAUNCH_CLASSNAME}>
+          {launchWindow ?? "—"}
+        </div>
+        <div className={MV_EXPLORER_COL_ACTION_CLASSNAME}>{actionCell}</div>
       </div>
     </div>
   );
