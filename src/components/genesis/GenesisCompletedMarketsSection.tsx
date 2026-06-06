@@ -14,6 +14,8 @@ import {
 import {
   GENESIS_COMPLETED_DESKTOP_ROW_GRID_CLASS,
   GENESIS_COMPLETED_HEADER_INNER_GRID_CLASS,
+  GENESIS_TABLE_HEADER_CELL_CLASSNAME,
+  GENESIS_TABLE_HEADER_SHELL_CLASS,
 } from "./genesisActiveTableStyles";
 import type { GenesisMarketConfig } from "@/types/genesisMarket";
 import { formatUSD, formatToken } from "@/utils/formatters";
@@ -74,20 +76,20 @@ export function GenesisCompletedMarketsSection({
                 Completed: {campaignName}
               </h2>
             </div>
-            <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0 rounded-md">
+            <div className={GENESIS_TABLE_HEADER_SHELL_CLASS}>
               <div className={GENESIS_COMPLETED_HEADER_INNER_GRID_CLASS}>
                 <div className="min-w-0" aria-label="Network" />
-                <div className="min-w-0 text-center">Market</div>
-                <div className="text-center min-w-0">
+                <div className={GENESIS_TABLE_HEADER_CELL_CLASSNAME}>Market</div>
+                <div className={GENESIS_TABLE_HEADER_CELL_CLASSNAME}>
                   Anchor
                   <span className="hidden lg:inline"> Tokens</span>
                 </div>
-                <div className="text-center min-w-0">
+                <div className={GENESIS_TABLE_HEADER_CELL_CLASSNAME}>
                   Sail
                   <span className="hidden lg:inline"> Tokens</span>
                 </div>
-                <div className="min-w-0 text-center">Your Deposit</div>
-                <div className="text-center min-w-0">Action</div>
+                <div className={GENESIS_TABLE_HEADER_CELL_CLASSNAME}>Your Deposit</div>
+                <div className={GENESIS_TABLE_HEADER_CELL_CLASSNAME}>Action</div>
               </div>
             </div>
             <div className="space-y-2">

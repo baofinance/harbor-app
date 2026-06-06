@@ -51,6 +51,8 @@ import {
   GENESIS_ACTIVE_MD_ROW_GRID_BASE,
   GENESIS_ACTIVE_MD_ROW_COLS_OPEN,
   GENESIS_ACTIVE_MD_ROW_COLS_ENDED,
+  GENESIS_TABLE_HEADER_CELL_CLASSNAME,
+  GENESIS_TABLE_HEADER_SHELL_CLASS,
 } from "./genesisActiveTableStyles";
 import { readContractRowResult } from "./readContractRow";
 
@@ -152,15 +154,12 @@ export function GenesisActiveMarketsSection(
 
   // Table header bar: always show when showHeaders, even when "deselect all" (0 markets)
   const activeSectionHeader = showHeaders ? (
-    <div
-      key="header-active"
-      className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0 rounded-md"
-    >
+    <div key="header-active" className={GENESIS_TABLE_HEADER_SHELL_CLASS}>
       <div className={GENESIS_ACTIVE_HEADER_INNER_GRID_CLASS}>
         <div className="min-w-0" aria-label="Network" />
-        <div className="min-w-0 text-center">Market</div>
-        <div className="text-center min-w-0">Marks</div>
-        <div className="text-center min-w-0 flex items-center justify-center gap-1.5">
+        <div className={GENESIS_TABLE_HEADER_CELL_CLASSNAME}>Market</div>
+        <div className={GENESIS_TABLE_HEADER_CELL_CLASSNAME}>Marks</div>
+        <div className={`${GENESIS_TABLE_HEADER_CELL_CLASSNAME} gap-1.5`}>
           <span>Deposit Assets</span>
           <SimpleTooltip
             label={
@@ -228,13 +227,13 @@ export function GenesisActiveMarketsSection(
             <ArrowPathIcon className="w-3.5 h-3.5 text-[#1E4775] cursor-help" />
           </SimpleTooltip>
         </div>
-        <div className="text-center min-w-0">
+        <div className={GENESIS_TABLE_HEADER_CELL_CLASSNAME}>
           Total
           <span className="hidden lg:inline"> Deposits</span>
         </div>
-        <div className="text-center min-w-0">Your Deposit</div>
-        <div className="text-center min-w-0">Status</div>
-        <div className="text-center min-w-0">Action</div>
+        <div className={GENESIS_TABLE_HEADER_CELL_CLASSNAME}>Your Deposit</div>
+        <div className={GENESIS_TABLE_HEADER_CELL_CLASSNAME}>Status</div>
+        <div className={GENESIS_TABLE_HEADER_CELL_CLASSNAME}>Action</div>
       </div>
     </div>
   ) : null;

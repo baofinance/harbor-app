@@ -1,93 +1,52 @@
 "use client";
 
 import type { ReactNode } from "react";
-import Link from "next/link";
-import { TokenLogo } from "@/components/shared";
 import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
-import { INDEX_MANAGE_BUTTON_CLASS_COMPACT } from "@/utils/indexPageManageButton";
-import { formatUSD } from "@/utils/formatters";
-import { DashboardStatusPill } from "./DashboardStatusPill";
-import {
-  DASHBOARD_ROW_MUTED_CLASS,
-  DASHBOARD_ROW_TEXT_CLASS,
-} from "./dashboardStyles";
+import { DashboardContentRowSkeleton } from "./DashboardContentRow";
+import { DashboardMarketColumnHeader } from "./DashboardMarketColumnHeader";
+import { DashboardPositionRowView } from "./DashboardPositionRowView";
 import {
   DASHBOARD_EMPTY_ON_PANEL_CLASS,
-  DASHBOARD_PANEL_ROW_SHELL_CLASS,
-  DASHBOARD_POSITIONS_HEADER_GRID_CLASS,
+  DASHBOARD_POSITIONS_COL_ACTION_CLASSNAME,
+  DASHBOARD_POSITIONS_ACTION_FOOTPRINT_CLASSNAME,
+  DASHBOARD_POSITIONS_COL_NETWORK_CLASSNAME,
+  DASHBOARD_POSITIONS_COL_NOTIONAL_CLASSNAME,
+  DASHBOARD_POSITIONS_COL_TYPE_CLASSNAME,
   DASHBOARD_POSITIONS_LIST_CLASS,
-  DASHBOARD_POSITIONS_ROW_GRID_CLASS,
-  DASHBOARD_SKELETON_BAR_CLASS,
-  DASHBOARD_TABLE_HEADER_WRAP_CLASS,
+  DASHBOARD_POSITIONS_TABLE_HEADER_GRID_CLASSNAME,
+  DASHBOARD_POSITIONS_TABLE_HEADER_WRAP_CLASSNAME,
+  DASHBOARD_POSITIONS_TABLE_MIN_WIDTH_CLASSNAME,
+  DASHBOARD_POSITIONS_TABLE_SCROLL_WRAP_CLASSNAME,
 } from "./dashboardRowListStyles";
 
 function PositionsListHeader() {
   return (
-    <div className={DASHBOARD_TABLE_HEADER_WRAP_CLASS}>
-      <div className={DASHBOARD_POSITIONS_HEADER_GRID_CLASS}>
-        <div className="min-w-0 truncate">Market</div>
-        <div className="min-w-0 truncate">Type</div>
-        <div className="min-w-0 truncate text-right">Notional</div>
-        <div className="min-w-0 text-right">Actions</div>
+    <div className={DASHBOARD_POSITIONS_TABLE_HEADER_WRAP_CLASSNAME}>
+      <div className={DASHBOARD_POSITIONS_TABLE_HEADER_GRID_CLASSNAME}>
+        <div className={DASHBOARD_POSITIONS_COL_NETWORK_CLASSNAME} aria-label="Network" />
+        <DashboardMarketColumnHeader />
+        <div className={DASHBOARD_POSITIONS_COL_TYPE_CLASSNAME}>Type</div>
+        <div className={DASHBOARD_POSITIONS_COL_NOTIONAL_CLASSNAME}>Notional</div>
+        <div className={DASHBOARD_POSITIONS_COL_ACTION_CLASSNAME}>
+          <span className={DASHBOARD_POSITIONS_ACTION_FOOTPRINT_CLASSNAME}>Action</span>
+        </div>
       </div>
     </div>
   );
 }
 
-function PositionRowSkeleton() {
+function PositionsTable({
+  showColumnHeader,
+  children,
+}: {
+  showColumnHeader: boolean;
+  children: ReactNode;
+}) {
   return (
-    <div className={DASHBOARD_PANEL_ROW_SHELL_CLASS}>
-      <div className={DASHBOARD_SKELETON_BAR_CLASS} />
-    </div>
-  );
-}
-
-function DashboardPositionRow({ row }: { row: DashboardPositionRow }) {
-  return (
-    <div className={DASHBOARD_PANEL_ROW_SHELL_CLASS}>
-      <div className={`${DASHBOARD_POSITIONS_ROW_GRID_CLASS} px-1`}>
-        <div className="flex min-w-0 items-center gap-2">
-          <TokenLogo symbol={row.iconSymbol} size={24} className="shrink-0 ring-0" />
-          <span className={`truncate font-medium ${DASHBOARD_ROW_TEXT_CLASS}`}>
-            {row.marketLabel}
-          </span>
-        </div>
-        <div className="min-w-0">
-          <DashboardStatusPill label={row.statusLabel} tone={row.statusTone} />
-        </div>
-        <div className={`min-w-0 text-right tabular-nums font-medium ${DASHBOARD_ROW_TEXT_CLASS}`}>
-          {formatUSD(row.usd, { compact: false })}
-        </div>
-        <div className="flex justify-end">
-          <Link href={row.href} className={INDEX_MANAGE_BUTTON_CLASS_COMPACT}>
-            Manage
-          </Link>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-3 px-1 py-1 md:hidden">
-        <div className="flex min-w-0 items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <TokenLogo symbol={row.iconSymbol} size={24} className="shrink-0 ring-0" />
-            <span className={`truncate font-medium ${DASHBOARD_ROW_TEXT_CLASS}`}>
-            {row.marketLabel}
-          </span>
-          </div>
-          <DashboardStatusPill label={row.statusLabel} tone={row.statusTone} />
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <span className={`text-xs uppercase tracking-wide ${DASHBOARD_ROW_MUTED_CLASS}`}>
-            Notional
-          </span>
-          <span className={`tabular-nums font-medium ${DASHBOARD_ROW_TEXT_CLASS}`}>
-            {formatUSD(row.usd, { compact: false })}
-          </span>
-        </div>
-        <div className="flex justify-end">
-          <Link href={row.href} className={INDEX_MANAGE_BUTTON_CLASS_COMPACT}>
-            Manage
-          </Link>
-        </div>
+    <div className={DASHBOARD_POSITIONS_TABLE_SCROLL_WRAP_CLASSNAME}>
+      <div className={`${DASHBOARD_POSITIONS_TABLE_MIN_WIDTH_CLASSNAME} space-y-2`}>
+        {showColumnHeader ? <PositionsListHeader /> : null}
+        {children}
       </div>
     </div>
   );
@@ -100,6 +59,7 @@ export type DashboardPositionsListProps = {
   emptyHint: ReactNode;
   /** Show Market/Type/Notional header once above the first product group. */
   showColumnHeader?: boolean;
+  onManage?: (row: DashboardPositionRow) => void;
 };
 
 export function DashboardPositionsList({
@@ -108,6 +68,7 @@ export function DashboardPositionsList({
   error,
   emptyHint,
   showColumnHeader = true,
+  onManage,
 }: DashboardPositionsListProps) {
   if (error) {
     return <p className={DASHBOARD_EMPTY_ON_PANEL_CLASS}>{error}</p>;
@@ -116,10 +77,11 @@ export function DashboardPositionsList({
   if (loading) {
     return (
       <div className={DASHBOARD_POSITIONS_LIST_CLASS}>
-        {showColumnHeader ? <PositionsListHeader /> : null}
-        {[0, 1, 2].map((i) => (
-          <PositionRowSkeleton key={i} />
-        ))}
+        <PositionsTable showColumnHeader={showColumnHeader}>
+          {[0, 1, 2].map((i) => (
+            <DashboardContentRowSkeleton key={i} variant="index" />
+          ))}
+        </PositionsTable>
       </div>
     );
   }
@@ -130,10 +92,11 @@ export function DashboardPositionsList({
 
   return (
     <div className={DASHBOARD_POSITIONS_LIST_CLASS}>
-      {showColumnHeader ? <PositionsListHeader /> : null}
-      {rows.map((row) => (
-        <DashboardPositionRow key={row.id} row={row} />
-      ))}
+      <PositionsTable showColumnHeader={showColumnHeader}>
+        {rows.map((row) => (
+          <DashboardPositionRowView key={row.id} row={row} onManage={onManage} />
+        ))}
+      </PositionsTable>
     </div>
   );
 }

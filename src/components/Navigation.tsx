@@ -24,6 +24,7 @@ import { IMPERSONATION_ENABLED } from "@/config/impersonation";
 const MORE_NAV: ReadonlyArray<{ href: string; label: string }> = [
   { href: "/ledger-marks", label: "Leaderboard" },
   { href: "/tide", label: "Tide" },
+  { href: "/dashboard", label: "Dashboard" },
 ];
 
 export default function Example() {

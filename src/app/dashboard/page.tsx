@@ -4,33 +4,19 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ChartBarIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
   InformationCircleIcon,
   WalletIcon,
 } from "@heroicons/react/24/outline";
+import { DashboardCollapsibleSection } from "@/components/dashboard/DashboardCollapsibleSection";
 import { DashboardPageTitleSection } from "@/components/dashboard/DashboardPageTitleSection";
 import {
   DashboardPositionsGrouped,
   type DashboardPositionGroup,
 } from "@/components/dashboard/DashboardPositionsGrouped";
 import { DashboardSummaryCards } from "@/components/dashboard/DashboardSummaryCards";
-import { DashboardHeaderMetricsSlot } from "@/components/dashboard/DashboardSummaryStrip";
 import { DashboardYieldSummaryCards } from "@/components/dashboard/DashboardYieldSummaryCards";
 import { DashboardYieldShareList } from "@/components/dashboard/DashboardYieldShareList";
 import {
-  DASHBOARD_SECTION_BODY_CLASS,
-  DASHBOARD_SECTION_CLASS,
-  DASHBOARD_SECTION_CHEVRON_CLASS,
-  DASHBOARD_SECTION_HEADER_ACTIONS_CELL_CLASS,
-  DASHBOARD_SECTION_HEADER_EXPANDED_CLASS,
-  DASHBOARD_SECTION_HEADER_INNER_CLASS,
-  DASHBOARD_SECTION_HEADER_METRICS_CELL_CLASS,
-  DASHBOARD_SECTION_HEADER_TITLE_CELL_CLASS,
-  DASHBOARD_SECTION_ICON_CLASS,
-  DASHBOARD_SECTION_TITLE_BTN_CLASS,
-  DASHBOARD_SECTION_TITLE_CLASS,
-  DASHBOARD_SECTION_ACTION_BTN_CLASS,
   DASHBOARD_INFO_ICON_CLASS,
   DASHBOARD_LINK_CLASS,
 } from "@/components/dashboard/dashboardStyles";
@@ -41,6 +27,9 @@ import {
   useDashboardPositions,
   type DashboardPositionRow,
 } from "@/hooks/useDashboardPositions";
+import { useDashboardManageModals } from "@/hooks/useDashboardManageModals";
+import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
+
 function sumRowsUsd(rows: DashboardPositionRow[]): number {
   return rows.reduce((s, r) => s + r.usd, 0);
 }
@@ -60,6 +49,7 @@ function emptyHintWithLink(message: string, href: string, linkLabel: string): Re
 }
 
 export default function DashboardPage() {
+  const { isBasic: dashboardViewBasic } = usePageLayoutPreference();
   const { rows, isLoading, error, isConnected } = useFounderMetrics();
   const {
     maidenVoyageRows,
@@ -69,6 +59,8 @@ export default function DashboardPage() {
     isLoading: posLoading,
     errors: posErrors,
   } = useDashboardPositions();
+  const { openPositionManage, modals: dashboardManageModals } =
+    useDashboardManageModals();
 
   const [positionsExpanded, setPositionsExpanded] = useState(true);
   const [yieldShareExpanded, setYieldShareExpanded] = useState(false);
@@ -152,17 +144,28 @@ export default function DashboardPage() {
   ]);
 
   useEffect(() => {
+    if (dashboardViewBasic) {
+      if (!userToggledYield.current) {
+        setYieldShareExpanded(false);
+      }
+      return;
+    }
     if (userToggledYield.current) return;
     if (isConnected && rows.length > 0) {
       setYieldShareExpanded(true);
     }
-  }, [isConnected, rows.length]);
+  }, [dashboardViewBasic, isConnected, rows.length]);
 
   const totalOutstanding = rows.reduce((sum, row) => sum + row.outstandingUSD, 0);
   const totalEarned = useMemo(
     () => rows.reduce((s, r) => s + r.totalEarnedUSD, 0),
     [rows]
   );
+
+  const toggleYieldShare = () => {
+    userToggledYield.current = true;
+    setYieldShareExpanded((v) => !v);
+  };
 
   return (
     <div className="min-h-0 flex-1 text-white max-w-[1300px] mx-auto font-sans relative w-full">
@@ -175,141 +178,70 @@ export default function DashboardPage() {
           </div>
         ) : null}
 
-        <section className={DASHBOARD_SECTION_CLASS}>
-          <div
-            className={`${DASHBOARD_SECTION_HEADER_INNER_CLASS} ${
-              positionsExpanded && isConnected ? DASHBOARD_SECTION_HEADER_EXPANDED_CLASS : ""
-            }`}
-          >
-            <button
-              type="button"
-              className={`${DASHBOARD_SECTION_HEADER_TITLE_CELL_CLASS} ${DASHBOARD_SECTION_TITLE_BTN_CLASS}`}
-              aria-expanded={positionsExpanded}
-              onClick={() => setPositionsExpanded((v) => !v)}
+        <DashboardCollapsibleSection
+          title="Your positions"
+          icon={WalletIcon}
+          expanded={positionsExpanded}
+          onToggle={() => setPositionsExpanded((v) => !v)}
+          isConnected={isConnected}
+          expandAriaLabel="Expand positions"
+          collapseAriaLabel="Collapse positions"
+          titleAdornment={
+            <SimpleTooltip
+              label={POSITIONS_DATA_SOURCE_TOOLTIP}
+              className="cursor-help"
             >
-              <WalletIcon className={DASHBOARD_SECTION_ICON_CLASS} aria-hidden />
-              <h2 className={DASHBOARD_SECTION_TITLE_CLASS}>Your positions</h2>
-              <span
-                className="shrink-0"
-                onClick={(e) => e.stopPropagation()}
-                onKeyDown={(e) => e.stopPropagation()}
-              >
-                <SimpleTooltip
-                  label={POSITIONS_DATA_SOURCE_TOOLTIP}
-                  className="cursor-help"
-                >
-                  <InformationCircleIcon
-                    className={DASHBOARD_INFO_ICON_CLASS}
-                    aria-label="About position data"
-                  />
-                </SimpleTooltip>
-              </span>
-            </button>
-            {isConnected ? (
-              <div className={DASHBOARD_SECTION_HEADER_METRICS_CELL_CLASS}>
-                <DashboardHeaderMetricsSlot>
-                  <DashboardSummaryCards
-                    maidenUsd={positionTotals.maiden}
-                    earnUsd={positionTotals.earn}
-                    sailUsd={positionTotals.sail}
-                    archivedUsd={positionTotals.archived}
-                    showArchived={hasArchived}
-                    isConnected={isConnected}
-                  />
-                </DashboardHeaderMetricsSlot>
-              </div>
-            ) : null}
-            <div className={DASHBOARD_SECTION_HEADER_ACTIONS_CELL_CLASS}>
-              <button
-                type="button"
-                className={DASHBOARD_SECTION_ACTION_BTN_CLASS}
-                aria-expanded={positionsExpanded}
-                aria-label={
-                  positionsExpanded ? "Collapse positions" : "Expand positions"
-                }
-                onClick={() => setPositionsExpanded((v) => !v)}
-              >
-                {positionsExpanded ? (
-                  <ChevronUpIcon className={DASHBOARD_SECTION_CHEVRON_CLASS} aria-hidden />
-                ) : (
-                  <ChevronDownIcon className={DASHBOARD_SECTION_CHEVRON_CLASS} aria-hidden />
-                )}
-              </button>
-            </div>
-          </div>
-
-          {positionsExpanded && isConnected ? (
-            <div className={DASHBOARD_SECTION_BODY_CLASS}>
-              <DashboardPositionsGrouped groups={positionGroups} />
-            </div>
-          ) : null}
-        </section>
-
-        <section className={DASHBOARD_SECTION_CLASS}>
-          <div
-            className={`${DASHBOARD_SECTION_HEADER_INNER_CLASS} ${
-              yieldShareExpanded && isConnected ? DASHBOARD_SECTION_HEADER_EXPANDED_CLASS : ""
-            }`}
-          >
-            <button
-              type="button"
-              className={`${DASHBOARD_SECTION_HEADER_TITLE_CELL_CLASS} ${DASHBOARD_SECTION_TITLE_BTN_CLASS}`}
-              aria-expanded={yieldShareExpanded}
-              onClick={() => {
-                userToggledYield.current = true;
-                setYieldShareExpanded((v) => !v);
-              }}
-            >
-              <ChartBarIcon className={DASHBOARD_SECTION_ICON_CLASS} aria-hidden />
-              <h2 className={DASHBOARD_SECTION_TITLE_CLASS}>Yield share</h2>
-            </button>
-            {isConnected ? (
-              <div className={DASHBOARD_SECTION_HEADER_METRICS_CELL_CLASS}>
-                <DashboardHeaderMetricsSlot>
-                  <DashboardYieldSummaryCards
-                    totalEarned={totalEarned}
-                    totalOutstanding={totalOutstanding}
-                    isConnected={isConnected}
-                  />
-                </DashboardHeaderMetricsSlot>
-              </div>
-            ) : null}
-            <div className={DASHBOARD_SECTION_HEADER_ACTIONS_CELL_CLASS}>
-              <button
-                type="button"
-                className={DASHBOARD_SECTION_ACTION_BTN_CLASS}
-                aria-expanded={yieldShareExpanded}
-                aria-label={
-                  yieldShareExpanded ? "Collapse yield share" : "Expand yield share"
-                }
-                onClick={() => {
-                  userToggledYield.current = true;
-                  setYieldShareExpanded((v) => !v);
-                }}
-              >
-                {yieldShareExpanded ? (
-                  <ChevronUpIcon className={DASHBOARD_SECTION_CHEVRON_CLASS} aria-hidden />
-                ) : (
-                  <ChevronDownIcon className={DASHBOARD_SECTION_CHEVRON_CLASS} aria-hidden />
-                )}
-              </button>
-            </div>
-          </div>
-
-          {yieldShareExpanded && isConnected ? (
-            <div className={DASHBOARD_SECTION_BODY_CLASS}>
-              {error ? (
-                <IndexMarksSubgraphErrorBanner error={new Error(error)} />
-              ) : null}
-              <DashboardYieldShareList
-                rows={rows}
-                isLoading={isLoading}
-                error={null}
+              <InformationCircleIcon
+                className={DASHBOARD_INFO_ICON_CLASS}
+                aria-label="About position data"
               />
-            </div>
+            </SimpleTooltip>
+          }
+          headerMetrics={
+            <DashboardSummaryCards
+              maidenUsd={positionTotals.maiden}
+              earnUsd={positionTotals.earn}
+              sailUsd={positionTotals.sail}
+              archivedUsd={positionTotals.archived}
+              showArchived={hasArchived}
+              isConnected={isConnected}
+            />
+          }
+        >
+          <DashboardPositionsGrouped
+            groups={positionGroups}
+            onManage={openPositionManage}
+            compactGroups={dashboardViewBasic}
+          />
+        </DashboardCollapsibleSection>
+
+        <DashboardCollapsibleSection
+          title="Yield share"
+          icon={ChartBarIcon}
+          expanded={yieldShareExpanded}
+          onToggle={toggleYieldShare}
+          isConnected={isConnected}
+          expandAriaLabel="Expand yield share"
+          collapseAriaLabel="Collapse yield share"
+          headerMetrics={
+            <DashboardYieldSummaryCards
+              totalEarned={totalEarned}
+              totalOutstanding={totalOutstanding}
+              isConnected={isConnected}
+            />
+          }
+        >
+          {error ? (
+            <IndexMarksSubgraphErrorBanner error={new Error(error)} />
           ) : null}
-        </section>
+          <DashboardYieldShareList
+            rows={rows}
+            isLoading={isLoading}
+            error={null}
+          />
+        </DashboardCollapsibleSection>
       </main>
+      {dashboardManageModals}
     </div>
   );
 }

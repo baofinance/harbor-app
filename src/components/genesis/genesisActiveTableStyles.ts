@@ -51,6 +51,10 @@ export const GENESIS_COMPLETED_DESKTOP_ROW_GRID_CLASS = `hidden md:grid ${GENESI
 export const GENESIS_TABLE_ROW_SHELL_CLASS =
   "bg-white py-2.5 px-2 rounded-lg min-h-[52px]";
 
-/** White header strip above archived/completed rows. */
+/** Header label cell — matches Maiden Voyage explorer Lifecycle column. */
+export const GENESIS_TABLE_HEADER_CELL_CLASSNAME =
+  "flex min-w-0 items-center justify-center text-center truncate";
+
+/** White header strip above archived/completed/active rows. */
 export const GENESIS_TABLE_HEADER_SHELL_CLASS =
-  "hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0 rounded-lg";
+  "hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0 rounded-md border border-[#1E4775]/15 shadow-sm";

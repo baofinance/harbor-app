@@ -21,15 +21,18 @@ export const MV_EXPLORER_TABLE_ROW_DESKTOP_CLASSNAME = `hidden md:grid ${MV_EXPL
 export const MV_EXPLORER_TABLE_ROW_SHELL_CLASSNAME =
   "rounded-md border border-[#1E4775]/15 bg-white shadow-sm overflow-hidden transition-colors md:hover:bg-[rgb(var(--surface-selected-rgb))]";
 
-/** Mobile stacked layout (< md). */
+/** Mobile stacked layout (< md) — primary actions top-right like Anchor index rows. */
 export const MV_EXPLORER_TABLE_ROW_MOBILE_CLASSNAME =
-  "grid grid-cols-1 gap-3 p-4 md:hidden text-sm";
+  "md:hidden space-y-3 p-4 text-sm";
 
 export const MV_EXPLORER_COL_NETWORK_CLASSNAME =
   "flex items-center justify-center";
 
 export const MV_EXPLORER_COL_LIFECYCLE_CLASSNAME =
   "flex min-w-0 items-center justify-center text-center";
+
+/** Header label cell — same typography as grid parent; use on every column title. */
+export const MV_EXPLORER_HEADER_CELL_CLASSNAME = `${MV_EXPLORER_COL_LIFECYCLE_CLASSNAME} truncate`;
 
 export const MV_EXPLORER_COL_VOYAGE_CLASSNAME =
   "min-w-0 overflow-hidden text-center";

@@ -2,9 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
-import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
-import { DASHBOARD_GROUP_LABEL_CLASS } from "./dashboardStyles";
-import { DashboardPositionsList } from "./DashboardPositionsList";
+import { DashboardPositionGroupSection } from "./DashboardPositionGroupSection";
 
 export type DashboardPositionGroup = {
   id: string;
@@ -17,25 +15,27 @@ export type DashboardPositionGroup = {
 
 export type DashboardPositionsGroupedProps = {
   groups: DashboardPositionGroup[];
+  onManage?: (row: DashboardPositionRow) => void;
+  /** UI (basic): keep Maiden Voyage / Earn / Sail headers collapsed. */
+  compactGroups?: boolean;
 };
 
-export function DashboardPositionsGrouped({ groups }: DashboardPositionsGroupedProps) {
+export function DashboardPositionsGrouped({
+  groups,
+  onManage,
+  compactGroups = false,
+}: DashboardPositionsGroupedProps) {
   return (
-    <div className="space-y-5">
-      {groups.map((group, index) => (
-        <div key={group.id} className="space-y-2">
-          <h3 className={DASHBOARD_GROUP_LABEL_CLASS}>{group.title}</h3>
-          {group.error ? (
-            <IndexMarksSubgraphErrorBanner error={new Error(group.error)} />
-          ) : null}
-          <DashboardPositionsList
-            rows={group.rows}
-            loading={group.loading}
-            error={null}
-            emptyHint={group.emptyHint}
-            showColumnHeader={index === 0}
-          />
-        </div>
+    <div className="space-y-4">
+      {groups.map((group) => (
+        <DashboardPositionGroupSection
+          key={group.id}
+          group={group}
+          onManage={onManage}
+          defaultExpanded={
+            compactGroups ? false : group.rows.length > 0 || group.loading
+          }
+        />
       ))}
     </div>
   );

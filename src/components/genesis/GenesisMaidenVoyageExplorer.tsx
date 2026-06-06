@@ -363,12 +363,23 @@ function UpcomingExplorerRow({ voyageLabel, mkt }: UpcomingExplorerRowProps) {
   return (
     <div className={MV_EXPLORER_TABLE_ROW_SHELL_CLASSNAME}>
       <div className={MV_EXPLORER_TABLE_ROW_MOBILE_CLASSNAME}>
-        <div className="flex items-center gap-2">
-          <ExplorerRowNetworkCell mkt={mkt} />
-          <span className={MV_UPCOMING_BADGE}>Upcoming</span>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <ExplorerRowNetworkCell mkt={mkt} />
+            <span className={MV_UPCOMING_BADGE}>Upcoming</span>
+          </div>
+          <a
+            href={MAIDEN_VOYAGE_DOCS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-[#1E4775]/25 px-3 py-1.5 text-xs font-semibold text-[#1E4775] transition hover:border-[#1E4775]/40 hover:bg-[#1E4775]/5"
+          >
+            <BellIcon className="h-3.5 w-3.5" aria-hidden />
+            Notify me
+          </a>
         </div>
         {voyageInner}
-        <div className="flex flex-wrap items-center gap-2 justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <span className={MV_EXPLORER_TYPE_CHIP_CLASSNAME}>
             {getGenesisMarketTypeLabel(mkt.pegTarget)}
           </span>
@@ -531,18 +542,20 @@ function GenesisExplorerRow({
   return (
     <div className={MV_EXPLORER_TABLE_ROW_SHELL_CLASSNAME}>
       <div className={MV_EXPLORER_TABLE_ROW_MOBILE_CLASSNAME}>
-        <div className="flex items-center gap-2">
-          <ExplorerRowNetworkCell mkt={mkt} />
-          {lifecycleCell}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <ExplorerRowNetworkCell mkt={mkt} />
+            {lifecycleCell}
+          </div>
+          <div className="flex shrink-0 items-center justify-end">{actionCell}</div>
         </div>
         {voyageInner}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className={MV_EXPLORER_TYPE_CHIP_CLASSNAME}>
             {getGenesisMarketTypeLabel(mkt.pegTarget)}
           </span>
-          <span>{statusLabel}</span>
+          <span className={MV_EXPLORER_COL_PHASE_CLASSNAME}>{statusLabel}</span>
         </div>
-        <div className="flex justify-end">{actionCell}</div>
       </div>
 
       <div className={MV_EXPLORER_TABLE_ROW_DESKTOP_CLASSNAME}>
