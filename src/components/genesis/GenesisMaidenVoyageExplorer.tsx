@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
 import { BellIcon } from "@heroicons/react/24/outline";
 import {
@@ -42,6 +42,9 @@ import {
   MV_EXPLORER_COL_TYPE_CLASSNAME,
   MV_EXPLORER_COL_VOYAGE_CLASSNAME,
   MV_EXPLORER_COL_VOYAGE_INNER_CLASSNAME,
+  MV_EXPLORER_MOBILE_META_GRID_CLASSNAME,
+  MV_EXPLORER_MOBILE_META_LABEL_CLASSNAME,
+  MV_EXPLORER_MOBILE_VOYAGE_CLASSNAME,
   MV_EXPLORER_OPEN_STATUS_CLASSNAME,
   MV_EXPLORER_TABLE_INNER_CLASSNAME,
   MV_EXPLORER_TABLE_ROW_DESKTOP_CLASSNAME,
@@ -66,6 +69,50 @@ function ExplorerRowNetworkCell({ mkt }: { mkt: GenesisMarketConfig }) {
         chainLogo={mkt.chain?.logo ?? "icons/eth.png"}
         size={EXPLORER_NETWORK_ICON_PX}
       />
+    </div>
+  );
+}
+
+function ExplorerMobileVoyageBlock({
+  title,
+  collateralSymbol,
+  peggedSymbol,
+  leveragedSymbol,
+}: {
+  title: string;
+  collateralSymbol: string;
+  peggedSymbol: string;
+  leveragedSymbol: string;
+}) {
+  return (
+    <div className={MV_EXPLORER_MOBILE_VOYAGE_CLASSNAME}>
+      <p
+        className="max-w-full truncate font-medium text-sm text-[#1E4775]"
+        title={title}
+      >
+        {title}
+      </p>
+      <GenesisMarketCollateralEquationStrip
+        collateralSymbol={collateralSymbol}
+        peggedSymbol={peggedSymbol}
+        leveragedSymbol={leveragedSymbol}
+        iconSize={18}
+      />
+    </div>
+  );
+}
+
+function ExplorerMobileMetaField({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="min-w-0">
+      <div className={MV_EXPLORER_MOBILE_META_LABEL_CLASSNAME}>{label}</div>
+      <div className="min-w-0">{children}</div>
     </div>
   );
 }
@@ -378,12 +425,31 @@ function UpcomingExplorerRow({ voyageLabel, mkt }: UpcomingExplorerRowProps) {
             Notify me
           </a>
         </div>
-        {voyageInner}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className={MV_EXPLORER_TYPE_CHIP_CLASSNAME}>
-            {getGenesisMarketTypeLabel(mkt.pegTarget)}
-          </span>
-          <span className={MV_EXPLORER_COL_PHASE_CLASSNAME}>Opening soon</span>
+        <ExplorerMobileVoyageBlock
+          title={voyageLabel}
+          collateralSymbol={collateralSymbol}
+          peggedSymbol={peggedSymbol}
+          leveragedSymbol={leveragedSymbol}
+        />
+        <div className={MV_EXPLORER_MOBILE_META_GRID_CLASSNAME}>
+          <ExplorerMobileMetaField label="Type">
+            <span className={MV_EXPLORER_TYPE_CHIP_CLASSNAME}>
+              {getGenesisMarketTypeLabel(mkt.pegTarget)}
+            </span>
+          </ExplorerMobileMetaField>
+          <ExplorerMobileMetaField label="Phase">
+            <span className="text-sm text-[#1E4775]">Opening soon</span>
+          </ExplorerMobileMetaField>
+          <ExplorerMobileMetaField label="Est. capacity">
+            <span className="font-mono text-sm font-semibold tabular-nums text-[#1E4775]">
+              {formatEstCapacityUsd(genesisAddress)}
+            </span>
+          </ExplorerMobileMetaField>
+          <ExplorerMobileMetaField label="Launch window">
+            <span className="text-sm text-[#1E4775]/80">
+              {launchWindow ?? "TBD"}
+            </span>
+          </ExplorerMobileMetaField>
         </div>
       </div>
 
@@ -509,34 +575,36 @@ function GenesisExplorerRow({
     </div>
   );
 
-  const actionCell = (
-    <GenesisMarketRowClaimActions
-      variant="desktop"
-      isEnded={isEnded}
-      showMaintenanceTag={isMarketInMaintenance(mkt)}
-      hasClaimable={hasClaimable}
-      genesisAddress={genesisAddress}
-      walletAddress={address}
-      isClaimingThisMarket={claimingMarket === marketId}
-      onClaim={() =>
-        onClaim({
-          marketId,
-          genesisAddress,
-          displayMarketName,
-          peggedSymbolForShare: peggedNoPrefix,
-        })
-      }
-      onManage={() =>
-        onManage(
-          marketId,
-          mkt,
-          archived || depositBlocked ? "withdraw" : "deposit",
-        )
-      }
-      manageButtonLabel={
-        archived || depositBlocked ? "Withdraw" : "Manage"
-      }
-    />
+  const claimActionProps = {
+    isEnded,
+    showMaintenanceTag: isMarketInMaintenance(mkt),
+    hasClaimable,
+    genesisAddress,
+    walletAddress: address,
+    isClaimingThisMarket: claimingMarket === marketId,
+    onClaim: () =>
+      onClaim({
+        marketId,
+        genesisAddress,
+        displayMarketName,
+        peggedSymbolForShare: peggedNoPrefix,
+      }),
+    onManage: () =>
+      onManage(
+        marketId,
+        mkt,
+        archived || depositBlocked ? "withdraw" : "deposit",
+      ),
+    manageButtonLabel: (archived || depositBlocked ? "Withdraw" : "Manage") as
+      | "Manage"
+      | "Withdraw",
+  };
+
+  const actionCellMobile = (
+    <GenesisMarketRowClaimActions variant="compact" {...claimActionProps} />
+  );
+  const actionCellDesktop = (
+    <GenesisMarketRowClaimActions variant="desktop" {...claimActionProps} />
   );
 
   return (
@@ -547,14 +615,35 @@ function GenesisExplorerRow({
             <ExplorerRowNetworkCell mkt={mkt} />
             {lifecycleCell}
           </div>
-          <div className="flex shrink-0 items-center justify-end">{actionCell}</div>
+          <div className="flex shrink-0 items-center justify-end">
+            {actionCellMobile}
+          </div>
         </div>
-        {voyageInner}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className={MV_EXPLORER_TYPE_CHIP_CLASSNAME}>
-            {getGenesisMarketTypeLabel(mkt.pegTarget)}
-          </span>
-          <span className={MV_EXPLORER_COL_PHASE_CLASSNAME}>{statusLabel}</span>
+        <ExplorerMobileVoyageBlock
+          title={displayMarketName}
+          collateralSymbol={collateralSymbol}
+          peggedSymbol={peggedSymbol}
+          leveragedSymbol={leveragedSymbol}
+        />
+        <div className={MV_EXPLORER_MOBILE_META_GRID_CLASSNAME}>
+          <ExplorerMobileMetaField label="Type">
+            <span className={MV_EXPLORER_TYPE_CHIP_CLASSNAME}>
+              {getGenesisMarketTypeLabel(mkt.pegTarget)}
+            </span>
+          </ExplorerMobileMetaField>
+          <ExplorerMobileMetaField label="Phase">
+            <span className="text-sm text-[#1E4775]">{statusLabel}</span>
+          </ExplorerMobileMetaField>
+          <ExplorerMobileMetaField label="Est. capacity">
+            <span className="font-mono text-sm font-semibold tabular-nums text-[#1E4775]">
+              {formatEstCapacityUsd(genesisAddress)}
+            </span>
+          </ExplorerMobileMetaField>
+          <ExplorerMobileMetaField label="Launch window">
+            <span className="text-sm text-[#1E4775]/80">
+              {launchWindow ?? "—"}
+            </span>
+          </ExplorerMobileMetaField>
         </div>
       </div>
 
@@ -574,7 +663,7 @@ function GenesisExplorerRow({
         <div className={MV_EXPLORER_COL_LAUNCH_CLASSNAME}>
           {launchWindow ?? "—"}
         </div>
-        <div className={MV_EXPLORER_COL_ACTION_CLASSNAME}>{actionCell}</div>
+        <div className={MV_EXPLORER_COL_ACTION_CLASSNAME}>{actionCellDesktop}</div>
       </div>
     </div>
   );

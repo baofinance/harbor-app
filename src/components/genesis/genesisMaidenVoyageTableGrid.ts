@@ -7,7 +7,8 @@
 export const MV_EXPLORER_TABLE_GRID_COLS_CLASSNAME =
   "md:grid-cols-[32px_minmax(0,0.75fr)_minmax(0,1.32fr)_minmax(0,0.88fr)_minmax(0,0.72fr)_minmax(0,0.88fr)_minmax(0,0.92fr)_minmax(0,0.8fr)]";
 
-export const MV_EXPLORER_TABLE_MIN_WIDTH_CLASSNAME = "min-w-[880px]";
+/** Desktop horizontal scroll width — do not apply on mobile (breaks stacked rows). */
+export const MV_EXPLORER_TABLE_MIN_WIDTH_CLASSNAME = "md:min-w-[880px]";
 
 /** Desktop header — matches AnchorMarketsTableHeader shell. */
 export const MV_EXPLORER_TABLE_HEADER_WRAP_CLASSNAME =
@@ -23,7 +24,16 @@ export const MV_EXPLORER_TABLE_ROW_SHELL_CLASSNAME =
 
 /** Mobile stacked layout (< md) — primary actions top-right like Anchor index rows. */
 export const MV_EXPLORER_TABLE_ROW_MOBILE_CLASSNAME =
-  "md:hidden space-y-3 p-4 text-sm";
+  "md:hidden w-full min-w-0 space-y-2.5 p-3 text-sm";
+
+export const MV_EXPLORER_MOBILE_VOYAGE_CLASSNAME =
+  "flex w-full min-w-0 flex-col items-start gap-1.5";
+
+export const MV_EXPLORER_MOBILE_META_GRID_CLASSNAME =
+  "grid w-full grid-cols-2 gap-x-3 gap-y-2.5";
+
+export const MV_EXPLORER_MOBILE_META_LABEL_CLASSNAME =
+  "mb-0.5 text-[10px] uppercase tracking-wide text-[#1E4775]/70";
 
 export const MV_EXPLORER_COL_NETWORK_CLASSNAME =
   "flex items-center justify-center";
@@ -64,4 +74,4 @@ export const MV_EXPLORER_OPEN_STATUS_CLASSNAME =
 
 export const MV_EXPLORER_TABLE_SCROLL_WRAP_CLASSNAME = "overflow-x-auto -mx-0.5 px-0.5";
 
-export const MV_EXPLORER_TABLE_INNER_CLASSNAME = `${MV_EXPLORER_TABLE_MIN_WIDTH_CLASSNAME} space-y-2`;
+export const MV_EXPLORER_TABLE_INNER_CLASSNAME = `w-full min-w-0 ${MV_EXPLORER_TABLE_MIN_WIDTH_CLASSNAME} space-y-2`;
