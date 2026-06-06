@@ -3,7 +3,6 @@ import {
   DASHBOARD_POSITIONS_VALUE_TEXT_CLASS,
   DASHBOARD_YIELD_COL_BOOST_CLASSNAME,
   DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME,
-  DASHBOARD_YIELD_COL_NUMERIC_CLASSNAME,
 } from "./dashboardRowListStyles";
 
 function HeaderTipLabel({ label, tip }: { label: string; tip: string }) {
@@ -24,9 +23,15 @@ export function DashboardYieldCenteredMetricHeader({
   ghostValue,
 }: {
   label: string;
-  tip: string;
+  tip?: string;
   ghostValue: string;
 }) {
+  const labelNode = tip ? (
+    <HeaderTipLabel label={label} tip={tip} />
+  ) : (
+    <span>{label}</span>
+  );
+
   return (
     <div className={DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME}>
       <div className="relative inline-flex max-w-full">
@@ -37,7 +42,7 @@ export function DashboardYieldCenteredMetricHeader({
           {ghostValue}
         </span>
         <span className="absolute inset-0 flex items-center justify-center text-center">
-          <HeaderTipLabel label={label} tip={tip} />
+          {labelNode}
         </span>
       </div>
     </div>
@@ -59,27 +64,6 @@ export function DashboardYieldBoostColumnHeader({ tip }: { tip: string }) {
           <HeaderTipLabel label="Boost" tip={tip} />
         </span>
       </div>
-    </div>
-  );
-}
-
-/** Right-aligned numeric header — full column width so values line up. */
-export function DashboardYieldNumericHeader({
-  label,
-  tip,
-}: {
-  label: string;
-  tip?: string;
-}) {
-  return (
-    <div className={DASHBOARD_YIELD_COL_NUMERIC_CLASSNAME}>
-      {tip ? (
-        <span className="flex w-full min-w-0 items-center justify-end">
-          <HeaderTipLabel label={label} tip={tip} />
-        </span>
-      ) : (
-        <span className="w-full truncate text-right">{label}</span>
-      )}
     </div>
   );
 }

@@ -10,7 +10,6 @@ import { DashboardMarketColumnHeader } from "./DashboardMarketColumnHeader";
 import {
   DashboardYieldBoostColumnHeader,
   DashboardYieldCenteredMetricHeader,
-  DashboardYieldNumericHeader,
 } from "./DashboardYieldColumnHeaders";
 import { DashboardYieldBoostBadge } from "./DashboardYieldBoostBadge";
 import { DASHBOARD_LINK_CLASS } from "./dashboardStyles";
@@ -22,7 +21,6 @@ import {
   DASHBOARD_POSITIONS_VALUE_TEXT_CLASS,
   DASHBOARD_YIELD_COL_BOOST_CLASSNAME,
   DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME,
-  DASHBOARD_YIELD_COL_NUMERIC_CLASSNAME,
   DASHBOARD_YIELD_LIST_CLASS,
   DASHBOARD_YIELD_ROW_GRID_CLASS,
   DASHBOARD_YIELD_TABLE_HEADER_GRID_CLASSNAME,
@@ -49,10 +47,11 @@ function YieldListHeader() {
           tip="Boost-weighted share used to split cumulative maiden-voyage yield."
           ghostValue="16.8916%"
         />
-        <DashboardYieldNumericHeader label="Total paid" />
-        <DashboardYieldNumericHeader
+        <DashboardYieldCenteredMetricHeader label="Total paid" ghostValue="$0" />
+        <DashboardYieldCenteredMetricHeader
           label="Uncollected"
           tip="Amount still owed versus payouts on file; not a scheduled payment date."
+          ghostValue="$3.97"
         />
       </div>
     </div>
@@ -109,12 +108,12 @@ function DashboardYieldRowView({ row }: { row: FounderMetricRow }) {
             {formatPercent(row.yieldSharePct, { decimals: 4 })}
           </span>
         </div>
-        <div className={DASHBOARD_YIELD_COL_NUMERIC_CLASSNAME}>
+        <div className={DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME}>
           <span className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} tabular-nums`}>
             {formatUSD(row.paidUSD, { compact: false })}
           </span>
         </div>
-        <div className={DASHBOARD_YIELD_COL_NUMERIC_CLASSNAME}>
+        <div className={DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME}>
           <span
             className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} tabular-nums ${
               row.outstandingUSD > 0 ? "text-[#FF8A7A]" : ""
