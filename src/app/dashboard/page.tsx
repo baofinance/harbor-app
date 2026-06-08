@@ -2,21 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { DashboardConnectNotice } from "@/components/dashboard/DashboardConnectNotice";
 import { DashboardPageTitleSection } from "@/components/dashboard/DashboardPageTitleSection";
 import {
   DashboardProductCard,
   useDashboardProductExpanded,
 } from "@/components/dashboard/DashboardProductCard";
 import { DASHBOARD_PRODUCT_META } from "@/components/dashboard/dashboardProductMeta";
-import type { DashboardPositionGroup } from "@/components/dashboard/DashboardPositionsGrouped";
+import type { DashboardPositionGroup } from "@/components/dashboard/dashboardPositionGroup";
 import { DashboardPositionsList } from "@/components/dashboard/DashboardPositionsList";
 import { DashboardSummaryCards } from "@/components/dashboard/DashboardSummaryCards";
-import { DashboardYieldSummaryCards } from "@/components/dashboard/DashboardYieldSummaryCards";
 import { DashboardYieldShareList } from "@/components/dashboard/DashboardYieldShareList";
-import {
-  DASHBOARD_LINK_CLASS,
-  DASHBOARD_NOTICE_PANEL_CLASS,
-} from "@/components/dashboard/dashboardStyles";
+import { DASHBOARD_LINK_CLASS } from "@/components/dashboard/dashboardStyles";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
 import { useFounderMetrics } from "@/hooks/useFounderMetrics";
 import {
@@ -82,6 +79,7 @@ function PositionProductCard({
       onToggle={() => setExpanded((v) => !v)}
       isConnected={isConnected}
       sectionTotalUsd={totalUsd}
+      loading={group.loading}
       showSubtitle={!expanded || group.rows.length === 0}
     >
       {group.error ? (
@@ -89,7 +87,7 @@ function PositionProductCard({
       ) : null}
       <DashboardPositionsList
         rows={group.rows}
-        loading={group.loading}
+        loading={isConnected && group.loading}
         error={null}
         emptyHint={group.emptyHint}
         showColumnHeader
@@ -234,15 +232,13 @@ export default function DashboardPage() {
               archivedUsd={positionTotals.archived}
               showArchived={hasArchived}
               isConnected={isConnected}
+              totalEarned={totalEarned}
+              totalOutstanding={totalOutstanding}
             />
           }
         />
 
-        {!isConnected ? (
-          <div className={DASHBOARD_NOTICE_PANEL_CLASS}>
-            Connect your wallet to view positions and yield share.
-          </div>
-        ) : null}
+        {!isConnected ? <DashboardConnectNotice /> : null}
 
         <div className="space-y-4">
           <PositionProductCard
@@ -281,13 +277,7 @@ export default function DashboardPage() {
             expanded={yieldExpanded}
             onToggle={toggleYieldShare}
             isConnected={isConnected}
-            headerMetrics={
-              <DashboardYieldSummaryCards
-                totalEarned={totalEarned}
-                totalOutstanding={totalOutstanding}
-                isConnected={isConnected}
-              />
-            }
+            loading={isConnected && isLoading}
             showSubtitle={!yieldExpanded}
           >
             {error ? (
@@ -295,7 +285,7 @@ export default function DashboardPage() {
             ) : null}
             <DashboardYieldShareList
               rows={rows}
-              isLoading={isLoading}
+              isLoading={isConnected && isLoading}
               error={null}
             />
           </DashboardProductCard>

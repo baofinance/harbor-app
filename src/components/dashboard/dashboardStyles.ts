@@ -88,6 +88,10 @@ export const DASHBOARD_METRIC_STRIP_CLASS =
 export const DASHBOARD_METRIC_STRIP_INLINE_CLASS =
   "flex min-w-0 flex-wrap items-stretch justify-center gap-2.5 sm:gap-3";
 
+/** Page-level stat strip — horizontal scroll on mobile, wrap on sm+. */
+export const DASHBOARD_METRIC_STRIP_SCROLL_CLASS =
+  "flex min-w-0 flex-nowrap items-stretch justify-start gap-2.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 sm:mx-0 sm:flex-wrap sm:justify-center sm:gap-3 sm:px-0 sm:overflow-visible";
+
 /** Frosted white stat cards on section headers. */
 export const DASHBOARD_METRIC_CHIP_SURFACE = `rounded-xl ${MV_GLASS_INSET_LIGHT}`;
 
@@ -128,6 +132,8 @@ export const DASHBOARD_PRODUCT_CARD_CLASS = `${MV_CARD_SHELL} ${MV_CARD_INNER_GR
 export const DASHBOARD_PRODUCT_CARD_HEADER_CLASS =
   "flex items-center gap-3 px-4 py-3 sm:px-5 sm:py-4";
 
+export const DASHBOARD_PRODUCT_CARD_HEADER_MUTED_CLASS = "opacity-90";
+
 export const DASHBOARD_PRODUCT_CARD_HEADER_EXPANDED_CLASS =
   "border-b border-white/[0.08]";
 
@@ -140,11 +146,19 @@ export const DASHBOARD_PRODUCT_SUBTITLE_CLASS = MV_CAPTION_TEXT;
 export const DASHBOARD_PRODUCT_TOTAL_CLASS =
   "font-mono text-sm tabular-nums text-white/75 sm:text-base";
 
-export const DASHBOARD_PAGE_HEADER_CLASS =
-  "flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between";
+export const DASHBOARD_PAGE_HEADER_CLASS = "space-y-4";
 
 export const DASHBOARD_PAGE_HEADER_STATS_CLASS =
-  "flex min-w-0 flex-1 justify-start lg:justify-end";
+  "flex min-w-0 justify-center px-4";
+
+/** Flat header metrics inside product cards — no nested frosted chip shells. */
+export const DASHBOARD_PRODUCT_HEADER_METRICS_CLASS =
+  "flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2 sm:gap-x-6";
+
+export const DASHBOARD_PRODUCT_HEADER_METRIC_LABEL_CLASS = MV_SECTION_LABEL;
+
+export const DASHBOARD_PRODUCT_HEADER_METRIC_VALUE_CLASS =
+  "font-mono text-sm tabular-nums font-semibold text-white/90 sm:text-base";
 
 /** Product icon badges in card headers */
 const DASHBOARD_PRODUCT_ICON_BADGE_BASE =
@@ -158,11 +172,18 @@ export const DASHBOARD_PRODUCT_ICON_SAIL_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE
 
 export const DASHBOARD_PRODUCT_ICON_YIELD_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} text-[#C4B5FD]`;
 
+export const DASHBOARD_PRODUCT_ICON_ARCHIVED_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} text-white/50`;
+
+export const DASHBOARD_PRODUCT_LOADING_HINT_CLASS = MV_META_TEXT;
+
 export const DASHBOARD_VIEW_ALL_LINK_CLASS =
   "inline-flex shrink-0 items-center gap-0.5 text-xs font-semibold text-white/70 transition hover:text-white/90 sm:text-sm";
 
 /** Connect-wallet and inline notice panels. */
 export const DASHBOARD_NOTICE_PANEL_CLASS = `${MV_CARD_SHELL} px-4 py-3 ${MV_BODY_TEXT}`;
+
+export const DASHBOARD_NOTICE_PANEL_INNER_CLASS =
+  "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between";
 
 export const DASHBOARD_EMPTY_HINT_CLASS = MV_CAPTION_TEXT;
 

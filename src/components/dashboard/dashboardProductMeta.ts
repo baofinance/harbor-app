@@ -7,6 +7,7 @@ import {
   WalletIcon,
 } from "@heroicons/react/24/outline";
 import {
+  DASHBOARD_PRODUCT_ICON_ARCHIVED_CLASS,
   DASHBOARD_PRODUCT_ICON_EARN_CLASS,
   DASHBOARD_PRODUCT_ICON_MV_CLASS,
   DASHBOARD_PRODUCT_ICON_SAIL_CLASS,
@@ -28,6 +29,7 @@ export type DashboardProductMeta = {
   viewAllLabel?: string;
   icon: ComponentType<{ className?: string }>;
   iconBadgeClass: string;
+  tone?: "default" | "muted";
 };
 
 export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProductMeta> =
@@ -66,7 +68,8 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
       viewAllHref: "/genesis",
       viewAllLabel: "View all",
       icon: ArchiveBoxIcon,
-      iconBadgeClass: DASHBOARD_PRODUCT_ICON_MV_CLASS,
+      iconBadgeClass: DASHBOARD_PRODUCT_ICON_ARCHIVED_CLASS,
+      tone: "muted",
     },
     yield: {
       id: "yield",

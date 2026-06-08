@@ -9,6 +9,8 @@ import {
   DASHBOARD_PRODUCT_CARD_CLASS,
   DASHBOARD_PRODUCT_CARD_HEADER_CLASS,
   DASHBOARD_PRODUCT_CARD_HEADER_EXPANDED_CLASS,
+  DASHBOARD_PRODUCT_CARD_HEADER_MUTED_CLASS,
+  DASHBOARD_PRODUCT_LOADING_HINT_CLASS,
   DASHBOARD_PRODUCT_SUBTITLE_CLASS,
   DASHBOARD_PRODUCT_TITLE_CLASS,
   DASHBOARD_PRODUCT_TOTAL_CLASS,
@@ -30,6 +32,8 @@ export type DashboardProductCardProps = {
   headerMetrics?: ReactNode;
   /** When collapsed and no body, show subtitle under title */
   showSubtitle?: boolean;
+  /** Show loading hint in header when fetching and no total yet */
+  loading?: boolean;
   expandAriaLabel?: string;
   collapseAriaLabel?: string;
   children?: ReactNode;
@@ -53,6 +57,7 @@ export function DashboardProductCard({
   sectionTotalLabel,
   headerMetrics,
   showSubtitle = true,
+  loading = false,
   expandAriaLabel,
   collapseAriaLabel,
   children,
@@ -63,17 +68,21 @@ export function DashboardProductCard({
     sectionTotalUsd != null &&
     sectionTotalUsd > 0 &&
     Number.isFinite(sectionTotalUsd);
-  const showBody = expanded && isConnected && children != null;
+  const showBody = expanded && children != null;
   const showHeaderMetrics = isConnected && headerMetrics != null;
+  const showLoadingHint = isConnected && loading && !showTotal;
   const showSubtitleLine =
     showSubtitle && (!expanded || !showBody) && meta.subtitle.length > 0;
+  const headerMuted = meta.tone === "muted";
 
   return (
     <section className={DASHBOARD_PRODUCT_CARD_CLASS} aria-label={meta.title}>
       <div
         className={`${DASHBOARD_PRODUCT_CARD_HEADER_CLASS} ${
-          showBody ? DASHBOARD_PRODUCT_CARD_HEADER_EXPANDED_CLASS : ""
-        } ${showHeaderMetrics ? "flex-col items-stretch gap-3 sm:flex-row sm:items-center" : ""}`}
+          headerMuted ? DASHBOARD_PRODUCT_CARD_HEADER_MUTED_CLASS : ""
+        } ${showBody ? DASHBOARD_PRODUCT_CARD_HEADER_EXPANDED_CLASS : ""} ${
+          showHeaderMetrics ? "flex-wrap gap-y-3" : ""
+        }`}
       >
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <span className={meta.iconBadgeClass} aria-hidden>
@@ -94,6 +103,9 @@ export function DashboardProductCard({
                       ? `${sectionTotalLabel} ${formatSectionTotal(sectionTotalUsd)}`
                       : formatSectionTotal(sectionTotalUsd)}
                   </span>
+                ) : null}
+                {showLoadingHint ? (
+                  <span className={DASHBOARD_PRODUCT_LOADING_HINT_CLASS}>Loading…</span>
                 ) : null}
               </div>
               {showSubtitleLine ? (
@@ -134,7 +146,7 @@ export function DashboardProductCard({
           </div>
         </div>
         {showHeaderMetrics ? (
-          <div className="flex min-w-0 justify-start sm:justify-end">{headerMetrics}</div>
+          <div className="flex w-full min-w-0 justify-end sm:w-auto">{headerMetrics}</div>
         ) : null}
       </div>
       {showBody ? <div className={DASHBOARD_PRODUCT_CARD_BODY_CLASS}>{children}</div> : null}

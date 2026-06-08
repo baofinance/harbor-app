@@ -4,31 +4,24 @@ import type { ReactNode } from "react";
 import {
   DASHBOARD_METRIC_STRIP_CLASS,
   DASHBOARD_METRIC_STRIP_INLINE_CLASS,
+  DASHBOARD_METRIC_STRIP_SCROLL_CLASS,
 } from "./dashboardStyles";
 
 export function DashboardMetricStrip({
   children,
   inline = false,
+  scroll = false,
 }: {
   children: ReactNode;
   inline?: boolean;
+  /** Horizontal scroll on narrow viewports (page-level stat strip). */
+  scroll?: boolean;
 }) {
-  return (
-    <div className={inline ? DASHBOARD_METRIC_STRIP_INLINE_CLASS : DASHBOARD_METRIC_STRIP_CLASS}>
-      {children}
-    </div>
-  );
-}
+  const className = scroll
+    ? DASHBOARD_METRIC_STRIP_SCROLL_CLASS
+    : inline
+      ? DASHBOARD_METRIC_STRIP_INLINE_CLASS
+      : DASHBOARD_METRIC_STRIP_CLASS;
 
-/** Prevents accordion toggle when interacting with header stats. */
-export function DashboardHeaderMetricsSlot({ children }: { children: ReactNode }) {
-  return (
-    <div
-      className="flex w-full min-w-0 justify-center"
-      onClick={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.stopPropagation()}
-    >
-      {children}
-    </div>
-  );
+  return <div className={className}>{children}</div>;
 }

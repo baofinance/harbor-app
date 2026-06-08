@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { TokenLogo } from "@/components/shared";
 import { GenesisMarketChainCell } from "@/components/genesis/GenesisMarketSharedRowCells";
 import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
@@ -39,20 +40,22 @@ function ManageAction({
     return (
       <button
         type="button"
-        className={className}
+        className={`${className} inline-flex items-center gap-0.5`}
         onClick={(e) => {
           e.stopPropagation();
           void onManage(row);
         }}
       >
         Manage
+        <ChevronRightIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
       </button>
     );
   }
 
   return (
-    <Link href={row.href} className={className}>
+    <Link href={row.href} className={`${className} inline-flex items-center gap-0.5`}>
       Manage
+      <ChevronRightIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
     </Link>
   );
 }
