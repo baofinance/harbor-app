@@ -19,6 +19,7 @@ import { DashboardYieldShareList } from "@/components/dashboard/DashboardYieldSh
 import {
   DASHBOARD_INFO_ICON_CLASS,
   DASHBOARD_LINK_CLASS,
+  DASHBOARD_NOTICE_PANEL_CLASS,
 } from "@/components/dashboard/dashboardStyles";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
 import SimpleTooltip from "@/components/SimpleTooltip";
@@ -168,12 +169,12 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-0 flex-1 text-white max-w-[1300px] mx-auto font-sans relative w-full">
-      <main className="container mx-auto px-4 sm:px-10 pb-6 pt-2 sm:pt-4 space-y-4">
+    <div className="relative mx-auto flex min-h-0 w-full max-w-[1300px] flex-1 flex-col font-sans text-white">
+      <main className="container mx-auto space-y-4 px-4 pb-6 pt-2 sm:px-10 sm:pt-4">
         <DashboardPageTitleSection />
 
         {!isConnected ? (
-          <div className="rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/70">
+          <div className={DASHBOARD_NOTICE_PANEL_CLASS}>
             Connect your wallet to view positions and yield share.
           </div>
         ) : null}

@@ -17,8 +17,9 @@ import {
   DASHBOARD_EMPTY_ON_PANEL_CLASS,
   DASHBOARD_POSITIONS_COL_MARKET_CLASSNAME,
   DASHBOARD_POSITIONS_COL_NETWORK_CLASSNAME,
-  DASHBOARD_POSITIONS_TABLE_HEADER_WRAP_CLASSNAME,
-  DASHBOARD_POSITIONS_VALUE_TEXT_CLASS,
+  DASHBOARD_GLASS_VALUE_TEXT_CLASS,
+  DASHBOARD_GLASS_YIELD_TABLE_HEADER_GRID_CLASSNAME,
+  DASHBOARD_TABLE_HEADER_WRAP_CLASS,
   DASHBOARD_YIELD_COL_BOOST_CLASSNAME,
   DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME,
   DASHBOARD_YIELD_LIST_CLASS,
@@ -32,8 +33,8 @@ const DASHBOARD_NETWORK_ICON_PX = 20;
 
 function YieldListHeader() {
   return (
-    <div className={DASHBOARD_POSITIONS_TABLE_HEADER_WRAP_CLASSNAME}>
-      <div className={DASHBOARD_YIELD_TABLE_HEADER_GRID_CLASSNAME}>
+    <div className={DASHBOARD_TABLE_HEADER_WRAP_CLASS}>
+      <div className={DASHBOARD_GLASS_YIELD_TABLE_HEADER_GRID_CLASSNAME}>
         <div className={DASHBOARD_POSITIONS_COL_NETWORK_CLASSNAME} aria-label="Network" />
         <DashboardMarketColumnHeader showIcon={false} />
         <DashboardYieldCenteredMetricHeader
@@ -74,7 +75,7 @@ function DashboardYieldRowView({ row }: { row: FounderMetricRow }) {
   const showBoost = row.ownershipSharePct > 0;
 
   return (
-    <DashboardContentRow variant="index">
+    <DashboardContentRow variant="glass">
       <div className={DASHBOARD_YIELD_ROW_GRID_CLASS}>
         <div className={DASHBOARD_POSITIONS_COL_NETWORK_CLASSNAME}>
           <GenesisMarketChainCell
@@ -85,14 +86,14 @@ function DashboardYieldRowView({ row }: { row: FounderMetricRow }) {
         </div>
         <div className={DASHBOARD_POSITIONS_COL_MARKET_CLASSNAME}>
           <span
-            className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} truncate`}
+            className={`${DASHBOARD_GLASS_VALUE_TEXT_CLASS} truncate`}
             title={row.marketName}
           >
             {row.marketName}
           </span>
         </div>
         <div className={DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME}>
-          <span className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} tabular-nums`}>
+          <span className={`${DASHBOARD_GLASS_VALUE_TEXT_CLASS} tabular-nums`}>
             {formatPercent(row.ownershipSharePct, { decimals: 2 })}
           </span>
         </div>
@@ -100,22 +101,22 @@ function DashboardYieldRowView({ row }: { row: FounderMetricRow }) {
           {showBoost ? (
             <DashboardYieldBoostBadge multiplier={row.boostMultiplier} />
           ) : (
-            <span className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} text-[#1E4775]/40`}>—</span>
+            <span className={`${DASHBOARD_GLASS_VALUE_TEXT_CLASS} text-white/40`}>—</span>
           )}
         </div>
         <div className={DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME}>
-          <span className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} tabular-nums`}>
+          <span className={`${DASHBOARD_GLASS_VALUE_TEXT_CLASS} tabular-nums`}>
             {formatPercent(row.yieldSharePct, { decimals: 4 })}
           </span>
         </div>
         <div className={DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME}>
-          <span className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} tabular-nums`}>
+          <span className={`${DASHBOARD_GLASS_VALUE_TEXT_CLASS} tabular-nums`}>
             {formatUSD(row.paidUSD, { compact: false })}
           </span>
         </div>
         <div className={DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME}>
           <span
-            className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} tabular-nums ${
+            className={`${DASHBOARD_GLASS_VALUE_TEXT_CLASS} tabular-nums ${
               row.outstandingUSD > 0 ? "text-[#FF8A7A]" : ""
             }`}
           >
@@ -147,7 +148,7 @@ export function DashboardYieldShareList({
       <div className={DASHBOARD_YIELD_LIST_CLASS}>
         <YieldTable>
           {[0, 1, 2].map((i) => (
-            <DashboardContentRowSkeleton key={i} variant="index" />
+            <DashboardContentRowSkeleton key={i} variant="glass" />
           ))}
         </YieldTable>
       </div>

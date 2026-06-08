@@ -1,6 +1,6 @@
 import SimpleTooltip from "@/components/SimpleTooltip";
 import {
-  DASHBOARD_POSITIONS_VALUE_TEXT_CLASS,
+  DASHBOARD_GLASS_VALUE_TEXT_CLASS,
   DASHBOARD_YIELD_COL_BOOST_CLASSNAME,
   DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME,
 } from "./dashboardRowListStyles";
@@ -10,7 +10,7 @@ function HeaderTipLabel({ label, tip }: { label: string; tip: string }) {
     <SimpleTooltip label={tip} className="cursor-help">
       <span className="inline-flex max-w-full items-center gap-1">
         <span className="truncate">{label}</span>
-        <span className="shrink-0 normal-case text-[#1E4775]/35">ⓘ</span>
+        <span className="shrink-0 normal-case text-white/35">ⓘ</span>
       </span>
     </SimpleTooltip>
   );
@@ -36,7 +36,7 @@ export function DashboardYieldCenteredMetricHeader({
     <div className={DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME}>
       <div className="relative inline-flex max-w-full">
         <span
-          className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} invisible whitespace-nowrap tabular-nums`}
+          className={`${DASHBOARD_GLASS_VALUE_TEXT_CLASS} invisible whitespace-nowrap tabular-nums`}
           aria-hidden
         >
           {ghostValue}

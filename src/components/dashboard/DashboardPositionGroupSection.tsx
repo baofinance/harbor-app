@@ -5,9 +5,10 @@ import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
 import { formatUSD } from "@/utils/formatters";
 import {
+  DASHBOARD_GROUP_HEADER_CLASS,
+  DASHBOARD_GROUP_TITLE_CLASS,
   DASHBOARD_SECTION_ACTION_BTN_CLASS,
   DASHBOARD_SECTION_CHEVRON_CLASS,
-  DASHBOARD_SECTION_TITLE_CLASS,
 } from "./dashboardStyles";
 import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
 import type { DashboardPositionGroup } from "./DashboardPositionsGrouped";
@@ -40,14 +41,14 @@ export function DashboardPositionGroupSection({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-[#0a1929]/40 px-3 py-2.5 sm:px-4">
+      <div className={DASHBOARD_GROUP_HEADER_CLASS}>
         <button
           type="button"
           className="flex min-w-0 flex-1 items-center gap-3 text-left hover:opacity-90"
           aria-expanded={expanded}
           onClick={() => setExpanded((open) => !open)}
         >
-          <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{group.title}</h3>
+          <h3 className={DASHBOARD_GROUP_TITLE_CLASS}>{group.title}</h3>
           {showTotal ? (
             <span className="shrink-0 font-mono text-sm tabular-nums text-white/60">
               {formatUSD(totalUsd, { compact: false })}

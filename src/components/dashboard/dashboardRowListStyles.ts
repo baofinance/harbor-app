@@ -6,10 +6,11 @@ import {
   MV_EXPLORER_HEADER_CELL_CLASSNAME,
   MV_EXPLORER_TABLE_HEADER_WRAP_CLASSNAME,
 } from "@/components/genesis/genesisMaidenVoyageTableGrid";
-import { DASHBOARD_GLASS_INSET_LIGHT } from "./dashboardStyles";
+import { MV_POSITION_ROW } from "@/components/genesis/maidenVoyageLayoutStyles";
+import { DASHBOARD_EMPTY_HINT_CLASS } from "./dashboardStyles";
 
 /** Row shell inside glass dashboard panels (yield share, etc.). */
-export const DASHBOARD_PANEL_ROW_SHELL_CLASS = `rounded-md py-2.5 px-2 min-h-[52px] ${DASHBOARD_GLASS_INSET_LIGHT}`;
+export const DASHBOARD_PANEL_ROW_SHELL_CLASS = `py-2.5 px-2 min-h-[52px] ${MV_POSITION_ROW}`;
 
 /** Index-style row shell — matches Anchor / Genesis explorer tables on dark pages. */
 export const DASHBOARD_INDEX_ROW_SHELL_CLASS =
@@ -37,9 +38,17 @@ export const DASHBOARD_INDEX_ROW_DESKTOP_CLASS = `hidden md:grid ${DASHBOARD_POS
 /** Anchor wallet-row mobile rhythm: primary row + secondary metric. */
 export const DASHBOARD_INDEX_ROW_MOBILE_CLASS = "md:hidden space-y-2 p-4";
 
-/** Column labels inside a glass panel. */
+/** Column labels inside a frosted dashboard section. */
 export const DASHBOARD_TABLE_HEADER_WRAP_CLASS =
   "hidden md:block py-1.5 px-2 border-b border-white/[0.08] mb-2 overflow-x-auto";
+
+/** Header grid on frosted sections — white labels on glass cards. */
+export const DASHBOARD_GLASS_TABLE_HEADER_GRID_CLASSNAME = `${DASHBOARD_POSITIONS_TABLE_GRID_CLASSNAME} uppercase tracking-wider text-[10px] lg:text-[11px] text-white/55 font-semibold`;
+
+export const DASHBOARD_GLASS_YIELD_TABLE_HEADER_GRID_CLASSNAME = `${DASHBOARD_YIELD_TABLE_GRID_CLASSNAME} uppercase tracking-wider text-[10px] lg:text-[11px] text-white/55 font-semibold`;
+
+/** Body values on frosted row tiles inside dashboard sections. */
+export const DASHBOARD_GLASS_VALUE_TEXT_CLASS = "font-medium text-sm text-white/90";
 
 /** Column labels above index-style position rows. */
 export const DASHBOARD_INDEX_TABLE_HEADER_WRAP_CLASS =
@@ -120,7 +129,7 @@ export const DASHBOARD_INDEX_ROW_TEXT_CLASS = "text-[#1E4775]";
 export const DASHBOARD_INDEX_TABLE_HEAD_CLASS =
   "uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold";
 
-export const DASHBOARD_YIELD_ROW_GRID_CLASS = `${DASHBOARD_YIELD_TABLE_GRID_CLASSNAME} text-sm py-2.5 px-2 min-h-[52px] ${DASHBOARD_INDEX_ROW_TEXT_CLASS}`;
+export const DASHBOARD_YIELD_ROW_GRID_CLASS = `${DASHBOARD_YIELD_TABLE_GRID_CLASSNAME} text-sm py-2.5 px-2 min-h-[52px]`;
 
 /** @deprecated Use DASHBOARD_YIELD_TABLE_HEADER_GRID_CLASSNAME */
 export const DASHBOARD_YIELD_HEADER_GRID_CLASS = DASHBOARD_YIELD_TABLE_HEADER_GRID_CLASSNAME;
@@ -128,7 +137,7 @@ export const DASHBOARD_YIELD_HEADER_GRID_CLASS = DASHBOARD_YIELD_TABLE_HEADER_GR
 /** @deprecated Use DASHBOARD_YIELD_TABLE_MIN_WIDTH_CLASSNAME */
 export const DASHBOARD_YIELD_SCROLL_MIN_WIDTH = DASHBOARD_YIELD_TABLE_MIN_WIDTH_CLASSNAME;
 
-export const DASHBOARD_EMPTY_ON_PANEL_CLASS = "text-sm text-white/55";
+export const DASHBOARD_EMPTY_ON_PANEL_CLASS = DASHBOARD_EMPTY_HINT_CLASS;
 
 /** @deprecated Use DASHBOARD_EMPTY_ON_PANEL_CLASS */
 export const DASHBOARD_EMPTY_ON_DARK_CLASS = DASHBOARD_EMPTY_ON_PANEL_CLASS;

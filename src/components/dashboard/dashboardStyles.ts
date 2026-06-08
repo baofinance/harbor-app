@@ -1,30 +1,39 @@
-/** Shared layout tokens for the wallet dashboard page. */
+/** Shared layout tokens for the wallet dashboard page — aligned with Maiden Voyage glass. */
 
-/** Shared drop shadow for large section cards and borderless position rows. */
-export const DASHBOARD_GLASS_CARD_SHADOW =
-  "shadow-[0_8px_32px_-10px_rgba(0,0,0,0.45),inset_0_1px_0_0_rgba(255,255,255,0.06)]";
+import {
+  MV_BODY_TEXT,
+  MV_CAPTION_TEXT,
+  MV_CARD_INNER_GRADIENT,
+  MV_CARD_SHELL,
+  MV_GLASS_CARD_SHADOW,
+  MV_GLASS_INSET_DARK,
+  MV_GLASS_INSET_LIGHT,
+  MV_META_TEXT,
+  MV_POSITION_ROW,
+  MV_SECTION_LABEL,
+} from "@/components/genesis/maidenVoyageLayoutStyles";
 
-/** Outer glass panel — dark navy tint over page bg #1E4775. */
-export const DASHBOARD_GLASS_SURFACE =
-  `border border-white/[0.08] bg-[#153B63]/62 backdrop-blur-xl ${DASHBOARD_GLASS_CARD_SHADOW}`;
+export const DASHBOARD_GLASS_CARD_SHADOW = MV_GLASS_CARD_SHADOW;
 
-/** Nested glass inside a section — default section depth (unchanged). */
-export const DASHBOARD_GLASS_INSET =
-  "border border-white/[0.07] bg-[#0a1929]/48 backdrop-blur-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]";
+/** Frosted white outer glass — matches Maiden Voyage section cards. */
+export const DASHBOARD_GLASS_SURFACE = MV_GLASS_INSET_LIGHT;
+
+/** @deprecated Prefer DASHBOARD_GLASS_INSET_LIGHT */
+export const DASHBOARD_GLASS_INSET = MV_GLASS_INSET_DARK;
 
 /** Lighter frosted glass for position/list row tiles — borderless with card shadow. */
-export const DASHBOARD_GLASS_INSET_LIGHT =
-  `bg-white/[0.11] backdrop-blur-md ${DASHBOARD_GLASS_CARD_SHADOW}`;
+export const DASHBOARD_GLASS_INSET_LIGHT = MV_GLASS_INSET_LIGHT;
 
-/** Unified stat chip glass — darker than rows, lighter than prior emphasized total. */
-export const DASHBOARD_GLASS_STAT_TILE =
-  "border border-white/[0.08] bg-[#122a47]/46 backdrop-blur-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]";
+/** Unified stat chip glass — matches Maiden Voyage KPI tiles. */
+export const DASHBOARD_GLASS_STAT_TILE = MV_GLASS_INSET_DARK;
 
 /** @deprecated Use DASHBOARD_GLASS_STAT_TILE */
 export const DASHBOARD_GLASS_INSET_DARK = DASHBOARD_GLASS_STAT_TILE;
 
 /** Large section container (Your positions, Yield share). */
-export const DASHBOARD_SECTION_CLASS = `rounded-2xl overflow-hidden ${DASHBOARD_GLASS_SURFACE}`;
+export const DASHBOARD_SECTION_CLASS = `${MV_CARD_SHELL} overflow-hidden`;
+
+export const DASHBOARD_SECTION_INNER_GRADIENT = MV_CARD_INNER_GRADIENT;
 
 export const DASHBOARD_SECTION_HEADER_INNER_CLASS =
   "grid w-full grid-cols-[1fr_auto] grid-rows-[auto_auto] gap-x-3 gap-y-3 px-4 py-3 sm:grid-cols-[minmax(0,max-content)_1fr_minmax(0,max-content)] sm:grid-rows-1 sm:items-center sm:gap-x-4 sm:px-6 sm:py-4";
@@ -61,7 +70,7 @@ export const DASHBOARD_LINK_CLASS =
 
 export const DASHBOARD_ROW_TEXT_CLASS = "text-white/90";
 
-export const DASHBOARD_ROW_MUTED_CLASS = "text-white/55";
+export const DASHBOARD_ROW_MUTED_CLASS = MV_CAPTION_TEXT;
 
 export const DASHBOARD_METRIC_STRIP_CLASS =
   "flex flex-wrap items-stretch justify-center gap-2";
@@ -74,14 +83,12 @@ export const DASHBOARD_METRIC_CHIP_CLASS = `flex h-[3.5rem] w-[7.25rem] shrink-0
 
 export const DASHBOARD_METRIC_CHIP_INLINE_CLASS = DASHBOARD_METRIC_CHIP_CLASS;
 
-export const DASHBOARD_METRIC_CHIP_LABEL_CLASS =
-  "uppercase tracking-widest text-white/50 leading-tight";
+export const DASHBOARD_METRIC_CHIP_LABEL_CLASS = MV_SECTION_LABEL;
 
 export const DASHBOARD_METRIC_CHIP_VALUE_CLASS = "text-white/90";
 
 /** Uppercase labels on glass table headers. */
-export const DASHBOARD_INDEX_TABLE_HEAD =
-  "uppercase tracking-wider text-[10px] lg:text-[11px] text-white/55 font-semibold";
+export const DASHBOARD_INDEX_TABLE_HEAD = MV_SECTION_LABEL;
 
 /** Status pills on glass row bars. */
 export const DASHBOARD_STATUS_PILL_ENDED_LIGHT =
@@ -94,5 +101,16 @@ export const DASHBOARD_STATUS_PILL_NEUTRAL_LIGHT =
   "inline-flex items-center rounded-md border border-white/[0.09] bg-[#0a1929]/35 px-2 py-0.5 text-[10px] font-medium text-white/70 sm:text-xs";
 
 /** Group labels inside section bodies (Maiden Voyage, Earn, etc.). */
-export const DASHBOARD_GROUP_LABEL_CLASS =
-  "text-[11px] font-medium uppercase tracking-widest text-white/45";
+export const DASHBOARD_GROUP_LABEL_CLASS = MV_SECTION_LABEL;
+
+/** Collapsible group header inside a dashboard section. */
+export const DASHBOARD_GROUP_HEADER_CLASS = `flex items-center gap-2 px-3 py-2.5 sm:px-4 ${MV_POSITION_ROW}`;
+
+export const DASHBOARD_GROUP_TITLE_CLASS = "text-sm font-semibold text-white/95";
+
+/** Connect-wallet and inline notice panels. */
+export const DASHBOARD_NOTICE_PANEL_CLASS = `${MV_CARD_SHELL} px-4 py-3 ${MV_BODY_TEXT}`;
+
+export const DASHBOARD_EMPTY_HINT_CLASS = MV_CAPTION_TEXT;
+
+export { MV_META_TEXT as DASHBOARD_META_TEXT };
