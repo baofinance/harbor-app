@@ -158,9 +158,18 @@ export const DASHBOARD_PAGE_HEADER_SUBTITLE_CLASS =
 export const DASHBOARD_PAGE_HEADER_STATS_CLASS =
   "min-w-0 w-full flex-1 lg:flex lg:justify-end";
 
-/** Vertical rule between position and yield chips in the page stat strip. */
+/** Labeled cluster in the page stat strip (positions vs yield share). */
+export const DASHBOARD_PAGE_STATS_GROUP_CLASS = "flex shrink-0 flex-col gap-1.5";
+
+export const DASHBOARD_PAGE_STATS_GROUP_LABEL_CLASS =
+  "px-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/50 sm:text-xs";
+
+export const DASHBOARD_PAGE_STATS_GROUP_CHIPS_CLASS =
+  "flex flex-nowrap items-stretch gap-2.5 sm:gap-3";
+
+/** Vertical rule between position and yield chip groups in the page stat strip. */
 export const DASHBOARD_PAGE_STATS_DIVIDER_CLASS =
-  "mx-0.5 h-[4.75rem] w-px shrink-0 self-center bg-white/12 sm:h-[5rem]";
+  "mx-1 w-px shrink-0 self-stretch bg-white/12";
 
 /** Flat header metrics inside product cards — no nested frosted chip shells. */
 export const DASHBOARD_PRODUCT_HEADER_METRICS_CLASS =
