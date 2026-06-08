@@ -21,6 +21,8 @@ export type DashboardYieldSummaryCardsProps = {
   variant?: "chip" | "flat";
   /** Horizontal scroll on narrow viewports (page-level stat strip). */
   scroll?: boolean;
+  /** Render chips only — for embedding in a shared stat strip. */
+  bare?: boolean;
 };
 
 function StatIconBadge({
@@ -60,6 +62,7 @@ export function DashboardYieldSummaryCards({
   isConnected,
   variant = "chip",
   scroll = false,
+  bare = false,
 }: DashboardYieldSummaryCardsProps) {
   const dash = "—";
   const earnedValue = isConnected ? formatUSD(totalEarned, { compact: false }) : dash;
@@ -92,8 +95,8 @@ export function DashboardYieldSummaryCards({
     );
   }
 
-  return (
-    <DashboardMetricStrip inline scroll={scroll}>
+  const chips = (
+    <>
       <DashboardMetricChip
         label="Total earned"
         value={earnedValue}
@@ -124,6 +127,14 @@ export function DashboardYieldSummaryCards({
           </StatIconBadge>
         }
       />
+    </>
+  );
+
+  if (bare) return chips;
+
+  return (
+    <DashboardMetricStrip inline scroll={scroll}>
+      {chips}
     </DashboardMetricStrip>
   );
 }

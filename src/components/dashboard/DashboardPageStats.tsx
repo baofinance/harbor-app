@@ -1,13 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { DashboardMetricStrip } from "./DashboardSummaryStrip";
 import { DashboardPositionSummaryCards } from "./DashboardPositionSummaryCards";
 import { DashboardYieldSummaryCards } from "./DashboardYieldSummaryCards";
-import {
-  DASHBOARD_PAGE_STATS_CLASS,
-  DASHBOARD_PAGE_STATS_GROUP_CLASS,
-  DASHBOARD_PAGE_STATS_GROUP_LABEL_CLASS,
-} from "./dashboardStyles";
+import { DASHBOARD_PAGE_STATS_DIVIDER_CLASS } from "./dashboardStyles";
 
 export type DashboardPageStatsProps = {
   maidenUsd: number;
@@ -20,21 +16,6 @@ export type DashboardPageStatsProps = {
   totalOutstanding: number;
 };
 
-function StatsGroup({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className={DASHBOARD_PAGE_STATS_GROUP_CLASS} aria-label={label}>
-      <h2 className={DASHBOARD_PAGE_STATS_GROUP_LABEL_CLASS}>{label}</h2>
-      {children}
-    </section>
-  );
-}
-
 export function DashboardPageStats({
   maidenUsd,
   earnUsd,
@@ -46,26 +27,28 @@ export function DashboardPageStats({
   totalOutstanding,
 }: DashboardPageStatsProps) {
   return (
-    <div className={DASHBOARD_PAGE_STATS_CLASS}>
-      <StatsGroup label="Positions">
-        <DashboardPositionSummaryCards
-          maidenUsd={maidenUsd}
-          earnUsd={earnUsd}
-          sailUsd={sailUsd}
-          archivedUsd={archivedUsd}
-          showArchived={showArchived}
-          isConnected={isConnected}
-        />
-      </StatsGroup>
-      <StatsGroup label="Yield share">
-        <DashboardYieldSummaryCards
-          totalEarned={totalEarned}
-          totalOutstanding={totalOutstanding}
-          isConnected={isConnected}
-          variant="chip"
-          scroll
-        />
-      </StatsGroup>
-    </div>
+    <DashboardMetricStrip inline scroll aria-label="Dashboard summary">
+      <DashboardPositionSummaryCards
+        maidenUsd={maidenUsd}
+        earnUsd={earnUsd}
+        sailUsd={sailUsd}
+        archivedUsd={archivedUsd}
+        showArchived={showArchived}
+        isConnected={isConnected}
+        bare
+      />
+      <div
+        className={DASHBOARD_PAGE_STATS_DIVIDER_CLASS}
+        role="separator"
+        aria-hidden
+      />
+      <DashboardYieldSummaryCards
+        totalEarned={totalEarned}
+        totalOutstanding={totalOutstanding}
+        isConnected={isConnected}
+        variant="chip"
+        bare
+      />
+    </DashboardMetricStrip>
   );
 }

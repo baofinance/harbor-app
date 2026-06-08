@@ -146,17 +146,21 @@ export const DASHBOARD_PRODUCT_SUBTITLE_CLASS = MV_CAPTION_TEXT;
 export const DASHBOARD_PRODUCT_TOTAL_CLASS =
   "font-mono text-sm tabular-nums text-white/75 sm:text-base";
 
-export const DASHBOARD_PAGE_HEADER_CLASS = "space-y-4";
+export const DASHBOARD_PAGE_HEADER_CLASS =
+  "flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6";
+
+export const DASHBOARD_PAGE_HEADER_TITLE_CLASS =
+  "font-bold font-mono text-white text-4xl leading-[1.05] sm:text-5xl lg:text-5xl xl:text-6xl";
+
+export const DASHBOARD_PAGE_HEADER_SUBTITLE_CLASS =
+  "mt-1 max-w-md text-base font-medium leading-snug tracking-tight text-white/85 sm:text-lg";
 
 export const DASHBOARD_PAGE_HEADER_STATS_CLASS =
-  "flex min-w-0 justify-center px-4 w-full max-w-full";
+  "min-w-0 w-full flex-1 lg:flex lg:justify-end";
 
-export const DASHBOARD_PAGE_STATS_CLASS =
-  "flex w-full max-w-full flex-col gap-4 border-t border-white/[0.08] pt-4 sm:gap-5 sm:pt-5";
-
-export const DASHBOARD_PAGE_STATS_GROUP_CLASS = "flex min-w-0 flex-col gap-2";
-
-export const DASHBOARD_PAGE_STATS_GROUP_LABEL_CLASS = `${MV_SECTION_LABEL} text-center`;
+/** Vertical rule between position and yield chips in the page stat strip. */
+export const DASHBOARD_PAGE_STATS_DIVIDER_CLASS =
+  "mx-0.5 h-[4.75rem] w-px shrink-0 self-center bg-white/12 sm:h-[5rem]";
 
 /** Flat header metrics inside product cards — no nested frosted chip shells. */
 export const DASHBOARD_PRODUCT_HEADER_METRICS_CLASS =

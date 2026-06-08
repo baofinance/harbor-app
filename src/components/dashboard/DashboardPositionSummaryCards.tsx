@@ -38,6 +38,8 @@ export type DashboardPositionSummaryCardsProps = {
   archivedUsd: number;
   showArchived: boolean;
   isConnected: boolean;
+  /** Render chips only — for embedding in a shared stat strip. */
+  bare?: boolean;
 };
 
 export function DashboardPositionSummaryCards({
@@ -47,12 +49,13 @@ export function DashboardPositionSummaryCards({
   archivedUsd,
   showArchived,
   isConnected,
+  bare = false,
 }: DashboardPositionSummaryCardsProps) {
   const totalExposure = maidenUsd + earnUsd + sailUsd;
   const dash = "—";
 
-  return (
-    <DashboardMetricStrip inline scroll>
+  const chips = (
+    <>
       <DashboardMetricChip
         label="Total exposure"
         value={isConnected ? formatUSD(totalExposure, { compact: false }) : dash}
@@ -105,6 +108,14 @@ export function DashboardPositionSummaryCards({
           }
         />
       ) : null}
+    </>
+  );
+
+  if (bare) return chips;
+
+  return (
+    <DashboardMetricStrip inline scroll>
+      {chips}
     </DashboardMetricStrip>
   );
 }
