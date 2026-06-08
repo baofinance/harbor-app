@@ -379,9 +379,13 @@ export default function GenesisIndexPage() {
     const userDeposit = isConnected
       ? readContractRowResult<bigint>(reads, baseOffset + 1)
       : undefined;
-    const userDepositDisplay =
+    const userDepositUsd =
       userDeposit && userDeposit > 0n && collateralPriceUSD > 0
-        ? formatUSD(Number(formatEther(userDeposit)) * collateralPriceUSD)
+        ? Number(formatEther(userDeposit)) * collateralPriceUSD
+        : null;
+    const userDepositDisplay =
+      userDepositUsd != null && userDepositUsd > 0
+        ? formatUSD(userDepositUsd)
         : userDeposit && userDeposit > 0n
           ? `${formatToken(userDeposit)} ${collateralSymbol}`
           : undefined;
@@ -400,6 +404,7 @@ export default function GenesisIndexPage() {
       capUnavailable: capResolve.isUnavailable,
       voyageStatus,
       userDepositDisplay,
+      userDepositUsd,
       displayMarketName,
       peggedNoPrefix,
       genesisAddress,
@@ -536,6 +541,7 @@ export default function GenesisIndexPage() {
                   yieldRevSharePct: activeMarketData.yieldRevSharePct,
                   genesisAddress: activeMarketData.genesisAddress,
                   userDepositDisplay: activeMarketData.userDepositDisplay,
+                  userDepositUsd: activeMarketData.userDepositUsd,
                   isConnected,
                   isClaiming: claimingMarket === activeMarketData.marketId,
                   onDeposit: () =>

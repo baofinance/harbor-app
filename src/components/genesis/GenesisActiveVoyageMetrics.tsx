@@ -1,10 +1,10 @@
 "use client";
 
-import { maidenVoyageCapUsd } from "@/config/maidenVoyageCap";
 import type { ActiveVoyageStatus } from "@/utils/activeVoyageStatus";
 import { getActiveVoyageZeroStateCopy } from "@/utils/activeVoyageStatus";
 import type { GenesisVoyageCapDisplay } from "@/utils/genesisVoyageCapDisplay";
 import { formatUSD } from "@/utils/formatters";
+import { resolveMaidenVoyageYieldShareLabel } from "@/utils/maidenVoyageYieldShareEstimate";
 import {
   MV_ACCENT_GRADIENT,
   MV_CAPTION_TEXT,
@@ -27,33 +27,6 @@ function stripLabel(symbol: string): string {
   return s;
 }
 
-function resolveOwnershipLabel(
-  capDisplay: GenesisVoyageCapDisplay,
-  genesisAddress?: string,
-): { label: string; caption: string } {
-  const capUsd =
-    maidenVoyageCapUsd(genesisAddress?.toLowerCase() ?? null) ??
-    (capDisplay.capTotalUsd > 0 ? capDisplay.capTotalUsd : null);
-  const estimatedOwnershipPct =
-    capUsd && capUsd > 0 ? (Math.min(1000, capUsd) / capUsd) * 100 : null;
-  const hasUserOwnership = capDisplay.ownershipShare > 0;
-
-  if (hasUserOwnership) {
-    return {
-      label: `${(capDisplay.ownershipShare * 100).toFixed(2)}%`,
-      caption: "Your current share",
-    };
-  }
-
-  return {
-    label:
-      estimatedOwnershipPct != null
-        ? `${estimatedOwnershipPct.toFixed(2)}%`
-        : "—",
-    caption: "With $1,000 deposit",
-  };
-}
-
 export type GenesisActiveVoyageMetricsProps = {
   capDisplay: GenesisVoyageCapDisplay | null;
   isLoading: boolean;
@@ -61,6 +34,7 @@ export type GenesisActiveVoyageMetricsProps = {
   voyageStatus: ActiveVoyageStatus;
   yieldRevSharePct?: number | null;
   genesisAddress?: string;
+  userDepositUsd?: number | null;
 };
 
 export function GenesisActiveVoyageMetrics({
@@ -70,6 +44,7 @@ export function GenesisActiveVoyageMetrics({
   voyageStatus,
   yieldRevSharePct = null,
   genesisAddress,
+  userDepositUsd = null,
 }: GenesisActiveVoyageMetricsProps) {
   if (isLoading) {
     return (
@@ -98,7 +73,12 @@ export function GenesisActiveVoyageMetrics({
     : `${formatUSD(capDisplay.remainingUsd)} remaining`;
 
   const zeroState = getActiveVoyageZeroStateCopy(voyageStatus, filledPct);
-  const ownership = resolveOwnershipLabel(capDisplay, genesisAddress);
+  const ownership = resolveMaidenVoyageYieldShareLabel({
+    capDisplay,
+    genesisAddress,
+    yieldRevSharePct,
+    userDepositUsd,
+  });
 
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.5fr)_minmax(0,0.75fr)_minmax(0,0.75fr)] md:items-center md:gap-0">

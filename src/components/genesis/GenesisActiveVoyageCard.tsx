@@ -46,6 +46,7 @@ export type GenesisActiveVoyageCardProps = {
   yieldRevSharePct?: number | null;
   genesisAddress?: string;
   userDepositDisplay?: string;
+  userDepositUsd?: number | null;
   isConnected: boolean;
   isClaiming: boolean;
   onDeposit: () => void;
@@ -69,6 +70,7 @@ export function GenesisActiveVoyageCard({
   yieldRevSharePct = null,
   genesisAddress,
   userDepositDisplay,
+  userDepositUsd = null,
   isConnected,
   isClaiming,
   onDeposit,
@@ -183,6 +185,7 @@ export function GenesisActiveVoyageCard({
             voyageStatus={voyageStatus}
             yieldRevSharePct={yieldRevSharePct}
             genesisAddress={genesisAddress}
+            userDepositUsd={userDepositUsd}
           />
         </div>
 
