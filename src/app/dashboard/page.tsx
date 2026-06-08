@@ -2,27 +2,22 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import {
-  ChartBarIcon,
-  InformationCircleIcon,
-  WalletIcon,
-} from "@heroicons/react/24/outline";
-import { DashboardCollapsibleSection } from "@/components/dashboard/DashboardCollapsibleSection";
 import { DashboardPageTitleSection } from "@/components/dashboard/DashboardPageTitleSection";
 import {
-  DashboardPositionsGrouped,
-  type DashboardPositionGroup,
-} from "@/components/dashboard/DashboardPositionsGrouped";
+  DashboardProductCard,
+  useDashboardProductExpanded,
+} from "@/components/dashboard/DashboardProductCard";
+import { DASHBOARD_PRODUCT_META } from "@/components/dashboard/dashboardProductMeta";
+import type { DashboardPositionGroup } from "@/components/dashboard/DashboardPositionsGrouped";
+import { DashboardPositionsList } from "@/components/dashboard/DashboardPositionsList";
 import { DashboardSummaryCards } from "@/components/dashboard/DashboardSummaryCards";
 import { DashboardYieldSummaryCards } from "@/components/dashboard/DashboardYieldSummaryCards";
 import { DashboardYieldShareList } from "@/components/dashboard/DashboardYieldShareList";
 import {
-  DASHBOARD_INFO_ICON_CLASS,
   DASHBOARD_LINK_CLASS,
   DASHBOARD_NOTICE_PANEL_CLASS,
 } from "@/components/dashboard/dashboardStyles";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
-import SimpleTooltip from "@/components/SimpleTooltip";
 import { useFounderMetrics } from "@/hooks/useFounderMetrics";
 import {
   useDashboardPositions,
@@ -35,9 +30,6 @@ function sumRowsUsd(rows: DashboardPositionRow[]): number {
   return rows.reduce((s, r) => s + r.usd, 0);
 }
 
-const POSITIONS_DATA_SOURCE_TOOLTIP =
-  "From Harbor marks and Sail subgraphs. USD is indexer-reported; use Manage for full detail.";
-
 function emptyHintWithLink(message: string, href: string, linkLabel: string): ReactNode {
   return (
     <>
@@ -46,6 +38,64 @@ function emptyHintWithLink(message: string, href: string, linkLabel: string): Re
         {linkLabel}
       </Link>
     </>
+  );
+}
+
+function defaultPositionExpanded(
+  compact: boolean,
+  rows: DashboardPositionRow[],
+  loading: boolean,
+): boolean {
+  if (compact) return false;
+  return rows.length > 0 || loading;
+}
+
+type PositionProductCardProps = {
+  group: DashboardPositionGroup;
+  productId: "maiden" | "earn" | "sail" | "archived";
+  compact: boolean;
+  isConnected: boolean;
+  onManage: (row: DashboardPositionRow) => void;
+};
+
+function PositionProductCard({
+  group,
+  productId,
+  compact,
+  isConnected,
+  onManage,
+}: PositionProductCardProps) {
+  const defaultExpanded =
+    productId === "archived"
+      ? !compact && group.rows.length > 0
+      : defaultPositionExpanded(compact, group.rows, group.loading);
+  const [expanded, setExpanded] = useDashboardProductExpanded(defaultExpanded);
+  const totalUsd = useMemo(
+    () => group.rows.reduce((sum, row) => sum + row.usd, 0),
+    [group.rows]
+  );
+
+  return (
+    <DashboardProductCard
+      meta={DASHBOARD_PRODUCT_META[productId]}
+      expanded={expanded}
+      onToggle={() => setExpanded((v) => !v)}
+      isConnected={isConnected}
+      sectionTotalUsd={totalUsd}
+      showSubtitle={!expanded || group.rows.length === 0}
+    >
+      {group.error ? (
+        <IndexMarksSubgraphErrorBanner error={new Error(group.error)} />
+      ) : null}
+      <DashboardPositionsList
+        rows={group.rows}
+        loading={group.loading}
+        error={null}
+        emptyHint={group.emptyHint}
+        showColumnHeader
+        onManage={onManage}
+      />
+    </DashboardProductCard>
   );
 }
 
@@ -62,9 +112,6 @@ export default function DashboardPage() {
   } = useDashboardPositions();
   const { openPositionManage, modals: dashboardManageModals } =
     useDashboardManageModals();
-
-  const [positionsExpanded, setPositionsExpanded] = useState(true);
-  const [yieldShareExpanded, setYieldShareExpanded] = useState(false);
 
   const userToggledYield = useRef(false);
 
@@ -144,18 +191,20 @@ export default function DashboardPage() {
     posErrors,
   ]);
 
+  const [yieldExpanded, setYieldExpanded] = useState(false);
+
   useEffect(() => {
     if (dashboardViewBasic) {
       if (!userToggledYield.current) {
-        setYieldShareExpanded(false);
+        setYieldExpanded(false);
       }
       return;
     }
     if (userToggledYield.current) return;
     if (isConnected && rows.length > 0) {
-      setYieldShareExpanded(true);
+      setYieldExpanded(true);
     }
-  }, [dashboardViewBasic, isConnected, rows.length]);
+  }, [dashboardViewBasic, isConnected, rows.length, setYieldExpanded]);
 
   const totalOutstanding = rows.reduce((sum, row) => sum + row.outstandingUSD, 0);
   const totalEarned = useMemo(
@@ -165,41 +214,19 @@ export default function DashboardPage() {
 
   const toggleYieldShare = () => {
     userToggledYield.current = true;
-    setYieldShareExpanded((v) => !v);
+    setYieldExpanded((v) => !v);
   };
+
+  const maidenGroup = positionGroups.find((g) => g.id === "maiden")!;
+  const earnGroup = positionGroups.find((g) => g.id === "earn")!;
+  const sailGroup = positionGroups.find((g) => g.id === "sail")!;
+  const archivedGroup = positionGroups.find((g) => g.id === "archived");
 
   return (
     <div className="relative mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col font-sans text-white">
       <main className="mx-auto w-full max-w-[1600px] space-y-4 px-4 pb-6 pt-2 sm:px-10 sm:pt-4">
-        <DashboardPageTitleSection />
-
-        {!isConnected ? (
-          <div className={DASHBOARD_NOTICE_PANEL_CLASS}>
-            Connect your wallet to view positions and yield share.
-          </div>
-        ) : null}
-
-        <DashboardCollapsibleSection
-          title="Your positions"
-          icon={WalletIcon}
-          surface="flat"
-          expanded={positionsExpanded}
-          onToggle={() => setPositionsExpanded((v) => !v)}
-          isConnected={isConnected}
-          expandAriaLabel="Expand positions"
-          collapseAriaLabel="Collapse positions"
-          titleAdornment={
-            <SimpleTooltip
-              label={POSITIONS_DATA_SOURCE_TOOLTIP}
-              className="cursor-help"
-            >
-              <InformationCircleIcon
-                className={DASHBOARD_INFO_ICON_CLASS}
-                aria-label="About position data"
-              />
-            </SimpleTooltip>
-          }
-          headerMetrics={
+        <DashboardPageTitleSection
+          stats={
             <DashboardSummaryCards
               maidenUsd={positionTotals.maiden}
               earnUsd={positionTotals.earn}
@@ -209,40 +236,70 @@ export default function DashboardPage() {
               isConnected={isConnected}
             />
           }
-        >
-          <DashboardPositionsGrouped
-            groups={positionGroups}
-            onManage={openPositionManage}
-            compactGroups={dashboardViewBasic}
-          />
-        </DashboardCollapsibleSection>
+        />
 
-        <DashboardCollapsibleSection
-          title="Yield share"
-          icon={ChartBarIcon}
-          surface="flat"
-          expanded={yieldShareExpanded}
-          onToggle={toggleYieldShare}
-          isConnected={isConnected}
-          expandAriaLabel="Expand yield share"
-          collapseAriaLabel="Collapse yield share"
-          headerMetrics={
-            <DashboardYieldSummaryCards
-              totalEarned={totalEarned}
-              totalOutstanding={totalOutstanding}
-              isConnected={isConnected}
-            />
-          }
-        >
-          {error ? (
-            <IndexMarksSubgraphErrorBanner error={new Error(error)} />
-          ) : null}
-          <DashboardYieldShareList
-            rows={rows}
-            isLoading={isLoading}
-            error={null}
+        {!isConnected ? (
+          <div className={DASHBOARD_NOTICE_PANEL_CLASS}>
+            Connect your wallet to view positions and yield share.
+          </div>
+        ) : null}
+
+        <div className="space-y-4">
+          <PositionProductCard
+            group={maidenGroup}
+            productId="maiden"
+            compact={dashboardViewBasic}
+            isConnected={isConnected}
+            onManage={openPositionManage}
           />
-        </DashboardCollapsibleSection>
+          <PositionProductCard
+            group={earnGroup}
+            productId="earn"
+            compact={dashboardViewBasic}
+            isConnected={isConnected}
+            onManage={openPositionManage}
+          />
+          <PositionProductCard
+            group={sailGroup}
+            productId="sail"
+            compact={dashboardViewBasic}
+            isConnected={isConnected}
+            onManage={openPositionManage}
+          />
+          {archivedGroup ? (
+            <PositionProductCard
+              group={archivedGroup}
+              productId="archived"
+              compact={dashboardViewBasic}
+              isConnected={isConnected}
+              onManage={openPositionManage}
+            />
+          ) : null}
+
+          <DashboardProductCard
+            meta={DASHBOARD_PRODUCT_META.yield}
+            expanded={yieldExpanded}
+            onToggle={toggleYieldShare}
+            isConnected={isConnected}
+            headerMetrics={
+              <DashboardYieldSummaryCards
+                totalEarned={totalEarned}
+                totalOutstanding={totalOutstanding}
+                isConnected={isConnected}
+              />
+            }
+            showSubtitle={!yieldExpanded}
+          >
+            {error ? (
+              <IndexMarksSubgraphErrorBanner error={new Error(error)} />
+            ) : null}
+            <DashboardYieldShareList
+              rows={rows}
+              isLoading={isLoading}
+              error={null}
+            />
+          </DashboardProductCard>
+        </div>
       </main>
       {dashboardManageModals}
     </div>

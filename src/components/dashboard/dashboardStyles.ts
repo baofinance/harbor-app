@@ -116,10 +116,50 @@ export const DASHBOARD_STATUS_PILL_NEUTRAL_LIGHT =
 /** Group labels inside section bodies (Maiden Voyage, Earn, etc.). */
 export const DASHBOARD_GROUP_LABEL_CLASS = MV_SECTION_LABEL;
 
-/** Collapsible group header inside a dashboard section. */
+/** @deprecated Replaced by DashboardProductCard header */
 export const DASHBOARD_GROUP_HEADER_CLASS = `flex items-center gap-2 px-3 py-2.5 sm:px-4 ${MV_POSITION_ROW}`;
 
+/** @deprecated Replaced by DashboardProductCard header */
 export const DASHBOARD_GROUP_TITLE_CLASS = "text-sm font-semibold text-white/95";
+
+/** Frosted product card shell — matches Maiden Voyage sidebar cards. */
+export const DASHBOARD_PRODUCT_CARD_CLASS = `${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} overflow-hidden`;
+
+export const DASHBOARD_PRODUCT_CARD_HEADER_CLASS =
+  "flex items-center gap-3 px-4 py-3 sm:px-5 sm:py-4";
+
+export const DASHBOARD_PRODUCT_CARD_HEADER_EXPANDED_CLASS =
+  "border-b border-white/[0.08]";
+
+export const DASHBOARD_PRODUCT_CARD_BODY_CLASS = "px-4 pb-4 sm:px-5 sm:pb-5";
+
+export const DASHBOARD_PRODUCT_TITLE_CLASS = "text-base font-semibold text-white/95 sm:text-lg";
+
+export const DASHBOARD_PRODUCT_SUBTITLE_CLASS = MV_CAPTION_TEXT;
+
+export const DASHBOARD_PRODUCT_TOTAL_CLASS =
+  "font-mono text-sm tabular-nums text-white/75 sm:text-base";
+
+export const DASHBOARD_PAGE_HEADER_CLASS =
+  "flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between";
+
+export const DASHBOARD_PAGE_HEADER_STATS_CLASS =
+  "flex min-w-0 flex-1 justify-start lg:justify-end";
+
+/** Product icon badges in card headers */
+const DASHBOARD_PRODUCT_ICON_BADGE_BASE =
+  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[#0a1929]/55 backdrop-blur-md";
+
+export const DASHBOARD_PRODUCT_ICON_MV_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} text-[#FF8A7A]`;
+
+export const DASHBOARD_PRODUCT_ICON_EARN_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} text-[#B8EBD5]`;
+
+export const DASHBOARD_PRODUCT_ICON_SAIL_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} text-[#C4B5FD]`;
+
+export const DASHBOARD_PRODUCT_ICON_YIELD_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} text-[#C4B5FD]`;
+
+export const DASHBOARD_VIEW_ALL_LINK_CLASS =
+  "inline-flex shrink-0 items-center gap-0.5 text-xs font-semibold text-white/70 transition hover:text-white/90 sm:text-sm";
 
 /** Connect-wallet and inline notice panels. */
 export const DASHBOARD_NOTICE_PANEL_CLASS = `${MV_CARD_SHELL} px-4 py-3 ${MV_BODY_TEXT}`;
