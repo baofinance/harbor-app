@@ -1,7 +1,7 @@
 import {
   DASHBOARD_MARKET_ICON_PX,
   DASHBOARD_POSITIONS_COL_MARKET_CLASSNAME,
-  DASHBOARD_GLASS_VALUE_TEXT_CLASS,
+  DASHBOARD_POSITIONS_VALUE_TEXT_CLASS,
 } from "./dashboardRowListStyles";
 
 /** Representative label — sizes the icon+name block for header centering. */
@@ -26,7 +26,7 @@ export function DashboardMarketColumnHeader({
           />
         ) : null}
         <span
-          className={`${DASHBOARD_GLASS_VALUE_TEXT_CLASS} invisible whitespace-nowrap`}
+          className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} invisible whitespace-nowrap`}
           aria-hidden
         >
           {MARKET_HEADER_GHOST_LABEL}

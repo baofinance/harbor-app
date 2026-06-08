@@ -30,15 +30,23 @@ export const DASHBOARD_GLASS_STAT_TILE = MV_GLASS_INSET_DARK;
 /** @deprecated Use DASHBOARD_GLASS_STAT_TILE */
 export const DASHBOARD_GLASS_INSET_DARK = DASHBOARD_GLASS_STAT_TILE;
 
-/** Large section container (Your positions, Yield share). */
+/** Frosted card wrapper for nested sections (e.g. Yield share). */
 export const DASHBOARD_SECTION_CLASS = `${MV_CARD_SHELL} overflow-hidden`;
 
 export const DASHBOARD_SECTION_INNER_GRADIENT = MV_CARD_INNER_GRADIENT;
 
+/** Borderless section shell (Your positions — stats + groups on page bg). */
+export const DASHBOARD_SECTION_FLAT_CLASS = "w-full";
+
 export const DASHBOARD_SECTION_HEADER_INNER_CLASS =
-  "grid w-full grid-cols-[1fr_auto] grid-rows-[auto_auto] gap-x-3 gap-y-3 px-4 py-3 sm:grid-cols-[minmax(0,max-content)_1fr_minmax(0,max-content)] sm:grid-rows-1 sm:items-center sm:gap-x-4 sm:px-6 sm:py-4";
+  "grid w-full grid-cols-[1fr_auto] grid-rows-[auto_auto] gap-x-3 gap-y-3 py-2 sm:grid-cols-[minmax(0,max-content)_1fr_minmax(0,max-content)] sm:grid-rows-1 sm:items-center sm:gap-x-4 sm:py-3";
+
+export const DASHBOARD_SECTION_HEADER_CARD_INNER_CLASS =
+  "px-4 py-3 sm:px-6 sm:py-4";
 
 export const DASHBOARD_SECTION_HEADER_EXPANDED_CLASS = "border-b border-white/[0.08]";
+
+export const DASHBOARD_SECTION_HEADER_FLAT_EXPANDED_CLASS = "";
 
 export const DASHBOARD_SECTION_HEADER_TITLE_CELL_CLASS = "col-start-1 row-start-1";
 
@@ -60,6 +68,8 @@ export const DASHBOARD_SECTION_CHEVRON_CLASS = "h-5 w-5 text-white/55";
 
 export const DASHBOARD_SECTION_BODY_CLASS = "space-y-3 p-3 sm:p-4";
 
+export const DASHBOARD_SECTION_BODY_FLAT_CLASS = "space-y-4";
+
 export const DASHBOARD_SECTION_ACTION_BTN_CLASS =
   "shrink-0 rounded-md p-1 hover:bg-white/[0.05]";
 
@@ -76,16 +86,16 @@ export const DASHBOARD_METRIC_STRIP_CLASS =
   "flex flex-wrap items-stretch justify-center gap-2";
 
 export const DASHBOARD_METRIC_STRIP_INLINE_CLASS =
-  "flex min-w-0 flex-wrap items-center justify-center gap-1.5 sm:gap-2";
+  "flex min-w-0 flex-wrap items-stretch justify-center gap-2.5 sm:gap-3";
 
-/** Metric tiles on glass section headers. */
-export const DASHBOARD_METRIC_CHIP_CLASS = `flex h-[3.5rem] w-[7.25rem] shrink-0 flex-col items-center justify-center overflow-hidden rounded-md px-2 py-1.5 text-center sm:w-[7.5rem] ${DASHBOARD_GLASS_STAT_TILE}`;
+/** Metric tiles on section headers. */
+export const DASHBOARD_METRIC_CHIP_CLASS = `flex h-[4.75rem] w-[9.5rem] shrink-0 flex-col items-center justify-center overflow-hidden rounded-xl px-3 py-2 text-center sm:h-[5rem] sm:w-[10.5rem] ${DASHBOARD_GLASS_STAT_TILE}`;
 
 export const DASHBOARD_METRIC_CHIP_INLINE_CLASS = DASHBOARD_METRIC_CHIP_CLASS;
 
 export const DASHBOARD_METRIC_CHIP_LABEL_CLASS = MV_SECTION_LABEL;
 
-export const DASHBOARD_METRIC_CHIP_VALUE_CLASS = "text-white/90";
+export const DASHBOARD_METRIC_CHIP_VALUE_CLASS = "text-base text-white/90 sm:text-lg";
 
 /** Uppercase labels on glass table headers. */
 export const DASHBOARD_INDEX_TABLE_HEAD = MV_SECTION_LABEL;

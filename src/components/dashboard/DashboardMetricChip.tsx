@@ -27,13 +27,13 @@ export function DashboardMetricChip({
     <div className={shellClass}>
       <p
         className={`w-full ${DASHBOARD_METRIC_CHIP_LABEL_CLASS} ${
-          inline ? "text-[9px] sm:text-[10px]" : "text-[10px]"
+          inline ? "text-xs sm:text-sm" : "text-sm"
         }`}
       >
         {label}
       </p>
       <p
-        className={`mt-1 w-full truncate font-mono tabular-nums text-sm font-semibold ${valueClassName}`}
+        className={`mt-1 w-full truncate font-mono tabular-nums font-semibold ${valueClassName}`}
       >
         {value}
       </p>

@@ -11,11 +11,11 @@ import {
 import { formatUSD } from "@/utils/formatters";
 import { DashboardStatusPill } from "./DashboardStatusPill";
 import {
-  DASHBOARD_GLASS_VALUE_TEXT_CLASS,
   DASHBOARD_INDEX_ROW_DESKTOP_CLASS,
   DASHBOARD_INDEX_ROW_MOBILE_CLASS,
-  DASHBOARD_PANEL_ROW_SHELL_CLASS,
+  DASHBOARD_INDEX_ROW_SHELL_CLASS,
   DASHBOARD_MARKET_ICON_PX,
+  DASHBOARD_POSITIONS_VALUE_TEXT_CLASS,
   DASHBOARD_POSITIONS_ACTION_FOOTPRINT_CLASSNAME,
   DASHBOARD_POSITIONS_COL_ACTION_CLASSNAME,
   DASHBOARD_POSITIONS_COL_MARKET_CLASSNAME,
@@ -74,7 +74,7 @@ export function DashboardPositionRowView({
   const notionalDisplay = formatPositionNotional(row);
 
   return (
-    <div className={DASHBOARD_PANEL_ROW_SHELL_CLASS}>
+    <div className={DASHBOARD_INDEX_ROW_SHELL_CLASS}>
       {/* Mobile — network + market left, Manage top-right, notional below. */}
       <div className={DASHBOARD_INDEX_ROW_MOBILE_CLASS}>
         <div className="flex items-center justify-between gap-3">
@@ -85,13 +85,13 @@ export function DashboardPositionRowView({
               size={DASHBOARD_NETWORK_ICON_PX}
             />
             <TokenLogo symbol={row.iconSymbol} size={DASHBOARD_MARKET_ICON_PX} className="shrink-0 ring-0" />
-            <span className={`min-w-0 truncate ${DASHBOARD_GLASS_VALUE_TEXT_CLASS}`}>
+            <span className={`min-w-0 truncate ${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS}`}>
               {row.marketLabel}
             </span>
             <DashboardStatusPill
               label={row.statusLabel}
               tone={row.statusTone}
-              surface="glass"
+              surface="index"
             />
           </div>
           <div className="flex shrink-0 items-center justify-end">
@@ -102,7 +102,7 @@ export function DashboardPositionRowView({
             />
           </div>
         </div>
-        <div className={`${DASHBOARD_GLASS_VALUE_TEXT_CLASS} tabular-nums`}>
+        <div className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} tabular-nums`}>
           {notionalDisplay}
         </div>
       </div>
@@ -118,7 +118,7 @@ export function DashboardPositionRowView({
         </div>
         <div className={DASHBOARD_POSITIONS_COL_MARKET_CLASSNAME}>
           <TokenLogo symbol={row.iconSymbol} size={DASHBOARD_MARKET_ICON_PX} className="shrink-0 ring-0" />
-          <span className={`${DASHBOARD_GLASS_VALUE_TEXT_CLASS} truncate`} title={row.marketLabel}>
+          <span className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} truncate`} title={row.marketLabel}>
             {row.marketLabel}
           </span>
         </div>
@@ -126,11 +126,11 @@ export function DashboardPositionRowView({
           <DashboardStatusPill
             label={row.statusLabel}
             tone={row.statusTone}
-            surface="glass"
+            surface="index"
           />
         </div>
         <div className={DASHBOARD_POSITIONS_COL_NOTIONAL_CLASSNAME}>
-          <span className={`${DASHBOARD_GLASS_VALUE_TEXT_CLASS} truncate`}>
+          <span className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} truncate`}>
             {notionalDisplay}
           </span>
         </div>
