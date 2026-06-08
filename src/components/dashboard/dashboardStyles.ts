@@ -149,7 +149,14 @@ export const DASHBOARD_PRODUCT_TOTAL_CLASS =
 export const DASHBOARD_PAGE_HEADER_CLASS = "space-y-4";
 
 export const DASHBOARD_PAGE_HEADER_STATS_CLASS =
-  "flex min-w-0 justify-center px-4";
+  "flex min-w-0 justify-center px-4 w-full max-w-full";
+
+export const DASHBOARD_PAGE_STATS_CLASS =
+  "flex w-full max-w-full flex-col gap-4 border-t border-white/[0.08] pt-4 sm:gap-5 sm:pt-5";
+
+export const DASHBOARD_PAGE_STATS_GROUP_CLASS = "flex min-w-0 flex-col gap-2";
+
+export const DASHBOARD_PAGE_STATS_GROUP_LABEL_CLASS = `${MV_SECTION_LABEL} text-center`;
 
 /** Flat header metrics inside product cards — no nested frosted chip shells. */
 export const DASHBOARD_PRODUCT_HEADER_METRICS_CLASS =

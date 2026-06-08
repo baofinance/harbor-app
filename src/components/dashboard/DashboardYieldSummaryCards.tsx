@@ -1,5 +1,6 @@
 "use client";
 
+import { ChartBarIcon } from "@heroicons/react/24/outline";
 import { formatUSD } from "@/utils/formatters";
 import { DashboardMetricChip } from "./DashboardMetricChip";
 import { DashboardMetricStrip } from "./DashboardSummaryStrip";
@@ -8,6 +9,8 @@ import {
   DASHBOARD_PRODUCT_HEADER_METRIC_LABEL_CLASS,
   DASHBOARD_PRODUCT_HEADER_METRIC_VALUE_CLASS,
   DASHBOARD_PRODUCT_HEADER_METRICS_CLASS,
+  DASHBOARD_PRODUCT_ICON_EARN_CLASS,
+  DASHBOARD_PRODUCT_ICON_YIELD_CLASS,
 } from "./dashboardStyles";
 
 export type DashboardYieldSummaryCardsProps = {
@@ -16,7 +19,23 @@ export type DashboardYieldSummaryCardsProps = {
   isConnected: boolean;
   /** Flat text metrics for product card headers; frosted chips for page-level strips. */
   variant?: "chip" | "flat";
+  /** Horizontal scroll on narrow viewports (page-level stat strip). */
+  scroll?: boolean;
 };
+
+function StatIconBadge({
+  className,
+  children,
+}: {
+  className: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className={`${className} !h-8 !w-8`} aria-hidden>
+      {children}
+    </span>
+  );
+}
 
 function FlatYieldMetric({
   label,
@@ -40,6 +59,7 @@ export function DashboardYieldSummaryCards({
   totalOutstanding,
   isConnected,
   variant = "chip",
+  scroll = false,
 }: DashboardYieldSummaryCardsProps) {
   const dash = "—";
   const earnedValue = isConnected ? formatUSD(totalEarned, { compact: false }) : dash;
@@ -73,11 +93,16 @@ export function DashboardYieldSummaryCards({
   }
 
   return (
-    <DashboardMetricStrip inline>
+    <DashboardMetricStrip inline scroll={scroll}>
       <DashboardMetricChip
         label="Total earned"
         value={earnedValue}
         inline
+        icon={
+          <StatIconBadge className={DASHBOARD_PRODUCT_ICON_EARN_CLASS}>
+            <ChartBarIcon className="h-4 w-4" />
+          </StatIconBadge>
+        }
         valueClassName={
           isConnected && totalEarned > 0
             ? "text-[#B8EBD5]"
@@ -93,6 +118,11 @@ export function DashboardYieldSummaryCards({
             : DASHBOARD_METRIC_CHIP_VALUE_CLASS
         }
         inline
+        icon={
+          <StatIconBadge className={DASHBOARD_PRODUCT_ICON_YIELD_CLASS}>
+            <ChartBarIcon className="h-4 w-4" />
+          </StatIconBadge>
+        }
       />
     </DashboardMetricStrip>
   );

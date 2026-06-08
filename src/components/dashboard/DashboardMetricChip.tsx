@@ -15,8 +15,6 @@ export type DashboardMetricChipProps = {
   /** Compact chips for the page-level stat strip. */
   inline?: boolean;
   icon?: ReactNode;
-  /** Optional link below value (e.g. View genesis on uncollected). */
-  action?: ReactNode;
 };
 
 export function DashboardMetricChip({
@@ -25,7 +23,6 @@ export function DashboardMetricChip({
   valueClassName = DASHBOARD_METRIC_CHIP_VALUE_CLASS,
   inline = false,
   icon,
-  action,
 }: DashboardMetricChipProps) {
   const shellClass = inline ? DASHBOARD_METRIC_CHIP_INLINE_CLASS : DASHBOARD_METRIC_CHIP_CLASS;
 
@@ -48,7 +45,6 @@ export function DashboardMetricChip({
           >
             {value}
           </p>
-          {action ? <div className="mt-1">{action}</div> : null}
         </div>
       </div>
     );
@@ -68,7 +64,6 @@ export function DashboardMetricChip({
       >
         {value}
       </p>
-      {action ? <div className="mt-1 w-full">{action}</div> : null}
     </div>
   );
 }

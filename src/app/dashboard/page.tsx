@@ -11,7 +11,7 @@ import {
 import { DASHBOARD_PRODUCT_META } from "@/components/dashboard/dashboardProductMeta";
 import type { DashboardPositionGroup } from "@/components/dashboard/dashboardPositionGroup";
 import { DashboardPositionsList } from "@/components/dashboard/DashboardPositionsList";
-import { DashboardSummaryCards } from "@/components/dashboard/DashboardSummaryCards";
+import { DashboardPageStats } from "@/components/dashboard/DashboardPageStats";
 import { DashboardYieldShareList } from "@/components/dashboard/DashboardYieldShareList";
 import { DASHBOARD_LINK_CLASS } from "@/components/dashboard/dashboardStyles";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
@@ -225,7 +225,7 @@ export default function DashboardPage() {
       <main className="mx-auto w-full max-w-[1600px] space-y-4 px-4 pb-6 pt-2 sm:px-10 sm:pt-4">
         <DashboardPageTitleSection
           stats={
-            <DashboardSummaryCards
+            <DashboardPageStats
               maidenUsd={positionTotals.maiden}
               earnUsd={positionTotals.earn}
               sailUsd={positionTotals.sail}
