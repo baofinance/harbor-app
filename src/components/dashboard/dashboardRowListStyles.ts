@@ -45,8 +45,6 @@ export const DASHBOARD_TABLE_HEADER_WRAP_CLASS =
 /** Header grid on frosted sections — white labels on glass cards. */
 export const DASHBOARD_GLASS_TABLE_HEADER_GRID_CLASSNAME = `${DASHBOARD_POSITIONS_TABLE_GRID_CLASSNAME} uppercase tracking-wider text-[10px] lg:text-[11px] text-white/55 font-semibold`;
 
-export const DASHBOARD_GLASS_YIELD_TABLE_HEADER_GRID_CLASSNAME = `${DASHBOARD_YIELD_TABLE_GRID_CLASSNAME} uppercase tracking-wider text-[10px] lg:text-[11px] text-white/55 font-semibold`;
-
 /** Body values on frosted row tiles inside dashboard sections. */
 export const DASHBOARD_GLASS_VALUE_TEXT_CLASS = "font-medium text-sm text-white/90";
 
@@ -112,6 +110,8 @@ export const DASHBOARD_YIELD_TABLE_SCROLL_WRAP_CLASSNAME =
   DASHBOARD_POSITIONS_TABLE_SCROLL_WRAP_CLASSNAME;
 
 export const DASHBOARD_YIELD_TABLE_GRID_CLASSNAME = `grid ${DASHBOARD_YIELD_TABLE_GRID_COLS_CLASSNAME} ${DASHBOARD_POSITIONS_TABLE_GRID_GAP_CLASSNAME} items-center`;
+
+export const DASHBOARD_GLASS_YIELD_TABLE_HEADER_GRID_CLASSNAME = `${DASHBOARD_YIELD_TABLE_GRID_CLASSNAME} uppercase tracking-wider text-[10px] lg:text-[11px] text-white/55 font-semibold`;
 
 export const DASHBOARD_YIELD_TABLE_HEADER_GRID_CLASSNAME = `${DASHBOARD_YIELD_TABLE_GRID_CLASSNAME} uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold`;
 
