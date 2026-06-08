@@ -84,9 +84,9 @@ export function DashboardProductCard({
           showHeaderMetrics ? "flex-wrap gap-y-3" : ""
         }`}
       >
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-2 sm:gap-x-3">
           <span className={meta.iconBadgeClass} aria-hidden>
-            <Icon className="h-5 w-5" />
+            <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
           </span>
           <button
             type="button"

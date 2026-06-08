@@ -33,7 +33,7 @@ function StatIconBadge({
   children: React.ReactNode;
 }) {
   return (
-    <span className={`${className} !h-8 !w-8`} aria-hidden>
+    <span className={`${className} !h-7 !w-7 sm:!h-8 sm:!w-8`} aria-hidden>
       {children}
     </span>
   );

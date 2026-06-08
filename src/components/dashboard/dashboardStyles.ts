@@ -88,9 +88,9 @@ export const DASHBOARD_METRIC_STRIP_CLASS =
 export const DASHBOARD_METRIC_STRIP_INLINE_CLASS =
   "flex min-w-0 flex-wrap items-stretch justify-center gap-2.5 sm:gap-3";
 
-/** Page-level stat strip — horizontal scroll on mobile, wrap on sm+. */
+/** Page-level stat strip — stack groups on mobile; horizontal scroll on lg+. */
 export const DASHBOARD_METRIC_STRIP_SCROLL_CLASS =
-  "flex min-w-0 flex-nowrap items-stretch justify-start gap-2.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 sm:mx-0 sm:flex-wrap sm:justify-center sm:gap-3 sm:px-0 sm:overflow-visible";
+  "flex min-w-0 w-full flex-col gap-4 lg:flex-row lg:flex-nowrap lg:items-stretch lg:justify-start lg:gap-2.5 lg:overflow-x-auto lg:[-ms-overflow-style:none] lg:[scrollbar-width:none] lg:[&::-webkit-scrollbar]:hidden xl:flex-wrap xl:justify-end xl:gap-3 xl:overflow-visible";
 
 /** Frosted white stat cards on section headers. */
 export const DASHBOARD_METRIC_CHIP_SURFACE = `rounded-xl ${MV_GLASS_INSET_LIGHT}`;
@@ -98,11 +98,12 @@ export const DASHBOARD_METRIC_CHIP_SURFACE = `rounded-xl ${MV_GLASS_INSET_LIGHT}
 /** Metric tiles on section headers. */
 export const DASHBOARD_METRIC_CHIP_CLASS = `flex h-[4.75rem] w-[9.5rem] shrink-0 flex-col items-center justify-center overflow-hidden px-3 py-2 text-center sm:h-[5rem] sm:w-[10.5rem] ${DASHBOARD_METRIC_CHIP_SURFACE}`;
 
-export const DASHBOARD_METRIC_CHIP_INLINE_CLASS = DASHBOARD_METRIC_CHIP_CLASS;
+/** Page stat strip chips — full width in mobile grid, fixed width from sm+. */
+export const DASHBOARD_METRIC_CHIP_INLINE_CLASS = `flex h-[4.25rem] min-w-0 w-full max-w-full shrink-0 flex-row items-center justify-start gap-2 overflow-hidden px-2.5 py-2 text-left sm:h-[4.75rem] sm:w-[9.5rem] sm:shrink-0 sm:px-3 sm:py-2 sm:text-center md:h-[5rem] md:w-[10.5rem] ${DASHBOARD_METRIC_CHIP_SURFACE}`;
 
 export const DASHBOARD_METRIC_CHIP_LABEL_CLASS = MV_SECTION_LABEL;
 
-export const DASHBOARD_METRIC_CHIP_VALUE_CLASS = "text-base text-white/90 sm:text-lg";
+export const DASHBOARD_METRIC_CHIP_VALUE_CLASS = "text-sm text-white/90 sm:text-base md:text-lg";
 
 /** Uppercase labels on glass table headers. */
 export const DASHBOARD_INDEX_TABLE_HEAD = MV_SECTION_LABEL;
@@ -130,46 +131,47 @@ export const DASHBOARD_GROUP_TITLE_CLASS = "text-sm font-semibold text-white/95"
 export const DASHBOARD_PRODUCT_CARD_CLASS = `${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} overflow-hidden`;
 
 export const DASHBOARD_PRODUCT_CARD_HEADER_CLASS =
-  "flex items-center gap-3 px-4 py-3 sm:px-5 sm:py-4";
+  "flex flex-wrap items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-5 sm:py-4";
 
 export const DASHBOARD_PRODUCT_CARD_HEADER_MUTED_CLASS = "opacity-90";
 
 export const DASHBOARD_PRODUCT_CARD_HEADER_EXPANDED_CLASS =
   "border-b border-white/[0.08]";
 
-export const DASHBOARD_PRODUCT_CARD_BODY_CLASS = "px-4 pb-4 sm:px-5 sm:pb-5";
+export const DASHBOARD_PRODUCT_CARD_BODY_CLASS = "px-3 pb-3 sm:px-5 sm:pb-5";
 
-export const DASHBOARD_PRODUCT_TITLE_CLASS = "text-base font-semibold text-white/95 sm:text-lg";
+export const DASHBOARD_PRODUCT_TITLE_CLASS = "text-sm font-semibold text-white/95 sm:text-base md:text-lg";
 
-export const DASHBOARD_PRODUCT_SUBTITLE_CLASS = MV_CAPTION_TEXT;
+export const DASHBOARD_PRODUCT_SUBTITLE_CLASS = `${MV_CAPTION_TEXT} text-xs sm:text-sm`;
 
 export const DASHBOARD_PRODUCT_TOTAL_CLASS =
-  "font-mono text-sm tabular-nums text-white/75 sm:text-base";
+  "font-mono text-xs tabular-nums text-white/75 sm:text-sm md:text-base";
 
 export const DASHBOARD_PAGE_HEADER_CLASS =
-  "flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6";
+  "flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6";
 
 export const DASHBOARD_PAGE_HEADER_TITLE_CLASS =
-  "font-bold font-mono text-white text-4xl leading-[1.05] sm:text-5xl lg:text-5xl xl:text-6xl";
+  "font-bold font-mono text-white text-3xl leading-[1.08] sm:text-4xl sm:leading-[1.05] lg:text-5xl xl:text-6xl";
 
 export const DASHBOARD_PAGE_HEADER_SUBTITLE_CLASS =
-  "mt-1 max-w-md text-base font-medium leading-snug tracking-tight text-white/85 sm:text-lg";
+  "mt-1 max-w-md text-sm font-medium leading-snug tracking-tight text-white/85 sm:text-base md:text-lg";
 
 export const DASHBOARD_PAGE_HEADER_STATS_CLASS =
   "min-w-0 w-full flex-1 lg:flex lg:justify-end";
 
 /** Labeled cluster in the page stat strip (positions vs yield share). */
-export const DASHBOARD_PAGE_STATS_GROUP_CLASS = "flex shrink-0 flex-col gap-1.5";
+export const DASHBOARD_PAGE_STATS_GROUP_CLASS = "flex min-w-0 w-full shrink-0 flex-col gap-1.5 lg:w-auto";
 
 export const DASHBOARD_PAGE_STATS_GROUP_LABEL_CLASS =
   "px-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/50 sm:text-xs";
 
+/** Mobile: 2-col grid; lg+: horizontal chip row. */
 export const DASHBOARD_PAGE_STATS_GROUP_CHIPS_CLASS =
-  "flex flex-nowrap items-stretch gap-2.5 sm:gap-3";
+  "grid w-full grid-cols-2 gap-2 lg:flex lg:w-auto lg:flex-nowrap lg:items-stretch lg:gap-2.5 xl:gap-3";
 
-/** Vertical rule between position and yield chip groups in the page stat strip. */
+/** Horizontal rule on mobile; vertical rule from lg+. */
 export const DASHBOARD_PAGE_STATS_DIVIDER_CLASS =
-  "mx-1 w-px shrink-0 self-stretch bg-white/12";
+  "h-px w-full shrink-0 bg-white/12 lg:mx-1 lg:h-auto lg:w-px lg:self-stretch";
 
 /** Flat header metrics inside product cards — no nested frosted chip shells. */
 export const DASHBOARD_PRODUCT_HEADER_METRICS_CLASS =
@@ -182,7 +184,7 @@ export const DASHBOARD_PRODUCT_HEADER_METRIC_VALUE_CLASS =
 
 /** Product icon badges in card headers */
 const DASHBOARD_PRODUCT_ICON_BADGE_BASE =
-  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[#0a1929]/55 backdrop-blur-md";
+  "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[#0a1929]/55 backdrop-blur-md sm:h-10 sm:w-10";
 
 export const DASHBOARD_PRODUCT_ICON_MV_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} text-[#FF8A7A]`;
 
@@ -197,10 +199,10 @@ export const DASHBOARD_PRODUCT_ICON_ARCHIVED_CLASS = `${DASHBOARD_PRODUCT_ICON_B
 export const DASHBOARD_PRODUCT_LOADING_HINT_CLASS = MV_META_TEXT;
 
 export const DASHBOARD_VIEW_ALL_LINK_CLASS =
-  "inline-flex shrink-0 items-center gap-0.5 text-xs font-semibold text-white/70 transition hover:text-white/90 sm:text-sm";
+  "inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-white/70 transition hover:text-white/90 sm:text-xs md:text-sm";
 
 /** Connect-wallet and inline notice panels. */
-export const DASHBOARD_NOTICE_PANEL_CLASS = `${MV_CARD_SHELL} px-4 py-3 ${MV_BODY_TEXT}`;
+export const DASHBOARD_NOTICE_PANEL_CLASS = `${MV_CARD_SHELL} px-3 py-3 sm:px-4 ${MV_BODY_TEXT}`;
 
 export const DASHBOARD_NOTICE_PANEL_INNER_CLASS =
   "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between";

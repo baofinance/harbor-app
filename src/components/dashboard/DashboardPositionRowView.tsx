@@ -6,6 +6,7 @@ import { TokenLogo } from "@/components/shared";
 import { GenesisMarketChainCell } from "@/components/genesis/GenesisMarketSharedRowCells";
 import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
 import {
+  INDEX_MANAGE_BUTTON_CLASS_COMPACT,
   INDEX_MANAGE_BUTTON_CLASS_DESKTOP,
   INDEX_MANAGE_BUTTON_CLASS_RESPONSIVE,
 } from "@/utils/indexPageManageButton";
@@ -78,9 +79,9 @@ export function DashboardPositionRowView({
 
   return (
     <div className={DASHBOARD_INDEX_ROW_SHELL_CLASS}>
-      {/* Mobile — network + market left, Manage top-right, notional below. */}
+      {/* Mobile — market row + status/notional row. */}
       <div className={DASHBOARD_INDEX_ROW_MOBILE_CLASS}>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <GenesisMarketChainCell
               chainName={row.chainName}
@@ -91,22 +92,24 @@ export function DashboardPositionRowView({
             <span className={`min-w-0 truncate ${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS}`}>
               {row.marketLabel}
             </span>
-            <DashboardStatusPill
-              label={row.statusLabel}
-              tone={row.statusTone}
-              surface="index"
-            />
           </div>
           <div className="flex shrink-0 items-center justify-end">
             <ManageAction
               row={row}
               onManage={onManage}
-              className={INDEX_MANAGE_BUTTON_CLASS_DESKTOP}
+              className={INDEX_MANAGE_BUTTON_CLASS_COMPACT}
             />
           </div>
         </div>
-        <div className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} tabular-nums`}>
-          {notionalDisplay}
+        <div className="flex items-center justify-between gap-2">
+          <DashboardStatusPill
+            label={row.statusLabel}
+            tone={row.statusTone}
+            surface="index"
+          />
+          <span className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} shrink-0 tabular-nums`}>
+            {notionalDisplay}
+          </span>
         </div>
       </div>
 

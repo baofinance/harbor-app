@@ -26,17 +26,24 @@ export const DASHBOARD_POSITIONS_TABLE_GRID_COLS_CLASSNAME =
 export const DASHBOARD_POSITIONS_TABLE_GRID_GAP_CLASSNAME =
   "gap-x-2 lg:gap-x-2.5";
 
-export const DASHBOARD_POSITIONS_TABLE_MIN_WIDTH_CLASSNAME = "min-w-[640px]";
+export const DASHBOARD_POSITIONS_TABLE_MIN_WIDTH_CLASSNAME = "md:min-w-[640px]";
 
 export const DASHBOARD_POSITIONS_TABLE_SCROLL_WRAP_CLASSNAME =
-  "overflow-x-auto -mx-0.5 px-0.5";
+  "max-md:overflow-visible md:overflow-x-auto md:-mx-0.5 md:px-0.5";
 
 export const DASHBOARD_POSITIONS_TABLE_GRID_CLASSNAME = `grid ${DASHBOARD_POSITIONS_TABLE_GRID_COLS_CLASSNAME} ${DASHBOARD_POSITIONS_TABLE_GRID_GAP_CLASSNAME} items-center`;
 
 export const DASHBOARD_INDEX_ROW_DESKTOP_CLASS = `hidden md:grid ${DASHBOARD_POSITIONS_TABLE_GRID_COLS_CLASSNAME} ${DASHBOARD_POSITIONS_TABLE_GRID_GAP_CLASSNAME} gap-y-0 items-center text-sm py-2.5 px-2 min-h-[52px]`;
 
 /** Anchor wallet-row mobile rhythm: primary row + secondary metric. */
-export const DASHBOARD_INDEX_ROW_MOBILE_CLASS = "md:hidden space-y-2 p-4";
+export const DASHBOARD_INDEX_ROW_MOBILE_CLASS = "md:hidden space-y-2.5 p-3 sm:p-4";
+
+/** Stacked metric cell for mobile yield / position detail rows. */
+export const DASHBOARD_INDEX_ROW_MOBILE_METRIC_LABEL_CLASS =
+  "text-[10px] font-semibold uppercase tracking-wider text-[#1E4775]/55";
+
+export const DASHBOARD_INDEX_ROW_MOBILE_METRICS_GRID_CLASS =
+  "grid grid-cols-2 gap-x-3 gap-y-2.5";
 
 /** Column labels inside a frosted dashboard section. */
 export const DASHBOARD_TABLE_HEADER_WRAP_CLASS =
@@ -104,7 +111,7 @@ export const DASHBOARD_YIELD_LIST_CLASS = "space-y-2";
 export const DASHBOARD_YIELD_TABLE_GRID_COLS_CLASSNAME =
   "md:grid-cols-[32px_minmax(0,1.2fr)_minmax(0,0.75fr)_minmax(0,0.65fr)_minmax(0,0.75fr)_minmax(0,0.75fr)_minmax(0,0.8fr)]";
 
-export const DASHBOARD_YIELD_TABLE_MIN_WIDTH_CLASSNAME = "min-w-[760px]";
+export const DASHBOARD_YIELD_TABLE_MIN_WIDTH_CLASSNAME = "md:min-w-[760px]";
 
 export const DASHBOARD_YIELD_TABLE_SCROLL_WRAP_CLASSNAME =
   DASHBOARD_POSITIONS_TABLE_SCROLL_WRAP_CLASSNAME;

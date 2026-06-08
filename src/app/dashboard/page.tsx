@@ -222,7 +222,7 @@ export default function DashboardPage() {
 
   return (
     <div className="relative mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col font-sans text-white">
-      <main className="mx-auto w-full max-w-[1600px] space-y-4 px-4 pb-6 pt-2 sm:px-10 sm:pt-4">
+      <main className="mx-auto w-full max-w-[1600px] space-y-3 px-3 pb-6 pt-2 sm:space-y-4 sm:px-10 sm:pt-4">
         <DashboardPageTitleSection
           stats={
             <DashboardPageStats

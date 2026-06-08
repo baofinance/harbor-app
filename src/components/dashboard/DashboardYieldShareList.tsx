@@ -17,6 +17,9 @@ import {
   DASHBOARD_EMPTY_ON_PANEL_CLASS,
   DASHBOARD_POSITIONS_COL_MARKET_CLASSNAME,
   DASHBOARD_POSITIONS_COL_NETWORK_CLASSNAME,
+  DASHBOARD_INDEX_ROW_MOBILE_CLASS,
+  DASHBOARD_INDEX_ROW_MOBILE_METRIC_LABEL_CLASS,
+  DASHBOARD_INDEX_ROW_MOBILE_METRICS_GRID_CLASS,
   DASHBOARD_INDEX_TABLE_HEADER_WRAP_CLASS,
   DASHBOARD_POSITIONS_VALUE_TEXT_CLASS,
   DASHBOARD_YIELD_COL_BOOST_CLASSNAME,
@@ -58,13 +61,40 @@ function YieldListHeader() {
   );
 }
 
-function YieldTable({ children }: { children: ReactNode }) {
+function YieldTable({
+  showColumnHeader,
+  children,
+}: {
+  showColumnHeader: boolean;
+  children: ReactNode;
+}) {
   return (
     <div className={DASHBOARD_YIELD_TABLE_SCROLL_WRAP_CLASSNAME}>
       <div className={`${DASHBOARD_YIELD_TABLE_MIN_WIDTH_CLASSNAME} space-y-2`}>
-        <YieldListHeader />
+        {showColumnHeader ? <YieldListHeader /> : null}
         {children}
       </div>
+    </div>
+  );
+}
+
+function YieldMobileMetric({
+  label,
+  value,
+  valueClassName = "",
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className={DASHBOARD_INDEX_ROW_MOBILE_METRIC_LABEL_CLASS}>{label}</p>
+      <p
+        className={`mt-0.5 truncate font-medium text-sm tabular-nums text-[#1E4775] ${valueClassName}`.trim()}
+      >
+        {value}
+      </p>
     </div>
   );
 }
@@ -75,7 +105,54 @@ function DashboardYieldRowView({ row }: { row: FounderMetricRow }) {
 
   return (
     <DashboardContentRow variant="index">
-      <div className={DASHBOARD_YIELD_ROW_GRID_CLASS}>
+      <div className={DASHBOARD_INDEX_ROW_MOBILE_CLASS}>
+        <div className="flex min-w-0 items-center gap-2">
+          <GenesisMarketChainCell
+            chainName={chainName}
+            chainLogo={chainLogo}
+            size={DASHBOARD_NETWORK_ICON_PX}
+          />
+          <span
+            className={`min-w-0 truncate ${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS}`}
+            title={row.marketName}
+          >
+            {row.marketName}
+          </span>
+        </div>
+        <div className={DASHBOARD_INDEX_ROW_MOBILE_METRICS_GRID_CLASS}>
+          <YieldMobileMetric
+            label="MV ownership"
+            value={formatPercent(row.ownershipSharePct, { decimals: 2 })}
+          />
+          <div className="min-w-0">
+            <p className={DASHBOARD_INDEX_ROW_MOBILE_METRIC_LABEL_CLASS}>Boost</p>
+            <div className="mt-0.5">
+              {showBoost ? (
+                <DashboardYieldBoostBadge multiplier={row.boostMultiplier} />
+              ) : (
+                <span className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} text-[#1E4775]/40`}>
+                  —
+                </span>
+              )}
+            </div>
+          </div>
+          <YieldMobileMetric
+            label="Yield pool %"
+            value={formatPercent(row.yieldSharePct, { decimals: 4 })}
+          />
+          <YieldMobileMetric
+            label="Total paid"
+            value={formatUSD(row.paidUSD, { compact: false })}
+          />
+          <YieldMobileMetric
+            label="Uncollected"
+            value={formatUSD(row.outstandingUSD, { compact: false })}
+            valueClassName={row.outstandingUSD > 0 ? "text-[#FF8A7A]" : ""}
+          />
+        </div>
+      </div>
+
+      <div className={`hidden md:grid ${DASHBOARD_YIELD_ROW_GRID_CLASS}`}>
         <div className={DASHBOARD_POSITIONS_COL_NETWORK_CLASSNAME}>
           <GenesisMarketChainCell
             chainName={chainName}
@@ -145,7 +222,7 @@ export function DashboardYieldShareList({
   if (isLoading) {
     return (
       <div className={DASHBOARD_YIELD_LIST_CLASS}>
-        <YieldTable>
+        <YieldTable showColumnHeader={false}>
           {[0, 1, 2].map((i) => (
             <DashboardContentRowSkeleton key={i} variant="index" />
           ))}
@@ -168,7 +245,7 @@ export function DashboardYieldShareList({
 
   return (
     <div className={DASHBOARD_YIELD_LIST_CLASS}>
-      <YieldTable>
+      <YieldTable showColumnHeader>
         {rows.map((row) => (
           <DashboardYieldRowView key={row.marketId} row={row} />
         ))}
