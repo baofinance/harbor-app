@@ -88,8 +88,11 @@ export const DASHBOARD_METRIC_STRIP_CLASS =
 export const DASHBOARD_METRIC_STRIP_INLINE_CLASS =
   "flex min-w-0 flex-wrap items-stretch justify-center gap-2.5 sm:gap-3";
 
+/** Frosted white stat cards on section headers. */
+export const DASHBOARD_METRIC_CHIP_SURFACE = `rounded-xl ${MV_GLASS_INSET_LIGHT}`;
+
 /** Metric tiles on section headers. */
-export const DASHBOARD_METRIC_CHIP_CLASS = `flex h-[4.75rem] w-[9.5rem] shrink-0 flex-col items-center justify-center overflow-hidden rounded-xl px-3 py-2 text-center sm:h-[5rem] sm:w-[10.5rem] ${DASHBOARD_GLASS_STAT_TILE}`;
+export const DASHBOARD_METRIC_CHIP_CLASS = `flex h-[4.75rem] w-[9.5rem] shrink-0 flex-col items-center justify-center overflow-hidden px-3 py-2 text-center sm:h-[5rem] sm:w-[10.5rem] ${DASHBOARD_METRIC_CHIP_SURFACE}`;
 
 export const DASHBOARD_METRIC_CHIP_INLINE_CLASS = DASHBOARD_METRIC_CHIP_CLASS;
 

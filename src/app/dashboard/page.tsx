@@ -220,6 +220,7 @@ export default function DashboardPage() {
         <DashboardCollapsibleSection
           title="Yield share"
           icon={ChartBarIcon}
+          surface="flat"
           expanded={yieldShareExpanded}
           onToggle={toggleYieldShare}
           isConnected={isConnected}

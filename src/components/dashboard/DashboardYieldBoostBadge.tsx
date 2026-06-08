@@ -13,7 +13,7 @@ export function DashboardYieldBoostBadge({
   multiplier: number | null;
 }) {
   if (multiplier == null) {
-    return <span className="text-sm font-medium text-white/40">—</span>;
+    return <span className="text-sm font-medium text-[#1E4775]/40">—</span>;
   }
 
   const label = formatBoostLabel(multiplier);
@@ -21,7 +21,7 @@ export function DashboardYieldBoostBadge({
 
   if (!isBoosted) {
     return (
-      <span className="inline-flex items-center rounded-md border border-white/[0.1] bg-white/[0.06] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/55">
+      <span className="inline-flex items-center rounded-md border border-[#1E4775]/12 bg-[#1E4775]/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/55">
         {label}
       </span>
     );
