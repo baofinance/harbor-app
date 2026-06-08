@@ -160,3 +160,13 @@ export const MV_EXPLORER_TAB_INACTIVE =
 
 export const MV_UPCOMING_BADGE =
   "inline-flex items-center rounded-full border border-[#5B8FD4]/40 bg-[#5B8FD4]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#9EC5F5]";
+
+/** Frosted veil over preview maiden voyage deposit cards (`genesisActive: "soon"`). */
+export const MV_PREVIEW_SOON_VEIL_CLASS =
+  "pointer-events-none absolute inset-0 z-[5] rounded-[inherit] bg-[#0a1428]/50 backdrop-blur-[3px]";
+
+export const MV_PREVIEW_SOON_CONTENT_DIM_CLASS =
+  "relative z-[2] saturate-[0.82] opacity-[0.88]";
+
+export const MV_PREVIEW_SOON_BADGE_CLASS =
+  "rounded-xl border border-white/40 bg-[#CFE5DD]/95 px-4 py-2 font-mono text-base font-extrabold tracking-[0.12em] text-[#2F4572] shadow-[0_10px_30px_-12px_rgba(0,0,0,0.45)] sm:text-lg";

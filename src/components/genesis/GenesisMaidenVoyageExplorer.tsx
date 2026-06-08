@@ -13,6 +13,7 @@ import { maidenVoyageCapUsd } from "@/config/maidenVoyageCap";
 import {
   isGenesisCompletedUi,
   isGenesisDepositWithdrawBlockedByConfig,
+  isGenesisSoonUi,
   isMarketArchived,
   isMarketInMaintenance,
 } from "@/config/markets";
@@ -125,7 +126,7 @@ function formatEstCapacityUsd(genesisAddress?: string): string {
 
 export function GenesisMaidenVoyageExplorer({
   genesisMarkets,
-  comingSoonMarkets,
+  comingSoonMarkets: _comingSoonMarkets,
   reads,
   totalDepositsReads: _totalDepositsReads,
   isConnected,
@@ -179,7 +180,9 @@ export function GenesisMaidenVoyageExplorer({
         case "upcoming":
           return false;
         case "ongoing":
-          return !isEnded && !isGenesisCompletedUi(mkt);
+          return (
+            !isEnded && !isGenesisCompletedUi(mkt) && !isGenesisSoonUi(mkt)
+          );
         case "completed":
           return (
             isFeaturedCompletedMarket(marketId) ||
@@ -188,7 +191,7 @@ export function GenesisMaidenVoyageExplorer({
           );
         case "all":
         default:
-          return true;
+          return !isGenesisSoonUi(mkt);
       }
     },
     [statusFilter, genesisMarkets, reads, isConnected],
@@ -224,8 +227,8 @@ export function GenesisMaidenVoyageExplorer({
     isConnected,
   ]);
 
-  const visibleUpcoming =
-    statusFilter === "ongoing" ? [] : comingSoonMarkets;
+  /** Preview / metals upcoming rows live on the featured card only. */
+  const visibleUpcoming: Array<[string, GenesisMarketConfig]> = [];
 
   const hasArchivedMarkets = archivedMarkets.length > 0;
 
