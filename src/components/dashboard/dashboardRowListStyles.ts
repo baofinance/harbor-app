@@ -26,17 +26,17 @@ export const DASHBOARD_POSITIONS_TABLE_GRID_COLS_CLASSNAME =
 export const DASHBOARD_POSITIONS_TABLE_GRID_GAP_CLASSNAME =
   "gap-x-2 lg:gap-x-2.5";
 
-export const DASHBOARD_POSITIONS_TABLE_MIN_WIDTH_CLASSNAME = "md:min-w-[640px]";
+export const DASHBOARD_POSITIONS_TABLE_MIN_WIDTH_CLASSNAME = "lg:min-w-[640px]";
 
 export const DASHBOARD_POSITIONS_TABLE_SCROLL_WRAP_CLASSNAME =
-  "max-md:overflow-visible md:overflow-x-auto md:-mx-0.5 md:px-0.5";
+  "max-lg:overflow-visible lg:overflow-x-auto lg:-mx-0.5 lg:px-0.5";
 
 export const DASHBOARD_POSITIONS_TABLE_GRID_CLASSNAME = `grid ${DASHBOARD_POSITIONS_TABLE_GRID_COLS_CLASSNAME} ${DASHBOARD_POSITIONS_TABLE_GRID_GAP_CLASSNAME} items-center`;
 
-export const DASHBOARD_INDEX_ROW_DESKTOP_CLASS = `hidden md:grid ${DASHBOARD_POSITIONS_TABLE_GRID_COLS_CLASSNAME} ${DASHBOARD_POSITIONS_TABLE_GRID_GAP_CLASSNAME} gap-y-0 items-center text-sm py-2.5 px-2 min-h-[52px]`;
+export const DASHBOARD_INDEX_ROW_DESKTOP_CLASS = `hidden lg:grid ${DASHBOARD_POSITIONS_TABLE_GRID_COLS_CLASSNAME} ${DASHBOARD_POSITIONS_TABLE_GRID_GAP_CLASSNAME} gap-y-0 items-center text-sm py-2.5 px-2 min-h-[52px]`;
 
 /** Anchor wallet-row mobile rhythm: primary row + secondary metric. */
-export const DASHBOARD_INDEX_ROW_MOBILE_CLASS = "md:hidden space-y-2.5 p-3 sm:p-4";
+export const DASHBOARD_INDEX_ROW_MOBILE_CLASS = "lg:hidden space-y-2.5 p-3 sm:p-4";
 
 /** Stacked metric cell for mobile yield / position detail rows. */
 export const DASHBOARD_INDEX_ROW_MOBILE_METRIC_LABEL_CLASS =
@@ -47,7 +47,7 @@ export const DASHBOARD_INDEX_ROW_MOBILE_METRICS_GRID_CLASS =
 
 /** Column labels inside a frosted dashboard section. */
 export const DASHBOARD_TABLE_HEADER_WRAP_CLASS =
-  "hidden md:block py-1.5 px-2 border-b border-white/[0.08] mb-2 overflow-x-auto";
+  "hidden lg:block py-1.5 px-2 border-b border-white/[0.08] mb-2 overflow-x-auto";
 
 /** Header grid on frosted sections — white labels on glass cards. */
 export const DASHBOARD_GLASS_TABLE_HEADER_GRID_CLASSNAME = `${DASHBOARD_POSITIONS_TABLE_GRID_CLASSNAME} uppercase tracking-wider text-[10px] lg:text-[11px] text-white/55 font-semibold`;
@@ -57,7 +57,7 @@ export const DASHBOARD_GLASS_VALUE_TEXT_CLASS = "font-medium text-sm text-white/
 
 /** Column labels above index-style position rows. */
 export const DASHBOARD_INDEX_TABLE_HEADER_WRAP_CLASS =
-  "hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-2 rounded-md border border-[#1E4775]/15 shadow-sm";
+  "hidden lg:block bg-white py-1.5 px-2 overflow-x-auto mb-2 rounded-md border border-[#1E4775]/15 shadow-sm";
 
 export const DASHBOARD_POSITIONS_LIST_CLASS = "space-y-2";
 
@@ -111,7 +111,7 @@ export const DASHBOARD_YIELD_LIST_CLASS = "space-y-2";
 export const DASHBOARD_YIELD_TABLE_GRID_COLS_CLASSNAME =
   "md:grid-cols-[32px_minmax(0,1.2fr)_minmax(0,0.75fr)_minmax(0,0.65fr)_minmax(0,0.75fr)_minmax(0,0.75fr)_minmax(0,0.8fr)]";
 
-export const DASHBOARD_YIELD_TABLE_MIN_WIDTH_CLASSNAME = "md:min-w-[760px]";
+export const DASHBOARD_YIELD_TABLE_MIN_WIDTH_CLASSNAME = "lg:min-w-[760px]";
 
 export const DASHBOARD_YIELD_TABLE_SCROLL_WRAP_CLASSNAME =
   DASHBOARD_POSITIONS_TABLE_SCROLL_WRAP_CLASSNAME;

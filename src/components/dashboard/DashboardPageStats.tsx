@@ -5,9 +5,10 @@ import { DashboardPositionSummaryCards } from "./DashboardPositionSummaryCards";
 import { DashboardYieldSummaryCards } from "./DashboardYieldSummaryCards";
 import {
   DASHBOARD_PAGE_STATS_DIVIDER_CLASS,
-  DASHBOARD_PAGE_STATS_GROUP_CHIPS_CLASS,
   DASHBOARD_PAGE_STATS_GROUP_CLASS,
   DASHBOARD_PAGE_STATS_GROUP_LABEL_CLASS,
+  DASHBOARD_PAGE_STATS_POSITIONS_CHIPS_CLASS,
+  DASHBOARD_PAGE_STATS_YIELD_CHIPS_CLASS,
 } from "./dashboardStyles";
 
 export type DashboardPageStatsProps = {
@@ -44,7 +45,7 @@ export function DashboardPageStats({
         >
           Positions
         </p>
-        <div className={DASHBOARD_PAGE_STATS_GROUP_CHIPS_CLASS}>
+        <div className={DASHBOARD_PAGE_STATS_POSITIONS_CHIPS_CLASS}>
           <DashboardPositionSummaryCards
             maidenUsd={maidenUsd}
             earnUsd={earnUsd}
@@ -72,7 +73,7 @@ export function DashboardPageStats({
         >
           Yield share
         </p>
-        <div className={DASHBOARD_PAGE_STATS_GROUP_CHIPS_CLASS}>
+        <div className={DASHBOARD_PAGE_STATS_YIELD_CHIPS_CLASS}>
           <DashboardYieldSummaryCards
             totalEarned={totalEarned}
             totalOutstanding={totalOutstanding}

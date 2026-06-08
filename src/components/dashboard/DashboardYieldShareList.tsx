@@ -152,7 +152,7 @@ function DashboardYieldRowView({ row }: { row: FounderMetricRow }) {
         </div>
       </div>
 
-      <div className={`hidden md:grid ${DASHBOARD_YIELD_ROW_GRID_CLASS}`}>
+      <div className={`hidden lg:grid ${DASHBOARD_YIELD_ROW_GRID_CLASS}`}>
         <div className={DASHBOARD_POSITIONS_COL_NETWORK_CLASSNAME}>
           <GenesisMarketChainCell
             chainName={chainName}
