@@ -29,19 +29,21 @@ export function DashboardMetricChip({
   if (icon) {
     return (
       <div
-        className={`${shellClass} !flex-row !items-center !justify-start gap-2.5 !text-left`}
+        className={`${shellClass} !flex-row !items-center !justify-start gap-2 !text-left md:!gap-1.5 lg:!gap-2`}
       >
         <span className="shrink-0">{icon}</span>
         <div className="min-w-0 flex-1">
           <p
             className={`${DASHBOARD_METRIC_CHIP_LABEL_CLASS} ${
-              inline ? "text-xs sm:text-sm" : "text-sm"
+              inline ? "text-xs md:text-[11px] lg:text-xs xl:text-sm" : "text-sm"
             }`}
           >
             {label}
           </p>
           <p
-            className={`mt-0.5 truncate font-mono tabular-nums font-semibold ${valueClassName}`}
+            className={`mt-0.5 truncate font-mono tabular-nums font-semibold ${valueClassName} ${
+              inline ? "text-sm md:text-xs lg:text-sm xl:text-base" : ""
+            }`}
           >
             {value}
           </p>
@@ -54,7 +56,7 @@ export function DashboardMetricChip({
     <div className={shellClass}>
       <p
         className={`w-full ${DASHBOARD_METRIC_CHIP_LABEL_CLASS} ${
-          inline ? "text-xs sm:text-sm" : "text-sm"
+          inline ? "text-xs md:text-[11px] lg:text-xs xl:text-sm" : "text-sm"
         }`}
       >
         {label}

@@ -88,9 +88,9 @@ export const DASHBOARD_METRIC_STRIP_CLASS =
 export const DASHBOARD_METRIC_STRIP_INLINE_CLASS =
   "flex min-w-0 flex-wrap items-stretch justify-center gap-2.5 sm:gap-3";
 
-/** Page-level stat strip — stack groups until xl; wrap chip rows on wide side-by-side header. */
+/** Page-level stat strip — stack groups on mobile; one chip row from md+. */
 export const DASHBOARD_METRIC_STRIP_SCROLL_CLASS =
-  "flex min-w-0 w-full flex-col gap-4 xl:flex-row xl:flex-wrap xl:items-stretch xl:justify-end xl:gap-x-3 xl:gap-y-4";
+  "flex min-w-0 w-full flex-col gap-4 md:flex-row md:items-end md:justify-end md:gap-2.5 md:overflow-x-auto md:[-ms-overflow-style:none] md:[scrollbar-width:none] md:[&::-webkit-scrollbar]:hidden lg:gap-3";
 
 /** Frosted white stat cards on section headers. */
 export const DASHBOARD_METRIC_CHIP_SURFACE = `rounded-xl ${MV_GLASS_INSET_LIGHT}`;
@@ -98,8 +98,8 @@ export const DASHBOARD_METRIC_CHIP_SURFACE = `rounded-xl ${MV_GLASS_INSET_LIGHT}
 /** Metric tiles on section headers. */
 export const DASHBOARD_METRIC_CHIP_CLASS = `flex h-[4.75rem] w-[9.5rem] shrink-0 flex-col items-center justify-center overflow-hidden px-3 py-2 text-center sm:h-[5rem] sm:w-[10.5rem] ${DASHBOARD_METRIC_CHIP_SURFACE}`;
 
-/** Page stat strip chips — full width in grid cells; fixed width when in xl flex row. */
-export const DASHBOARD_METRIC_CHIP_INLINE_CLASS = `flex h-[4.25rem] min-w-0 w-full max-w-full shrink-0 flex-row items-center justify-start gap-2 overflow-hidden px-2.5 py-2 text-left sm:h-[4.75rem] sm:gap-2.5 sm:px-3 xl:h-[4.75rem] xl:w-[9.5rem] xl:shrink-0 2xl:h-[5rem] 2xl:w-[10.5rem] ${DASHBOARD_METRIC_CHIP_SURFACE}`;
+/** Page stat strip chips — grid cells on mobile; compact fixed width from md for single-row fit. */
+export const DASHBOARD_METRIC_CHIP_INLINE_CLASS = `flex h-[4.25rem] min-w-0 w-full max-w-full shrink-0 flex-row items-center justify-start gap-2 overflow-hidden px-2.5 py-2 text-left sm:h-[4.75rem] sm:gap-2.5 sm:px-3 md:h-[4rem] md:w-[6.75rem] md:max-w-[7rem] md:shrink-0 md:gap-1.5 md:px-2 lg:h-[4.25rem] lg:w-[7.25rem] lg:max-w-[7.5rem] xl:h-[4.5rem] xl:w-[8rem] xl:max-w-[8.5rem] 2xl:h-[5rem] 2xl:w-[10.5rem] 2xl:max-w-none ${DASHBOARD_METRIC_CHIP_SURFACE}`;
 
 export const DASHBOARD_METRIC_CHIP_LABEL_CLASS = MV_SECTION_LABEL;
 
@@ -148,39 +148,39 @@ export const DASHBOARD_PRODUCT_TOTAL_CLASS =
   "font-mono text-xs tabular-nums text-white/75 sm:text-sm md:text-base";
 
 export const DASHBOARD_PAGE_HEADER_CLASS =
-  "flex flex-col gap-3 sm:gap-4 xl:flex-row xl:items-start xl:justify-between xl:gap-6";
+  "flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-5 xl:gap-6";
 
 export const DASHBOARD_PAGE_HEADER_TITLE_CLASS =
-  "font-bold font-mono text-white text-3xl leading-[1.08] sm:text-4xl sm:leading-[1.05] xl:text-5xl 2xl:text-6xl";
+  "font-bold font-mono text-white text-3xl leading-[1.08] sm:text-4xl sm:leading-[1.05] lg:text-[2.5rem] lg:leading-[1.05] xl:text-5xl 2xl:text-6xl";
 
 export const DASHBOARD_PAGE_HEADER_SUBTITLE_CLASS =
   "mt-1 max-w-md text-sm font-medium leading-snug tracking-tight text-white/85 sm:text-base";
 
 export const DASHBOARD_PAGE_HEADER_STATS_CLASS =
-  "min-w-0 w-full flex-1 xl:max-w-[min(100%,52rem)] xl:pt-1";
+  "min-w-0 w-full flex-1 lg:min-w-0 lg:pt-0.5";
 
 /** Labeled cluster in the page stat strip (positions vs yield share). */
 export const DASHBOARD_PAGE_STATS_GROUP_CLASS =
-  "flex min-w-0 w-full shrink-0 flex-col gap-1.5 xl:w-auto";
+  "flex min-w-0 w-full shrink-0 flex-col gap-1.5 md:w-auto";
 
 export const DASHBOARD_PAGE_STATS_GROUP_LABEL_CLASS =
   "px-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/50 sm:text-xs";
 
-/** Positions — 2-up mobile, 4-up md–lg, wrapping row xl+. */
+/** Positions — 2-up mobile; single nowrap row from md+. */
 export const DASHBOARD_PAGE_STATS_POSITIONS_CHIPS_CLASS =
-  "grid w-full grid-cols-2 gap-2 sm:gap-2.5 md:grid-cols-4 md:gap-3 xl:flex xl:w-auto xl:flex-wrap xl:items-stretch xl:justify-end xl:gap-2.5";
+  "grid w-full grid-cols-2 gap-2 sm:gap-2.5 md:flex md:w-auto md:flex-nowrap md:items-stretch md:gap-2 lg:gap-2.5";
 
-/** Yield share — pair on one row until xl, then wraps with positions row. */
+/** Yield share — pair on mobile; joins positions row from md+. */
 export const DASHBOARD_PAGE_STATS_YIELD_CHIPS_CLASS =
-  "grid w-full max-w-md grid-cols-2 gap-2 sm:gap-2.5 xl:max-w-none xl:flex xl:w-auto xl:flex-wrap xl:items-stretch xl:justify-end xl:gap-2.5";
+  "grid w-full max-w-md grid-cols-2 gap-2 sm:gap-2.5 md:max-w-none md:flex md:w-auto md:flex-nowrap md:items-stretch md:gap-2 lg:gap-2.5";
 
 /** @deprecated Use DASHBOARD_PAGE_STATS_POSITIONS_CHIPS_CLASS or _YIELD_ variant. */
 export const DASHBOARD_PAGE_STATS_GROUP_CHIPS_CLASS =
   DASHBOARD_PAGE_STATS_POSITIONS_CHIPS_CLASS;
 
-/** Horizontal rule below xl; vertical rule between groups on xl+. */
+/** Horizontal rule on mobile; vertical rule between groups from md+. */
 export const DASHBOARD_PAGE_STATS_DIVIDER_CLASS =
-  "h-px w-full shrink-0 bg-white/12 xl:mx-1 xl:h-auto xl:w-px xl:self-stretch";
+  "h-px w-full shrink-0 bg-white/12 md:mx-0.5 md:h-[4rem] md:w-px md:self-end lg:h-[4.25rem] xl:h-[4.5rem] 2xl:h-[5rem]";
 
 /** Flat header metrics inside product cards — no nested frosted chip shells. */
 export const DASHBOARD_PRODUCT_HEADER_METRICS_CLASS =
