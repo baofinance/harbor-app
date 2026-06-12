@@ -1,8 +1,8 @@
 export const REVENUE_SHARE_CALC_DEFAULTS = {
   tvlUsd: 1_000_000,
   collateralYieldPct: 3,
-  tradingVolumeUsd: 1_000_000,
-  tradingFeePct: 0.15,
+  tradingVolumeUsd: 10_000_000,
+  tradingFeePct: 0.25,
 } as const;
 
 export type RevenueShareCalcInput = {

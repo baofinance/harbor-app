@@ -13,9 +13,9 @@ describe("computeRevenueShareEstimate", () => {
     });
 
     expect(result.collateralYieldPerYear).toBe(30_000);
-    expect(result.tradingFeesPerYear).toBe(1_500);
-    expect(result.totalMarketRevenue).toBe(31_500);
-    expect(result.yourEstimatedRevenue).toBeCloseTo(31.5, 5);
+    expect(result.tradingFeesPerYear).toBe(25_000);
+    expect(result.totalMarketRevenue).toBe(55_000);
+    expect(result.yourEstimatedRevenue).toBeCloseTo(55, 5);
   });
 
   it("returns zero your revenue when share is zero", () => {
@@ -24,7 +24,7 @@ describe("computeRevenueShareEstimate", () => {
     );
 
     expect(result.yourEstimatedRevenue).toBe(0);
-    expect(result.totalMarketRevenue).toBe(31_500);
+    expect(result.totalMarketRevenue).toBe(55_000);
   });
 
   it("handles zero TVL and volume without NaN", () => {
