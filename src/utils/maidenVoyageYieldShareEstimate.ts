@@ -63,6 +63,47 @@ export function resolveMaidenVoyageYieldShareLabel({
   yieldRevSharePct?: number | null;
   userDepositUsd?: number | null;
 }): { label: string; caption: string } {
+  const pct = resolveMaidenVoyageYieldSharePct({
+    capDisplay,
+    genesisAddress,
+    yieldRevSharePct,
+    userDepositUsd,
+  });
+
+  const depositUsdForEstimate =
+    capDisplay.countedUsd > 0
+      ? capDisplay.countedUsd
+      : capDisplay.ownershipShare > 0
+        ? capDisplay.ownershipShare *
+          (resolveMaidenVoyageCapUsdForEstimate({
+            genesisAddress,
+            capTotalUsd: capDisplay.capTotalUsd,
+          }) ?? 0)
+        : userDepositUsd != null && userDepositUsd > 0
+          ? userDepositUsd
+          : null;
+
+  return {
+    label: formatMaidenVoyageYieldSharePct(pct),
+    caption:
+      depositUsdForEstimate != null && depositUsdForEstimate > 0
+        ? "Based on your deposit"
+        : "With $1,000 deposit",
+  };
+}
+
+/** Numeric Est. Your Share % for calculator defaults (same logic as label resolver). */
+export function resolveMaidenVoyageYieldSharePct({
+  capDisplay,
+  genesisAddress,
+  yieldRevSharePct,
+  userDepositUsd,
+}: {
+  capDisplay: GenesisVoyageCapDisplay;
+  genesisAddress?: string;
+  yieldRevSharePct?: number | null;
+  userDepositUsd?: number | null;
+}): number | null {
   const capUsd = resolveMaidenVoyageCapUsdForEstimate({
     genesisAddress,
     capTotalUsd: capDisplay.capTotalUsd,
@@ -79,25 +120,16 @@ export function resolveMaidenVoyageYieldShareLabel({
           : null;
 
   if (depositUsdForEstimate != null && depositUsdForEstimate > 0) {
-    const pct = estimateMaidenVoyageYieldSharePct({
+    return estimateMaidenVoyageYieldSharePct({
       depositUsd: depositUsdForEstimate,
       capUsd,
       yieldRevSharePct: revPct,
     });
-    return {
-      label: formatMaidenVoyageYieldSharePct(pct),
-      caption: "Based on your deposit",
-    };
   }
 
-  const pct = estimateMaidenVoyageYieldSharePct({
+  return estimateMaidenVoyageYieldSharePct({
     depositUsd: MAIDEN_VOYAGE_HYPOTHETICAL_DEPOSIT_USD,
     capUsd,
     yieldRevSharePct: revPct,
   });
-
-  return {
-    label: formatMaidenVoyageYieldSharePct(pct),
-    caption: "With $1,000 deposit",
-  };
 }

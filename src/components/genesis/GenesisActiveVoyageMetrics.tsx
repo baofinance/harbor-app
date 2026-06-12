@@ -4,7 +4,11 @@ import type { ActiveVoyageStatus } from "@/utils/activeVoyageStatus";
 import { getActiveVoyageZeroStateCopy } from "@/utils/activeVoyageStatus";
 import type { GenesisVoyageCapDisplay } from "@/utils/genesisVoyageCapDisplay";
 import { formatUSD } from "@/utils/formatters";
-import { resolveMaidenVoyageYieldShareLabel } from "@/utils/maidenVoyageYieldShareEstimate";
+import {
+  resolveMaidenVoyageYieldShareLabel,
+  resolveMaidenVoyageYieldSharePct,
+} from "@/utils/maidenVoyageYieldShareEstimate";
+import { GenesisRevenueShareCalculator } from "./GenesisRevenueShareCalculator";
 import {
   MV_ACCENT_GRADIENT,
   MV_CAPTION_TEXT,
@@ -79,8 +83,16 @@ export function GenesisActiveVoyageMetrics({
     yieldRevSharePct,
     userDepositUsd,
   });
+  const yourSharePct =
+    resolveMaidenVoyageYieldSharePct({
+      capDisplay,
+      genesisAddress,
+      yieldRevSharePct,
+      userDepositUsd,
+    }) ?? 0;
 
   return (
+    <>
     <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.5fr)_minmax(0,0.75fr)_minmax(0,0.75fr)] md:items-center md:gap-0">
       <div className="min-w-0 md:pr-4">
         <p className={MV_SECTION_LABEL}>Voyage Capacity</p>
@@ -143,6 +155,12 @@ export function GenesisActiveVoyageMetrics({
         <p className={`mt-0.5 ${MV_CAPTION_TEXT}`}>Eligible pool share</p>
       </div>
     </div>
+
+    <GenesisRevenueShareCalculator
+      initialYourSharePct={yourSharePct}
+      className="mt-3"
+    />
+    </>
   );
 }
 

@@ -41,6 +41,8 @@ export type { GenesisHowItWorksStepsProps } from "./GenesisHowItWorksSteps";
 export { GenesisMaidenVoyageLifecycle } from "./GenesisMaidenVoyageLifecycle";
 export { GenesisMaidenVoyageFaq } from "./GenesisMaidenVoyageFaq";
 export { GenesisRevenueShareSection } from "./GenesisRevenueShareSection";
+export { GenesisRevenueShareCalculator } from "./GenesisRevenueShareCalculator";
+export type { GenesisRevenueShareCalculatorProps } from "./GenesisRevenueShareCalculator";
 export { GenesisYieldShareRulesCard } from "./GenesisYieldShareRulesCard";
 export type { GenesisYieldShareRulesCardProps } from "./GenesisYieldShareRulesCard";
 export { GenesisVoyageConfidenceSignals } from "./GenesisVoyageConfidenceSignals";
