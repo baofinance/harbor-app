@@ -699,12 +699,6 @@ export function useDashboardPositions() {
     return rows.sort((a, b) => b.usd - a.usd);
   }, [sailData, sailBalances, index, tokenPricesByMarket]);
 
-  const sailSubgraphMessage = useMemo(() => {
-    if (!isConnected || !address || sailGraphUrl || anchorLoading) return null;
-    if (leverageRows.length > 0) return null;
-    return "Sail price subgraph URL is not configured (add it to show position notional from the Sail indexer).";
-  }, [isConnected, address, sailGraphUrl, anchorLoading, leverageRows.length]);
-
   const anchorErrorStr = anchorError ? String(anchorError) : null;
   const mvErrorStr = mvError ? (mvError as Error).message : null;
   const sailErrorStr = sailError ? (sailError as Error).message : null;
@@ -725,7 +719,7 @@ export function useDashboardPositions() {
     errors: {
       anchor: anchorErrorStr,
       maidenVoyage: mvErrorStr,
-      leverage: sailSubgraphMessage ?? sailErrorStr,
+      leverage: sailErrorStr,
     },
   };
 }

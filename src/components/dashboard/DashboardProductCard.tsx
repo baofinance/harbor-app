@@ -11,12 +11,11 @@ import {
   DASHBOARD_PRODUCT_CARD_HEADER_EXPANDED_CLASS,
   DASHBOARD_PRODUCT_CARD_HEADER_MUTED_CLASS,
   DASHBOARD_PRODUCT_LOADING_HINT_CLASS,
-  DASHBOARD_PRODUCT_SUBTITLE_CLASS,
   DASHBOARD_PRODUCT_TITLE_CLASS,
   DASHBOARD_PRODUCT_TOTAL_CLASS,
-  DASHBOARD_SECTION_ACTION_BTN_CLASS,
   DASHBOARD_SECTION_CHEVRON_CLASS,
-  DASHBOARD_VIEW_ALL_LINK_CLASS,
+  DASHBOARD_SECTION_EXPAND_BTN_CLASS,
+  DASHBOARD_VIEW_ALL_BTN_CLASS,
 } from "./dashboardStyles";
 import type { DashboardProductMeta } from "./dashboardProductMeta";
 
@@ -30,8 +29,6 @@ export type DashboardProductCardProps = {
   sectionTotalLabel?: string;
   /** Header extras (e.g. yield earned / uncollected chips) */
   headerMetrics?: ReactNode;
-  /** When collapsed and no body, show subtitle under title */
-  showSubtitle?: boolean;
   /** Show loading hint in header when fetching and no total yet */
   loading?: boolean;
   expandAriaLabel?: string;
@@ -56,7 +53,6 @@ export function DashboardProductCard({
   sectionTotalUsd = null,
   sectionTotalLabel,
   headerMetrics,
-  showSubtitle = true,
   loading = false,
   expandAriaLabel,
   collapseAriaLabel,
@@ -71,8 +67,6 @@ export function DashboardProductCard({
   const showBody = expanded && children != null;
   const showHeaderMetrics = isConnected && headerMetrics != null;
   const showLoadingHint = isConnected && loading && !showTotal;
-  const showSubtitleLine =
-    showSubtitle && (!expanded || !showBody) && meta.subtitle.length > 0;
   const headerMuted = meta.tone === "muted";
 
   return (
@@ -108,18 +102,13 @@ export function DashboardProductCard({
                   <span className={DASHBOARD_PRODUCT_LOADING_HINT_CLASS}>Loading…</span>
                 ) : null}
               </div>
-              {showSubtitleLine ? (
-                <p className={`mt-0.5 ${DASHBOARD_PRODUCT_SUBTITLE_CLASS}`}>
-                  {meta.subtitle}
-                </p>
-              ) : null}
             </div>
           </button>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-2">
             {meta.viewAllHref && meta.viewAllLabel ? (
               <Link
                 href={meta.viewAllHref}
-                className={DASHBOARD_VIEW_ALL_LINK_CLASS}
+                className={DASHBOARD_VIEW_ALL_BTN_CLASS}
                 onClick={(e) => e.stopPropagation()}
               >
                 {meta.viewAllLabel}
@@ -128,7 +117,7 @@ export function DashboardProductCard({
             ) : null}
             <button
               type="button"
-              className={DASHBOARD_SECTION_ACTION_BTN_CLASS}
+              className={DASHBOARD_SECTION_EXPAND_BTN_CLASS}
               aria-expanded={expanded}
               aria-label={
                 expanded

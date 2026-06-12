@@ -17,14 +17,14 @@ export const DASHBOARD_INDEX_ROW_SHELL_CLASS =
   "rounded-md border border-[#1E4775]/15 bg-white shadow-sm overflow-hidden transition-colors md:hover:bg-[rgb(var(--surface-selected-rgb))]";
 
 /**
- * md+ column tracks — network | market | type (center) | notional | action.
+ * md+ column tracks — network | market | type | deposit | action (equal width).
  * Header and body must share this grid + gap exactly.
  */
 export const DASHBOARD_POSITIONS_TABLE_GRID_COLS_CLASSNAME =
-  "md:grid-cols-[32px_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.85fr)_5.25rem] lg:grid-cols-[32px_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.85fr)_7rem]";
+  "md:grid-cols-[32px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_5.25rem] lg:grid-cols-[32px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_7rem]";
 
 export const DASHBOARD_POSITIONS_TABLE_GRID_GAP_CLASSNAME =
-  "gap-x-2 lg:gap-x-2.5";
+  "gap-x-3 lg:gap-x-4";
 
 export const DASHBOARD_POSITIONS_TABLE_MIN_WIDTH_CLASSNAME = "lg:min-w-[640px]";
 
@@ -89,7 +89,7 @@ export const DASHBOARD_POSITION_DETAIL_CLASS =
 /** Token icon in dashboard market cells — must match {@link DashboardMarketColumnHeader} ghost. */
 export const DASHBOARD_MARKET_ICON_PX = 20;
 
-/** Column alignment — network + market left, type center, notional + action right. */
+/** Column alignment — network + market left, type + deposit center, action right. */
 export const DASHBOARD_POSITIONS_COL_NETWORK_CLASSNAME =
   "flex items-center justify-start";
 
@@ -100,7 +100,7 @@ export const DASHBOARD_POSITIONS_COL_TYPE_CLASSNAME =
   "flex w-full min-w-0 items-center justify-center text-center";
 
 export const DASHBOARD_POSITIONS_COL_NOTIONAL_CLASSNAME =
-  "flex min-w-0 items-center justify-end truncate text-right tabular-nums";
+  "flex min-w-0 items-center justify-center text-center tabular-nums";
 
 export const DASHBOARD_POSITIONS_COL_ACTION_CLASSNAME =
   "flex w-full min-w-0 items-center justify-end";

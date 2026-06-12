@@ -6,7 +6,6 @@ import { DashboardYieldSummaryCards } from "./DashboardYieldSummaryCards";
 import {
   DASHBOARD_PAGE_STATS_DIVIDER_CLASS,
   DASHBOARD_PAGE_STATS_GROUP_CLASS,
-  DASHBOARD_PAGE_STATS_GROUP_LABEL_CLASS,
   DASHBOARD_PAGE_STATS_POSITIONS_CHIPS_CLASS,
   DASHBOARD_PAGE_STATS_YIELD_CHIPS_CLASS,
 } from "./dashboardStyles";
@@ -41,7 +40,7 @@ export function DashboardPageStats({
       >
         <p
           id="dashboard-stats-positions-label"
-          className={DASHBOARD_PAGE_STATS_GROUP_LABEL_CLASS}
+          className="sr-only"
         >
           Positions
         </p>
@@ -69,7 +68,7 @@ export function DashboardPageStats({
       >
         <p
           id="dashboard-stats-yield-label"
-          className={DASHBOARD_PAGE_STATS_GROUP_LABEL_CLASS}
+          className="sr-only"
         >
           Yield share
         </p>

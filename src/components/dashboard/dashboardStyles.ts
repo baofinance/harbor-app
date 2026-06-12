@@ -70,8 +70,11 @@ export const DASHBOARD_SECTION_BODY_CLASS = "space-y-3 p-3 sm:p-4";
 
 export const DASHBOARD_SECTION_BODY_FLAT_CLASS = "space-y-4";
 
-export const DASHBOARD_SECTION_ACTION_BTN_CLASS =
-  "shrink-0 rounded-md p-1 hover:bg-white/[0.05]";
+export const DASHBOARD_SECTION_EXPAND_BTN_CLASS =
+  "inline-flex shrink-0 items-center justify-center rounded-md border border-white/15 bg-white/[0.06] p-1.5 text-white/85 transition hover:border-white/25 hover:bg-white/[0.1] hover:text-white sm:p-2";
+
+/** @deprecated Use DASHBOARD_SECTION_EXPAND_BTN_CLASS */
+export const DASHBOARD_SECTION_ACTION_BTN_CLASS = DASHBOARD_SECTION_EXPAND_BTN_CLASS;
 
 export const DASHBOARD_INFO_ICON_CLASS = "h-4 w-4 text-white/45";
 
@@ -207,8 +210,11 @@ export const DASHBOARD_PRODUCT_ICON_ARCHIVED_CLASS = `${DASHBOARD_PRODUCT_ICON_B
 
 export const DASHBOARD_PRODUCT_LOADING_HINT_CLASS = MV_META_TEXT;
 
-export const DASHBOARD_VIEW_ALL_LINK_CLASS =
-  "inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-white/70 transition hover:text-white/90 sm:text-xs md:text-sm";
+export const DASHBOARD_VIEW_ALL_BTN_CLASS =
+  "inline-flex shrink-0 items-center gap-1 rounded-md border border-white/15 bg-white/[0.06] px-2.5 py-1.5 text-[11px] font-semibold text-white/85 transition hover:border-white/25 hover:bg-white/[0.1] hover:text-white sm:px-3 sm:text-xs";
+
+/** @deprecated Use DASHBOARD_VIEW_ALL_BTN_CLASS */
+export const DASHBOARD_VIEW_ALL_LINK_CLASS = DASHBOARD_VIEW_ALL_BTN_CLASS;
 
 /** Connect-wallet and inline notice panels. */
 export const DASHBOARD_NOTICE_PANEL_CLASS = `${MV_CARD_SHELL} px-3 py-3 sm:px-4 ${MV_BODY_TEXT}`;

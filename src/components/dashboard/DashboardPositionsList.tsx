@@ -26,7 +26,7 @@ function PositionsListHeader() {
         <div className={DASHBOARD_POSITIONS_COL_NETWORK_CLASSNAME} aria-label="Network" />
         <DashboardMarketColumnHeader />
         <div className={DASHBOARD_POSITIONS_COL_TYPE_CLASSNAME}>Type</div>
-        <div className={DASHBOARD_POSITIONS_COL_NOTIONAL_CLASSNAME}>Notional</div>
+        <div className={DASHBOARD_POSITIONS_COL_NOTIONAL_CLASSNAME}>Deposit</div>
         <div className={DASHBOARD_POSITIONS_COL_ACTION_CLASSNAME}>
           <span className={DASHBOARD_POSITIONS_ACTION_FOOTPRINT_CLASSNAME}>Action</span>
         </div>
@@ -57,7 +57,7 @@ export type DashboardPositionsListProps = {
   loading: boolean;
   error: string | null;
   emptyHint: ReactNode;
-  /** Show Market/Type/Notional header once above the first product group. */
+  /** Show Market/Type/Deposit header once above the first product group. */
   showColumnHeader?: boolean;
   onManage?: (row: DashboardPositionRow) => void;
 };

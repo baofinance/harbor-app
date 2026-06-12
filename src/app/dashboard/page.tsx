@@ -81,7 +81,6 @@ function PositionProductCard({
       isConnected={isConnected}
       sectionTotalUsd={totalUsd}
       loading={group.loading}
-      showSubtitle={!expanded || group.rows.length === 0}
     >
       {group.error ? (
         <IndexMarksSubgraphErrorBanner error={new Error(group.error)} />
@@ -288,10 +287,6 @@ export default function DashboardPage() {
                   isConnected={isConnected}
                 />
               ) : undefined
-            }
-            showSubtitle={
-              !yieldExpanded &&
-              (!isConnected || (rows.length === 0 && !isLoading))
             }
           >
             {error ? (

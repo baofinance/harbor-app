@@ -24,7 +24,6 @@ export type DashboardProductId =
 export type DashboardProductMeta = {
   id: DashboardProductId;
   title: string;
-  subtitle: string;
   viewAllHref?: string;
   viewAllLabel?: string;
   icon: ComponentType<{ className?: string }>;
@@ -37,7 +36,6 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
     maiden: {
       id: "maiden",
       title: "Maiden Voyage",
-      subtitle: "Genesis deposits and maiden voyage positions",
       viewAllHref: "/genesis",
       viewAllLabel: "View all",
       icon: SparklesIcon,
@@ -46,7 +44,6 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
     earn: {
       id: "earn",
       title: "Earn",
-      subtitle: "Explore yield opportunities",
       viewAllHref: "/anchor",
       viewAllLabel: "View all",
       icon: CurrencyDollarIcon,
@@ -55,7 +52,6 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
     sail: {
       id: "sail",
       title: "Sail",
-      subtitle: "Trade with fixed yield",
       viewAllHref: "/sail",
       viewAllLabel: "View all",
       icon: WalletIcon,
@@ -64,7 +60,6 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
     archived: {
       id: "archived",
       title: "Archived",
-      subtitle: "Past maiden voyage deposits",
       viewAllHref: "/genesis",
       viewAllLabel: "View all",
       icon: ArchiveBoxIcon,
@@ -74,7 +69,6 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
     yield: {
       id: "yield",
       title: "Yield share",
-      subtitle: "Lifetime yield from your Maiden Voyage positions",
       icon: ChartBarIcon,
       iconBadgeClass: DASHBOARD_PRODUCT_ICON_YIELD_CLASS,
     },
