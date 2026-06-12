@@ -17,6 +17,7 @@ import {
   DASHBOARD_INDEX_ROW_MOBILE_CLASS,
   DASHBOARD_INDEX_ROW_SHELL_CLASS,
   DASHBOARD_MARKET_ICON_PX,
+  DASHBOARD_POSITION_DETAIL_CLASS,
   DASHBOARD_POSITIONS_VALUE_TEXT_CLASS,
   DASHBOARD_POSITIONS_ACTION_FOOTPRINT_CLASSNAME,
   DASHBOARD_POSITIONS_COL_ACTION_CLASSNAME,
@@ -89,9 +90,17 @@ export function DashboardPositionRowView({
               size={DASHBOARD_NETWORK_ICON_PX}
             />
             <TokenLogo symbol={row.iconSymbol} size={DASHBOARD_MARKET_ICON_PX} className="shrink-0 ring-0" />
-            <span className={`min-w-0 truncate ${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS}`}>
-              {row.marketLabel}
-            </span>
+            <div className="min-w-0 flex-1">
+              <span className={`block truncate ${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS}`}>
+                {row.marketLabel}
+              </span>
+              <span
+                className={`block ${DASHBOARD_POSITION_DETAIL_CLASS}`}
+                title={row.detail}
+              >
+                {row.detail}
+              </span>
+            </div>
           </div>
           <div className="flex shrink-0 items-center justify-end">
             <ManageAction
@@ -124,9 +133,20 @@ export function DashboardPositionRowView({
         </div>
         <div className={DASHBOARD_POSITIONS_COL_MARKET_CLASSNAME}>
           <TokenLogo symbol={row.iconSymbol} size={DASHBOARD_MARKET_ICON_PX} className="shrink-0 ring-0" />
-          <span className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} truncate`} title={row.marketLabel}>
-            {row.marketLabel}
-          </span>
+          <div className="min-w-0 flex-1">
+            <span
+              className={`block truncate ${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS}`}
+              title={row.marketLabel}
+            >
+              {row.marketLabel}
+            </span>
+            <span
+              className={`block ${DASHBOARD_POSITION_DETAIL_CLASS}`}
+              title={row.detail}
+            >
+              {row.detail}
+            </span>
+          </div>
         </div>
         <div className={DASHBOARD_POSITIONS_COL_TYPE_CLASSNAME}>
           <DashboardStatusPill

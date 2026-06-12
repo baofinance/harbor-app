@@ -8,6 +8,7 @@ export const PAGE_LAYOUT_INDEX_EXACT_PATHS: readonly string[] = [
   "/anchor",
   "/ledger-marks",
   "/transparency",
+  "/dashboard",
 ];
 
 /** @deprecated Use {@link PAGE_LAYOUT_INDEX_EXACT_PATHS} — kept for any legacy imports */

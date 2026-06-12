@@ -83,6 +83,9 @@ export const DASHBOARD_POSITIONS_HEADER_CELL_CLASSNAME =
 export const DASHBOARD_POSITIONS_VALUE_TEXT_CLASS =
   "font-medium text-sm text-[#1E4775]";
 
+export const DASHBOARD_POSITION_DETAIL_CLASS =
+  "text-xs text-[#1E4775]/55 truncate";
+
 /** Token icon in dashboard market cells — must match {@link DashboardMarketColumnHeader} ghost. */
 export const DASHBOARD_MARKET_ICON_PX = 20;
 
