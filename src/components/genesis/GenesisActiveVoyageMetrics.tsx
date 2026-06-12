@@ -5,8 +5,9 @@ import { getActiveVoyageZeroStateCopy } from "@/utils/activeVoyageStatus";
 import type { GenesisVoyageCapDisplay } from "@/utils/genesisVoyageCapDisplay";
 import { formatUSD } from "@/utils/formatters";
 import {
+  MAIDEN_VOYAGE_HYPOTHETICAL_DEPOSIT_USD,
+  resolveMaidenVoyageCapUsdForEstimate,
   resolveMaidenVoyageYieldShareLabel,
-  resolveMaidenVoyageYieldSharePct,
 } from "@/utils/maidenVoyageYieldShareEstimate";
 import { GenesisRevenueShareCalculator } from "./GenesisRevenueShareCalculator";
 import {
@@ -83,13 +84,19 @@ export function GenesisActiveVoyageMetrics({
     yieldRevSharePct,
     userDepositUsd,
   });
-  const yourSharePct =
-    resolveMaidenVoyageYieldSharePct({
-      capDisplay,
-      genesisAddress,
-      yieldRevSharePct,
-      userDepositUsd,
-    }) ?? 0;
+  const capUsd = resolveMaidenVoyageCapUsdForEstimate({
+    genesisAddress,
+    capTotalUsd: capDisplay.capTotalUsd,
+  });
+  const revSharePct = yieldRevSharePct ?? capDisplay.yieldRevSharePct ?? null;
+  const initialDepositUsd =
+    capDisplay.countedUsd > 0
+      ? capDisplay.countedUsd
+      : capDisplay.ownershipShare > 0 && capUsd
+        ? capDisplay.ownershipShare * capUsd
+        : userDepositUsd != null && userDepositUsd > 0
+          ? userDepositUsd
+          : MAIDEN_VOYAGE_HYPOTHETICAL_DEPOSIT_USD;
 
   return (
     <>
@@ -157,7 +164,9 @@ export function GenesisActiveVoyageMetrics({
     </div>
 
     <GenesisRevenueShareCalculator
-      initialYourSharePct={yourSharePct}
+      capUsd={capUsd}
+      yieldRevSharePct={revSharePct}
+      initialDepositUsd={initialDepositUsd}
       className="mt-3"
     />
     </>

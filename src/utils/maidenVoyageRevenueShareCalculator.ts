@@ -19,6 +19,13 @@ export const REVENUE_SHARE_CALC_DEFAULTS = {
   tradingFeePct: REVENUE_SHARE_CALC_TRADING_FEE_PCT,
 } as const;
 
+/** Slider bounds for the active-voyage revenue share calculator UI. */
+export const REVENUE_SHARE_CALC_SLIDER_BOUNDS = {
+  tvlUsd: { min: 100_000, max: 500_000_000, step: 100_000 },
+  collateralYieldPct: { min: 0, max: 15, step: 0.1 },
+  tradingVolumeUsd: { min: 0, max: 2_000_000_000, step: 100_000 },
+} as const;
+
 export type RevenueShareCalcInput = {
   tvlUsd: number;
   collateralYieldPct: number;
