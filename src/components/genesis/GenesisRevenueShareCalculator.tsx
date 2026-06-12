@@ -3,9 +3,12 @@
 import { useMemo, useState } from "react";
 import { formatUSD } from "@/utils/formatters";
 import {
-  REVENUE_SHARE_CALC_DEFAULTS,
+  REVENUE_SHARE_CALC_TRADING_FEE_PCT,
   buildDefaultRevenueShareCalcInput,
+  buildPresetRevenueShareCalcInput,
+  computePresetRevenueShareEstimates,
   computeRevenueShareEstimate,
+  type RevenueShareCalcInput,
 } from "@/utils/maidenVoyageRevenueShareCalculator";
 import {
   MV_CAPTION_TEXT,
@@ -22,6 +25,10 @@ export type GenesisRevenueShareCalculatorProps = {
 function parseInputNumber(value: string, fallback: number): number {
   const parsed = Number(value.replace(/,/g, ""));
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function formatPresetTvlLabel(tvlUsd: number): string {
+  return formatUSD(tvlUsd, { compact: true, minDecimals: 0, maxDecimals: 0 });
 }
 
 function CalcField({
@@ -85,18 +92,64 @@ function OutputStat({
   );
 }
 
+function PresetEstimateCard({
+  tvlUsd,
+  yourEstimatedRevenue,
+  isActive,
+  onSelect,
+}: {
+  tvlUsd: number;
+  yourEstimatedRevenue: number;
+  isActive: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`min-w-0 rounded-lg border px-3 py-2.5 text-left transition ${
+        isActive
+          ? "border-[#B8EBD5]/40 bg-[#B8EBD5]/10"
+          : "border-white/10 bg-[#0a1929]/35 hover:border-white/20 hover:bg-[#0a1929]/50"
+      }`}
+    >
+      <p className={MV_SECTION_LABEL}>{formatPresetTvlLabel(tvlUsd)} TVL</p>
+      <p className="mt-0.5 font-mono text-lg font-semibold tabular-nums text-[#B8EBD5] sm:text-xl">
+        {formatUSD(yourEstimatedRevenue, { compact: false })} / yr
+      </p>
+      <p className={`mt-0.5 ${MV_CAPTION_TEXT}`}>Your estimated revenue</p>
+    </button>
+  );
+}
+
 export function GenesisRevenueShareCalculator({
   initialYourSharePct,
   className = "",
 }: GenesisRevenueShareCalculatorProps) {
-  const [inputs, setInputs] = useState(() =>
+  const [inputs, setInputs] = useState<RevenueShareCalcInput>(() =>
     buildDefaultRevenueShareCalcInput(initialYourSharePct),
+  );
+
+  const presets = useMemo(
+    () => computePresetRevenueShareEstimates(initialYourSharePct),
+    [initialYourSharePct],
   );
 
   const result = useMemo(() => computeRevenueShareEstimate(inputs), [inputs]);
 
-  const setField = <K extends keyof typeof inputs>(key: K, value: number) => {
+  const activePresetTvl = presets.some((p) => p.tvlUsd === inputs.tvlUsd)
+    ? inputs.tvlUsd
+    : null;
+
+  const setField = <K extends keyof RevenueShareCalcInput>(
+    key: K,
+    value: RevenueShareCalcInput[K],
+  ) => {
     setInputs((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const applyPreset = (tvlUsd: number) => {
+    setInputs(buildPresetRevenueShareCalcInput(tvlUsd, inputs.yourSharePct));
   };
 
   return (
@@ -120,60 +173,82 @@ export function GenesisRevenueShareCalculator({
       </summary>
 
       <div className="border-t border-white/10 px-3 pb-3 pt-3 sm:px-4 sm:pb-4">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <CalcField
-            id="mv-rev-calc-tvl"
-            label="TVL"
-            suffix="USD"
-            value={inputs.tvlUsd}
-            step="1000"
-            onChange={(v) => setField("tvlUsd", v)}
-          />
-          <CalcField
-            id="mv-rev-calc-collateral-yield"
-            label="Collateral yield"
-            suffix="% / yr"
-            value={inputs.collateralYieldPct}
-            step="0.1"
-            onChange={(v) => setField("collateralYieldPct", v)}
-          />
-          <CalcField
-            id="mv-rev-calc-trading-volume"
-            label="Trading volume"
-            suffix="USD / yr"
-            value={inputs.tradingVolumeUsd}
-            step="1000"
-            onChange={(v) => setField("tradingVolumeUsd", v)}
-          />
-          <CalcField
-            id="mv-rev-calc-your-share"
-            label="Your share"
-            suffix="%"
-            value={inputs.yourSharePct}
-            step="0.001"
-            onChange={(v) => setField("yourSharePct", v)}
-          />
+        <div className="space-y-2">
+          <p className={MV_SECTION_LABEL}>Preset scenarios</p>
+          <p className={`${MV_CAPTION_TEXT} -mt-1`}>
+            5% collateral yield · 10× TVL trading volume ·{" "}
+            {REVENUE_SHARE_CALC_TRADING_FEE_PCT}% fee
+          </p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {presets.map((preset) => (
+              <PresetEstimateCard
+                key={preset.tvlUsd}
+                tvlUsd={preset.tvlUsd}
+                yourEstimatedRevenue={preset.result.yourEstimatedRevenue}
+                isActive={activePresetTvl === preset.tvlUsd}
+                onSelect={() => applyPreset(preset.tvlUsd)}
+              />
+            ))}
+          </div>
         </div>
 
-        <p className={`mt-3 ${MV_META_TEXT}`}>
-          Average trading fee: {REVENUE_SHARE_CALC_DEFAULTS.tradingFeePct}%
-        </p>
-
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <OutputStat
-            label="Total collateral yield"
-            value={`${formatUSD(result.collateralYieldPerYear, { compact: false })} / yr`}
-          />
-          <OutputStat
-            label="Total trading fees"
-            value={`${formatUSD(result.tradingFeesPerYear, { compact: false })} / yr`}
-          />
-          <div className="sm:col-span-2">
-            <OutputStat
-              label="Your estimated revenue"
-              value={`${formatUSD(result.yourEstimatedRevenue, { compact: false })} / yr`}
-              highlight
+        <div className="mt-4 border-t border-white/10 pt-4">
+          <p className={`mb-3 ${MV_SECTION_LABEL}`}>Custom assumptions</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <CalcField
+              id="mv-rev-calc-tvl"
+              label="TVL"
+              suffix="USD"
+              value={inputs.tvlUsd}
+              step="1000"
+              onChange={(v) => setField("tvlUsd", v)}
             />
+            <CalcField
+              id="mv-rev-calc-collateral-yield"
+              label="Collateral yield"
+              suffix="% / yr"
+              value={inputs.collateralYieldPct}
+              step="0.1"
+              onChange={(v) => setField("collateralYieldPct", v)}
+            />
+            <CalcField
+              id="mv-rev-calc-trading-volume"
+              label="Trading volume"
+              suffix="USD / yr"
+              value={inputs.tradingVolumeUsd}
+              step="1000"
+              onChange={(v) => setField("tradingVolumeUsd", v)}
+            />
+            <CalcField
+              id="mv-rev-calc-your-share"
+              label="Your share"
+              suffix="%"
+              value={inputs.yourSharePct}
+              step="0.001"
+              onChange={(v) => setField("yourSharePct", v)}
+            />
+          </div>
+
+          <p className={`mt-3 ${MV_META_TEXT}`}>
+            Average trading fee: {REVENUE_SHARE_CALC_TRADING_FEE_PCT}%
+          </p>
+
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <OutputStat
+              label="Total collateral yield"
+              value={`${formatUSD(result.collateralYieldPerYear, { compact: false })} / yr`}
+            />
+            <OutputStat
+              label="Total trading fees"
+              value={`${formatUSD(result.tradingFeesPerYear, { compact: false })} / yr`}
+            />
+            <div className="sm:col-span-2">
+              <OutputStat
+                label="Your estimated revenue"
+                value={`${formatUSD(result.yourEstimatedRevenue, { compact: false })} / yr`}
+                highlight
+              />
+            </div>
           </div>
         </div>
 

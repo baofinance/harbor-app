@@ -1,8 +1,22 @@
+export const REVENUE_SHARE_CALC_TRADING_FEE_PCT = 0.25;
+
+export const REVENUE_SHARE_CALC_TRADING_VOLUME_TVL_MULTIPLIER = 10;
+
+export const REVENUE_SHARE_CALC_DEFAULT_COLLATERAL_YIELD_PCT = 5;
+
+export const REVENUE_SHARE_CALC_PRESET_TVLS_USD = [
+  1_000_000,
+  10_000_000,
+  100_000_000,
+] as const;
+
 export const REVENUE_SHARE_CALC_DEFAULTS = {
-  tvlUsd: 1_000_000,
-  collateralYieldPct: 3,
-  tradingVolumeUsd: 10_000_000,
-  tradingFeePct: 0.25,
+  tvlUsd: REVENUE_SHARE_CALC_PRESET_TVLS_USD[0],
+  collateralYieldPct: REVENUE_SHARE_CALC_DEFAULT_COLLATERAL_YIELD_PCT,
+  tradingVolumeUsd:
+    REVENUE_SHARE_CALC_PRESET_TVLS_USD[0] *
+    REVENUE_SHARE_CALC_TRADING_VOLUME_TVL_MULTIPLIER,
+  tradingFeePct: REVENUE_SHARE_CALC_TRADING_FEE_PCT,
 } as const;
 
 export type RevenueShareCalcInput = {
@@ -20,9 +34,19 @@ export type RevenueShareCalcResult = {
   yourEstimatedRevenue: number;
 };
 
+export type RevenueSharePresetEstimate = {
+  tvlUsd: number;
+  input: RevenueShareCalcInput;
+  result: RevenueShareCalcResult;
+};
+
 function sanitizeNonNegative(value: number): number {
   if (!Number.isFinite(value) || value < 0) return 0;
   return value;
+}
+
+export function tradingVolumeFromTvl(tvlUsd: number): number {
+  return sanitizeNonNegative(tvlUsd) * REVENUE_SHARE_CALC_TRADING_VOLUME_TVL_MULTIPLIER;
 }
 
 /** Speculative annual revenue from TVL yield + trading fees × depositor share. */
@@ -48,11 +72,38 @@ export function computeRevenueShareEstimate(
   };
 }
 
+export function buildPresetRevenueShareCalcInput(
+  tvlUsd: number,
+  yourSharePct: number,
+): RevenueShareCalcInput {
+  const safeTvl = sanitizeNonNegative(tvlUsd);
+  return {
+    tvlUsd: safeTvl,
+    collateralYieldPct: REVENUE_SHARE_CALC_DEFAULT_COLLATERAL_YIELD_PCT,
+    tradingVolumeUsd: tradingVolumeFromTvl(safeTvl),
+    tradingFeePct: REVENUE_SHARE_CALC_TRADING_FEE_PCT,
+    yourSharePct: sanitizeNonNegative(yourSharePct),
+  };
+}
+
+export function computePresetRevenueShareEstimates(
+  yourSharePct: number,
+): RevenueSharePresetEstimate[] {
+  return REVENUE_SHARE_CALC_PRESET_TVLS_USD.map((tvlUsd) => {
+    const input = buildPresetRevenueShareCalcInput(tvlUsd, yourSharePct);
+    return {
+      tvlUsd,
+      input,
+      result: computeRevenueShareEstimate(input),
+    };
+  });
+}
+
 export function buildDefaultRevenueShareCalcInput(
   yourSharePct: number,
 ): RevenueShareCalcInput {
-  return {
-    ...REVENUE_SHARE_CALC_DEFAULTS,
-    yourSharePct: sanitizeNonNegative(yourSharePct),
-  };
+  return buildPresetRevenueShareCalcInput(
+    REVENUE_SHARE_CALC_DEFAULTS.tvlUsd,
+    yourSharePct,
+  );
 }
