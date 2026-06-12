@@ -4,12 +4,7 @@ import type { ActiveVoyageStatus } from "@/utils/activeVoyageStatus";
 import { getActiveVoyageZeroStateCopy } from "@/utils/activeVoyageStatus";
 import type { GenesisVoyageCapDisplay } from "@/utils/genesisVoyageCapDisplay";
 import { formatUSD } from "@/utils/formatters";
-import {
-  MAIDEN_VOYAGE_HYPOTHETICAL_DEPOSIT_USD,
-  resolveMaidenVoyageCapUsdForEstimate,
-  resolveMaidenVoyageYieldShareLabel,
-} from "@/utils/maidenVoyageYieldShareEstimate";
-import { GenesisRevenueShareCalculator } from "./GenesisRevenueShareCalculator";
+import { resolveMaidenVoyageYieldShareLabel } from "@/utils/maidenVoyageYieldShareEstimate";
 import {
   MV_ACCENT_GRADIENT,
   MV_CAPTION_TEXT,
@@ -84,22 +79,7 @@ export function GenesisActiveVoyageMetrics({
     yieldRevSharePct,
     userDepositUsd,
   });
-  const capUsd = resolveMaidenVoyageCapUsdForEstimate({
-    genesisAddress,
-    capTotalUsd: capDisplay.capTotalUsd,
-  });
-  const revSharePct = yieldRevSharePct ?? capDisplay.yieldRevSharePct ?? null;
-  const initialDepositUsd =
-    capDisplay.countedUsd > 0
-      ? capDisplay.countedUsd
-      : capDisplay.ownershipShare > 0 && capUsd
-        ? capDisplay.ownershipShare * capUsd
-        : userDepositUsd != null && userDepositUsd > 0
-          ? userDepositUsd
-          : MAIDEN_VOYAGE_HYPOTHETICAL_DEPOSIT_USD;
-
   return (
-    <>
     <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.5fr)_minmax(0,0.75fr)_minmax(0,0.75fr)] md:items-center md:gap-0">
       <div className="min-w-0 md:pr-4">
         <p className={MV_SECTION_LABEL}>Voyage Capacity</p>
@@ -162,14 +142,6 @@ export function GenesisActiveVoyageMetrics({
         <p className={`mt-0.5 ${MV_CAPTION_TEXT}`}>Eligible pool share</p>
       </div>
     </div>
-
-    <GenesisRevenueShareCalculator
-      capUsd={capUsd}
-      yieldRevSharePct={revSharePct}
-      initialDepositUsd={initialDepositUsd}
-      className="mt-3"
-    />
-    </>
   );
 }
 

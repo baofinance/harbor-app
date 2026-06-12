@@ -133,3 +133,40 @@ export function resolveMaidenVoyageYieldSharePct({
     yieldRevSharePct: revPct,
   });
 }
+
+/** Props for the active-voyage revenue share calculator UI. */
+export function resolveRevenueShareCalculatorProps({
+  capDisplay,
+  genesisAddress,
+  yieldRevSharePct,
+  userDepositUsd,
+}: {
+  capDisplay: GenesisVoyageCapDisplay;
+  genesisAddress?: string;
+  yieldRevSharePct?: number | null;
+  userDepositUsd?: number | null;
+}): {
+  capUsd: number | null;
+  yieldRevSharePct: number | null;
+  initialDepositUsd: number;
+} {
+  const capUsd = resolveMaidenVoyageCapUsdForEstimate({
+    genesisAddress,
+    capTotalUsd: capDisplay.capTotalUsd,
+  });
+  const revSharePct = yieldRevSharePct ?? capDisplay.yieldRevSharePct ?? null;
+  const initialDepositUsd =
+    capDisplay.countedUsd > 0
+      ? capDisplay.countedUsd
+      : capDisplay.ownershipShare > 0 && capUsd
+        ? capDisplay.ownershipShare * capUsd
+        : userDepositUsd != null && userDepositUsd > 0
+          ? userDepositUsd
+          : MAIDEN_VOYAGE_HYPOTHETICAL_DEPOSIT_USD;
+
+  return {
+    capUsd,
+    yieldRevSharePct: revSharePct,
+    initialDepositUsd,
+  };
+}

@@ -15,7 +15,8 @@ import {
 } from "@/utils/maidenVoyageYieldShareEstimate";
 import {
   MV_CAPTION_TEXT,
-  MV_DETAILS_PANEL,
+  MV_CARD_INNER_GRADIENT,
+  MV_CARD_SHELL,
   MV_META_TEXT,
   MV_SECTION_LABEL,
 } from "./maidenVoyageLayoutStyles";
@@ -201,26 +202,18 @@ export function GenesisRevenueShareCalculator({
   const volumeBounds = REVENUE_SHARE_CALC_SLIDER_BOUNDS.tradingVolumeUsd;
 
   return (
-    <details className={`${MV_DETAILS_PANEL} group ${className}`.trim()}>
-      <summary className="cursor-pointer list-none px-3 py-2.5 sm:px-4 [&::-webkit-details-marker]:hidden">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-white/90">
-              Estimate your revenue share
-            </p>
-            <p className={`mt-0.5 ${MV_CAPTION_TEXT}`}>Adjust assumptions</p>
-          </div>
-          <span
-            className="shrink-0 text-xs font-semibold uppercase tracking-wide text-white/45 transition group-open:text-white/65"
-            aria-hidden
-          >
-            <span className="group-open:hidden">Show</span>
-            <span className="hidden group-open:inline">Hide</span>
-          </span>
-        </div>
-      </summary>
+    <section
+      className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} w-full px-4 py-4 sm:px-5 sm:py-5 ${className}`.trim()}
+      aria-label="Estimate your revenue share"
+    >
+      <div className="min-w-0">
+        <h2 className="text-sm font-semibold text-white/90 sm:text-base">
+          Estimate your revenue share
+        </h2>
+        <p className={`mt-0.5 ${MV_CAPTION_TEXT}`}>Adjust assumptions</p>
+      </div>
 
-      <div className="border-t border-white/10 px-3 pb-3 pt-3 sm:px-4 sm:pb-4">
+      <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:gap-8">
         <div className="space-y-4">
           <CalcSlider
             id="mv-rev-calc-tvl"
@@ -266,13 +259,12 @@ export function GenesisRevenueShareCalculator({
             }
             shareLabel={shareLabel}
           />
+          <p className={MV_META_TEXT}>
+            Average trading fee: {REVENUE_SHARE_CALC_TRADING_FEE_PCT}%
+          </p>
         </div>
 
-        <p className={`mt-3 ${MV_META_TEXT}`}>
-          Average trading fee: {REVENUE_SHARE_CALC_TRADING_FEE_PCT}%
-        </p>
-
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="flex min-w-0 flex-col gap-2">
           <OutputStat
             label="Total collateral yield"
             value={`${formatUSD(result.collateralYieldPerYear, { compact: false })} / yr`}
@@ -281,20 +273,18 @@ export function GenesisRevenueShareCalculator({
             label="Total trading fees"
             value={`${formatUSD(result.tradingFeesPerYear, { compact: false })} / yr`}
           />
-          <div className="sm:col-span-2">
-            <OutputStat
-              label="Your estimated revenue"
-              value={`${formatUSD(result.yourEstimatedRevenue, { compact: false })} / yr`}
-              highlight
-            />
-          </div>
+          <OutputStat
+            label="Your estimated revenue"
+            value={`${formatUSD(result.yourEstimatedRevenue, { compact: false })} / yr`}
+            highlight
+          />
         </div>
-
-        <p className={`mt-3 ${MV_META_TEXT}`}>
-          Illustrative only. Actual revenue depends on market TVL, volume, and
-          fee settings.
-        </p>
       </div>
-    </details>
+
+      <p className={`mt-4 ${MV_META_TEXT}`}>
+        Illustrative only. Actual revenue depends on market TVL, volume, and fee
+        settings.
+      </p>
+    </section>
   );
 }
