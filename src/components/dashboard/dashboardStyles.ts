@@ -211,7 +211,7 @@ export const DASHBOARD_PRODUCT_ICON_ARCHIVED_CLASS = `${DASHBOARD_PRODUCT_ICON_B
 export const DASHBOARD_PRODUCT_LOADING_HINT_CLASS = MV_META_TEXT;
 
 export const DASHBOARD_VIEW_ALL_BTN_CLASS =
-  "inline-flex shrink-0 items-center gap-1 rounded-md border border-white/15 bg-white/[0.06] px-2.5 py-1.5 text-[11px] font-semibold text-white/85 transition hover:border-white/25 hover:bg-white/[0.1] hover:text-white sm:px-3 sm:text-xs";
+  "inline-flex shrink-0 items-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#1E4775] shadow-sm transition hover:bg-white/90 sm:px-3 sm:text-xs";
 
 /** @deprecated Use DASHBOARD_VIEW_ALL_BTN_CLASS */
 export const DASHBOARD_VIEW_ALL_LINK_CLASS = DASHBOARD_VIEW_ALL_BTN_CLASS;
