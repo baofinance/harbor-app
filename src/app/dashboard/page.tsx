@@ -13,7 +13,6 @@ import type { DashboardPositionGroup } from "@/components/dashboard/dashboardPos
 import { DashboardPositionsList } from "@/components/dashboard/DashboardPositionsList";
 import { DashboardPageStats } from "@/components/dashboard/DashboardPageStats";
 import { DashboardYieldShareList } from "@/components/dashboard/DashboardYieldShareList";
-import { DashboardYieldSummaryCards } from "@/components/dashboard/DashboardYieldSummaryCards";
 import { DASHBOARD_LINK_CLASS } from "@/components/dashboard/dashboardStyles";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
 import { useFounderMetrics } from "@/hooks/useFounderMetrics";
@@ -278,16 +277,6 @@ export default function DashboardPage() {
             onToggle={toggleYieldShare}
             isConnected={isConnected}
             loading={isConnected && isLoading}
-            headerMetrics={
-              isConnected ? (
-                <DashboardYieldSummaryCards
-                  variant="flat"
-                  totalEarned={totalEarned}
-                  totalOutstanding={totalOutstanding}
-                  isConnected={isConnected}
-                />
-              ) : undefined
-            }
           >
             {error ? (
               <IndexMarksSubgraphErrorBanner error={new Error(error)} />
