@@ -1,6 +1,5 @@
 "use client";
 
-import { ChartBarIcon } from "@heroicons/react/24/outline";
 import { formatUSD } from "@/utils/formatters";
 import { DashboardMetricChip } from "./DashboardMetricChip";
 import { DashboardMetricStrip } from "./DashboardSummaryStrip";
@@ -9,8 +8,6 @@ import {
   DASHBOARD_PRODUCT_HEADER_METRIC_LABEL_CLASS,
   DASHBOARD_PRODUCT_HEADER_METRIC_VALUE_CLASS,
   DASHBOARD_PRODUCT_HEADER_METRICS_CLASS,
-  DASHBOARD_PRODUCT_ICON_EARN_CLASS,
-  DASHBOARD_PRODUCT_ICON_YIELD_CLASS,
 } from "./dashboardStyles";
 
 export type DashboardYieldSummaryCardsProps = {
@@ -24,20 +21,6 @@ export type DashboardYieldSummaryCardsProps = {
   /** Render chips only — for embedding in a shared stat strip. */
   bare?: boolean;
 };
-
-function StatIconBadge({
-  className,
-  children,
-}: {
-  className: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <span className={`${className} !h-7 !w-7 sm:!h-8 sm:!w-8 md:!h-6 md:!w-6 lg:!h-7 lg:!w-7 xl:!h-8 xl:!w-8`} aria-hidden>
-      {children}
-    </span>
-  );
-}
 
 function FlatYieldMetric({
   label,
@@ -101,11 +84,6 @@ export function DashboardYieldSummaryCards({
         label="Total earned"
         value={earnedValue}
         inline
-        icon={
-          <StatIconBadge className={DASHBOARD_PRODUCT_ICON_EARN_CLASS}>
-            <ChartBarIcon className="h-4 w-4" />
-          </StatIconBadge>
-        }
         valueClassName={
           isConnected && totalEarned > 0
             ? "text-[#B8EBD5]"
@@ -121,11 +99,6 @@ export function DashboardYieldSummaryCards({
             : DASHBOARD_METRIC_CHIP_VALUE_CLASS
         }
         inline
-        icon={
-          <StatIconBadge className={DASHBOARD_PRODUCT_ICON_YIELD_CLASS}>
-            <ChartBarIcon className="h-4 w-4" />
-          </StatIconBadge>
-        }
       />
     </>
   );

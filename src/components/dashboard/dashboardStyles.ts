@@ -102,7 +102,7 @@ export const DASHBOARD_METRIC_CHIP_SURFACE = `rounded-xl ${MV_GLASS_INSET_LIGHT}
 export const DASHBOARD_METRIC_CHIP_CLASS = `flex h-[4.75rem] w-[9.5rem] shrink-0 flex-col items-center justify-center overflow-hidden px-3 py-2 text-center sm:h-[5rem] sm:w-[10.5rem] ${DASHBOARD_METRIC_CHIP_SURFACE}`;
 
 /** Page stat strip chips — grid cells on mobile; compact fixed width from md for single-row fit. */
-export const DASHBOARD_METRIC_CHIP_INLINE_CLASS = `flex h-[4.25rem] min-w-0 w-full max-w-full shrink-0 flex-row items-center justify-start gap-2 overflow-hidden px-2.5 py-2 text-left sm:h-[4.75rem] sm:gap-2.5 sm:px-3 md:h-[4rem] md:w-[6.75rem] md:max-w-[7rem] md:shrink-0 md:gap-1.5 md:px-2 lg:h-[4.25rem] lg:w-[7.25rem] lg:max-w-[7.5rem] xl:h-[4.5rem] xl:w-[8rem] xl:max-w-[8.5rem] 2xl:h-[5rem] 2xl:w-[10.5rem] 2xl:max-w-none ${DASHBOARD_METRIC_CHIP_SURFACE}`;
+export const DASHBOARD_METRIC_CHIP_INLINE_CLASS = `flex h-[4.25rem] min-w-0 w-full max-w-full shrink-0 flex-col items-center justify-center overflow-hidden px-2.5 py-2 text-center sm:h-[4.75rem] sm:px-3 md:h-[4rem] md:w-[6.75rem] md:max-w-[7rem] md:shrink-0 md:px-2 lg:h-[4.25rem] lg:w-[7.25rem] lg:max-w-[7.5rem] xl:h-[4.5rem] xl:w-[8rem] xl:max-w-[8.5rem] 2xl:h-[5rem] 2xl:w-[10.5rem] 2xl:max-w-none ${DASHBOARD_METRIC_CHIP_SURFACE}`;
 
 export const DASHBOARD_METRIC_CHIP_LABEL_CLASS = MV_SECTION_LABEL;
 
