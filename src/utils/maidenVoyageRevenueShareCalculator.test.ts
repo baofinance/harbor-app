@@ -1,10 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
   REVENUE_SHARE_CALC_DEFAULTS,
+  REVENUE_SHARE_CALC_MILESTONE_TVLS_USD,
+  buildDefaultMarketAssumptions,
   buildDefaultRevenueShareCalcInput,
   buildPresetRevenueShareCalcInput,
+  closestMilestoneIndex,
+  computeForeverAprPct,
+  computeMarketRevenueRatePct,
   computePresetRevenueShareEstimates,
   computeRevenueShareEstimate,
+  computeUpsideAtTvl,
+  computeUpsideMilestones,
   tradingVolumeFromTvl,
 } from "./maidenVoyageRevenueShareCalculator";
 
@@ -73,5 +80,43 @@ describe("preset revenue share estimates", () => {
     expect(input.tradingVolumeUsd).toBe(100_000_000);
     expect(input.collateralYieldPct).toBe(5);
     expect(input.yourSharePct).toBe(0.2);
+  });
+});
+
+describe("upside simulator helpers", () => {
+  const assumptions = buildDefaultMarketAssumptions();
+  const sharePct = 0.1;
+  const depositUsd = 1_000;
+
+  it("computes Forever APR from earnings and deposit", () => {
+    expect(computeForeverAprPct(75, 1_000)).toBeCloseTo(7.5, 5);
+    expect(computeForeverAprPct(75, 0)).toBeNull();
+  });
+
+  it("computes market revenue rate at default assumptions", () => {
+    const atTvl = computeUpsideAtTvl(1_000_000, assumptions, sharePct, depositUsd);
+    expect(atTvl.revenueRatePct).toBeCloseTo(7.5, 5);
+    expect(atTvl.foreverAprPct).toBeCloseTo(7.5, 5);
+  });
+
+  it("builds milestone rows at 0.10% share", () => {
+    const rows = computeUpsideMilestones(
+      REVENUE_SHARE_CALC_MILESTONE_TVLS_USD,
+      assumptions,
+      sharePct,
+      depositUsd,
+      REVENUE_SHARE_CALC_DEFAULTS.tvlUsd,
+    );
+
+    expect(rows).toHaveLength(4);
+    expect(rows.map((r) => r.yourEarningsPerYear)).toEqual([
+      75, 375, 750, 1_875,
+    ]);
+    expect(rows[2]!.foreverAprPct).toBeCloseTo(75, 5);
+  });
+
+  it("finds closest milestone index to selected TVL", () => {
+    expect(closestMilestoneIndex(REVENUE_SHARE_CALC_MILESTONE_TVLS_USD, 1_000_000)).toBe(0);
+    expect(closestMilestoneIndex(REVENUE_SHARE_CALC_MILESTONE_TVLS_USD, 8_000_000)).toBe(2);
   });
 });
