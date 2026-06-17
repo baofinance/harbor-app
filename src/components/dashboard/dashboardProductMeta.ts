@@ -12,6 +12,11 @@ import {
   DASHBOARD_PRODUCT_ICON_MV_CLASS,
   DASHBOARD_PRODUCT_ICON_SAIL_CLASS,
   DASHBOARD_PRODUCT_ICON_YIELD_CLASS,
+  DASHBOARD_PRODUCT_ACCENT_ARCHIVED_CLASS,
+  DASHBOARD_PRODUCT_ACCENT_EARN_CLASS,
+  DASHBOARD_PRODUCT_ACCENT_MV_CLASS,
+  DASHBOARD_PRODUCT_ACCENT_SAIL_CLASS,
+  DASHBOARD_PRODUCT_ACCENT_YIELD_CLASS,
 } from "./dashboardStyles";
 
 export type DashboardProductId =
@@ -28,6 +33,7 @@ export type DashboardProductMeta = {
   viewAllLabel?: string;
   icon: ComponentType<{ className?: string }>;
   iconBadgeClass: string;
+  accentBarClass: string;
   tone?: "default" | "muted";
 };
 
@@ -40,6 +46,7 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
       viewAllLabel: "Go",
       icon: SparklesIcon,
       iconBadgeClass: DASHBOARD_PRODUCT_ICON_MV_CLASS,
+      accentBarClass: DASHBOARD_PRODUCT_ACCENT_MV_CLASS,
     },
     earn: {
       id: "earn",
@@ -48,6 +55,7 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
       viewAllLabel: "Go",
       icon: CurrencyDollarIcon,
       iconBadgeClass: DASHBOARD_PRODUCT_ICON_EARN_CLASS,
+      accentBarClass: DASHBOARD_PRODUCT_ACCENT_EARN_CLASS,
     },
     sail: {
       id: "sail",
@@ -56,6 +64,7 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
       viewAllLabel: "Go",
       icon: WalletIcon,
       iconBadgeClass: DASHBOARD_PRODUCT_ICON_SAIL_CLASS,
+      accentBarClass: DASHBOARD_PRODUCT_ACCENT_SAIL_CLASS,
     },
     archived: {
       id: "archived",
@@ -64,6 +73,7 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
       viewAllLabel: "Go",
       icon: ArchiveBoxIcon,
       iconBadgeClass: DASHBOARD_PRODUCT_ICON_ARCHIVED_CLASS,
+      accentBarClass: DASHBOARD_PRODUCT_ACCENT_ARCHIVED_CLASS,
       tone: "muted",
     },
     yield: {
@@ -71,5 +81,6 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
       title: "Yield share",
       icon: ChartBarIcon,
       iconBadgeClass: DASHBOARD_PRODUCT_ICON_YIELD_CLASS,
+      accentBarClass: DASHBOARD_PRODUCT_ACCENT_YIELD_CLASS,
     },
   };

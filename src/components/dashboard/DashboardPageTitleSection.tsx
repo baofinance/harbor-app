@@ -1,23 +1,17 @@
 "use client";
 
 import type { ReactNode } from "react";
-import {
-  DASHBOARD_PAGE_HEADER_CLASS,
-  DASHBOARD_PAGE_HEADER_STATS_CLASS,
-  DASHBOARD_PAGE_HEADER_TITLE_CLASS,
-} from "./dashboardStyles";
+import { DASHBOARD_PAGE_HEADER_CLASS, DASHBOARD_PAGE_HEADER_TITLE_CLASS } from "./dashboardStyles";
 
 export type DashboardPageTitleSectionProps = {
-  stats?: ReactNode;
+  children?: ReactNode;
 };
 
-export function DashboardPageTitleSection({ stats }: DashboardPageTitleSectionProps) {
+export function DashboardPageTitleSection({ children }: DashboardPageTitleSectionProps) {
   return (
     <div className={DASHBOARD_PAGE_HEADER_CLASS}>
-      <div className="min-w-0 shrink-0 text-left">
-        <h1 className={DASHBOARD_PAGE_HEADER_TITLE_CLASS}>Dashboard</h1>
-      </div>
-      {stats ? <div className={DASHBOARD_PAGE_HEADER_STATS_CLASS}>{stats}</div> : null}
+      <h1 className={DASHBOARD_PAGE_HEADER_TITLE_CLASS}>Dashboard</h1>
+      {children}
     </div>
   );
 }

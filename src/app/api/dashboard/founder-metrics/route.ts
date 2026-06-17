@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     );
 
     if (genesises.length === 0) {
-      return NextResponse.json({ paidByGenesis: {} });
+      return NextResponse.json({ paidByGenesis: {}, yieldEvents: [] });
     }
 
     const store = getMaidenVoyageYieldLedgerStore();
@@ -36,12 +36,26 @@ export async function POST(req: NextRequest) {
       genesises.map(async (genesis) => {
         const ledger = await store.getLedger(genesis);
         const paid = Number.parseFloat(ledger.paidByWallet[wallet] || "0");
-        return [genesis, Number.isFinite(paid) ? paid : 0] as const;
+        const events = ledger.events
+          .filter((e) => e.wallet.toLowerCase() === wallet)
+          .map((e) => ({
+            genesis,
+            amountUSD: e.amountUSD,
+            createdAt: e.createdAt,
+            txHash: e.txHash,
+          }));
+        return { genesis, paid: Number.isFinite(paid) ? paid : 0, events } as const;
       })
     );
 
-    const paidByGenesis = Object.fromEntries(pairs);
-    return NextResponse.json({ paidByGenesis });
+    const paidByGenesis = Object.fromEntries(
+      pairs.map((p) => [p.genesis, p.paid] as const)
+    );
+    const yieldEvents = pairs.flatMap((p) => p.events).sort((a, b) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+    return NextResponse.json({ paidByGenesis, yieldEvents });
   } catch (error) {
     const message = error instanceof Error ? error.message : "failed";
     return NextResponse.json(

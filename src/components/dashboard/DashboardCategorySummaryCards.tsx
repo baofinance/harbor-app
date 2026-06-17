@@ -1,0 +1,74 @@
+"use client";
+
+import {
+  ArchiveBoxIcon,
+  CurrencyDollarIcon,
+  WalletIcon,
+} from "@heroicons/react/24/outline";
+import { PortfolioMetricCard } from "./portfolio/PortfolioMetricCard";
+
+const ICON_BASE =
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-[#0a1929]/55";
+
+const ICON_EARN = `${ICON_BASE} border-[#B8EBD5]/35 text-[#B8EBD5]`;
+const ICON_SAIL = `${ICON_BASE} border-[#C4B5FD]/35 text-[#C4B5FD]`;
+const ICON_ARCHIVED = `${ICON_BASE} border-white/15 text-white/50`;
+
+const ACCENT_EARN = "border-l-[3px] border-l-[#B8EBD5]/70";
+const ACCENT_SAIL = "border-l-[3px] border-l-[#C4B5FD]/70";
+const ACCENT_ARCHIVED = "border-l-[3px] border-l-white/25";
+
+export type DashboardCategorySummaryCardsProps = {
+  earnUsd: number;
+  earnCount: number;
+  sailUsd: number;
+  sailCount: number;
+  archivedUsd: number;
+  archivedCount: number;
+  isConnected: boolean;
+};
+
+export function DashboardCategorySummaryCards({
+  earnUsd,
+  earnCount,
+  sailUsd,
+  sailCount,
+  archivedUsd,
+  archivedCount,
+  isConnected,
+}: DashboardCategorySummaryCardsProps) {
+  return (
+    <div
+      className="grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3"
+      aria-label="Position categories"
+    >
+      <PortfolioMetricCard
+        title="Earn"
+        valueUsd={earnUsd}
+        positionCount={earnCount}
+        icon={CurrencyDollarIcon}
+        iconClass={ICON_EARN}
+        accentClass={ACCENT_EARN}
+        isConnected={isConnected}
+      />
+      <PortfolioMetricCard
+        title="Sail"
+        valueUsd={sailUsd}
+        positionCount={sailCount}
+        icon={WalletIcon}
+        iconClass={ICON_SAIL}
+        accentClass={ACCENT_SAIL}
+        isConnected={isConnected}
+      />
+      <PortfolioMetricCard
+        title="Archived"
+        valueUsd={archivedUsd}
+        positionCount={archivedCount}
+        icon={ArchiveBoxIcon}
+        iconClass={ICON_ARCHIVED}
+        accentClass={ACCENT_ARCHIVED}
+        isConnected={isConnected}
+      />
+    </div>
+  );
+}

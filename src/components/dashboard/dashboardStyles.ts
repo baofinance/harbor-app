@@ -131,27 +131,64 @@ export const DASHBOARD_GROUP_HEADER_CLASS = `flex items-center gap-2 px-3 py-2.5
 export const DASHBOARD_GROUP_TITLE_CLASS = "text-sm font-semibold text-white/95";
 
 /** Frosted product card shell — matches Maiden Voyage sidebar cards. */
-export const DASHBOARD_PRODUCT_CARD_CLASS = `${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} overflow-hidden`;
+export const DASHBOARD_PRODUCT_CARD_CLASS = `${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} overflow-hidden relative`;
 
 export const DASHBOARD_PRODUCT_CARD_HEADER_CLASS =
-  "flex flex-wrap items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-5 sm:py-4";
+  "flex flex-col gap-0 px-3 py-2 sm:px-4 sm:py-2.5";
+
+export const DASHBOARD_PRODUCT_CARD_HEADER_ROW_CLASS =
+  "flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5 sm:gap-x-2.5";
+
+export const DASHBOARD_PRODUCT_CARD_BODY_CLASS = "px-3 pb-2.5 pt-0 sm:px-4 sm:pb-3";
+
+export const DASHBOARD_PRODUCT_TITLE_CLASS = "text-sm font-semibold text-white/95";
+
+export const DASHBOARD_PRODUCT_AMOUNT_CLASS =
+  "font-mono text-base font-semibold tabular-nums text-white/95 sm:text-lg";
+
+export const DASHBOARD_PRODUCT_COUNT_CLASS = "text-xs text-white/55";
+
+export const DASHBOARD_PRODUCT_ACCENT_BAR_CLASS = "absolute inset-y-0 left-0 w-[3px]";
+
+export const DASHBOARD_MV_PREVIEW_CLASS =
+  "flex w-full flex-col gap-2 border-t border-white/[0.08] px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-4";
+
+/** Portfolio hero — primary page focal point. */
+export const DASHBOARD_PORTFOLIO_HERO_CLASS = `${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} px-4 py-4 sm:px-5 sm:py-5`;
+
+export const DASHBOARD_PORTFOLIO_HERO_TITLE_CLASS =
+  "text-xs font-semibold uppercase tracking-wider text-white/60";
+
+export const DASHBOARD_PORTFOLIO_HERO_METRIC_CLASS = "min-w-0 space-y-1";
+
+export const DASHBOARD_PORTFOLIO_HERO_METRIC_VALUE_CLASS =
+  "font-mono text-2xl font-bold tabular-nums text-white sm:text-3xl";
+
+/** Secondary category summary tiles beneath hero. */
+export const DASHBOARD_CATEGORY_SUMMARY_CARD_CLASS = `rounded-xl ${MV_GLASS_INSET_DARK} px-3 py-2.5 sm:px-3.5 sm:py-3`;
+
+export const DASHBOARD_CATEGORY_SUMMARY_TITLE_CLASS =
+  "text-xs font-medium text-white/65";
+
+export const DASHBOARD_CATEGORY_SUMMARY_VALUE_CLASS =
+  "mt-0.5 font-mono text-lg font-semibold tabular-nums text-white/95";
+
+export const DASHBOARD_CATEGORY_SUMMARY_COUNT_CLASS = "mt-0.5 text-xs text-white/50";
+
+export const DASHBOARD_CATEGORY_SUMMARY_ICON_CLASS =
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-[#0a1929]/55";
+
+export const DASHBOARD_PRODUCT_SUBTITLE_CLASS = `${MV_CAPTION_TEXT} text-xs sm:text-sm`;
 
 export const DASHBOARD_PRODUCT_CARD_HEADER_MUTED_CLASS = "opacity-90";
 
 export const DASHBOARD_PRODUCT_CARD_HEADER_EXPANDED_CLASS =
   "border-b border-white/[0.08]";
 
-export const DASHBOARD_PRODUCT_CARD_BODY_CLASS = "px-3 pb-3 sm:px-5 sm:pb-5";
-
-export const DASHBOARD_PRODUCT_TITLE_CLASS = "text-sm font-semibold text-white/95 sm:text-base md:text-lg";
-
-export const DASHBOARD_PRODUCT_SUBTITLE_CLASS = `${MV_CAPTION_TEXT} text-xs sm:text-sm`;
-
 export const DASHBOARD_PRODUCT_TOTAL_CLASS =
   "font-mono text-xs tabular-nums text-white/75 sm:text-sm md:text-base";
 
-export const DASHBOARD_PAGE_HEADER_CLASS =
-  "flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-5 xl:gap-6";
+export const DASHBOARD_PAGE_HEADER_CLASS = "min-w-0 text-left";
 
 export const DASHBOARD_PAGE_HEADER_TITLE_CLASS =
   "font-bold font-mono text-white text-3xl leading-[1.08] sm:text-4xl sm:leading-[1.05] lg:text-[2.5rem] lg:leading-[1.05] xl:text-5xl 2xl:text-6xl";
@@ -196,17 +233,23 @@ export const DASHBOARD_PRODUCT_HEADER_METRIC_VALUE_CLASS =
 
 /** Product icon badges in card headers */
 const DASHBOARD_PRODUCT_ICON_BADGE_BASE =
-  "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[#0a1929]/55 backdrop-blur-md sm:h-10 sm:w-10";
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-[#0a1929]/55 backdrop-blur-md";
 
-export const DASHBOARD_PRODUCT_ICON_MV_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} text-[#FF8A7A]`;
+export const DASHBOARD_PRODUCT_ICON_MV_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} border-[#FF8A7A]/35 text-[#FF8A7A]`;
 
-export const DASHBOARD_PRODUCT_ICON_EARN_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} text-[#B8EBD5]`;
+export const DASHBOARD_PRODUCT_ICON_EARN_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} border-[#B8EBD5]/35 text-[#B8EBD5]`;
 
-export const DASHBOARD_PRODUCT_ICON_SAIL_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} text-[#C4B5FD]`;
+export const DASHBOARD_PRODUCT_ICON_SAIL_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} border-[#C4B5FD]/35 text-[#C4B5FD]`;
 
-export const DASHBOARD_PRODUCT_ICON_YIELD_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} text-[#C4B5FD]`;
+export const DASHBOARD_PRODUCT_ICON_YIELD_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} border-[#F5D76E]/35 text-[#F5D76E]`;
 
-export const DASHBOARD_PRODUCT_ICON_ARCHIVED_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} text-white/50`;
+export const DASHBOARD_PRODUCT_ICON_ARCHIVED_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} border-white/15 text-white/50`;
+
+export const DASHBOARD_PRODUCT_ACCENT_MV_CLASS = "bg-[#FF8A7A]";
+export const DASHBOARD_PRODUCT_ACCENT_EARN_CLASS = "bg-[#B8EBD5]";
+export const DASHBOARD_PRODUCT_ACCENT_SAIL_CLASS = "bg-[#C4B5FD]";
+export const DASHBOARD_PRODUCT_ACCENT_YIELD_CLASS = "bg-[#F5D76E]";
+export const DASHBOARD_PRODUCT_ACCENT_ARCHIVED_CLASS = "bg-white/30";
 
 export const DASHBOARD_PRODUCT_LOADING_HINT_CLASS = MV_META_TEXT;
 

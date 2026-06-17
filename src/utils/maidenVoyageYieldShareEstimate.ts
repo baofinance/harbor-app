@@ -32,6 +32,36 @@ export function estimateMaidenVoyageYieldSharePct({
   return ownershipFraction * yieldRevSharePct;
 }
 
+/**
+ * Voyage ownership (% of USD cap) for a deposit.
+ * Example: $1k on a $50k cap → 2.0%.
+ */
+export function estimateMaidenVoyageOwnershipPct({
+  depositUsd,
+  capUsd,
+}: {
+  depositUsd: number;
+  capUsd: number | null | undefined;
+}): number | null {
+  if (
+    capUsd == null ||
+    capUsd <= 0 ||
+    !Number.isFinite(depositUsd) ||
+    depositUsd <= 0
+  ) {
+    return null;
+  }
+
+  return Math.min(100, (depositUsd / capUsd) * 100);
+}
+
+export function formatMaidenVoyageOwnershipPct(pct: number | null): string {
+  if (pct == null || !Number.isFinite(pct) || pct <= 0) return "—";
+  if (pct >= 10) return `${pct.toFixed(1)}%`;
+  if (pct >= 0.01) return `${pct.toFixed(2)}%`;
+  return `${pct.toFixed(3)}%`;
+}
+
 export function formatMaidenVoyageYieldSharePct(pct: number | null): string {
   if (pct == null || !Number.isFinite(pct) || pct <= 0) return "—";
   if (pct >= 0.01) return `${pct.toFixed(2)}%`;
