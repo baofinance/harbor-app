@@ -11,6 +11,9 @@ export const PORTFOLIO_CARD_SHELL_DARK = `rounded-xl ${MV_GLASS_INSET_DARK}`;
 export const PORTFOLIO_POSITION_GRID_CLASS =
   "grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3";
 
+/** Full-width position rows — one card per row (yield share list). */
+export const PORTFOLIO_POSITION_STACK_CLASS = "grid grid-cols-1 gap-2";
+
 export const PORTFOLIO_WIDGET_GRID_CLASS =
   "grid grid-cols-1 gap-2.5 lg:grid-cols-2 lg:gap-3";
 

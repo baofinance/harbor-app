@@ -2,9 +2,8 @@
 
 import type { FounderMetricRow } from "@/hooks/useFounderMetrics";
 import { DashboardContentRowSkeleton } from "../DashboardContentRow";
-import { DASHBOARD_LINK_CLASS } from "../dashboardStyles";
 import { DashboardEmptyState } from "./DashboardEmptyState";
-import { PORTFOLIO_POSITION_GRID_CLASS } from "./portfolioStyles";
+import { PORTFOLIO_POSITION_STACK_CLASS } from "./portfolioStyles";
 import { YieldSharePositionCard } from "./YieldSharePositionCard";
 
 export type DashboardYieldShareCardListProps = {
@@ -24,7 +23,7 @@ export function DashboardYieldShareCardList({
 
   if (isLoading) {
     return (
-      <div className={PORTFOLIO_POSITION_GRID_CLASS}>
+      <div className={PORTFOLIO_POSITION_STACK_CLASS}>
         {[0, 1].map((i) => (
           <DashboardContentRowSkeleton key={i} variant="index" />
         ))}
@@ -45,7 +44,7 @@ export function DashboardYieldShareCardList({
   }
 
   return (
-    <div className={PORTFOLIO_POSITION_GRID_CLASS}>
+    <div className={PORTFOLIO_POSITION_STACK_CLASS}>
       {rows.map((row) => (
         <YieldSharePositionCard key={row.marketId} row={row} />
       ))}
