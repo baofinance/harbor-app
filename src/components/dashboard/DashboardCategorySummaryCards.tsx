@@ -5,7 +5,9 @@ import {
   CurrencyDollarIcon,
   WalletIcon,
 } from "@heroicons/react/24/outline";
+import type { PortfolioAllocationSlice } from "./portfolio/dashboardPortfolioUtils";
 import { PortfolioMetricCard } from "./portfolio/PortfolioMetricCard";
+import { DashboardPortfolioAllocation } from "./DashboardPortfolioAllocation";
 
 const ICON_BASE =
   "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-[#0a1929]/55";
@@ -25,6 +27,7 @@ export type DashboardCategorySummaryCardsProps = {
   sailCount: number;
   archivedUsd: number;
   archivedCount: number;
+  allocationSlices?: PortfolioAllocationSlice[];
   isConnected: boolean;
 };
 
@@ -35,11 +38,12 @@ export function DashboardCategorySummaryCards({
   sailCount,
   archivedUsd,
   archivedCount,
+  allocationSlices = [],
   isConnected,
 }: DashboardCategorySummaryCardsProps) {
   return (
     <div
-      className="grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3"
+      className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4 sm:gap-3"
       aria-label="Position categories"
     >
       <PortfolioMetricCard
@@ -68,6 +72,11 @@ export function DashboardCategorySummaryCards({
         iconClass={ICON_ARCHIVED}
         accentClass={ACCENT_ARCHIVED}
         isConnected={isConnected}
+      />
+      <DashboardPortfolioAllocation
+        slices={allocationSlices}
+        isConnected={isConnected}
+        compact
       />
     </div>
   );

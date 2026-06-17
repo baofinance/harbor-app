@@ -4,9 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DashboardCategorySummaryCards } from "@/components/dashboard/DashboardCategorySummaryCards";
 import { DashboardConnectNotice } from "@/components/dashboard/DashboardConnectNotice";
 import { DashboardMaidenVoyageWidget } from "@/components/dashboard/DashboardMaidenVoyageWidget";
-import { DashboardPortfolioAllocation } from "@/components/dashboard/DashboardPortfolioAllocation";
+import { DashboardPageTitleSection } from "@/components/dashboard/DashboardPageTitleSection";
 import { DashboardPortfolioHero } from "@/components/dashboard/DashboardPortfolioHero";
-import { DashboardPortfolioInsights } from "@/components/dashboard/DashboardPortfolioInsights";
 import {
   DashboardProductCard,
   useDashboardProductExpanded,
@@ -29,13 +28,11 @@ import {
 import { DashboardOpportunityPanel } from "@/components/dashboard/engagement/DashboardOpportunityPanel";
 import { DashboardPortfolioHealthWidget } from "@/components/dashboard/engagement/DashboardPortfolioHealthWidget";
 import { DashboardRevenueHistory } from "@/components/dashboard/engagement/DashboardRevenueHistory";
-import { DashboardWelcomeHeader } from "@/components/dashboard/engagement/DashboardWelcomeHeader";
 import { DashboardYieldShareHub } from "@/components/dashboard/engagement/DashboardYieldShareHub";
 import type { DashboardModuleId } from "@/components/dashboard/engagement/dashboardModuleLayout";
 import { useDashboardEngagement } from "@/components/dashboard/engagement/useDashboardEngagement";
 import {
   buildPortfolioAllocation,
-  buildPortfolioInsights,
 } from "@/components/dashboard/portfolio/dashboardPortfolioUtils";
 import { DashboardYieldShareCardList } from "@/components/dashboard/portfolio/DashboardYieldShareCardList";
 import { PORTFOLIO_WIDGET_GRID_CLASS } from "@/components/dashboard/portfolio/portfolioStyles";
@@ -166,11 +163,6 @@ export default function DashboardPage() {
         archivedUsd: positionTotals.archived,
       }),
     [positionTotals],
-  );
-
-  const portfolioInsights = useMemo(
-    () => buildPortfolioInsights(allPositionRows, rows),
-    [allPositionRows, rows],
   );
 
   const hasArchived = archivedMaidenVoyageRows.length > 0;
@@ -314,18 +306,9 @@ export default function DashboardPage() {
               sailCount={leverageRows.length}
               archivedUsd={positionTotals.archived}
               archivedCount={archivedMaidenVoyageRows.length}
+              allocationSlices={allocationSlices}
               isConnected={isConnected}
             />
-            <div className={PORTFOLIO_WIDGET_GRID_CLASS}>
-              <DashboardPortfolioAllocation
-                slices={allocationSlices}
-                isConnected={isConnected}
-              />
-              <DashboardPortfolioInsights
-                insights={portfolioInsights}
-                isConnected={isConnected}
-              />
-            </div>
             <div className="space-y-2.5 sm:space-y-3">
               <PositionProductCard
                 group={maidenGroup}
@@ -468,12 +451,8 @@ export default function DashboardPage() {
   return (
     <div className="relative mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col font-sans text-white">
       <main className="mx-auto w-full max-w-[1600px] space-y-3 px-3 pb-6 pt-2 sm:space-y-3.5 sm:px-10 sm:pt-4">
-        <div className="relative space-y-3">
-          <DashboardWelcomeHeader
-            welcome={engagement.welcome}
-            isConnected={isConnected}
-            isLoading={portfolioLoading}
-          />
+        <div className="relative flex items-start justify-between gap-3">
+          <DashboardPageTitleSection />
           <DashboardModuleLayoutControls
             order={moduleOrder}
             onOrderChange={setModuleOrder}
