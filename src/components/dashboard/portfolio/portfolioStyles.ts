@@ -6,6 +6,8 @@ import { MV_GLASS_INSET_DARK, MV_POSITION_ROW } from "@/components/genesis/maide
 
 export const PORTFOLIO_CARD_SHELL = `rounded-xl ${MV_POSITION_ROW}`;
 
+export const PORTFOLIO_COMPACT_CARD_CLASS = `${PORTFOLIO_CARD_SHELL} p-2.5 sm:p-3`;
+
 export const PORTFOLIO_CARD_SHELL_DARK = `rounded-xl ${MV_GLASS_INSET_DARK}`;
 
 export const PORTFOLIO_POSITION_GRID_CLASS =

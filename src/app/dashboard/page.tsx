@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DashboardCategorySummaryCards } from "@/components/dashboard/DashboardCategorySummaryCards";
 import { DashboardConnectNotice } from "@/components/dashboard/DashboardConnectNotice";
-import { DashboardMaidenVoyageWidget } from "@/components/dashboard/DashboardMaidenVoyageWidget";
+import { DashboardMaidenVoyageFeatureCard } from "@/components/dashboard/DashboardMaidenVoyageFeatureCard";
 import { DashboardPageTitleSection } from "@/components/dashboard/DashboardPageTitleSection";
+import { DashboardPortfolioCategoryChips } from "@/components/dashboard/DashboardPortfolioCategoryChips";
 import { DashboardPortfolioHero } from "@/components/dashboard/DashboardPortfolioHero";
 import {
   DashboardProductCard,
@@ -17,25 +17,19 @@ import {
 } from "@/components/dashboard/dashboardPositionGroup";
 import { DashboardPositionsList } from "@/components/dashboard/DashboardPositionsList";
 import { DashboardAchievements } from "@/components/dashboard/engagement/DashboardAchievements";
+import { DashboardActivitySection } from "@/components/dashboard/engagement/DashboardActivitySection";
 import { DashboardActivityTimeline } from "@/components/dashboard/engagement/DashboardActivityTimeline";
-import { DashboardFoundingTracker } from "@/components/dashboard/engagement/DashboardFoundingTracker";
 import { DashboardJourneyMetrics } from "@/components/dashboard/engagement/DashboardJourneyMetrics";
-import { DashboardMarketSpotlight } from "@/components/dashboard/engagement/DashboardMarketSpotlight";
 import {
   DashboardModuleLayoutControls,
   useDashboardModuleLayout,
 } from "@/components/dashboard/engagement/DashboardModuleLayoutControls";
 import { DashboardOpportunityPanel } from "@/components/dashboard/engagement/DashboardOpportunityPanel";
-import { DashboardPortfolioHealthWidget } from "@/components/dashboard/engagement/DashboardPortfolioHealthWidget";
 import { DashboardRevenueHistory } from "@/components/dashboard/engagement/DashboardRevenueHistory";
-import { DashboardYieldShareHub } from "@/components/dashboard/engagement/DashboardYieldShareHub";
 import type { DashboardModuleId } from "@/components/dashboard/engagement/dashboardModuleLayout";
 import { useDashboardEngagement } from "@/components/dashboard/engagement/useDashboardEngagement";
-import {
-  buildPortfolioAllocation,
-} from "@/components/dashboard/portfolio/dashboardPortfolioUtils";
+import { buildPortfolioAllocation } from "@/components/dashboard/portfolio/dashboardPortfolioUtils";
 import { DashboardYieldShareCardList } from "@/components/dashboard/portfolio/DashboardYieldShareCardList";
-import { PORTFOLIO_WIDGET_GRID_CLASS } from "@/components/dashboard/portfolio/portfolioStyles";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
 import { useDashboardActiveVoyage } from "@/hooks/useDashboardActiveVoyage";
 import { useFounderMetrics } from "@/hooks/useFounderMetrics";
@@ -61,7 +55,7 @@ function defaultPositionExpanded(
 
 type PositionProductCardProps = {
   group: DashboardPositionGroup;
-  productId: "maiden" | "earn" | "sail" | "archived";
+  productId: "earn" | "sail" | "archived";
   compact: boolean;
   isConnected: boolean;
   onManage: (row: DashboardPositionRow) => void;
@@ -92,6 +86,7 @@ function PositionProductCard({
       isConnected={isConnected}
       sectionTotalUsd={totalUsd}
       positionCount={group.rows.length}
+      compactHeader
       loading={group.loading}
     >
       {group.error ? (
@@ -165,18 +160,40 @@ export default function DashboardPage() {
     [positionTotals],
   );
 
+  const portfolioChips = useMemo(
+    () => [
+      {
+        id: "earn",
+        label: "Earn",
+        usd: positionTotals.earn,
+        borderClass: "border-l-[#B8EBD5]/70",
+      },
+      {
+        id: "sail",
+        label: "Sail",
+        usd: positionTotals.sail,
+        borderClass: "border-l-[#C4B5FD]/70",
+      },
+      {
+        id: "archived",
+        label: "Archived",
+        usd: positionTotals.archived,
+        borderClass: "border-l-white/25",
+      },
+      {
+        id: "maiden",
+        label: "Maiden Voyage",
+        usd: positionTotals.maiden,
+        borderClass: "border-l-[#FF8A7A]/70",
+      },
+    ],
+    [positionTotals],
+  );
+
   const hasArchived = archivedMaidenVoyageRows.length > 0;
 
   const positionGroups = useMemo((): DashboardPositionGroup[] => {
     const groups: DashboardPositionGroup[] = [
-      {
-        id: "maiden",
-        title: "Maiden Voyage",
-        rows: maidenVoyageRows,
-        loading: posLoading.maidenVoyage,
-        error: posErrors.maidenVoyage,
-        emptyState: DASHBOARD_EMPTY_STATES.maiden,
-      },
       {
         id: "earn",
         title: "Earn",
@@ -208,7 +225,6 @@ export default function DashboardPage() {
 
     return groups;
   }, [
-    maidenVoyageRows,
     earnRows,
     leverageRows,
     archivedMaidenVoyageRows,
@@ -232,7 +248,6 @@ export default function DashboardPage() {
     }
   }, [dashboardViewBasic, isConnected, rows.length, setYieldExpanded]);
 
-  const totalOutstanding = rows.reduce((sum, row) => sum + row.outstandingUSD, 0);
   const totalEarned = useMemo(
     () => rows.reduce((s, r) => s + r.totalEarnedUSD, 0),
     [rows],
@@ -250,14 +265,6 @@ export default function DashboardPage() {
     setYieldExpanded((v) => !v);
   };
 
-  const handleClaimRewards = useCallback(() => {
-    userToggledYield.current = true;
-    setYieldExpanded(true);
-    requestAnimationFrame(() => {
-      yieldSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }, []);
-
   const handleViewYieldDetails = useCallback(() => {
     userToggledYield.current = true;
     setYieldExpanded(true);
@@ -274,14 +281,10 @@ export default function DashboardPage() {
     activeVoyage,
     positionTotals,
     totalEarned,
-    totalOutstanding,
-    onClaim: handleClaimRewards,
+    totalOutstanding: rows.reduce((sum, row) => sum + row.outstandingUSD, 0),
     onYieldDetails: handleViewYieldDetails,
   });
 
-  const revenueSharePct = rows.reduce((s, r) => s + r.yieldSharePct, 0);
-
-  const maidenGroup = positionGroups.find((g) => g.id === "maiden")!;
   const earnGroup = positionGroups.find((g) => g.id === "earn")!;
   const sailGroup = positionGroups.find((g) => g.id === "sail")!;
   const archivedGroup = positionGroups.find((g) => g.id === "archived");
@@ -290,33 +293,29 @@ export default function DashboardPage() {
     switch (id) {
       case "portfolio":
         return (
-          <div key="portfolio" className="space-y-2.5 sm:space-y-3">
+          <div key="portfolio" className="space-y-3">
             <DashboardPortfolioHero
               totalPositionValue={totalPortfolioValue}
               totalEarned={totalEarned}
-              uncollected={totalOutstanding}
-              isConnected={isConnected}
-              isLoading={portfolioLoading}
-              onClaimRewards={handleClaimRewards}
-            />
-            <DashboardCategorySummaryCards
-              earnUsd={positionTotals.earn}
-              earnCount={earnRows.length}
-              sailUsd={positionTotals.sail}
-              sailCount={leverageRows.length}
-              archivedUsd={positionTotals.archived}
-              archivedCount={archivedMaidenVoyageRows.length}
+              activePositionCount={allPositionRows.length}
               allocationSlices={allocationSlices}
               isConnected={isConnected}
+              isLoading={portfolioLoading}
             />
-            <div className="space-y-2.5 sm:space-y-3">
-              <PositionProductCard
-                group={maidenGroup}
-                productId="maiden"
-                compact={dashboardViewBasic}
-                isConnected={isConnected}
-                onManage={openPositionManage}
-              />
+            <DashboardPortfolioCategoryChips
+              chips={portfolioChips}
+              isConnected={isConnected}
+              isLoading={portfolioLoading}
+            />
+            <DashboardMaidenVoyageFeatureCard
+              founding={engagement.founding}
+              yieldHub={engagement.yieldHub}
+              totalEarned={totalEarned}
+              activeVoyage={activeVoyage}
+              isConnected={isConnected}
+              isLoading={isLoading || portfolioLoading}
+            />
+            <div className="space-y-2">
               <PositionProductCard
                 group={earnGroup}
                 productId="earn"
@@ -346,83 +345,44 @@ export default function DashboardPage() {
 
       case "yield":
         return (
-          <div key="yield" className="space-y-2.5 sm:space-y-3">
-            <DashboardYieldShareHub
-              hub={engagement.yieldHub}
+          <div key="yield" ref={yieldSectionRef} className="space-y-2">
+            <DashboardProductCard
+              meta={DASHBOARD_PRODUCT_META.yield}
+              expanded={yieldExpanded}
+              onToggle={toggleYieldShare}
               isConnected={isConnected}
-              isLoading={isLoading}
-              onViewDetails={handleViewYieldDetails}
-            />
-            <div ref={yieldSectionRef}>
-              <DashboardProductCard
-                meta={DASHBOARD_PRODUCT_META.yield}
-                expanded={yieldExpanded}
-                onToggle={toggleYieldShare}
-                isConnected={isConnected}
-                sectionTotalUsd={totalOutstanding}
-                positionCount={rows.length}
-                loading={isConnected && isLoading}
-              >
-                {error ? (
-                  <IndexMarksSubgraphErrorBanner error={new Error(error)} />
-                ) : null}
-                <DashboardYieldShareCardList
-                  rows={rows}
-                  isLoading={isConnected && isLoading}
-                  error={null}
-                />
-              </DashboardProductCard>
-            </div>
-          </div>
-        );
-
-      case "voyages":
-        return (
-          <div key="voyages" className="space-y-2.5 sm:space-y-3">
-            <div className={PORTFOLIO_WIDGET_GRID_CLASS}>
-              <DashboardMaidenVoyageWidget
-                voyage={activeVoyage}
-                userPositionUsd={positionTotals.maiden}
-                isConnected={isConnected}
+              sectionTotalUsd={rows.reduce((s, r) => s + r.outstandingUSD, 0)}
+              positionCount={rows.length}
+              compactHeader
+              loading={isConnected && isLoading}
+            >
+              {error ? (
+                <IndexMarksSubgraphErrorBanner error={new Error(error)} />
+              ) : null}
+              <DashboardYieldShareCardList
+                rows={rows}
+                isLoading={isConnected && isLoading}
+                error={null}
               />
-              <DashboardMarketSpotlight
-                voyage={activeVoyage}
-                revenueAllocationPct={revenueSharePct > 0 ? revenueSharePct : null}
-                isConnected={isConnected}
-              />
-            </div>
-            <DashboardFoundingTracker
-              founding={engagement.founding}
-              isConnected={isConnected}
-            />
+            </DashboardProductCard>
           </div>
-        );
-
-      case "revenue":
-        return (
-          <DashboardRevenueHistory
-            key="revenue"
-            periods={engagement.revenuePeriods}
-            sparkline={engagement.revenueSparkline}
-            isConnected={isConnected}
-            isLoading={isLoading}
-          />
         );
 
       case "activity":
         return (
-          <DashboardActivityTimeline
-            key="activity"
-            events={engagement.timeline}
-            isConnected={isConnected}
-          />
-        );
-
-      case "engagement":
-        return (
-          <div key="engagement" className="space-y-2.5 sm:space-y-3">
+          <DashboardActivitySection key="activity" defaultExpanded={false}>
             <DashboardOpportunityPanel
               opportunities={engagement.opportunities}
+              isConnected={isConnected}
+            />
+            <DashboardRevenueHistory
+              periods={engagement.revenuePeriods}
+              sparkline={engagement.revenueSparkline}
+              isConnected={isConnected}
+              isLoading={isLoading}
+            />
+            <DashboardActivityTimeline
+              events={engagement.timeline}
               isConnected={isConnected}
             />
             <DashboardJourneyMetrics
@@ -430,17 +390,11 @@ export default function DashboardPage() {
               isConnected={isConnected}
               isLoading={isLoading}
             />
-            <div className={PORTFOLIO_WIDGET_GRID_CLASS}>
-              <DashboardPortfolioHealthWidget
-                health={engagement.health}
-                isConnected={isConnected}
-              />
-              <DashboardAchievements
-                achievements={engagement.achievements}
-                isConnected={isConnected}
-              />
-            </div>
-          </div>
+            <DashboardAchievements
+              achievements={engagement.achievements}
+              isConnected={isConnected}
+            />
+          </DashboardActivitySection>
         );
 
       default:
@@ -450,7 +404,7 @@ export default function DashboardPage() {
 
   return (
     <div className="relative mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col font-sans text-white">
-      <main className="mx-auto w-full max-w-[1600px] space-y-3 px-3 pb-6 pt-2 sm:space-y-3.5 sm:px-10 sm:pt-4">
+      <main className="mx-auto w-full max-w-[1600px] space-y-3 px-3 pb-6 pt-2 sm:px-10 sm:pt-4">
         <div className="relative flex items-start justify-between gap-3">
           <DashboardPageTitleSection />
           <DashboardModuleLayoutControls
@@ -461,7 +415,7 @@ export default function DashboardPage() {
 
         {!isConnected ? <DashboardConnectNotice /> : null}
 
-        <div className="space-y-3 sm:space-y-4">
+        <div className="space-y-3">
           {moduleOrder.map((moduleId) => renderModule(moduleId))}
         </div>
       </main>

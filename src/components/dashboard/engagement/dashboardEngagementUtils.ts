@@ -383,7 +383,7 @@ export function buildPortfolioHealth(input: DashboardEngagementInput): Portfolio
 
 export function buildOpportunities(
   input: DashboardEngagementInput,
-  handlers: { onClaim?: () => void; onYieldDetails?: () => void },
+  handlers: { onYieldDetails?: () => void },
 ): Opportunity[] {
   const ops: Opportunity[] = [];
 
@@ -397,21 +397,11 @@ export function buildOpportunities(
     });
   }
 
-  if (input.totalOutstanding > 0.005) {
-    ops.push({
-      id: "claim",
-      icon: "💰",
-      label: `Claim ${formatUsdShort(input.totalOutstanding)} revenue`,
-      onClick: handlers.onClaim,
-      emphasis: true,
-    });
-  }
-
   if (input.yieldRows.length > 0) {
     ops.push({
       id: "yield",
       icon: "🌊",
-      label: "Review yield share details",
+      label: "View yield share details",
       onClick: handlers.onYieldDetails,
     });
   }

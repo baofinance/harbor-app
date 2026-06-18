@@ -31,6 +31,8 @@ export type DashboardProductCardProps = {
   isConnected: boolean;
   sectionTotalUsd?: number | null;
   positionCount?: number;
+  /** Hide USD in header — chips show totals; show position count only */
+  compactHeader?: boolean;
   collapsedPreview?: ReactNode;
   headerMetrics?: ReactNode;
   loading?: boolean;
@@ -60,6 +62,7 @@ export function DashboardProductCard({
   isConnected,
   sectionTotalUsd = null,
   positionCount = 0,
+  compactHeader = false,
   collapsedPreview,
   headerMetrics,
   loading = false,
@@ -81,13 +84,16 @@ export function DashboardProductCard({
         : "—";
 
   const countDisplay = isConnected ? positionCountLabel(positionCount) : "—";
+  const showAccentBar = meta.id === "yield";
 
   return (
     <section className={DASHBOARD_PRODUCT_CARD_CLASS} aria-label={meta.title}>
-      <div
-        className={`${DASHBOARD_PRODUCT_ACCENT_BAR_CLASS} ${meta.accentBarClass}`}
-        aria-hidden
-      />
+      {showAccentBar ? (
+        <div
+          className={`${DASHBOARD_PRODUCT_ACCENT_BAR_CLASS} ${meta.accentBarClass}`}
+          aria-hidden
+        />
+      ) : null}
       <div
         className={`${DASHBOARD_PRODUCT_CARD_HEADER_CLASS} ${
           headerMuted ? DASHBOARD_PRODUCT_CARD_HEADER_MUTED_CLASS : ""
@@ -105,13 +111,17 @@ export function DashboardProductCard({
           >
             <div className="min-w-0">
               <h2 className={DASHBOARD_PRODUCT_TITLE_CLASS}>{meta.title}</h2>
-              <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0">
-                <span className={DASHBOARD_PRODUCT_AMOUNT_CLASS}>{amountDisplay}</span>
-                <span className={DASHBOARD_PRODUCT_COUNT_CLASS}>{countDisplay}</span>
-                {isConnected && loading && sectionTotalUsd == null ? (
-                  <span className={DASHBOARD_PRODUCT_LOADING_HINT_CLASS}>Loading…</span>
-                ) : null}
-              </div>
+              {compactHeader ? (
+                <p className={`mt-0.5 ${DASHBOARD_PRODUCT_COUNT_CLASS}`}>{countDisplay}</p>
+              ) : (
+                <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0">
+                  <span className={DASHBOARD_PRODUCT_AMOUNT_CLASS}>{amountDisplay}</span>
+                  <span className={DASHBOARD_PRODUCT_COUNT_CLASS}>{countDisplay}</span>
+                  {isConnected && loading && sectionTotalUsd == null ? (
+                    <span className={DASHBOARD_PRODUCT_LOADING_HINT_CLASS}>Loading…</span>
+                  ) : null}
+                </div>
+              )}
             </div>
           </button>
           <div className="flex shrink-0 items-center gap-2">
@@ -158,8 +168,8 @@ export function DashboardProductCard({
             expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
           }`}
         >
-          <div className="overflow-hidden">
-            <div className="px-3 pb-2.5 pt-0 sm:px-4 sm:pb-3">{children}</div>
+            <div className="overflow-hidden">
+            <div className="px-3 pb-2 pt-0 sm:px-4 sm:pb-2.5">{children}</div>
           </div>
         </div>
       ) : null}

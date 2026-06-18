@@ -12,11 +12,15 @@ import {
   parsePositionDetail,
   positionValueLabel,
 } from "./dashboardPortfolioUtils";
-import { PORTFOLIO_CARD_SHELL, PORTFOLIO_LABEL_CLASS, PORTFOLIO_MUTED_CLASS } from "./portfolioStyles";
+import {
+  PORTFOLIO_COMPACT_CARD_CLASS,
+  PORTFOLIO_LABEL_CLASS,
+  PORTFOLIO_MUTED_CLASS,
+} from "./portfolioStyles";
 import { StatusBadge } from "./StatusBadge";
 
-const NETWORK_ICON_PX = 16;
-const MARKET_ICON_PX = 22;
+const NETWORK_ICON_PX = 14;
+const MARKET_ICON_PX = 20;
 
 function statusVariant(
   tone: DashboardPositionRow["statusTone"],
@@ -59,31 +63,33 @@ export function PositionCard({ row, onManage }: PositionCardProps) {
   );
 
   return (
-    <article className={`${PORTFOLIO_CARD_SHELL} flex flex-col gap-3 p-3 sm:p-3.5`}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <GenesisMarketChainCell
-            chainName={row.chainName}
-            chainLogo={row.chainLogo}
-            size={NETWORK_ICON_PX}
-          />
-          <TokenLogo symbol={row.iconSymbol} size={MARKET_ICON_PX} className="shrink-0 ring-0" />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-[#1E4775]" title={marketName}>
-              {marketName}
-            </p>
-            <p className={`truncate ${PORTFOLIO_MUTED_CLASS} text-[#1E4775]/55`} title={typeLabel}>
-              {typeLabel}
-            </p>
-          </div>
+    <article
+      className={`${PORTFOLIO_COMPACT_CARD_CLASS} flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between`}
+    >
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <GenesisMarketChainCell
+          chainName={row.chainName}
+          chainLogo={row.chainLogo}
+          size={NETWORK_ICON_PX}
+        />
+        <TokenLogo symbol={row.iconSymbol} size={MARKET_ICON_PX} className="shrink-0 ring-0" />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-[#1E4775]" title={marketName}>
+            {marketName}
+          </p>
+          <p className={`truncate text-xs text-[#1E4775]/55`} title={typeLabel}>
+            {typeLabel}
+          </p>
         </div>
         <StatusBadge label={row.statusLabel} variant={statusVariant(row.statusTone)} />
       </div>
 
-      <div className="flex items-end justify-between gap-2">
-        <div>
+      <div className="flex items-center justify-between gap-2 sm:justify-end">
+        <div className="sm:text-right">
           <p className={PORTFOLIO_LABEL_CLASS}>{positionValueLabel(row.category)}</p>
-          <p className="font-mono text-lg font-bold tabular-nums text-[#1E4775]">{valueDisplay}</p>
+          <p className="font-mono text-base font-semibold tabular-nums text-[#1E4775]">
+            {valueDisplay}
+          </p>
         </div>
         {manageBtn}
       </div>

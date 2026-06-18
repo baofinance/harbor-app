@@ -134,17 +134,18 @@ export const DASHBOARD_GROUP_TITLE_CLASS = "text-sm font-semibold text-white/95"
 export const DASHBOARD_PRODUCT_CARD_CLASS = `${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} overflow-hidden relative`;
 
 export const DASHBOARD_PRODUCT_CARD_HEADER_CLASS =
-  "flex flex-col gap-0 px-3 py-2 sm:px-4 sm:py-2.5";
+  "flex flex-col gap-0 px-3 py-1.5 sm:px-4 sm:py-2";
 
 export const DASHBOARD_PRODUCT_CARD_HEADER_ROW_CLASS =
   "flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5 sm:gap-x-2.5";
 
 export const DASHBOARD_PRODUCT_CARD_BODY_CLASS = "px-3 pb-2.5 pt-0 sm:px-4 sm:pb-3";
 
-export const DASHBOARD_PRODUCT_TITLE_CLASS = "text-sm font-semibold text-white/95";
+export const DASHBOARD_PRODUCT_TITLE_CLASS =
+  "text-xs font-medium uppercase tracking-wide text-white/70";
 
 export const DASHBOARD_PRODUCT_AMOUNT_CLASS =
-  "font-mono text-base font-semibold tabular-nums text-white/95 sm:text-lg";
+  "font-mono text-sm font-semibold tabular-nums text-white/95";
 
 export const DASHBOARD_PRODUCT_COUNT_CLASS = "text-xs text-white/55";
 
@@ -191,7 +192,7 @@ export const DASHBOARD_PRODUCT_TOTAL_CLASS =
 export const DASHBOARD_PAGE_HEADER_CLASS = "min-w-0 text-left";
 
 export const DASHBOARD_PAGE_HEADER_TITLE_CLASS =
-  "font-bold font-mono text-white text-3xl leading-[1.08] sm:text-4xl sm:leading-[1.05] lg:text-[2.5rem] lg:leading-[1.05] xl:text-5xl 2xl:text-6xl";
+  "font-bold font-mono text-white text-2xl leading-tight sm:text-3xl";
 
 export const DASHBOARD_PAGE_HEADER_SUBTITLE_CLASS =
   "mt-1 max-w-md text-sm font-medium leading-snug tracking-tight text-white/85 sm:text-base";

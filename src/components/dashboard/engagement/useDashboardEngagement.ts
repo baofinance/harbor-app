@@ -33,7 +33,6 @@ type UseDashboardEngagementParams = {
   positionTotals: { maiden: number; earn: number; sail: number; archived: number };
   totalEarned: number;
   totalOutstanding: number;
-  onClaim?: () => void;
   onYieldDetails?: () => void;
 };
 
@@ -163,10 +162,9 @@ export function useDashboardEngagement(params: UseDashboardEngagementParams) {
   const opportunities = useMemo(
     () =>
       buildOpportunities(input, {
-        onClaim: params.onClaim,
         onYieldDetails: params.onYieldDetails,
       }),
-    [input, params.onClaim, params.onYieldDetails],
+    [input, params.onYieldDetails],
   );
   const welcome = useMemo(() => buildWelcomeHighlights(input), [input]);
 

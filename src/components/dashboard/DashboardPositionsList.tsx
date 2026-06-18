@@ -5,7 +5,7 @@ import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
 import { DashboardContentRowSkeleton } from "./DashboardContentRow";
 import { DashboardEmptyState } from "./portfolio/DashboardEmptyState";
 import { PositionCard } from "./portfolio/PositionCard";
-import { PORTFOLIO_POSITION_GRID_CLASS } from "./portfolio/portfolioStyles";
+import { PORTFOLIO_POSITION_STACK_CLASS } from "./portfolio/portfolioStyles";
 
 export type DashboardEmptyStateConfig = {
   title: string;
@@ -38,7 +38,7 @@ export function DashboardPositionsList({
 
   if (loading) {
     return (
-      <div className={PORTFOLIO_POSITION_GRID_CLASS}>
+      <div className={PORTFOLIO_POSITION_STACK_CLASS}>
         {[0, 1, 2].map((i) => (
           <DashboardContentRowSkeleton key={i} variant="index" />
         ))}
@@ -62,7 +62,7 @@ export function DashboardPositionsList({
   }
 
   return (
-    <div className={PORTFOLIO_POSITION_GRID_CLASS}>
+    <div className={PORTFOLIO_POSITION_STACK_CLASS}>
       {rows.map((row) => (
         <PositionCard key={row.id} row={row} onManage={onManage} />
       ))}
