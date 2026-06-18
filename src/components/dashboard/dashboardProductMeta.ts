@@ -78,7 +78,7 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
     },
     yield: {
       id: "yield",
-      title: "Yield share",
+      title: "Revenue share",
       icon: ChartBarIcon,
       iconBadgeClass: DASHBOARD_PRODUCT_ICON_YIELD_CLASS,
       accentBarClass: DASHBOARD_PRODUCT_ACCENT_YIELD_CLASS,

@@ -31,7 +31,7 @@ export function YieldSharePositionCard({ row }: { row: FounderMetricRow }) {
           <p className="truncate text-sm font-semibold text-[#1E4775]" title={row.marketName}>
             {row.marketName}
           </p>
-          <p className="truncate text-xs text-[#1E4775]/55">Yield share</p>
+          <p className="truncate text-xs text-[#1E4775]/55">Revenue share</p>
         </div>
         {row.outstandingUSD > 0 ? (
           <StatusBadge label="Uncollected" variant="coral" />

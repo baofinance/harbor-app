@@ -34,7 +34,7 @@ export function DashboardYieldShareCardList({
   if (rows.length === 0) {
     return (
       <DashboardEmptyState
-        title="No yield share yet"
+        title="No revenue share yet"
         message="Participate in a maiden voyage to earn founding revenue share after genesis ends."
         href="/genesis"
         linkLabel="Explore maiden voyages"

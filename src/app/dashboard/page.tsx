@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DashboardConnectNotice } from "@/components/dashboard/DashboardConnectNotice";
-import { DashboardMaidenVoyageFeatureCard } from "@/components/dashboard/DashboardMaidenVoyageFeatureCard";
 import { DashboardPageTitleSection } from "@/components/dashboard/DashboardPageTitleSection";
 import { DashboardPortfolioCategoryChips } from "@/components/dashboard/DashboardPortfolioCategoryChips";
 import { DashboardPortfolioHero } from "@/components/dashboard/DashboardPortfolioHero";
@@ -37,6 +36,7 @@ import {
   useDashboardPositions,
   type DashboardPositionRow,
 } from "@/hooks/useDashboardPositions";
+import { useDashboardEarnClaimable } from "@/hooks/useDashboardEarnClaimable";
 import { useDashboardManageModals } from "@/hooks/useDashboardManageModals";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 
@@ -115,6 +115,8 @@ export default function DashboardPage() {
     isLoading: posLoading,
     errors: posErrors,
   } = useDashboardPositions();
+  const { earnClaimableUsd, isLoading: earnClaimableLoading } =
+    useDashboardEarnClaimable();
   const { openPositionManage, modals: dashboardManageModals } =
     useDashboardManageModals();
   const { order: moduleOrder, setOrder: setModuleOrder } = useDashboardModuleLayout();
@@ -289,6 +291,30 @@ export default function DashboardPage() {
   const sailGroup = positionGroups.find((g) => g.id === "sail")!;
   const archivedGroup = positionGroups.find((g) => g.id === "archived");
 
+  const yieldShareSection = (
+    <div ref={yieldSectionRef} className="space-y-2">
+      <DashboardProductCard
+        meta={DASHBOARD_PRODUCT_META.yield}
+        expanded={yieldExpanded}
+        onToggle={toggleYieldShare}
+        isConnected={isConnected}
+        sectionTotalUsd={rows.reduce((s, r) => s + r.outstandingUSD, 0)}
+        positionCount={rows.length}
+        compactHeader
+        loading={isConnected && isLoading}
+      >
+        {error ? (
+          <IndexMarksSubgraphErrorBanner error={new Error(error)} />
+        ) : null}
+        <DashboardYieldShareCardList
+          rows={rows}
+          isLoading={isConnected && isLoading}
+          error={null}
+        />
+      </DashboardProductCard>
+    </div>
+  );
+
   const renderModule = (id: DashboardModuleId) => {
     switch (id) {
       case "portfolio":
@@ -296,7 +322,6 @@ export default function DashboardPage() {
           <div key="portfolio" className="space-y-3">
             <DashboardPortfolioHero
               totalPositionValue={totalPortfolioValue}
-              totalEarned={totalEarned}
               activePositionCount={allPositionRows.length}
               allocationSlices={allocationSlices}
               isConnected={isConnected}
@@ -304,17 +329,13 @@ export default function DashboardPage() {
             />
             <DashboardPortfolioCategoryChips
               chips={portfolioChips}
+              revenueShareYieldUsd={totalEarned}
+              earnYieldUsd={earnClaimableUsd}
               isConnected={isConnected}
               isLoading={portfolioLoading}
+              isEarnLoading={earnClaimableLoading}
             />
-            <DashboardMaidenVoyageFeatureCard
-              founding={engagement.founding}
-              yieldHub={engagement.yieldHub}
-              totalEarned={totalEarned}
-              activeVoyage={activeVoyage}
-              isConnected={isConnected}
-              isLoading={isLoading || portfolioLoading}
-            />
+            {yieldShareSection}
             <div className="space-y-2">
               <PositionProductCard
                 group={earnGroup}
@@ -340,31 +361,6 @@ export default function DashboardPage() {
                 />
               ) : null}
             </div>
-          </div>
-        );
-
-      case "yield":
-        return (
-          <div key="yield" ref={yieldSectionRef} className="space-y-2">
-            <DashboardProductCard
-              meta={DASHBOARD_PRODUCT_META.yield}
-              expanded={yieldExpanded}
-              onToggle={toggleYieldShare}
-              isConnected={isConnected}
-              sectionTotalUsd={rows.reduce((s, r) => s + r.outstandingUSD, 0)}
-              positionCount={rows.length}
-              compactHeader
-              loading={isConnected && isLoading}
-            >
-              {error ? (
-                <IndexMarksSubgraphErrorBanner error={new Error(error)} />
-              ) : null}
-              <DashboardYieldShareCardList
-                rows={rows}
-                isLoading={isConnected && isLoading}
-                error={null}
-              />
-            </DashboardProductCard>
           </div>
         );
 

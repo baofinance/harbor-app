@@ -1,20 +1,18 @@
 "use client";
 
-export type DashboardModuleId = "portfolio" | "yield" | "activity";
+export type DashboardModuleId = "portfolio" | "activity";
 
 export const DASHBOARD_MODULE_LABELS: Record<DashboardModuleId, string> = {
   portfolio: "Portfolio",
-  yield: "Yield share",
   activity: "Activity & progress",
 };
 
 export const DEFAULT_DASHBOARD_MODULE_ORDER: DashboardModuleId[] = [
   "portfolio",
-  "yield",
   "activity",
 ];
 
-const STORAGE_KEY = "harbor:dashboard-module-order-v2";
+const STORAGE_KEY = "harbor:dashboard-module-order-v3";
 
 function isModuleId(value: string): value is DashboardModuleId {
   return value in DASHBOARD_MODULE_LABELS;

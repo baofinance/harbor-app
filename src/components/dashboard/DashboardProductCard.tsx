@@ -84,7 +84,11 @@ export function DashboardProductCard({
         : "—";
 
   const countDisplay = isConnected ? positionCountLabel(positionCount) : "—";
-  const showAccentBar = meta.id === "yield";
+  const showAccentBar =
+    meta.id === "earn" ||
+    meta.id === "sail" ||
+    meta.id === "archived" ||
+    meta.id === "yield";
 
   return (
     <section className={DASHBOARD_PRODUCT_CARD_CLASS} aria-label={meta.title}>

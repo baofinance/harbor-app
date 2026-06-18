@@ -10,9 +10,10 @@ import { formatUSD } from "@/utils/formatters";
 import type { PortfolioAllocationSlice } from "./portfolio/dashboardPortfolioUtils";
 import { PORTFOLIO_MUTED_CLASS } from "./portfolio/portfolioStyles";
 
+const PRODUCT_SLICE_IDS = new Set(["earn", "sail", "archived"]);
+
 export type DashboardPortfolioHeroProps = {
   totalPositionValue: number;
-  totalEarned: number;
   activePositionCount: number;
   allocationSlices: PortfolioAllocationSlice[];
   isConnected: boolean;
@@ -20,36 +21,33 @@ export type DashboardPortfolioHeroProps = {
 };
 
 function InlineAllocation({ slices }: { slices: PortfolioAllocationSlice[] }) {
-  if (slices.length === 0) return null;
+  const productSlices = slices.filter((s) => PRODUCT_SLICE_IDS.has(s.id));
+  if (productSlices.length === 0) return null;
 
   return (
-    <div className="mt-4 border-t border-white/[0.08] pt-4">
-      <p className={MV_SECTION_LABEL}>Allocation</p>
-      <div className="mt-2.5 space-y-2">
-        {slices.map((slice) => (
-          <div key={slice.id}>
-            <div className="mb-1 flex items-center justify-between gap-2 text-xs">
-              <span className={`font-medium ${slice.accentClass}`}>{slice.label}</span>
-              <span className={`tabular-nums ${PORTFOLIO_MUTED_CLASS}`}>
-                {slice.pct.toFixed(0)}%
-              </span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
-              <div
-                className={`h-full rounded-full transition-[width] duration-500 ${slice.barClass}`}
-                style={{ width: `${Math.max(slice.pct, 2)}%` }}
-              />
-            </div>
+    <div className="flex min-w-0 flex-1 flex-wrap items-end gap-x-4 gap-y-2 sm:justify-end">
+      {productSlices.map((slice) => (
+        <div key={slice.id} className="min-w-[4.5rem] flex-1 sm:max-w-[7rem]">
+          <div className="mb-1 flex items-center justify-between gap-1 text-[10px]">
+            <span className={`truncate font-medium ${slice.accentClass}`}>{slice.label}</span>
+            <span className={`shrink-0 tabular-nums ${PORTFOLIO_MUTED_CLASS}`}>
+              {slice.pct.toFixed(0)}%
+            </span>
           </div>
-        ))}
-      </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
+            <div
+              className={`h-full rounded-full transition-[width] duration-500 ${slice.barClass}`}
+              style={{ width: `${Math.max(slice.pct, 2)}%` }}
+            />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
 
 export function DashboardPortfolioHero({
   totalPositionValue,
-  totalEarned,
   activePositionCount,
   allocationSlices,
   isConnected,
@@ -61,46 +59,32 @@ export function DashboardPortfolioHero({
       ? "…"
       : formatUSD(totalPositionValue, { compact: false });
 
-  const earnedDisplay = !isConnected
-    ? "—"
-    : isLoading
-      ? "…"
-      : formatUSD(totalEarned, { compact: false });
-
   const positionLabel =
     activePositionCount === 1
       ? "1 active position"
       : `${activePositionCount} active positions`;
+
+  const showAllocation = isConnected && !isLoading;
 
   return (
     <section
       className={`${MV_MAIN_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} px-4 py-4 sm:px-5 sm:py-5`}
       aria-label="Portfolio value"
     >
-      <p className={MV_SECTION_LABEL}>Portfolio value</p>
-      <p
-        className={`${MV_HEADLINE} mt-1 text-3xl font-bold tabular-nums text-white sm:text-4xl lg:text-5xl`}
-      >
-        {valueDisplay}
-      </p>
-      {isConnected ? (
-        <p className={`mt-2 text-sm text-white/75 sm:text-base`}>
-          {isLoading ? (
-            "…"
-          ) : (
-            <>
-              <span className="font-mono font-semibold text-[#F5D76E]">
-                {totalEarned > 0 ? "+" : ""}
-                {earnedDisplay}
-              </span>{" "}
-              earned · {positionLabel}
-            </>
-          )}
-        </p>
-      ) : null}
-      {isConnected && !isLoading ? (
-        <InlineAllocation slices={allocationSlices} />
-      ) : null}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+        <div className="min-w-0 shrink-0">
+          <p className={MV_SECTION_LABEL}>Portfolio value</p>
+          <p
+            className={`${MV_HEADLINE} mt-1 text-3xl font-bold tabular-nums text-white sm:text-4xl lg:text-5xl`}
+          >
+            {valueDisplay}
+          </p>
+          {isConnected && !isLoading ? (
+            <p className="mt-2 text-sm text-white/60">{positionLabel}</p>
+          ) : null}
+        </div>
+        {showAllocation ? <InlineAllocation slices={allocationSlices} /> : null}
+      </div>
     </section>
   );
 }

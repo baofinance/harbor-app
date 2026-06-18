@@ -401,7 +401,7 @@ export function buildOpportunities(
     ops.push({
       id: "yield",
       icon: "🌊",
-      label: "View yield share details",
+      label: "View revenue share details",
       onClick: handlers.onYieldDetails,
     });
   }
