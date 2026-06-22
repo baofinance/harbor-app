@@ -14,7 +14,6 @@ import {
   DASHBOARD_EMPTY_STATES,
   type DashboardPositionGroup,
 } from "@/components/dashboard/dashboardPositionGroup";
-import { DashboardPortfolioInsights } from "@/components/dashboard/DashboardPortfolioInsights";
 import { DashboardPositionsList } from "@/components/dashboard/DashboardPositionsList";
 import { DashboardActivitySection } from "@/components/dashboard/engagement/DashboardActivitySection";
 import { DashboardActivityTimeline } from "@/components/dashboard/engagement/DashboardActivityTimeline";
@@ -29,14 +28,10 @@ import { useDashboardEngagement } from "@/components/dashboard/engagement/useDas
 import {
   aggregateYieldShareSummary,
   buildEarnSummaryMetrics,
-  buildMarketComposition,
   buildPortfolioAllocation,
-  buildPortfolioInsightLines,
   buildPositionSummaryMetrics,
   buildRevenueShareSummaryMetrics,
 } from "@/components/dashboard/portfolio/dashboardPortfolioUtils";
-import { DashboardMarketComposition } from "@/components/dashboard/portfolio/DashboardMarketComposition";
-import { DashboardTopPositions } from "@/components/dashboard/portfolio/DashboardTopPositions";
 import { DashboardYieldShareCardList } from "@/components/dashboard/portfolio/DashboardYieldShareCardList";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
 import { useDashboardActiveVoyage } from "@/hooks/useDashboardActiveVoyage";
@@ -347,33 +342,6 @@ export default function DashboardPage() {
     [isConnected, isLoading, revenueShareSummary],
   );
 
-  const portfolioInsightLines = useMemo(
-    () =>
-      buildPortfolioInsightLines({
-        allPositionRows,
-        categoryCounts: {
-          earn: earnRows.length,
-          sail: leverageRows.length,
-          maiden: maidenVoyageRows.length,
-          archived: archivedMaidenVoyageRows.length,
-        },
-        marksDeposits: engagement.marksDeposits,
-      }),
-    [
-      allPositionRows,
-      earnRows.length,
-      leverageRows.length,
-      maidenVoyageRows.length,
-      archivedMaidenVoyageRows.length,
-      engagement.marksDeposits,
-    ],
-  );
-
-  const marketComposition = useMemo(
-    () => buildMarketComposition(allPositionRows),
-    [allPositionRows],
-  );
-
   const latestActivityEvent = engagement.timeline[0] ?? null;
 
   const yieldShareSection = (
@@ -409,7 +377,6 @@ export default function DashboardPage() {
               allocationSlices={allocationSlices}
               revenueShareYieldUsd={totalEarned}
               earnYieldUsd={earnClaimableUsd}
-              revenueShareExposurePct={revenueShareSummary.revenueSharePct}
               isConnected={isConnected}
               isLoading={portfolioLoading}
               isEarnLoading={earnClaimableLoading}
@@ -419,21 +386,6 @@ export default function DashboardPage() {
               isConnected={isConnected}
               isLoading={portfolioLoading}
             />
-            {isConnected ? (
-              <div className="grid gap-2 sm:grid-cols-2">
-                <DashboardPortfolioInsights
-                  lines={portfolioInsightLines}
-                  isConnected={isConnected}
-                />
-                <DashboardTopPositions rows={allPositionRows} isConnected={isConnected} />
-              </div>
-            ) : null}
-            {marketComposition ? (
-              <DashboardMarketComposition
-                slices={marketComposition}
-                isConnected={isConnected}
-              />
-            ) : null}
             <div className="mt-6 pt-1 sm:mt-8">{yieldShareSection}</div>
             <div className="space-y-2">
               <PositionProductCard

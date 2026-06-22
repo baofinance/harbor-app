@@ -6,7 +6,7 @@ import {
   MV_HEADLINE,
   MV_SECTION_LABEL,
 } from "@/components/genesis/maidenVoyageLayoutStyles";
-import { formatPercent, formatUSD } from "@/utils/formatters";
+import { formatUSD } from "@/utils/formatters";
 import type { PortfolioAllocationSlice } from "./portfolio/dashboardPortfolioUtils";
 import {
   DASHBOARD_HERO_ALLOCATION_TRACK,
@@ -22,7 +22,6 @@ export type DashboardPortfolioHeroProps = {
   allocationSlices: PortfolioAllocationSlice[];
   revenueShareYieldUsd: number;
   earnYieldUsd: number;
-  revenueShareExposurePct: number;
   isConnected: boolean;
   isLoading?: boolean;
   isEarnLoading?: boolean;
@@ -38,7 +37,7 @@ function formatStatUsd(
   return formatUSD(usd, { compact: false });
 }
 
-function HeroMetricTile({
+function HeroMetricBox({
   label,
   value,
   accentBorderClass,
@@ -50,9 +49,13 @@ function HeroMetricTile({
   valueClass?: string;
 }) {
   return (
-    <div className={`${DASHBOARD_HERO_METRIC_TILE} border-l-[3px] ${accentBorderClass}`}>
+    <div
+      className={`${DASHBOARD_HERO_METRIC_TILE} shrink-0 border-l-[3px] ${accentBorderClass}`}
+    >
       <p className={MV_SECTION_LABEL}>{label}</p>
-      <p className={`mt-0.5 font-mono text-sm font-semibold tabular-nums sm:text-base ${valueClass}`}>
+      <p
+        className={`mt-0.5 font-mono text-sm font-semibold tabular-nums sm:text-base ${valueClass}`}
+      >
         {value}
       </p>
     </div>
@@ -97,7 +100,6 @@ export function DashboardPortfolioHero({
   allocationSlices,
   revenueShareYieldUsd,
   earnYieldUsd,
-  revenueShareExposurePct,
   isConnected,
   isLoading = false,
   isEarnLoading = false,
@@ -136,20 +138,20 @@ export function DashboardPortfolioHero({
         </div>
 
         {showMetrics ? (
-          <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:max-w-md lg:w-auto lg:max-w-lg">
-            <HeroMetricTile
+          <div className="flex w-full min-w-0 flex-nowrap items-stretch justify-end gap-2 overflow-x-auto lg:w-auto lg:shrink-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <HeroMetricBox
               label="Revenue share yield"
               value={formatStatUsd(revenueShareYieldUsd, isConnected, isLoading)}
               accentBorderClass="border-l-[#F5D76E]/70"
               valueClass="text-[#F5D76E]"
             />
-            <HeroMetricTile
+            <HeroMetricBox
               label="Earn yield"
               value={formatStatUsd(earnYieldUsd, isConnected, isEarnLoading)}
               accentBorderClass="border-l-[#B8EBD5]/70"
               valueClass="text-[#B8EBD5]"
             />
-            <HeroMetricTile
+            <HeroMetricBox
               label="Total earned"
               value={formatStatUsd(
                 totalYieldEarned,
@@ -157,16 +159,6 @@ export function DashboardPortfolioHero({
                 isLoading || isEarnLoading,
               )}
               accentBorderClass="border-l-white/30"
-            />
-            <HeroMetricTile
-              label="Rev share exp."
-              value={
-                isLoading
-                  ? "…"
-                  : formatPercent(revenueShareExposurePct, { decimals: 2 })
-              }
-              accentBorderClass="border-l-[#F5D76E]/70"
-              valueClass="text-[#F5D76E]"
             />
           </div>
         ) : null}
