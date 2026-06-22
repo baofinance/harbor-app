@@ -13,7 +13,7 @@ Compact position card with market icon, type, value, status badge, and Manage ac
 **Used for:** Earn, Sail, Maiden Voyage, and Archived positions (`DashboardPositionsList`).
 
 ### `YieldSharePositionCard`
-Yield-share market card with ownership %, boost, pool share, paid, and uncollected.
+Yield-share market card with ownership %, boost, pool share, paid, and pending distribution.
 **Used for:** Expanded yield share section (`DashboardYieldShareCardList`).
 
 ### `InsightCard`
@@ -32,7 +32,7 @@ Structured empty state with title, message, position count, and CTA link.
 
 | Component | Purpose |
 |-----------|---------|
-| `DashboardPortfolioHero` | Total value, earned, uncollected (Phase 1) |
+| `DashboardPortfolioHero` | Total value, earned, pending distribution (Phase 1) |
 | `DashboardYieldShareSummaryCard` | Top-level yield share snapshot |
 | `DashboardMaidenVoyageWidget` | Active voyage status + capacity bar |
 | `DashboardPortfolioAllocation` | Segmented allocation bars |

@@ -52,7 +52,7 @@ function YieldListHeader() {
         />
         <DashboardYieldCenteredMetricHeader label="Total paid" ghostValue="$0" />
         <DashboardYieldCenteredMetricHeader
-          label="Uncollected"
+          label="Pending distribution"
           tip="Amount still owed versus payouts on file; not a scheduled payment date."
           ghostValue="$3.97"
         />
@@ -145,7 +145,7 @@ function DashboardYieldRowView({ row }: { row: FounderMetricRow }) {
             value={formatUSD(row.paidUSD, { compact: false })}
           />
           <YieldMobileMetric
-            label="Uncollected"
+            label="Pending distribution"
             value={formatUSD(row.outstandingUSD, { compact: false })}
             valueClassName={row.outstandingUSD > 0 ? "text-[#FF8A7A]" : ""}
           />

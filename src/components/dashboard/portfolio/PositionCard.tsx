@@ -13,9 +13,8 @@ import {
   positionValueLabel,
 } from "./dashboardPortfolioUtils";
 import {
-  PORTFOLIO_COMPACT_CARD_CLASS,
-  PORTFOLIO_LABEL_CLASS,
-  PORTFOLIO_MUTED_CLASS,
+  PORTFOLIO_POSITION_LABEL_CLASS,
+  PORTFOLIO_POSITION_ROW_CLASS,
 } from "./portfolioStyles";
 import { StatusBadge } from "./StatusBadge";
 
@@ -64,7 +63,7 @@ export function PositionCard({ row, onManage }: PositionCardProps) {
 
   return (
     <article
-      className={`${PORTFOLIO_COMPACT_CARD_CLASS} flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between`}
+      className={`${PORTFOLIO_POSITION_ROW_CLASS} flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between`}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <GenesisMarketChainCell
@@ -86,7 +85,7 @@ export function PositionCard({ row, onManage }: PositionCardProps) {
 
       <div className="flex items-center justify-between gap-2 sm:justify-end">
         <div className="sm:text-right">
-          <p className={PORTFOLIO_LABEL_CLASS}>{positionValueLabel(row.category)}</p>
+          <p className={PORTFOLIO_POSITION_LABEL_CLASS}>{positionValueLabel(row.category)}</p>
           <p className="font-mono text-base font-semibold tabular-nums text-[#1E4775]">
             {valueDisplay}
           </p>

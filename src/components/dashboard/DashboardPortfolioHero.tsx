@@ -8,9 +8,9 @@ import {
 } from "@/components/genesis/maidenVoyageLayoutStyles";
 import { formatUSD } from "@/utils/formatters";
 import type { PortfolioAllocationSlice } from "./portfolio/dashboardPortfolioUtils";
+import { DashboardStatChip } from "./DashboardStatChip";
 import {
   DASHBOARD_HERO_ALLOCATION_TRACK,
-  DASHBOARD_HERO_METRIC_TILE,
   PORTFOLIO_MUTED_CLASS,
 } from "./portfolio/portfolioStyles";
 
@@ -35,31 +35,6 @@ function formatStatUsd(
   if (!isConnected) return "—";
   if (isLoading) return "…";
   return formatUSD(usd, { compact: false });
-}
-
-function HeroMetricBox({
-  label,
-  value,
-  accentBorderClass,
-  valueClass = "text-white/95",
-}: {
-  label: string;
-  value: string;
-  accentBorderClass: string;
-  valueClass?: string;
-}) {
-  return (
-    <div
-      className={`${DASHBOARD_HERO_METRIC_TILE} shrink-0 border-l-[3px] ${accentBorderClass}`}
-    >
-      <p className={MV_SECTION_LABEL}>{label}</p>
-      <p
-        className={`mt-0.5 font-mono text-sm font-semibold tabular-nums sm:text-base ${valueClass}`}
-      >
-        {value}
-      </p>
-    </div>
-  );
 }
 
 function HeroAllocationBand({ slices }: { slices: PortfolioAllocationSlice[] }) {
@@ -139,26 +114,24 @@ export function DashboardPortfolioHero({
 
         {showMetrics ? (
           <div className="flex w-full min-w-0 flex-nowrap items-stretch justify-end gap-2 overflow-x-auto lg:w-auto lg:shrink-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <HeroMetricBox
+            <DashboardStatChip
               label="Revenue share yield"
               value={formatStatUsd(revenueShareYieldUsd, isConnected, isLoading)}
-              accentBorderClass="border-l-[#F5D76E]/70"
-              valueClass="text-[#F5D76E]"
+              borderClass="border-l-[#F5D76E]/70"
             />
-            <HeroMetricBox
+            <DashboardStatChip
               label="Earn yield"
               value={formatStatUsd(earnYieldUsd, isConnected, isEarnLoading)}
-              accentBorderClass="border-l-[#B8EBD5]/70"
-              valueClass="text-[#B8EBD5]"
+              borderClass="border-l-[#B8EBD5]/70"
             />
-            <HeroMetricBox
+            <DashboardStatChip
               label="Total earned"
               value={formatStatUsd(
                 totalYieldEarned,
                 isConnected,
                 isLoading || isEarnLoading,
               )}
-              accentBorderClass="border-l-white/30"
+              borderClass="border-l-white/30"
             />
           </div>
         ) : null}

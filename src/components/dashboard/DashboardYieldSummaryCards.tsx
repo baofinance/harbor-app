@@ -66,7 +66,7 @@ export function DashboardYieldSummaryCards({
           }
         />
         <FlatYieldMetric
-          label="Uncollected"
+          label="Pending distribution"
           value={outstandingValue}
           valueClassName={
             isConnected && totalOutstanding > 0
@@ -91,7 +91,7 @@ export function DashboardYieldSummaryCards({
         }
       />
       <DashboardMetricChip
-        label="Uncollected"
+        label="Pending distribution"
         value={outstandingValue}
         valueClassName={
           isConnected && totalOutstanding > 0

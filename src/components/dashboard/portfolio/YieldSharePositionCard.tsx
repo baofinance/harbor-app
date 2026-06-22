@@ -6,8 +6,8 @@ import type { FounderMetricRow } from "@/hooks/useFounderMetrics";
 import { formatPercent, formatUSD } from "@/utils/formatters";
 import { DashboardYieldBoostBadge } from "../DashboardYieldBoostBadge";
 import {
-  PORTFOLIO_COMPACT_CARD_CLASS,
-  PORTFOLIO_LABEL_CLASS,
+  PORTFOLIO_POSITION_LABEL_CLASS,
+  PORTFOLIO_POSITION_ROW_CLASS,
 } from "./portfolioStyles";
 import { StatusBadge } from "./StatusBadge";
 
@@ -19,7 +19,7 @@ export function YieldSharePositionCard({ row }: { row: FounderMetricRow }) {
 
   return (
     <article
-      className={`${PORTFOLIO_COMPACT_CARD_CLASS} flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4`}
+      className={`${PORTFOLIO_POSITION_ROW_CLASS} flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4`}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <GenesisMarketChainCell
@@ -34,14 +34,14 @@ export function YieldSharePositionCard({ row }: { row: FounderMetricRow }) {
           <p className="truncate text-xs text-[#1E4775]/55">Revenue share</p>
         </div>
         {row.outstandingUSD > 0 ? (
-          <StatusBadge label="Uncollected" variant="coral" />
+          <StatusBadge label="Pending distribution" variant="coral" />
         ) : null}
       </div>
 
       <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 sm:flex sm:flex-wrap sm:items-end sm:justify-end sm:gap-x-4">
         <Metric label="MV ownership" value={formatPercent(row.ownershipSharePct, { decimals: 2 })} />
         <div className="min-w-0">
-          <p className={PORTFOLIO_LABEL_CLASS}>Boost</p>
+          <p className={PORTFOLIO_POSITION_LABEL_CLASS}>Boost</p>
           <div className="mt-0.5">
             {showBoost ? (
               <DashboardYieldBoostBadge multiplier={row.boostMultiplier} />
@@ -53,7 +53,7 @@ export function YieldSharePositionCard({ row }: { row: FounderMetricRow }) {
         <Metric label="Yield pool %" value={formatPercent(row.yieldSharePct, { decimals: 4 })} />
         <Metric label="Total paid" value={formatUSD(row.paidUSD, { compact: false })} />
         <div className="min-w-0">
-          <p className={PORTFOLIO_LABEL_CLASS}>Uncollected</p>
+          <p className={PORTFOLIO_POSITION_LABEL_CLASS}>Pending distribution</p>
           <p
             className={`mt-0.5 font-mono text-sm font-semibold tabular-nums ${
               row.outstandingUSD > 0 ? "text-[#FF8A7A]" : "text-[#1E4775]"
@@ -70,7 +70,7 @@ export function YieldSharePositionCard({ row }: { row: FounderMetricRow }) {
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <p className={`${PORTFOLIO_LABEL_CLASS} text-[#1E4775]/55`}>{label}</p>
+      <p className={PORTFOLIO_POSITION_LABEL_CLASS}>{label}</p>
       <p className="mt-0.5 truncate text-xs font-medium tabular-nums text-[#1E4775] sm:text-sm">
         {value}
       </p>

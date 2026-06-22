@@ -15,9 +15,6 @@ import {
   DASHBOARD_PRODUCT_CARD_HEADER_FEATURED_CLASS,
   DASHBOARD_PRODUCT_CARD_HEADER_MUTED_CLASS,
   DASHBOARD_PRODUCT_HEADER_METRICS_CLASS,
-  DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_GOLD_CLASS,
-  DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_MINT_CLASS,
-  DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_MUTED_CLASS,
   DASHBOARD_PRODUCT_TITLE_CLASS,
   DASHBOARD_SECTION_HEADER_ACTIONS_CELL_CLASS,
   DASHBOARD_SECTION_HEADER_INNER_CLASS,
@@ -27,9 +24,8 @@ import {
 import {
   PORTFOLIO_ACCORDION_BODY_CLASS,
   PORTFOLIO_CHEVRON_CLASS,
-  DASHBOARD_HERO_METRIC_TILE,
 } from "./portfolio/portfolioStyles";
-import { MV_SECTION_LABEL } from "@/components/genesis/maidenVoyageLayoutStyles";
+import { DashboardStatChip } from "./DashboardStatChip";
 import type { DashboardProductMeta } from "./dashboardProductMeta";
 
 export type DashboardProductSummaryMetric = {
@@ -50,19 +46,6 @@ export type DashboardProductCardProps = {
   collapseAriaLabel?: string;
   children?: ReactNode;
 };
-
-function summaryMetricValueClass(tone: DashboardProductSummaryMetric["tone"]): string {
-  switch (tone) {
-    case "gold":
-      return DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_GOLD_CLASS;
-    case "mint":
-      return DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_MINT_CLASS;
-    case "muted":
-      return DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_MUTED_CLASS;
-    default:
-      return "text-white/90";
-  }
-}
 
 function summaryMetricAccentClass(tone: DashboardProductSummaryMetric["tone"]): string {
   switch (tone) {
@@ -87,17 +70,12 @@ function ProductCardSummaryStrip({
   return (
     <div className={DASHBOARD_PRODUCT_HEADER_METRICS_CLASS}>
       {metrics.map((metric) => (
-        <div
+        <DashboardStatChip
           key={metric.label}
-          className={`${DASHBOARD_HERO_METRIC_TILE} shrink-0 border-l-[3px] ${summaryMetricAccentClass(metric.tone)}`}
-        >
-          <p className={MV_SECTION_LABEL}>{metric.label}</p>
-          <p
-            className={`mt-0.5 font-mono text-sm font-semibold tabular-nums sm:text-base ${summaryMetricValueClass(metric.tone)}`}
-          >
-            {metric.value}
-          </p>
-        </div>
+          label={metric.label}
+          value={metric.value}
+          borderClass={summaryMetricAccentClass(metric.tone)}
+        />
       ))}
     </div>
   );

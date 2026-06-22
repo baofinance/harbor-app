@@ -7,10 +7,17 @@ import {
   MV_POSITION_ROW,
   MV_STAT_TILE,
 } from "@/components/genesis/maidenVoyageLayoutStyles";
+import { DASHBOARD_INDEX_ROW_SHELL_CLASS } from "../dashboardRowListStyles";
 
 export const PORTFOLIO_CARD_SHELL = `rounded-xl ${MV_POSITION_ROW}`;
 
 export const PORTFOLIO_COMPACT_CARD_CLASS = `${PORTFOLIO_CARD_SHELL} p-2.5 sm:p-3`;
+
+/** Solid white position row — matches Anchor / Genesis index tables. */
+export const PORTFOLIO_POSITION_ROW_CLASS = `${DASHBOARD_INDEX_ROW_SHELL_CLASS} p-2.5 sm:p-3`;
+
+export const PORTFOLIO_POSITION_LABEL_CLASS =
+  "text-[10px] font-semibold uppercase tracking-wider text-[#1E4775]/55";
 
 export const PORTFOLIO_CARD_SHELL_DARK = `rounded-xl ${MV_GLASS_INSET_DARK}`;
 
@@ -40,7 +47,8 @@ export const PORTFOLIO_ACCORDION_BODY_CLASS =
 export const PORTFOLIO_CHEVRON_CLASS =
   "h-4 w-4 text-white/70 transition-transform duration-300 ease-out motion-reduce:transition-none";
 
-export const DASHBOARD_HERO_METRIC_TILE = `${MV_STAT_TILE} px-3 py-2`;
+/** @deprecated Use DASHBOARD_STAT_CHIP_SHELL from DashboardStatChip */
+export const DASHBOARD_HERO_METRIC_TILE = `${MV_STAT_TILE} shrink-0 border-l-[3px] px-3 py-2`;
 
 export const DASHBOARD_HERO_ALLOCATION_TRACK =
   "h-3 overflow-hidden rounded-full bg-white/[0.08]";

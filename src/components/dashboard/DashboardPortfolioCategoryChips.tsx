@@ -1,6 +1,6 @@
 "use client";
 
-import { MV_STAT_TILE } from "@/components/genesis/maidenVoyageLayoutStyles";
+import { DashboardStatChip } from "@/components/dashboard/DashboardStatChip";
 import { formatUSD } from "@/utils/formatters";
 
 export type PortfolioCategoryChip = {
@@ -34,15 +34,12 @@ export function DashboardPortfolioCategoryChips({
   return (
     <div className="flex min-w-0 flex-wrap gap-2" aria-label="Portfolio by product">
       {chips.map((chip) => (
-        <div
+        <DashboardStatChip
           key={chip.id}
-          className={`${MV_STAT_TILE} border-l-[3px] ${chip.borderClass} px-3 py-2`}
-        >
-          <span className="text-xs font-medium text-white/70">{chip.label}</span>
-          <span className="ml-2 font-mono text-sm font-semibold tabular-nums text-white/95">
-            {formatChipUsd(chip.usd, isConnected, isLoading)}
-          </span>
-        </div>
+          label={chip.label}
+          value={formatChipUsd(chip.usd, isConnected, isLoading)}
+          borderClass={chip.borderClass}
+        />
       ))}
     </div>
   );
