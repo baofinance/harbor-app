@@ -2,6 +2,7 @@
 
 import type { FounderMetricRow } from "@/hooks/useFounderMetrics";
 import { DashboardContentRowSkeleton } from "../DashboardContentRow";
+import { DASHBOARD_EMPTY_REVENUE_SHARE_ACCENT_CLASS } from "../dashboardBrand";
 import { DashboardEmptyState } from "./DashboardEmptyState";
 import { PORTFOLIO_POSITION_STACK_CLASS } from "./portfolioStyles";
 import { YieldSharePositionCard } from "./YieldSharePositionCard";
@@ -32,12 +33,14 @@ export function DashboardYieldShareCardList({
   if (rows.length === 0) {
     return (
       <DashboardEmptyState
-        title="No revenue share yet"
-        message="Participate in a maiden voyage to earn founding revenue after genesis ends."
+        title="Your revenue share starts here"
+        message="Join a maiden voyage to earn founding revenue when genesis ends — every distribution counts from day one."
+        trustLine="Ownership entitles you to a share of protocol revenue when genesis ends."
         href="/genesis"
         linkLabel="Explore maiden voyages"
         positionCount={0}
         compact
+        accentBorderClass={DASHBOARD_EMPTY_REVENUE_SHARE_ACCENT_CLASS}
       />
     );
   }

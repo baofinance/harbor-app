@@ -6,9 +6,9 @@ import {
 import { MV_EXPLORER_OPEN_STATUS_CLASSNAME } from "@/components/genesis/genesisMaidenVoyageTableGrid";
 import type { DashboardStatusTone } from "./dashboardRowPresentation";
 import {
-  DASHBOARD_STATUS_PILL_ACTIVE_LIGHT,
-  DASHBOARD_STATUS_PILL_ENDED_LIGHT,
-  DASHBOARD_STATUS_PILL_NEUTRAL_LIGHT,
+  DASHBOARD_STATUS_PILL_ACTIVE_GLASS,
+  DASHBOARD_STATUS_PILL_ENDED_GLASS,
+  DASHBOARD_STATUS_PILL_NEUTRAL_GLASS,
 } from "./dashboardStyles";
 
 export function DashboardStatusPill({
@@ -24,10 +24,10 @@ export function DashboardStatusPill({
   if (surface === "glass") {
     const className =
       tone === "ended"
-        ? DASHBOARD_STATUS_PILL_ENDED_LIGHT
+        ? DASHBOARD_STATUS_PILL_ENDED_GLASS
         : tone === "active"
-          ? DASHBOARD_STATUS_PILL_ACTIVE_LIGHT
-          : DASHBOARD_STATUS_PILL_NEUTRAL_LIGHT;
+          ? DASHBOARD_STATUS_PILL_ACTIVE_GLASS
+          : DASHBOARD_STATUS_PILL_NEUTRAL_GLASS;
 
     return <span className={className}>{label}</span>;
   }

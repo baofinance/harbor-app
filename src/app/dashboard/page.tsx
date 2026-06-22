@@ -16,6 +16,7 @@ import {
   DASHBOARD_STAT_CHIP_BORDER_MAIDEN_CLASS,
   DASHBOARD_STAT_CHIP_BORDER_SAIL_CLASS,
 } from "@/components/dashboard/dashboardStyles";
+import { DASHBOARD_GAP_CATEGORY } from "@/components/dashboard/dashboardDensity";
 import {
   DASHBOARD_EMPTY_STATES,
   type DashboardPositionGroup,
@@ -392,8 +393,8 @@ export default function DashboardPage() {
               isConnected={isConnected}
               isLoading={portfolioLoading}
             />
-            <div className="mt-6 pt-1 sm:mt-8">{yieldShareSection}</div>
-            <div className="space-y-2">
+            <div className="mt-5 sm:mt-6">{yieldShareSection}</div>
+            <div className={DASHBOARD_GAP_CATEGORY}>
               <PositionProductCard
                 group={earnGroup}
                 productId="earn"
@@ -473,7 +474,7 @@ export default function DashboardPage() {
 
         {!isConnected ? <DashboardConnectNotice /> : null}
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           {moduleOrder.map((moduleId) => renderModule(moduleId))}
         </div>
       </main>

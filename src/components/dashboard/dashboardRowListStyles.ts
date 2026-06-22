@@ -7,6 +7,7 @@ import {
   MV_EXPLORER_TABLE_HEADER_WRAP_CLASSNAME,
 } from "@/components/genesis/genesisMaidenVoyageTableGrid";
 import { MV_POSITION_ROW } from "@/components/genesis/maidenVoyageLayoutStyles";
+import { DASHBOARD_ROW_INTERACTIVE_CLASS } from "./dashboardInteraction";
 import { DASHBOARD_EMPTY_HINT_CLASS } from "./dashboardStyles";
 
 /** Row shell inside glass dashboard panels (yield share, etc.). */
@@ -14,7 +15,7 @@ export const DASHBOARD_PANEL_ROW_SHELL_CLASS = `py-2.5 px-2 min-h-[52px] ${MV_PO
 
 /** Index-style row shell — matches Anchor / Genesis explorer tables on dark pages. */
 export const DASHBOARD_INDEX_ROW_SHELL_CLASS =
-  "rounded-md border border-[#1E4775]/15 bg-white shadow-sm overflow-hidden transition-colors md:hover:bg-[rgb(var(--surface-selected-rgb))]";
+  `rounded-md border border-[#1E4775]/10 bg-white shadow-none overflow-hidden ${DASHBOARD_ROW_INTERACTIVE_CLASS} md:hover:bg-[rgb(var(--surface-selected-rgb))]`;
 
 /**
  * md+ column tracks — network | market | type | deposit | action (equal width).
@@ -84,10 +85,10 @@ export const DASHBOARD_POSITIONS_VALUE_TEXT_CLASS =
   "font-medium text-sm text-[#1E4775]";
 
 export const DASHBOARD_POSITION_DETAIL_CLASS =
-  "text-xs text-[#1E4775]/55 truncate";
+  "truncate text-xs leading-snug text-[#1E4775]/70";
 
 /** Token icon in dashboard market cells — must match {@link DashboardMarketColumnHeader} ghost. */
-export const DASHBOARD_MARKET_ICON_PX = 20;
+export const DASHBOARD_MARKET_ICON_PX = 24;
 
 /** Column alignment — network + market left, type + deposit center, action right. */
 export const DASHBOARD_POSITIONS_COL_NETWORK_CLASSNAME =

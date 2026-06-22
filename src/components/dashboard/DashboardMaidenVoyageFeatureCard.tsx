@@ -73,7 +73,7 @@ export function DashboardMaidenVoyageFeatureCard({
               <div>
                 <p className={MV_SECTION_LABEL}>Boost</p>
                 <div className="mt-0.5">
-                  <StatusBadge label={`${boostDisplay} boost`} variant="gold" />
+                  <StatusBadge label={`${boostDisplay} boost`} variant="gold" surface="dark" />
                 </div>
               </div>
             ) : null}

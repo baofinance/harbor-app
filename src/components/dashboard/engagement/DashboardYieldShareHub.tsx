@@ -60,7 +60,7 @@ export function DashboardYieldShareHub({
           <p className={ENGAGEMENT_SECTION_TITLE_CLASS}>Yield share</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {isConnected && hub.boostMultiplier != null && hub.boostMultiplier > 1 ? (
-              <StatusBadge label={`${hub.boostMultiplier}× boost`} variant="gold" />
+              <StatusBadge label={`${hub.boostMultiplier}× boost`} variant="gold" surface="dark" />
             ) : null}
           </div>
         </div>

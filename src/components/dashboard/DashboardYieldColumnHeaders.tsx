@@ -1,20 +1,10 @@
-import SimpleTooltip from "@/components/SimpleTooltip";
+import { DashboardMetricHeaderLabel } from "./DashboardMetricLabel";
+import { yieldMetricCopy } from "./dashboardMetricCopy";
 import {
   DASHBOARD_POSITIONS_VALUE_TEXT_CLASS,
   DASHBOARD_YIELD_COL_BOOST_CLASSNAME,
   DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME,
 } from "./dashboardRowListStyles";
-
-function HeaderTipLabel({ label, tip }: { label: string; tip: string }) {
-  return (
-    <SimpleTooltip label={tip} className="cursor-help">
-      <span className="inline-flex max-w-full items-center gap-1">
-        <span className="truncate">{label}</span>
-        <span className="shrink-0 normal-case text-[#1E4775]/35">ⓘ</span>
-      </span>
-    </SimpleTooltip>
-  );
-}
 
 /** Centers header label over a representative value width (MV ownership, yield pool %). */
 export function DashboardYieldCenteredMetricHeader({
@@ -26,10 +16,8 @@ export function DashboardYieldCenteredMetricHeader({
   tip?: string;
   ghostValue: string;
 }) {
-  const labelNode = tip ? (
-    <HeaderTipLabel label={label} tip={tip} />
-  ) : (
-    <span>{label}</span>
+  const labelNode = (
+    <DashboardMetricHeaderLabel label={label} tip={tip} />
   );
 
   return (
@@ -50,7 +38,9 @@ export function DashboardYieldCenteredMetricHeader({
 }
 
 /** Centers Boost header over typical badge footprint. */
-export function DashboardYieldBoostColumnHeader({ tip }: { tip: string }) {
+export function DashboardYieldBoostColumnHeader() {
+  const { label, tip } = yieldMetricCopy("boost");
+
   return (
     <div className={DASHBOARD_YIELD_COL_BOOST_CLASSNAME}>
       <div className="relative inline-flex max-w-full">
@@ -61,7 +51,7 @@ export function DashboardYieldBoostColumnHeader({ tip }: { tip: string }) {
           2.83×
         </span>
         <span className="absolute inset-0 flex items-center justify-center text-center">
-          <HeaderTipLabel label="Boost" tip={tip} />
+          <DashboardMetricHeaderLabel label={label} tip={tip} />
         </span>
       </div>
     </div>

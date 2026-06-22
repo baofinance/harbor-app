@@ -53,10 +53,11 @@ export function DashboardYieldShareSummaryCard({
                 <StatusBadge
                   label={`${boostMultiplier}× Boost`}
                   variant="gold"
+                  surface="dark"
                 />
               ) : null}
               {isConnected && revenueSharePct > 0 ? (
-                <StatusBadge label="Yield share eligible" variant="gold" />
+                <StatusBadge label="Yield share eligible" variant="gold" surface="dark" />
               ) : null}
             </div>
           </div>

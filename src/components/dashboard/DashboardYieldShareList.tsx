@@ -11,6 +11,7 @@ import {
   DashboardYieldBoostColumnHeader,
   DashboardYieldCenteredMetricHeader,
 } from "./DashboardYieldColumnHeaders";
+import { yieldMetricCopy } from "./dashboardMetricCopy";
 import { DashboardYieldBoostBadge } from "./DashboardYieldBoostBadge";
 import { DASHBOARD_LINK_CLASS } from "./dashboardStyles";
 import {
@@ -40,20 +41,20 @@ function YieldListHeader() {
         <div className={DASHBOARD_POSITIONS_COL_NETWORK_CLASSNAME} aria-label="Network" />
         <DashboardMarketColumnHeader showIcon={false} />
         <DashboardYieldCenteredMetricHeader
-          label="MV ownership"
-          tip="Your share of the genesis deposit cap for this market (indexer)."
+          {...yieldMetricCopy("mvOwnership")}
           ghostValue="2.71%"
         />
-        <DashboardYieldBoostColumnHeader tip="Maiden Voyage retention multiplier for this market (indexer)." />
+        <DashboardYieldBoostColumnHeader />
         <DashboardYieldCenteredMetricHeader
-          label="Yield pool %"
-          tip="Boost-weighted share used to split cumulative maiden-voyage yield."
+          {...yieldMetricCopy("yieldPoolPct")}
           ghostValue="16.8916%"
         />
-        <DashboardYieldCenteredMetricHeader label="Total paid" ghostValue="$0" />
         <DashboardYieldCenteredMetricHeader
-          label="Pending distribution"
-          tip="Amount still owed versus payouts on file; not a scheduled payment date."
+          {...yieldMetricCopy("distributed")}
+          ghostValue="$0"
+        />
+        <DashboardYieldCenteredMetricHeader
+          {...yieldMetricCopy("pending")}
           ghostValue="$3.97"
         />
       </div>

@@ -2,6 +2,14 @@ import type { FounderMetricRow } from "@/hooks/useFounderMetrics";
 import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
 import { markets } from "@/config/markets";
 import { formatUSD } from "@/utils/formatters";
+import {
+  ALLOCATION_BAR_ARCHIVED,
+  ALLOCATION_BAR_EARN,
+  ALLOCATION_BAR_SAIL,
+  ALLOCATION_LEGEND_DOT_ARCHIVED,
+  ALLOCATION_LEGEND_DOT_EARN,
+  ALLOCATION_LEGEND_DOT_SAIL,
+} from "../dashboardBrand";
 import type { DashboardProductSummaryMetric } from "../DashboardProductCard";
 
 export type PortfolioAllocationSlice = {
@@ -11,6 +19,7 @@ export type PortfolioAllocationSlice = {
   pct: number;
   accentClass: string;
   barClass: string;
+  dotClass: string;
 };
 
 export type PortfolioInsight = {
@@ -24,18 +33,22 @@ const ALLOCATION_COLORS = {
   maiden: {
     accent: "text-[#FF8A7A]",
     bar: "bg-[#FF8A7A]",
+    dot: "bg-[#FF8A7A]",
   },
   earn: {
     accent: "text-[#B8EBD5]",
-    bar: "bg-[#B8EBD5]",
+    bar: ALLOCATION_BAR_EARN,
+    dot: ALLOCATION_LEGEND_DOT_EARN,
   },
   sail: {
     accent: "text-[#C4B5FD]",
-    bar: "bg-[#C4B5FD]",
+    bar: ALLOCATION_BAR_SAIL,
+    dot: ALLOCATION_LEGEND_DOT_SAIL,
   },
   archived: {
     accent: "text-white/70",
-    bar: "bg-white/50",
+    bar: ALLOCATION_BAR_ARCHIVED,
+    dot: ALLOCATION_LEGEND_DOT_ARCHIVED,
   },
 } as const;
 
@@ -62,7 +75,23 @@ export function buildPortfolioAllocation(input: {
     pct: (e.usd / total) * 100,
     accentClass: e.accent,
     barClass: e.bar,
+    dotClass: e.dot,
   }));
+}
+
+/** Dashboard earned/pending USD — always show small positive values (e.g. $0.06). */
+export function formatDashboardEarnedUsd(usd: number): string {
+  if (usd === 0) return "$0.00";
+  if (usd > 0 && usd < 0.01) return `$${usd.toFixed(2)}`;
+  return formatUSD(usd, { compact: false });
+}
+
+function formatSummaryUsd(usd: number): string {
+  return formatUSD(usd, { compact: false });
+}
+
+function formatSummaryEarnedUsd(usd: number): string {
+  return formatDashboardEarnedUsd(usd);
 }
 
 export function buildPortfolioInsights(
@@ -142,10 +171,6 @@ export function aggregateYieldShareSummary(rows: FounderMetricRow[]) {
   };
 }
 
-function formatSummaryUsd(usd: number): string {
-  return formatUSD(usd, { compact: false });
-}
-
 function positionCountLabel(count: number): string {
   if (count === 1) return "1 position";
   return `${count} positions`;
@@ -180,14 +205,16 @@ export function buildRevenueShareSummaryMetrics(input: {
     },
     {
       label: "Earned",
-      value: input.loading ? "…" : formatSummaryUsd(input.earnedUsd),
+      value: input.loading ? "…" : formatSummaryEarnedUsd(input.earnedUsd),
+      context: "Distributed",
     },
   ];
 
   if (input.pendingDistributionUsd > 0) {
     metrics.push({
-      label: "Pending distribution",
-      value: input.loading ? "…" : formatSummaryUsd(input.pendingDistributionUsd),
+      label: "Pending",
+      value: input.loading ? "…" : formatSummaryEarnedUsd(input.pendingDistributionUsd),
+      context: "Owed to you",
     });
   }
 
@@ -219,7 +246,7 @@ export function buildEarnSummaryMetrics(input: {
     },
     {
       label: "Earned",
-      value: input.loading || earnedLoading ? "…" : formatSummaryUsd(input.earnedUsd),
+      value: input.loading || earnedLoading ? "…" : formatSummaryEarnedUsd(input.earnedUsd),
     },
   ];
 }
@@ -404,4 +431,13 @@ export function positionValueLabel(category: DashboardPositionRow["category"]): 
     default:
       return "Value";
   }
+}
+
+export function positionValueContext(
+  row: Pick<DashboardPositionRow, "category" | "statusTone">,
+): string | undefined {
+  if (row.category === "maiden_voyage" && row.statusTone === "ended") {
+    return "At voyage end";
+  }
+  return undefined;
 }

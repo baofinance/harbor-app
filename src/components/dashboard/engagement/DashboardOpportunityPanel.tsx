@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import type { Opportunity } from "./dashboardEngagementUtils";
 import {
-  ENGAGEMENT_CARD_CLASS,
+  DASHBOARD_ACTIVITY_INSET_PANEL_CLASS,
   ENGAGEMENT_MUTED_CLASS,
   ENGAGEMENT_SECTION_TITLE_CLASS,
 } from "./engagementStyles";
@@ -21,9 +21,9 @@ export function DashboardOpportunityPanel({
   if (!isConnected || opportunities.length === 0) return null;
 
   return (
-    <section className={ENGAGEMENT_CARD_CLASS} aria-label="Suggested actions">
+    <section className={DASHBOARD_ACTIVITY_INSET_PANEL_CLASS} aria-label="Suggested actions">
       <p className={ENGAGEMENT_SECTION_TITLE_CLASS}>Suggested actions</p>
-      <ul className="mt-3 space-y-2">
+      <ul className="mt-2.5 space-y-1.5">
         {opportunities.map((op) => (
           <li key={op.id}>
             <OpportunityRow opportunity={op} />
