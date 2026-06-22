@@ -21,7 +21,7 @@ export function GenesisUpsideBenchmarkCards({
           key={row.tvlUsd}
           className={`${MV_STAT_TILE} min-w-0 px-2 py-2 text-center sm:px-3 sm:py-2.5`}
         >
-          <p className="truncate text-[10px] font-medium uppercase tracking-wide text-white/45">
+          <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-white/70 sm:text-xs">
             {formatTvlBenchmarkLabel(row.tvlUsd)}
           </p>
           <p className="mt-0.5 truncate font-mono text-[10px] leading-tight tabular-nums text-white/55">
