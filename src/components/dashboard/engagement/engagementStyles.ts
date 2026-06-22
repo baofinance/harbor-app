@@ -6,6 +6,8 @@ import {
 
 export const ENGAGEMENT_CARD_CLASS = `${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} px-4 py-3.5 sm:px-5 sm:py-4`;
 
+export const DASHBOARD_INTELLIGENCE_CARD_CLASS = ENGAGEMENT_CARD_CLASS;
+
 export const ENGAGEMENT_SECTION_TITLE_CLASS = "text-sm font-semibold text-white/95";
 
 export const ENGAGEMENT_LABEL_CLASS = MV_SECTION_LABEL;

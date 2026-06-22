@@ -24,9 +24,7 @@ export function DashboardYieldShareCardList({
   if (isLoading) {
     return (
       <div className={PORTFOLIO_POSITION_STACK_CLASS}>
-        {[0, 1].map((i) => (
-          <DashboardContentRowSkeleton key={i} variant="index" />
-        ))}
+        <DashboardContentRowSkeleton variant="index" />
       </div>
     );
   }
@@ -35,10 +33,11 @@ export function DashboardYieldShareCardList({
     return (
       <DashboardEmptyState
         title="No revenue share yet"
-        message="Participate in a maiden voyage to earn founding revenue share after genesis ends."
+        message="Participate in a maiden voyage to earn founding revenue after genesis ends."
         href="/genesis"
         linkLabel="Explore maiden voyages"
         positionCount={0}
+        compact
       />
     );
   }

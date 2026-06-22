@@ -22,6 +22,7 @@ export type DashboardPositionsListProps = {
   /** @deprecated Use emptyState */
   emptyHint?: ReactNode;
   onManage?: (row: DashboardPositionRow) => void;
+  loadingSkeletonCount?: number;
 };
 
 export function DashboardPositionsList({
@@ -31,6 +32,7 @@ export function DashboardPositionsList({
   emptyState,
   emptyHint,
   onManage,
+  loadingSkeletonCount = 3,
 }: DashboardPositionsListProps) {
   if (error) {
     return <p className="text-sm text-white/70">{error}</p>;
@@ -39,7 +41,7 @@ export function DashboardPositionsList({
   if (loading) {
     return (
       <div className={PORTFOLIO_POSITION_STACK_CLASS}>
-        {[0, 1, 2].map((i) => (
+        {Array.from({ length: loadingSkeletonCount }, (_, i) => (
           <DashboardContentRowSkeleton key={i} variant="index" />
         ))}
       </div>
@@ -55,6 +57,7 @@ export function DashboardPositionsList({
           href={emptyState.href}
           linkLabel={emptyState.linkLabel}
           positionCount={0}
+          compact
         />
       );
     }

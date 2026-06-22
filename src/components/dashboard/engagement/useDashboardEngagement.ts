@@ -179,5 +179,6 @@ export function useDashboardEngagement(params: UseDashboardEngagementParams) {
     health,
     opportunities,
     welcome,
+    marksDeposits,
   };
 }

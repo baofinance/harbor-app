@@ -4,7 +4,7 @@ export type DashboardModuleId = "portfolio" | "activity";
 
 export const DASHBOARD_MODULE_LABELS: Record<DashboardModuleId, string> = {
   portfolio: "Portfolio",
-  activity: "Activity & progress",
+  activity: "Recent Activity",
 };
 
 export const DEFAULT_DASHBOARD_MODULE_ORDER: DashboardModuleId[] = [

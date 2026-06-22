@@ -52,12 +52,15 @@ export type Achievement = {
   detail?: string;
 };
 
+export type TimelineEventKind = "deposit" | "revenue" | "voyage" | "archived";
+
 export type TimelineEvent = {
   id: string;
   label: string;
   detail: string;
   timestamp: number;
   relativeLabel: string;
+  kind: TimelineEventKind;
 };
 
 export type Opportunity = {
@@ -289,40 +292,83 @@ export function buildAchievements(input: DashboardEngagementInput): Achievement[
   ];
 }
 
+function genesisMarketName(
+  genesis: string,
+  yieldRows: FounderMetricRow[],
+): string | null {
+  const row = yieldRows.find(
+    (r) => r.genesis.toLowerCase() === genesis.toLowerCase(),
+  );
+  return row ? formatMarketLabel(row.marketName) : null;
+}
+
 export function buildTimelineEvents(
   input: DashboardEngagementInput,
   marksDeposits: Array<{ label: string; usd: number; timestamp: number }>,
 ): TimelineEvent[] {
   const events: TimelineEvent[] = [];
+  const completedMarkets = new Set<string>();
 
   for (const e of input.yieldEvents) {
     const ts = new Date(e.createdAt).getTime();
+    const marketName = genesisMarketName(e.genesis, input.yieldRows);
+    const amount = formatUsdShort(parseUsd(e.amountUSD));
     events.push({
-      id: `yield-${e.createdAt}-${e.amountUSD}`,
-      label: "Revenue received",
-      detail: `$${parseUsd(e.amountUSD).toFixed(2)}`,
+      id: `yield-${e.createdAt}-${e.amountUSD}-${e.genesis}`,
+      label: "Revenue distribution received",
+      detail: marketName ? `${marketName} · ${amount}` : amount,
       timestamp: ts,
       relativeLabel: relativeTime(ts),
+      kind: "revenue",
     });
   }
 
   for (const d of marksDeposits) {
+    const ts = d.timestamp * 1000;
+    const marketLabel = formatMarketLabel(d.label);
     events.push({
       id: `deposit-${d.timestamp}-${d.label}`,
-      label: "Deposited into voyage",
-      detail: `${d.label} · $${d.usd.toFixed(2)}`,
-      timestamp: d.timestamp * 1000,
-      relativeLabel: relativeTime(d.timestamp * 1000),
+      label: `Deposited into ${marketLabel}`,
+      detail: formatUsdShort(d.usd),
+      timestamp: ts,
+      relativeLabel: relativeTime(ts),
+      kind: "deposit",
     });
   }
 
-  if (input.activeVoyage?.filledPct != null && input.activeVoyage.filledPct >= 99) {
+  for (const m of input.marksParticipation) {
+    if (!m.genesisEnded) continue;
+    completedMarkets.add(m.marketLabel.toLowerCase());
+    const depositTs = marksDeposits
+      .filter((d) => d.label.toLowerCase() === m.marketLabel.toLowerCase())
+      .map((d) => d.timestamp * 1000);
+    const ts =
+      depositTs.length > 0
+        ? Math.max(...depositTs)
+        : m.genesisStartDate != null
+          ? m.genesisStartDate * 1000
+          : 0;
+
     events.push({
-      id: "voyage-capacity",
-      label: "Voyage reached capacity",
-      detail: input.activeVoyage.voyageLabel,
-      timestamp: Date.now() - 3 * DAY_MS,
-      relativeLabel: "Recently",
+      id: `voyage-complete-${m.genesisAddress}`,
+      label: "Maiden voyage completed",
+      detail: formatMarketLabel(m.marketLabel),
+      timestamp: ts,
+      relativeLabel: ts > 0 ? relativeTime(ts) : "Completed",
+      kind: "voyage",
+    });
+  }
+
+  for (const row of input.archivedRows) {
+    const key = row.marketLabel.toLowerCase();
+    if (completedMarkets.has(key)) continue;
+    events.push({
+      id: `archived-${row.id}`,
+      label: "Position archived",
+      detail: formatMarketLabel(row.marketLabel),
+      timestamp: 0,
+      relativeLabel: "Archived",
+      kind: "archived",
     });
   }
 
