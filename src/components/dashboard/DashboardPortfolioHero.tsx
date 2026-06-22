@@ -6,9 +6,13 @@ import {
   MV_HEADLINE,
   MV_SECTION_LABEL,
 } from "@/components/genesis/maidenVoyageLayoutStyles";
-import { formatUSD } from "@/utils/formatters";
+import { formatPercent, formatUSD } from "@/utils/formatters";
 import type { PortfolioAllocationSlice } from "./portfolio/dashboardPortfolioUtils";
-import { PORTFOLIO_MUTED_CLASS } from "./portfolio/portfolioStyles";
+import {
+  DASHBOARD_HERO_ALLOCATION_TRACK,
+  DASHBOARD_HERO_METRIC_TILE,
+  PORTFOLIO_MUTED_CLASS,
+} from "./portfolio/portfolioStyles";
 
 const PRODUCT_SLICE_IDS = new Set(["earn", "sail", "archived"]);
 
@@ -16,32 +20,73 @@ export type DashboardPortfolioHeroProps = {
   totalPositionValue: number;
   activePositionCount: number;
   allocationSlices: PortfolioAllocationSlice[];
+  revenueShareYieldUsd: number;
+  earnYieldUsd: number;
+  revenueShareExposurePct: number;
   isConnected: boolean;
   isLoading?: boolean;
+  isEarnLoading?: boolean;
 };
 
-function InlineAllocation({ slices }: { slices: PortfolioAllocationSlice[] }) {
+function formatStatUsd(
+  usd: number,
+  isConnected: boolean,
+  isLoading: boolean,
+): string {
+  if (!isConnected) return "—";
+  if (isLoading) return "…";
+  return formatUSD(usd, { compact: false });
+}
+
+function HeroMetricTile({
+  label,
+  value,
+  accentBorderClass,
+  valueClass = "text-white/95",
+}: {
+  label: string;
+  value: string;
+  accentBorderClass: string;
+  valueClass?: string;
+}) {
+  return (
+    <div className={`${DASHBOARD_HERO_METRIC_TILE} border-l-[3px] ${accentBorderClass}`}>
+      <p className={MV_SECTION_LABEL}>{label}</p>
+      <p className={`mt-0.5 font-mono text-sm font-semibold tabular-nums sm:text-base ${valueClass}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function HeroAllocationBand({ slices }: { slices: PortfolioAllocationSlice[] }) {
   const productSlices = slices.filter((s) => PRODUCT_SLICE_IDS.has(s.id));
   if (productSlices.length === 0) return null;
 
   return (
-    <div className="flex min-w-0 flex-1 flex-wrap items-end gap-x-4 gap-y-2 sm:justify-end">
-      {productSlices.map((slice) => (
-        <div key={slice.id} className="min-w-[4.5rem] flex-1 sm:max-w-[7rem]">
-          <div className="mb-1 flex items-center justify-between gap-1 text-[10px]">
-            <span className={`truncate font-medium ${slice.accentClass}`}>{slice.label}</span>
-            <span className={`shrink-0 tabular-nums ${PORTFOLIO_MUTED_CLASS}`}>
-              {slice.pct.toFixed(0)}%
+    <div className="mt-4 border-t border-white/[0.08] pt-4">
+      <p className={MV_SECTION_LABEL}>Portfolio allocation</p>
+      <div className={`mt-2 flex ${DASHBOARD_HERO_ALLOCATION_TRACK}`}>
+        {productSlices.map((slice) => (
+          <div
+            key={slice.id}
+            className={`h-full transition-[width] duration-500 ${slice.barClass}`}
+            style={{ width: `${Math.max(slice.pct, 0)}%` }}
+            title={`${slice.label} ${slice.pct.toFixed(0)}%`}
+          />
+        ))}
+      </div>
+      <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1.5">
+        {productSlices.map((slice) => (
+          <div key={slice.id} className="flex items-baseline gap-1.5 text-xs">
+            <span className={`font-medium ${slice.accentClass}`}>{slice.label}</span>
+            <span className="tabular-nums text-white/80">{slice.pct.toFixed(0)}%</span>
+            <span className={`tabular-nums ${PORTFOLIO_MUTED_CLASS}`}>
+              · {formatUSD(slice.usd, { compact: false })}
             </span>
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
-            <div
-              className={`h-full rounded-full transition-[width] duration-500 ${slice.barClass}`}
-              style={{ width: `${Math.max(slice.pct, 2)}%` }}
-            />
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
@@ -50,8 +95,12 @@ export function DashboardPortfolioHero({
   totalPositionValue,
   activePositionCount,
   allocationSlices,
+  revenueShareYieldUsd,
+  earnYieldUsd,
+  revenueShareExposurePct,
   isConnected,
   isLoading = false,
+  isEarnLoading = false,
 }: DashboardPortfolioHeroProps) {
   const valueDisplay = !isConnected
     ? "—"
@@ -64,14 +113,16 @@ export function DashboardPortfolioHero({
       ? "1 active position"
       : `${activePositionCount} active positions`;
 
-  const showAllocation = isConnected && !isLoading;
+  const totalYieldEarned = revenueShareYieldUsd + earnYieldUsd;
+  const showMetrics = isConnected && !isLoading;
+  const showAllocation = showMetrics;
 
   return (
     <section
       className={`${MV_MAIN_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} px-4 py-4 sm:px-5 sm:py-5`}
       aria-label="Portfolio value"
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 shrink-0">
           <p className={MV_SECTION_LABEL}>Portfolio value</p>
           <p
@@ -83,8 +134,45 @@ export function DashboardPortfolioHero({
             <p className="mt-2 text-sm text-white/60">{positionLabel}</p>
           ) : null}
         </div>
-        {showAllocation ? <InlineAllocation slices={allocationSlices} /> : null}
+
+        {showMetrics ? (
+          <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:max-w-md lg:w-auto lg:max-w-lg">
+            <HeroMetricTile
+              label="Revenue share yield"
+              value={formatStatUsd(revenueShareYieldUsd, isConnected, isLoading)}
+              accentBorderClass="border-l-[#F5D76E]/70"
+              valueClass="text-[#F5D76E]"
+            />
+            <HeroMetricTile
+              label="Earn yield"
+              value={formatStatUsd(earnYieldUsd, isConnected, isEarnLoading)}
+              accentBorderClass="border-l-[#B8EBD5]/70"
+              valueClass="text-[#B8EBD5]"
+            />
+            <HeroMetricTile
+              label="Total earned"
+              value={formatStatUsd(
+                totalYieldEarned,
+                isConnected,
+                isLoading || isEarnLoading,
+              )}
+              accentBorderClass="border-l-white/30"
+            />
+            <HeroMetricTile
+              label="Rev share exp."
+              value={
+                isLoading
+                  ? "…"
+                  : formatPercent(revenueShareExposurePct, { decimals: 2 })
+              }
+              accentBorderClass="border-l-[#F5D76E]/70"
+              valueClass="text-[#F5D76E]"
+            />
+          </div>
+        ) : null}
       </div>
+
+      {showAllocation ? <HeroAllocationBand slices={allocationSlices} /> : null}
     </section>
   );
 }

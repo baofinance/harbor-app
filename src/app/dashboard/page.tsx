@@ -27,7 +27,10 @@ import { DashboardOpportunityPanel } from "@/components/dashboard/engagement/Das
 import { DashboardRevenueHistory } from "@/components/dashboard/engagement/DashboardRevenueHistory";
 import type { DashboardModuleId } from "@/components/dashboard/engagement/dashboardModuleLayout";
 import { useDashboardEngagement } from "@/components/dashboard/engagement/useDashboardEngagement";
-import { buildPortfolioAllocation } from "@/components/dashboard/portfolio/dashboardPortfolioUtils";
+import {
+  aggregateYieldShareSummary,
+  buildPortfolioAllocation,
+} from "@/components/dashboard/portfolio/dashboardPortfolioUtils";
 import { DashboardYieldShareCardList } from "@/components/dashboard/portfolio/DashboardYieldShareCardList";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
 import { useDashboardActiveVoyage } from "@/hooks/useDashboardActiveVoyage";
@@ -255,6 +258,11 @@ export default function DashboardPage() {
     [rows],
   );
 
+  const revenueShareSummary = useMemo(
+    () => aggregateYieldShareSummary(rows),
+    [rows],
+  );
+
   const portfolioLoading =
     isConnected &&
     (isLoading ||
@@ -324,18 +332,19 @@ export default function DashboardPage() {
               totalPositionValue={totalPortfolioValue}
               activePositionCount={allPositionRows.length}
               allocationSlices={allocationSlices}
-              isConnected={isConnected}
-              isLoading={portfolioLoading}
-            />
-            <DashboardPortfolioCategoryChips
-              chips={portfolioChips}
               revenueShareYieldUsd={totalEarned}
               earnYieldUsd={earnClaimableUsd}
+              revenueShareExposurePct={revenueShareSummary.revenueSharePct}
               isConnected={isConnected}
               isLoading={portfolioLoading}
               isEarnLoading={earnClaimableLoading}
             />
-            {yieldShareSection}
+            <DashboardPortfolioCategoryChips
+              chips={portfolioChips}
+              isConnected={isConnected}
+              isLoading={portfolioLoading}
+            />
+            <div className="mt-6 pt-1 sm:mt-8">{yieldShareSection}</div>
             <div className="space-y-2">
               <PositionProductCard
                 group={earnGroup}
