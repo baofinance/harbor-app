@@ -133,8 +133,23 @@ export const DASHBOARD_GROUP_TITLE_CLASS = "text-sm font-semibold text-white/95"
 /** Frosted product card shell — matches Maiden Voyage sidebar cards. */
 export const DASHBOARD_PRODUCT_CARD_CLASS = `${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} overflow-hidden relative`;
 
+/** Revenue share — subtle gold-tinted gradient overlay. */
+export const DASHBOARD_PRODUCT_CARD_FEATURED_CLASS = `${MV_CARD_SHELL} overflow-hidden relative bg-gradient-to-b from-[#F5D76E]/[0.07] via-white/[0.03] to-transparent`;
+
+export const DASHBOARD_PRODUCT_CARD_COLLAPSED_HOVER_CLASS =
+  "transition-[box-shadow] duration-200 hover:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.28)]";
+
+export const DASHBOARD_PRODUCT_CARD_FEATURED_COLLAPSED_HOVER_CLASS =
+  "transition-[box-shadow] duration-200 hover:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.28)] hover:ring-1 hover:ring-[#F5D76E]/15";
+
 export const DASHBOARD_PRODUCT_CARD_HEADER_CLASS =
   "flex flex-col gap-0 px-3 py-1.5 sm:px-4 sm:py-2";
+
+export const DASHBOARD_PRODUCT_CARD_HEADER_FEATURED_CLASS =
+  "px-3 py-2 sm:px-4 sm:py-2.5";
+
+export const DASHBOARD_PRODUCT_CARD_HEADER_BUTTON_CLASS =
+  "w-full rounded-lg text-left transition-colors hover:bg-white/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/30";
 
 export const DASHBOARD_PRODUCT_CARD_HEADER_ROW_CLASS =
   "flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5 sm:gap-x-2.5";
@@ -244,13 +259,20 @@ export const DASHBOARD_PRODUCT_ICON_SAIL_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE
 
 export const DASHBOARD_PRODUCT_ICON_YIELD_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} border-[#F5D76E]/35 text-[#F5D76E]`;
 
+export const DASHBOARD_PRODUCT_ICON_YIELD_FEATURED_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} h-9 w-9 border-[#F5D76E]/50 text-[#F5D76E]`;
+
 export const DASHBOARD_PRODUCT_ICON_ARCHIVED_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} border-white/15 text-white/50`;
 
 export const DASHBOARD_PRODUCT_ACCENT_MV_CLASS = "bg-[#FF8A7A]";
 export const DASHBOARD_PRODUCT_ACCENT_EARN_CLASS = "bg-[#B8EBD5]";
 export const DASHBOARD_PRODUCT_ACCENT_SAIL_CLASS = "bg-[#C4B5FD]";
 export const DASHBOARD_PRODUCT_ACCENT_YIELD_CLASS = "bg-[#F5D76E]";
+export const DASHBOARD_PRODUCT_ACCENT_YIELD_FEATURED_CLASS = "w-1 bg-[#F5D76E]";
 export const DASHBOARD_PRODUCT_ACCENT_ARCHIVED_CLASS = "bg-white/30";
+
+export const DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_GOLD_CLASS = "text-[#F5D76E]";
+export const DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_MINT_CLASS = "text-[#B8EBD5]";
+export const DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_MUTED_CLASS = "text-white/60";
 
 export const DASHBOARD_PRODUCT_LOADING_HINT_CLASS = MV_META_TEXT;
 

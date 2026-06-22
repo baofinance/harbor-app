@@ -29,7 +29,10 @@ import type { DashboardModuleId } from "@/components/dashboard/engagement/dashbo
 import { useDashboardEngagement } from "@/components/dashboard/engagement/useDashboardEngagement";
 import {
   aggregateYieldShareSummary,
+  buildEarnSummaryMetrics,
   buildPortfolioAllocation,
+  buildPositionSummaryMetrics,
+  buildRevenueShareSummaryMetrics,
 } from "@/components/dashboard/portfolio/dashboardPortfolioUtils";
 import { DashboardYieldShareCardList } from "@/components/dashboard/portfolio/DashboardYieldShareCardList";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
@@ -62,6 +65,8 @@ type PositionProductCardProps = {
   compact: boolean;
   isConnected: boolean;
   onManage: (row: DashboardPositionRow) => void;
+  earnClaimableUsd?: number;
+  earnClaimableLoading?: boolean;
 };
 
 function PositionProductCard({
@@ -70,6 +75,8 @@ function PositionProductCard({
   compact,
   isConnected,
   onManage,
+  earnClaimableUsd = 0,
+  earnClaimableLoading = false,
 }: PositionProductCardProps) {
   const defaultExpanded =
     productId === "archived"
@@ -81,15 +88,40 @@ function PositionProductCard({
     [group.rows],
   );
 
+  const summaryMetrics = useMemo(() => {
+    if (productId === "earn") {
+      return buildEarnSummaryMetrics({
+        isConnected,
+        loading: group.loading,
+        valueUsd: totalUsd,
+        positionCount: group.rows.length,
+        earnedUsd: earnClaimableUsd,
+        earnedLoading: earnClaimableLoading,
+      });
+    }
+    return buildPositionSummaryMetrics({
+      isConnected,
+      loading: group.loading,
+      valueUsd: totalUsd,
+      positionCount: group.rows.length,
+    });
+  }, [
+    productId,
+    isConnected,
+    group.loading,
+    group.rows.length,
+    totalUsd,
+    earnClaimableUsd,
+    earnClaimableLoading,
+  ]);
+
   return (
     <DashboardProductCard
       meta={DASHBOARD_PRODUCT_META[productId]}
       expanded={expanded}
       onToggle={() => setExpanded((v) => !v)}
       isConnected={isConnected}
-      sectionTotalUsd={totalUsd}
-      positionCount={group.rows.length}
-      compactHeader
+      summaryMetrics={summaryMetrics}
       loading={group.loading}
     >
       {group.error ? (
@@ -299,6 +331,18 @@ export default function DashboardPage() {
   const sailGroup = positionGroups.find((g) => g.id === "sail")!;
   const archivedGroup = positionGroups.find((g) => g.id === "archived");
 
+  const revenueShareSummaryMetrics = useMemo(
+    () =>
+      buildRevenueShareSummaryMetrics({
+        isConnected,
+        loading: isConnected && isLoading,
+        marketCount: revenueShareSummary.marketCount,
+        earnedUsd: revenueShareSummary.revenueEarned,
+        pendingDistributionUsd: revenueShareSummary.pendingDistributionUsd,
+      }),
+    [isConnected, isLoading, revenueShareSummary],
+  );
+
   const yieldShareSection = (
     <div ref={yieldSectionRef} className="space-y-2">
       <DashboardProductCard
@@ -306,9 +350,7 @@ export default function DashboardPage() {
         expanded={yieldExpanded}
         onToggle={toggleYieldShare}
         isConnected={isConnected}
-        sectionTotalUsd={rows.reduce((s, r) => s + r.outstandingUSD, 0)}
-        positionCount={rows.length}
-        compactHeader
+        summaryMetrics={revenueShareSummaryMetrics}
         loading={isConnected && isLoading}
       >
         {error ? (
@@ -352,6 +394,8 @@ export default function DashboardPage() {
                 compact={dashboardViewBasic}
                 isConnected={isConnected}
                 onManage={openPositionManage}
+                earnClaimableUsd={earnClaimableUsd}
+                earnClaimableLoading={earnClaimableLoading}
               />
               <PositionProductCard
                 group={sailGroup}

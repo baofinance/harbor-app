@@ -11,12 +11,12 @@ import {
   DASHBOARD_PRODUCT_ICON_EARN_CLASS,
   DASHBOARD_PRODUCT_ICON_MV_CLASS,
   DASHBOARD_PRODUCT_ICON_SAIL_CLASS,
-  DASHBOARD_PRODUCT_ICON_YIELD_CLASS,
+  DASHBOARD_PRODUCT_ICON_YIELD_FEATURED_CLASS,
   DASHBOARD_PRODUCT_ACCENT_ARCHIVED_CLASS,
   DASHBOARD_PRODUCT_ACCENT_EARN_CLASS,
   DASHBOARD_PRODUCT_ACCENT_MV_CLASS,
   DASHBOARD_PRODUCT_ACCENT_SAIL_CLASS,
-  DASHBOARD_PRODUCT_ACCENT_YIELD_CLASS,
+  DASHBOARD_PRODUCT_ACCENT_YIELD_FEATURED_CLASS,
 } from "./dashboardStyles";
 
 export type DashboardProductId =
@@ -35,6 +35,7 @@ export type DashboardProductMeta = {
   iconBadgeClass: string;
   accentBarClass: string;
   tone?: "default" | "muted";
+  featured?: boolean;
 };
 
 export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProductMeta> =
@@ -51,8 +52,6 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
     earn: {
       id: "earn",
       title: "Earn",
-      viewAllHref: "/anchor",
-      viewAllLabel: "Go",
       icon: CurrencyDollarIcon,
       iconBadgeClass: DASHBOARD_PRODUCT_ICON_EARN_CLASS,
       accentBarClass: DASHBOARD_PRODUCT_ACCENT_EARN_CLASS,
@@ -60,8 +59,6 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
     sail: {
       id: "sail",
       title: "Sail",
-      viewAllHref: "/sail",
-      viewAllLabel: "Go",
       icon: WalletIcon,
       iconBadgeClass: DASHBOARD_PRODUCT_ICON_SAIL_CLASS,
       accentBarClass: DASHBOARD_PRODUCT_ACCENT_SAIL_CLASS,
@@ -69,8 +66,6 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
     archived: {
       id: "archived",
       title: "Archived",
-      viewAllHref: "/genesis",
-      viewAllLabel: "Go",
       icon: ArchiveBoxIcon,
       iconBadgeClass: DASHBOARD_PRODUCT_ICON_ARCHIVED_CLASS,
       accentBarClass: DASHBOARD_PRODUCT_ACCENT_ARCHIVED_CLASS,
@@ -79,8 +74,9 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
     yield: {
       id: "yield",
       title: "Revenue share",
+      featured: true,
       icon: ChartBarIcon,
-      iconBadgeClass: DASHBOARD_PRODUCT_ICON_YIELD_CLASS,
-      accentBarClass: DASHBOARD_PRODUCT_ACCENT_YIELD_CLASS,
+      iconBadgeClass: DASHBOARD_PRODUCT_ICON_YIELD_FEATURED_CLASS,
+      accentBarClass: DASHBOARD_PRODUCT_ACCENT_YIELD_FEATURED_CLASS,
     },
   };

@@ -1,22 +1,30 @@
 "use client";
 
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import {
   DASHBOARD_PRODUCT_ACCENT_BAR_CLASS,
-  DASHBOARD_PRODUCT_AMOUNT_CLASS,
   DASHBOARD_PRODUCT_CARD_CLASS,
+  DASHBOARD_PRODUCT_CARD_COLLAPSED_HOVER_CLASS,
+  DASHBOARD_PRODUCT_CARD_FEATURED_CLASS,
+  DASHBOARD_PRODUCT_CARD_FEATURED_COLLAPSED_HOVER_CLASS,
+  DASHBOARD_PRODUCT_CARD_HEADER_BUTTON_CLASS,
   DASHBOARD_PRODUCT_CARD_HEADER_CLASS,
   DASHBOARD_PRODUCT_CARD_HEADER_EXPANDED_CLASS,
+  DASHBOARD_PRODUCT_CARD_HEADER_FEATURED_CLASS,
   DASHBOARD_PRODUCT_CARD_HEADER_MUTED_CLASS,
-  DASHBOARD_PRODUCT_CARD_HEADER_ROW_CLASS,
-  DASHBOARD_PRODUCT_COUNT_CLASS,
-  DASHBOARD_PRODUCT_LOADING_HINT_CLASS,
+  DASHBOARD_PRODUCT_HEADER_METRIC_LABEL_CLASS,
+  DASHBOARD_PRODUCT_HEADER_METRICS_CLASS,
+  DASHBOARD_PRODUCT_HEADER_METRIC_VALUE_CLASS,
+  DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_GOLD_CLASS,
+  DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_MINT_CLASS,
+  DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_MUTED_CLASS,
   DASHBOARD_PRODUCT_TITLE_CLASS,
-  DASHBOARD_SECTION_EXPAND_BTN_CLASS,
-  DASHBOARD_VIEW_ALL_BTN_CLASS,
+  DASHBOARD_SECTION_HEADER_ACTIONS_CELL_CLASS,
+  DASHBOARD_SECTION_HEADER_INNER_CLASS,
+  DASHBOARD_SECTION_HEADER_METRICS_CELL_CLASS,
+  DASHBOARD_SECTION_HEADER_TITLE_CELL_CLASS,
 } from "./dashboardStyles";
 import {
   PORTFOLIO_ACCORDION_BODY_CLASS,
@@ -24,35 +32,59 @@ import {
 } from "./portfolio/portfolioStyles";
 import type { DashboardProductMeta } from "./dashboardProductMeta";
 
+export type DashboardProductSummaryMetric = {
+  label: string;
+  value: string;
+  tone?: "default" | "gold" | "mint" | "muted";
+};
+
 export type DashboardProductCardProps = {
   meta: DashboardProductMeta;
   expanded: boolean;
   onToggle: () => void;
   isConnected: boolean;
-  sectionTotalUsd?: number | null;
-  positionCount?: number;
-  /** Hide USD in header — chips show totals; show position count only */
-  compactHeader?: boolean;
-  collapsedPreview?: ReactNode;
-  headerMetrics?: ReactNode;
+  summaryMetrics?: DashboardProductSummaryMetric[];
+  expandedMetrics?: ReactNode;
   loading?: boolean;
   expandAriaLabel?: string;
   collapseAriaLabel?: string;
   children?: ReactNode;
 };
 
-function formatSectionTotal(usd: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(usd);
+function summaryMetricValueClass(tone: DashboardProductSummaryMetric["tone"]): string {
+  switch (tone) {
+    case "gold":
+      return DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_GOLD_CLASS;
+    case "mint":
+      return DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_MINT_CLASS;
+    case "muted":
+      return DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_MUTED_CLASS;
+    default:
+      return "text-white/90";
+  }
 }
 
-function positionCountLabel(count: number): string {
-  if (count === 1) return "1 position";
-  return `${count} positions`;
+function ProductCardSummaryStrip({
+  metrics,
+}: {
+  metrics: DashboardProductSummaryMetric[];
+}) {
+  if (metrics.length === 0) return null;
+
+  return (
+    <div className={DASHBOARD_PRODUCT_HEADER_METRICS_CLASS}>
+      {metrics.map((metric) => (
+        <div key={metric.label} className="min-w-0 text-center sm:text-left">
+          <p className={DASHBOARD_PRODUCT_HEADER_METRIC_LABEL_CLASS}>{metric.label}</p>
+          <p
+            className={`${DASHBOARD_PRODUCT_HEADER_METRIC_VALUE_CLASS} ${summaryMetricValueClass(metric.tone)}`}
+          >
+            {metric.value}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function DashboardProductCard({
@@ -60,11 +92,8 @@ export function DashboardProductCard({
   expanded,
   onToggle,
   isConnected,
-  sectionTotalUsd = null,
-  positionCount = 0,
-  compactHeader = false,
-  collapsedPreview,
-  headerMetrics,
+  summaryMetrics = [],
+  expandedMetrics,
   loading = false,
   expandAriaLabel,
   collapseAriaLabel,
@@ -72,26 +101,36 @@ export function DashboardProductCard({
 }: DashboardProductCardProps) {
   const Icon = meta.icon;
   const hasChildren = children != null;
-  const showHeaderMetrics = isConnected && headerMetrics != null && expanded;
-  const showCollapsedPreview = !expanded && collapsedPreview != null;
+  const featured = meta.featured === true;
   const headerMuted = meta.tone === "muted";
-
-  const amountDisplay =
-    isConnected && sectionTotalUsd != null && Number.isFinite(sectionTotalUsd)
-      ? formatSectionTotal(sectionTotalUsd)
-      : isConnected && loading
-        ? "…"
-        : "—";
-
-  const countDisplay = isConnected ? positionCountLabel(positionCount) : "—";
+  const showSummaryMetrics = isConnected && summaryMetrics.length > 0;
+  const showExpandedMetrics = isConnected && expandedMetrics != null && expanded;
   const showAccentBar =
     meta.id === "earn" ||
     meta.id === "sail" ||
     meta.id === "archived" ||
     meta.id === "yield";
 
+  const cardShellClass = featured
+    ? DASHBOARD_PRODUCT_CARD_FEATURED_CLASS
+    : DASHBOARD_PRODUCT_CARD_CLASS;
+
+  const collapsedHoverClass =
+    hasChildren && !expanded
+      ? featured
+        ? DASHBOARD_PRODUCT_CARD_FEATURED_COLLAPSED_HOVER_CLASS
+        : DASHBOARD_PRODUCT_CARD_COLLAPSED_HOVER_CLASS
+      : "";
+
+  const toggleLabel = expanded
+    ? collapseAriaLabel ?? `Collapse ${meta.title}`
+    : expandAriaLabel ?? `Expand ${meta.title}`;
+
   return (
-    <section className={DASHBOARD_PRODUCT_CARD_CLASS} aria-label={meta.title}>
+    <section
+      className={`${cardShellClass} ${collapsedHoverClass}`}
+      aria-label={meta.title}
+    >
       {showAccentBar ? (
         <div
           className={`${DASHBOARD_PRODUCT_ACCENT_BAR_CLASS} ${meta.accentBarClass}`}
@@ -100,69 +139,63 @@ export function DashboardProductCard({
       ) : null}
       <div
         className={`${DASHBOARD_PRODUCT_CARD_HEADER_CLASS} ${
-          headerMuted ? DASHBOARD_PRODUCT_CARD_HEADER_MUTED_CLASS : ""
-        } ${expanded && hasChildren ? DASHBOARD_PRODUCT_CARD_HEADER_EXPANDED_CLASS : ""}`}
+          featured ? DASHBOARD_PRODUCT_CARD_HEADER_FEATURED_CLASS : ""
+        } ${headerMuted ? DASHBOARD_PRODUCT_CARD_HEADER_MUTED_CLASS : ""} ${
+          expanded && hasChildren ? DASHBOARD_PRODUCT_CARD_HEADER_EXPANDED_CLASS : ""
+        }`}
       >
-        <div className={DASHBOARD_PRODUCT_CARD_HEADER_ROW_CLASS}>
-          <span className={meta.iconBadgeClass} aria-hidden>
-            <Icon className="h-4 w-4" />
-          </span>
-          <button
-            type="button"
-            className="flex min-w-0 flex-1 items-center text-left hover:opacity-90"
-            aria-expanded={expanded}
-            onClick={onToggle}
-          >
-            <div className="min-w-0">
+        <button
+          type="button"
+          className={DASHBOARD_PRODUCT_CARD_HEADER_BUTTON_CLASS}
+          aria-expanded={hasChildren ? expanded : undefined}
+          aria-label={hasChildren ? toggleLabel : undefined}
+          disabled={!hasChildren}
+          onClick={hasChildren ? onToggle : undefined}
+        >
+          <div className={DASHBOARD_SECTION_HEADER_INNER_CLASS}>
+            <div
+              className={`${DASHBOARD_SECTION_HEADER_TITLE_CELL_CLASS} flex min-w-0 items-center gap-2.5`}
+            >
+              <span className={meta.iconBadgeClass} aria-hidden>
+                <Icon className={featured ? "h-5 w-5" : "h-4 w-4"} />
+              </span>
               <h2 className={DASHBOARD_PRODUCT_TITLE_CLASS}>{meta.title}</h2>
-              {compactHeader ? (
-                <p className={`mt-0.5 ${DASHBOARD_PRODUCT_COUNT_CLASS}`}>{countDisplay}</p>
-              ) : (
-                <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0">
-                  <span className={DASHBOARD_PRODUCT_AMOUNT_CLASS}>{amountDisplay}</span>
-                  <span className={DASHBOARD_PRODUCT_COUNT_CLASS}>{countDisplay}</span>
-                  {isConnected && loading && sectionTotalUsd == null ? (
-                    <span className={DASHBOARD_PRODUCT_LOADING_HINT_CLASS}>Loading…</span>
-                  ) : null}
-                </div>
-              )}
             </div>
-          </button>
-          <div className="flex shrink-0 items-center gap-2">
-            {meta.viewAllHref && meta.viewAllLabel ? (
-              <Link
-                href={meta.viewAllHref}
-                className={DASHBOARD_VIEW_ALL_BTN_CLASS}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {meta.viewAllLabel}
-                <ChevronRightIcon className="h-3.5 w-3.5" aria-hidden />
-              </Link>
+
+            {showSummaryMetrics ? (
+              <div className={DASHBOARD_SECTION_HEADER_METRICS_CELL_CLASS}>
+                <ProductCardSummaryStrip metrics={summaryMetrics} />
+              </div>
+            ) : !isConnected ? (
+              <div className={DASHBOARD_SECTION_HEADER_METRICS_CELL_CLASS}>
+                <ProductCardSummaryStrip
+                  metrics={[{ label: "Summary", value: "—", tone: "muted" }]}
+                />
+              </div>
+            ) : loading ? (
+              <div className={DASHBOARD_SECTION_HEADER_METRICS_CELL_CLASS}>
+                <ProductCardSummaryStrip
+                  metrics={[{ label: "Loading", value: "…", tone: "muted" }]}
+                />
+              </div>
             ) : null}
+
             {hasChildren ? (
-              <button
-                type="button"
-                className={DASHBOARD_SECTION_EXPAND_BTN_CLASS}
-                aria-expanded={expanded}
-                aria-label={
-                  expanded
-                    ? collapseAriaLabel ?? `Collapse ${meta.title}`
-                    : expandAriaLabel ?? `Expand ${meta.title}`
-                }
-                onClick={onToggle}
-              >
+              <div className={DASHBOARD_SECTION_HEADER_ACTIONS_CELL_CLASS}>
                 <ChevronDownIcon
-                  className={`${PORTFOLIO_CHEVRON_CLASS} ${expanded ? "rotate-180" : ""}`}
+                  className={`${PORTFOLIO_CHEVRON_CLASS} pointer-events-none ${
+                    expanded ? "rotate-180" : ""
+                  }`}
                   aria-hidden
                 />
-              </button>
+              </div>
             ) : null}
           </div>
-        </div>
-        {showCollapsedPreview ? collapsedPreview : null}
-        {showHeaderMetrics ? (
-          <div className="mt-2 flex w-full min-w-0 justify-end border-t border-white/[0.06] pt-2">
-            {headerMetrics}
+        </button>
+
+        {showExpandedMetrics ? (
+          <div className="mt-2 flex w-full min-w-0 justify-end border-t border-white/[0.06] px-3 pt-2 sm:px-4">
+            {expandedMetrics}
           </div>
         ) : null}
       </div>
@@ -172,7 +205,7 @@ export function DashboardProductCard({
             expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
           }`}
         >
-            <div className="overflow-hidden">
+          <div className="overflow-hidden">
             <div className="px-3 pb-2 pt-0 sm:px-4 sm:pb-2.5">{children}</div>
           </div>
         </div>

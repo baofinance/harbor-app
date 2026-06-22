@@ -1,5 +1,7 @@
 import type { FounderMetricRow } from "@/hooks/useFounderMetrics";
 import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
+import { formatUSD } from "@/utils/formatters";
+import type { DashboardProductSummaryMetric } from "../DashboardProductCard";
 
 export type PortfolioAllocationSlice = {
   id: string;
@@ -124,6 +126,7 @@ export function buildPortfolioInsights(
 export function aggregateYieldShareSummary(rows: FounderMetricRow[]) {
   const revenueEarned = rows.reduce((s, r) => s + r.totalEarnedUSD, 0);
   const revenueSharePct = rows.reduce((s, r) => s + r.yieldSharePct, 0);
+  const pendingDistributionUsd = rows.reduce((s, r) => s + r.outstandingUSD, 0);
   const boostMultiplier = rows.reduce((max, r) => {
     const m = r.boostMultiplier ?? 0;
     return m > max ? m : max;
@@ -132,9 +135,117 @@ export function aggregateYieldShareSummary(rows: FounderMetricRow[]) {
   return {
     revenueEarned,
     revenueSharePct,
+    pendingDistributionUsd,
     boostMultiplier: boostMultiplier > 0 ? boostMultiplier : null,
     marketCount: rows.length,
   };
+}
+
+function formatSummaryUsd(usd: number): string {
+  return formatUSD(usd, { compact: false });
+}
+
+function positionCountLabel(count: number): string {
+  if (count === 1) return "1 position";
+  return `${count} positions`;
+}
+
+function marketCountLabel(count: number): string {
+  if (count === 1) return "1 market";
+  return `${count} markets`;
+}
+
+function disconnectedMetrics(
+  labels: string[],
+): DashboardProductSummaryMetric[] {
+  return labels.map((label) => ({ label, value: "—" }));
+}
+
+export function buildRevenueShareSummaryMetrics(input: {
+  isConnected: boolean;
+  loading: boolean;
+  marketCount: number;
+  earnedUsd: number;
+  pendingDistributionUsd: number;
+}): DashboardProductSummaryMetric[] {
+  if (!input.isConnected) {
+    return disconnectedMetrics(["Markets", "Earned"]);
+  }
+
+  const metrics: DashboardProductSummaryMetric[] = [
+    {
+      label: "Markets",
+      value: input.loading ? "…" : marketCountLabel(input.marketCount),
+    },
+    {
+      label: "Earned",
+      value: input.loading ? "…" : formatSummaryUsd(input.earnedUsd),
+      tone: "gold",
+    },
+  ];
+
+  if (input.pendingDistributionUsd > 0) {
+    metrics.push({
+      label: "Pending distribution",
+      value: input.loading ? "…" : formatSummaryUsd(input.pendingDistributionUsd),
+      tone: "gold",
+    });
+  }
+
+  return metrics;
+}
+
+export function buildEarnSummaryMetrics(input: {
+  isConnected: boolean;
+  loading: boolean;
+  valueUsd: number;
+  positionCount: number;
+  earnedUsd: number;
+  earnedLoading?: boolean;
+}): DashboardProductSummaryMetric[] {
+  if (!input.isConnected) {
+    return disconnectedMetrics(["Value", "Positions", "Earned"]);
+  }
+
+  const earnedLoading = input.earnedLoading ?? false;
+
+  return [
+    {
+      label: "Value",
+      value: input.loading ? "…" : formatSummaryUsd(input.valueUsd),
+    },
+    {
+      label: "Positions",
+      value: input.loading ? "…" : positionCountLabel(input.positionCount),
+    },
+    {
+      label: "Earned",
+      value: input.loading || earnedLoading ? "…" : formatSummaryUsd(input.earnedUsd),
+      tone: "mint",
+    },
+  ];
+}
+
+export function buildPositionSummaryMetrics(input: {
+  isConnected: boolean;
+  loading: boolean;
+  valueUsd: number;
+  positionCount: number;
+}): DashboardProductSummaryMetric[] {
+  if (!input.isConnected) {
+    return disconnectedMetrics(["Value", "Positions"]);
+  }
+
+  return [
+    {
+      label: "Value",
+      value: input.loading ? "…" : formatSummaryUsd(input.valueUsd),
+    },
+    {
+      label: "Positions",
+      value: input.loading ? "…" : positionCountLabel(input.positionCount),
+    },
+  ];
 }
 
 export function parsePositionDetail(detail: string): {
