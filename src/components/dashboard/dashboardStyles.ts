@@ -51,7 +51,7 @@ export const DASHBOARD_SECTION_HEADER_FLAT_EXPANDED_CLASS = "";
 export const DASHBOARD_SECTION_HEADER_TITLE_CELL_CLASS = "col-start-1 row-start-1";
 
 export const DASHBOARD_SECTION_HEADER_METRICS_CELL_CLASS =
-  "col-span-2 row-start-2 flex min-w-0 justify-center sm:col-start-2 sm:col-span-1 sm:row-start-1";
+  "col-span-2 row-start-2 flex min-w-0 justify-end sm:col-start-2 sm:col-span-1 sm:row-start-1 sm:justify-end";
 
 export const DASHBOARD_SECTION_HEADER_ACTIONS_CELL_CLASS =
   "col-start-2 row-start-1 flex items-center justify-end gap-1 sm:col-start-3";
@@ -238,9 +238,9 @@ export const DASHBOARD_PAGE_STATS_GROUP_CHIPS_CLASS =
 export const DASHBOARD_PAGE_STATS_DIVIDER_CLASS =
   "h-px w-full shrink-0 bg-white/12 md:mx-0.5 md:h-[4rem] md:w-px md:self-end lg:h-[4.25rem] xl:h-[4.5rem] 2xl:h-[5rem]";
 
-/** Flat header metrics inside product cards — no nested frosted chip shells. */
+/** Boxed stat tiles in product card headers — right-aligned strip. */
 export const DASHBOARD_PRODUCT_HEADER_METRICS_CLASS =
-  "flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2 sm:gap-x-6";
+  "flex min-w-0 flex-nowrap items-stretch justify-end gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
 export const DASHBOARD_PRODUCT_HEADER_METRIC_LABEL_CLASS = MV_SECTION_LABEL;
 

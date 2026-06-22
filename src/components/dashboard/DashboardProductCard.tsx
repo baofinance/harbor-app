@@ -14,9 +14,7 @@ import {
   DASHBOARD_PRODUCT_CARD_HEADER_EXPANDED_CLASS,
   DASHBOARD_PRODUCT_CARD_HEADER_FEATURED_CLASS,
   DASHBOARD_PRODUCT_CARD_HEADER_MUTED_CLASS,
-  DASHBOARD_PRODUCT_HEADER_METRIC_LABEL_CLASS,
   DASHBOARD_PRODUCT_HEADER_METRICS_CLASS,
-  DASHBOARD_PRODUCT_HEADER_METRIC_VALUE_CLASS,
   DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_GOLD_CLASS,
   DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_MINT_CLASS,
   DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_MUTED_CLASS,
@@ -29,7 +27,9 @@ import {
 import {
   PORTFOLIO_ACCORDION_BODY_CLASS,
   PORTFOLIO_CHEVRON_CLASS,
+  DASHBOARD_HERO_METRIC_TILE,
 } from "./portfolio/portfolioStyles";
+import { MV_SECTION_LABEL } from "@/components/genesis/maidenVoyageLayoutStyles";
 import type { DashboardProductMeta } from "./dashboardProductMeta";
 
 export type DashboardProductSummaryMetric = {
@@ -64,6 +64,19 @@ function summaryMetricValueClass(tone: DashboardProductSummaryMetric["tone"]): s
   }
 }
 
+function summaryMetricAccentClass(tone: DashboardProductSummaryMetric["tone"]): string {
+  switch (tone) {
+    case "gold":
+      return "border-l-[#F5D76E]/70";
+    case "mint":
+      return "border-l-[#B8EBD5]/70";
+    case "muted":
+      return "border-l-white/20";
+    default:
+      return "border-l-white/30";
+  }
+}
+
 function ProductCardSummaryStrip({
   metrics,
 }: {
@@ -74,10 +87,13 @@ function ProductCardSummaryStrip({
   return (
     <div className={DASHBOARD_PRODUCT_HEADER_METRICS_CLASS}>
       {metrics.map((metric) => (
-        <div key={metric.label} className="min-w-0 text-center sm:text-left">
-          <p className={DASHBOARD_PRODUCT_HEADER_METRIC_LABEL_CLASS}>{metric.label}</p>
+        <div
+          key={metric.label}
+          className={`${DASHBOARD_HERO_METRIC_TILE} shrink-0 border-l-[3px] ${summaryMetricAccentClass(metric.tone)}`}
+        >
+          <p className={MV_SECTION_LABEL}>{metric.label}</p>
           <p
-            className={`${DASHBOARD_PRODUCT_HEADER_METRIC_VALUE_CLASS} ${summaryMetricValueClass(metric.tone)}`}
+            className={`mt-0.5 font-mono text-sm font-semibold tabular-nums sm:text-base ${summaryMetricValueClass(metric.tone)}`}
           >
             {metric.value}
           </p>
