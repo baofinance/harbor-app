@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { IndexPageTitleSection } from "@/components/shared/IndexPageTitleSection";
+import { TideDashboard } from "@/components/tide";
 
 export default function TidePage() {
   return (
@@ -10,14 +11,15 @@ export default function TidePage() {
           subtitle={<>Coming Soon</>}
         />
 
-        <section className="mt-4 rounded-xl border border-white/15 bg-[#2c2c2c] p-2 shadow-[0_12px_40px_rgba(0,0,0,0.45)] ring-1 ring-black/40 sm:p-3">
+        <TideDashboard />
+
+        <section className="mt-8 rounded-xl border border-white/15 bg-[#2c2c2c] p-2 shadow-[0_12px_40px_rgba(0,0,0,0.45)] ring-1 ring-black/40 sm:p-3">
           <Image
             src="/marketing/tide-content-flow.png"
             alt="TIDE protocol revenue and burn flow"
             width={1024}
             height={768}
             className="h-auto w-full rounded-lg border border-white/10 shadow-inner"
-            priority
           />
         </section>
       </main>
