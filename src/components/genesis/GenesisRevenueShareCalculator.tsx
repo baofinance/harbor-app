@@ -55,11 +55,11 @@ export function GenesisRevenueShareCalculator({
 
   return (
     <section
-      className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} w-full rounded-3xl px-4 py-4 sm:px-5 sm:py-5 ${className}`.trim()}
+      className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} w-full px-4 py-3 sm:px-5 sm:py-4 ${className}`.trim()}
       aria-label="Explore the upside"
     >
       <div className="min-w-0 text-center sm:text-left">
-        <h2 className="text-sm font-semibold text-white/90 sm:text-base">
+        <h2 className="text-sm font-semibold text-white/90">
           Explore the Upside
         </h2>
         {yieldRevSharePct != null && yieldRevSharePct > 0 ? (
@@ -70,7 +70,7 @@ export function GenesisRevenueShareCalculator({
         ) : null}
       </div>
 
-      <div className="mt-4 space-y-4">
+      <div className="mt-3 space-y-2.5">
         <GenesisUpsideHeroMetric
           revenueSharePct={revenueSharePct}
           depositUsd={depositUsd}

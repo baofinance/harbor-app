@@ -15,8 +15,8 @@ import {
 
 export function GenesisUpsideBenchmarkExplainer() {
   return (
-    <details className={`${MV_DETAILS_PANEL} group rounded-3xl`}>
-      <summary className="cursor-pointer list-none px-3 py-2.5 sm:px-4 [&::-webkit-details-marker]:hidden">
+    <details className={`${MV_DETAILS_PANEL} group rounded-xl`}>
+      <summary className="cursor-pointer list-none px-3 py-2 sm:px-4 [&::-webkit-details-marker]:hidden">
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm font-semibold text-white/90">
             How are these estimates calculated?
@@ -31,7 +31,7 @@ export function GenesisUpsideBenchmarkExplainer() {
         </div>
       </summary>
 
-      <div className="space-y-3 border-t border-white/10 px-3 py-3 sm:px-4 sm:py-4">
+      <div className="space-y-2 border-t border-white/10 px-3 py-2.5 sm:px-4">
         <p className={MV_BODY_TEXT}>
           Harbor markets have historically generated approximately{" "}
           {UPSIDE_HISTORICAL_REVENUE_RATE_LOW_PCT}–
