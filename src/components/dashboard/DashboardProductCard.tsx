@@ -26,12 +26,14 @@ import {
   PORTFOLIO_CHEVRON_CLASS,
 } from "./portfolio/portfolioStyles";
 import { DashboardStatChip } from "./DashboardStatChip";
-import type { DashboardProductMeta } from "./dashboardProductMeta";
+import {
+  dashboardProductStatChipBorderClass,
+  type DashboardProductMeta,
+} from "./dashboardProductMeta";
 
 export type DashboardProductSummaryMetric = {
   label: string;
   value: string;
-  tone?: "default" | "gold" | "mint" | "muted";
 };
 
 export type DashboardProductCardProps = {
@@ -47,25 +49,16 @@ export type DashboardProductCardProps = {
   children?: ReactNode;
 };
 
-function summaryMetricAccentClass(tone: DashboardProductSummaryMetric["tone"]): string {
-  switch (tone) {
-    case "gold":
-      return "border-l-[#F5D76E]/70";
-    case "mint":
-      return "border-l-[#B8EBD5]/70";
-    case "muted":
-      return "border-l-white/20";
-    default:
-      return "border-l-white/30";
-  }
-}
-
 function ProductCardSummaryStrip({
   metrics,
+  productId,
 }: {
   metrics: DashboardProductSummaryMetric[];
+  productId: DashboardProductMeta["id"];
 }) {
   if (metrics.length === 0) return null;
+
+  const borderClass = dashboardProductStatChipBorderClass(productId);
 
   return (
     <div className={DASHBOARD_PRODUCT_HEADER_METRICS_CLASS}>
@@ -74,7 +67,7 @@ function ProductCardSummaryStrip({
           key={metric.label}
           label={metric.label}
           value={metric.value}
-          borderClass={summaryMetricAccentClass(metric.tone)}
+          borderClass={borderClass}
         />
       ))}
     </div>
@@ -158,18 +151,23 @@ export function DashboardProductCard({
 
             {showSummaryMetrics ? (
               <div className={DASHBOARD_SECTION_HEADER_METRICS_CELL_CLASS}>
-                <ProductCardSummaryStrip metrics={summaryMetrics} />
+                <ProductCardSummaryStrip
+                  metrics={summaryMetrics}
+                  productId={meta.id}
+                />
               </div>
             ) : !isConnected ? (
               <div className={DASHBOARD_SECTION_HEADER_METRICS_CELL_CLASS}>
                 <ProductCardSummaryStrip
-                  metrics={[{ label: "Summary", value: "—", tone: "muted" }]}
+                  metrics={[{ label: "Summary", value: "—" }]}
+                  productId={meta.id}
                 />
               </div>
             ) : loading ? (
               <div className={DASHBOARD_SECTION_HEADER_METRICS_CELL_CLASS}>
                 <ProductCardSummaryStrip
-                  metrics={[{ label: "Loading", value: "…", tone: "muted" }]}
+                  metrics={[{ label: "Loading", value: "…" }]}
+                  productId={meta.id}
                 />
               </div>
             ) : null}

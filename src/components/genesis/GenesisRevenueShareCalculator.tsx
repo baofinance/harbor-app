@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { MAIDEN_VOYAGE_UPSIDE_COPY } from "@/config/maidenVoyageEducation";
 import {
   estimateMaidenVoyageYieldSharePct,
 } from "@/utils/maidenVoyageYieldShareEstimate";
 import { computeUpsideBenchmarks } from "@/utils/maidenVoyageUpsideBenchmarks";
+import { GenesisUpsideBackdrop } from "./GenesisUpsideBackdrop";
 import { GenesisUpsideBenchmarkCards } from "./GenesisUpsideBenchmarkCards";
 import { GenesisUpsideBenchmarkExplainer } from "./GenesisUpsideBenchmarkExplainer";
 import { GenesisUpsideHeroMetric } from "./GenesisUpsideHeroMetric";
@@ -12,6 +14,7 @@ import {
   MV_CAPTION_TEXT,
   MV_CARD_INNER_GRADIENT,
   MV_CARD_SHELL,
+  MV_SECTION_LABEL,
 } from "./maidenVoyageLayoutStyles";
 
 export type GenesisRevenueShareCalculatorProps = {
@@ -55,31 +58,43 @@ export function GenesisRevenueShareCalculator({
 
   return (
     <section
-      className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} w-full px-4 py-3 sm:px-5 sm:py-4 ${className}`.trim()}
+      className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} relative w-full overflow-hidden px-4 py-3 sm:px-5 sm:py-4 ${className}`.trim()}
       aria-label="Explore the upside"
     >
-      <div className="min-w-0 text-center sm:text-left">
-        <h2 className="text-sm font-semibold text-white/90">
-          Explore the Upside
-        </h2>
-        {yieldRevSharePct != null && yieldRevSharePct > 0 ? (
-          <p className={`mt-0.5 ${MV_CAPTION_TEXT}`}>
-            Every Maiden Voyage allocates {yieldRevSharePct}% of future market
-            revenue to founding participants.
-          </p>
-        ) : null}
-      </div>
+      <GenesisUpsideBackdrop />
 
-      <div className="mt-3 space-y-2.5">
-        <GenesisUpsideHeroMetric
-          revenueSharePct={revenueSharePct}
-          depositUsd={depositUsd}
-          onDepositChange={(v) => setDepositUsd(clampDeposit(v, capUsd))}
-        />
+      <div className="relative z-10">
+        <div className="min-w-0 border-l-2 border-[#FF8A7A]/50 pl-2.5 text-center sm:text-left">
+          <h2 className="text-sm font-semibold text-white/90">
+            {MAIDEN_VOYAGE_UPSIDE_COPY.sectionTitle}
+          </h2>
+          {yieldRevSharePct != null && yieldRevSharePct > 0 ? (
+            <p className={`mt-0.5 ${MV_CAPTION_TEXT}`}>
+              {MAIDEN_VOYAGE_UPSIDE_COPY.sectionCaption}
+            </p>
+          ) : null}
+        </div>
 
-        <GenesisUpsideBenchmarkCards benchmarks={benchmarks} />
+        <div className="mt-3 space-y-2.5">
+          <GenesisUpsideHeroMetric
+            revenueSharePct={revenueSharePct}
+            depositUsd={depositUsd}
+            capUsd={capUsd}
+            onDepositChange={(v) => setDepositUsd(clampDeposit(v, capUsd))}
+          />
 
-        <GenesisUpsideBenchmarkExplainer />
+          <div className="space-y-1.5">
+            <p className={MV_SECTION_LABEL}>
+              {MAIDEN_VOYAGE_UPSIDE_COPY.benchmarkIntro}
+            </p>
+            <GenesisUpsideBenchmarkCards
+              benchmarks={benchmarks}
+              depositUsd={depositUsd}
+            />
+          </div>
+
+          <GenesisUpsideBenchmarkExplainer />
+        </div>
       </div>
     </section>
   );

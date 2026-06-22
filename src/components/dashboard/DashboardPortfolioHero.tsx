@@ -10,6 +10,11 @@ import { formatUSD } from "@/utils/formatters";
 import type { PortfolioAllocationSlice } from "./portfolio/dashboardPortfolioUtils";
 import { DashboardStatChip } from "./DashboardStatChip";
 import {
+  DASHBOARD_STAT_CHIP_BORDER_EARN_CLASS,
+  DASHBOARD_STAT_CHIP_BORDER_MUTED_CLASS,
+  DASHBOARD_STAT_CHIP_BORDER_YIELD_CLASS,
+} from "./dashboardStyles";
+import {
   DASHBOARD_HERO_ALLOCATION_TRACK,
   PORTFOLIO_MUTED_CLASS,
 } from "./portfolio/portfolioStyles";
@@ -117,12 +122,12 @@ export function DashboardPortfolioHero({
             <DashboardStatChip
               label="Revenue share yield"
               value={formatStatUsd(revenueShareYieldUsd, isConnected, isLoading)}
-              borderClass="border-l-[#F5D76E]/70"
+              borderClass={DASHBOARD_STAT_CHIP_BORDER_YIELD_CLASS}
             />
             <DashboardStatChip
               label="Earn yield"
               value={formatStatUsd(earnYieldUsd, isConnected, isEarnLoading)}
-              borderClass="border-l-[#B8EBD5]/70"
+              borderClass={DASHBOARD_STAT_CHIP_BORDER_EARN_CLASS}
             />
             <DashboardStatChip
               label="Total earned"
@@ -131,7 +136,7 @@ export function DashboardPortfolioHero({
                 isConnected,
                 isLoading || isEarnLoading,
               )}
-              borderClass="border-l-white/30"
+              borderClass={DASHBOARD_STAT_CHIP_BORDER_MUTED_CLASS}
             />
           </div>
         ) : null}

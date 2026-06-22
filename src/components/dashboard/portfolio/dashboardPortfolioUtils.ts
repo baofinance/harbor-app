@@ -181,7 +181,6 @@ export function buildRevenueShareSummaryMetrics(input: {
     {
       label: "Earned",
       value: input.loading ? "…" : formatSummaryUsd(input.earnedUsd),
-      tone: "gold",
     },
   ];
 
@@ -189,7 +188,6 @@ export function buildRevenueShareSummaryMetrics(input: {
     metrics.push({
       label: "Pending distribution",
       value: input.loading ? "…" : formatSummaryUsd(input.pendingDistributionUsd),
-      tone: "gold",
     });
   }
 
@@ -222,7 +220,6 @@ export function buildEarnSummaryMetrics(input: {
     {
       label: "Earned",
       value: input.loading || earnedLoading ? "…" : formatSummaryUsd(input.earnedUsd),
-      tone: "mint",
     },
   ];
 }

@@ -47,6 +47,28 @@ export const MAIDEN_VOYAGE_WHY_JOIN_BULLETS = [
   "Boosted yield for early supporters",
 ] as const;
 
+/** Explore the Upside section — narrative copy (Phase 1). */
+export const MAIDEN_VOYAGE_UPSIDE_COPY = {
+  sectionTitle: "Explore the Upside",
+  sectionCaption:
+    "See what your founding deposit could become as this market grows.",
+  depositLabel: "Your deposit",
+  revenueShareTitle: "Future Revenue Share",
+  revenueShareCaption: "Your share of future market revenue",
+  benchmarkIntro: "If this market grows, your share could earn…",
+  youEarn: "You earn",
+  youCouldEarn: "You could earn",
+  marketRevenueSuffix: "market revenue",
+  earningsSuffix: "/yr",
+  tryDepositLabel: "Try a deposit",
+  depositPresets: [500, 1_000, 5_000, 10_000] as const,
+  growthStages: [
+    { label: "Launch", tvlUsd: 100_000 },
+    { label: "Growth", tvlUsd: 1_000_000 },
+    { label: "Scale", tvlUsd: 10_000_000 },
+  ],
+} as const;
+
 export type MaidenVoyageYieldRule = {
   id: string;
   label: string;

@@ -17,7 +17,29 @@ import {
   DASHBOARD_PRODUCT_ACCENT_MV_CLASS,
   DASHBOARD_PRODUCT_ACCENT_SAIL_CLASS,
   DASHBOARD_PRODUCT_ACCENT_YIELD_FEATURED_CLASS,
+  DASHBOARD_STAT_CHIP_BORDER_ARCHIVED_CLASS,
+  DASHBOARD_STAT_CHIP_BORDER_EARN_CLASS,
+  DASHBOARD_STAT_CHIP_BORDER_MAIDEN_CLASS,
+  DASHBOARD_STAT_CHIP_BORDER_SAIL_CLASS,
+  DASHBOARD_STAT_CHIP_BORDER_YIELD_CLASS,
 } from "./dashboardStyles";
+
+export function dashboardProductStatChipBorderClass(
+  id: DashboardProductId,
+): string {
+  switch (id) {
+    case "earn":
+      return DASHBOARD_STAT_CHIP_BORDER_EARN_CLASS;
+    case "sail":
+      return DASHBOARD_STAT_CHIP_BORDER_SAIL_CLASS;
+    case "archived":
+      return DASHBOARD_STAT_CHIP_BORDER_ARCHIVED_CLASS;
+    case "maiden":
+      return DASHBOARD_STAT_CHIP_BORDER_MAIDEN_CLASS;
+    case "yield":
+      return DASHBOARD_STAT_CHIP_BORDER_YIELD_CLASS;
+  }
+}
 
 export type DashboardProductId =
   | "maiden"

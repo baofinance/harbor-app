@@ -11,6 +11,12 @@ import {
 } from "@/components/dashboard/DashboardProductCard";
 import { DASHBOARD_PRODUCT_META } from "@/components/dashboard/dashboardProductMeta";
 import {
+  DASHBOARD_STAT_CHIP_BORDER_ARCHIVED_CLASS,
+  DASHBOARD_STAT_CHIP_BORDER_EARN_CLASS,
+  DASHBOARD_STAT_CHIP_BORDER_MAIDEN_CLASS,
+  DASHBOARD_STAT_CHIP_BORDER_SAIL_CLASS,
+} from "@/components/dashboard/dashboardStyles";
+import {
   DASHBOARD_EMPTY_STATES,
   type DashboardPositionGroup,
 } from "@/components/dashboard/dashboardPositionGroup";
@@ -202,25 +208,25 @@ export default function DashboardPage() {
         id: "earn",
         label: "Earn",
         usd: positionTotals.earn,
-        borderClass: "border-l-[#B8EBD5]/70",
+        borderClass: DASHBOARD_STAT_CHIP_BORDER_EARN_CLASS,
       },
       {
         id: "sail",
         label: "Sail",
         usd: positionTotals.sail,
-        borderClass: "border-l-[#C4B5FD]/70",
+        borderClass: DASHBOARD_STAT_CHIP_BORDER_SAIL_CLASS,
       },
       {
         id: "archived",
         label: "Archived",
         usd: positionTotals.archived,
-        borderClass: "border-l-white/25",
+        borderClass: DASHBOARD_STAT_CHIP_BORDER_ARCHIVED_CLASS,
       },
       {
         id: "maiden",
         label: "Maiden Voyage",
         usd: positionTotals.maiden,
-        borderClass: "border-l-[#FF8A7A]/70",
+        borderClass: DASHBOARD_STAT_CHIP_BORDER_MAIDEN_CLASS,
       },
     ],
     [positionTotals],

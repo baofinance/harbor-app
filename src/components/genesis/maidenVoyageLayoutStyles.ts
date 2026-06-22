@@ -160,3 +160,46 @@ export const MV_EXPLORER_TAB_INACTIVE =
 
 export const MV_UPCOMING_BADGE =
   "inline-flex items-center rounded-full border border-[#5B8FD4]/40 bg-[#5B8FD4]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#9EC5F5]";
+
+/** Explore the Upside — ownership focal panel glow. */
+export const MV_UPSIDE_OWNERSHIP_GLOW =
+  "shadow-[0_0_40px_-12px_rgba(255,138,122,0.35)]";
+
+/** Explore the Upside — elevated ownership shell (coral-tinted premium panel). */
+export const MV_UPSIDE_OWNERSHIP_PANEL =
+  "relative overflow-hidden rounded-2xl border border-[#FF8A7A]/20 bg-gradient-to-b from-[#FF8A7A]/[0.08] via-[#122a47]/60 to-[#0a1929]/40 backdrop-blur-md";
+
+/** Revenue share % — same accent gradient as hero headlines. */
+export const MV_UPSIDE_OWNERSHIP_TEXT = MV_ACCENT_GRADIENT;
+
+/** Potential earnings estimates in benchmark cards. */
+export const MV_UPSIDE_EARNINGS_TEXT = "text-[#B8EBD5]";
+
+/** TVL, revenue range, and other tertiary upside metadata. */
+export const MV_UPSIDE_NEUTRAL_META =
+  "text-[10px] font-medium uppercase tracking-wide text-white/45";
+
+/** Deposit input focus — ties deposit row to ownership panel. */
+export const MV_UPSIDE_DEPOSIT_INPUT_FOCUS =
+  "focus:border-[#FF8A7A]/30 focus:ring-[#FF8A7A]/20";
+
+/** Quick-select deposit preset chips. */
+export const MV_UPSIDE_DEPOSIT_CHIP =
+  "shrink-0 rounded-lg border border-white/12 bg-white/[0.04] px-2 py-1 text-[11px] font-semibold tabular-nums text-white/75 transition-colors hover:border-[#FF8A7A]/30 hover:bg-[#FF8A7A]/[0.08] hover:text-white/90";
+
+export const MV_UPSIDE_DEPOSIT_CHIP_ACTIVE =
+  "border-[#FF8A7A]/45 bg-[#FF8A7A]/[0.14] text-white shadow-[0_0_16px_-8px_rgba(255,138,122,0.45)]";
+
+/** Brief highlight when ownership recalculates. */
+export const MV_UPSIDE_OWNERSHIP_FLASH =
+  "ring-1 ring-[#FF8A7A]/40 shadow-[0_0_48px_-10px_rgba(255,138,122,0.45)]";
+
+/** Benchmark outcome tile — hover + update feedback. */
+export const MV_UPSIDE_BENCHMARK_TILE = `${MV_STAT_TILE} transition-all duration-200 hover:-translate-y-px hover:border-[#B8EBD5]/30 hover:bg-[#B8EBD5]/[0.04] hover:shadow-[0_0_20px_-10px_rgba(184,235,213,0.22)]`;
+
+export const MV_UPSIDE_BENCHMARK_TILE_UPDATED =
+  "border-[#B8EBD5]/25 bg-[#B8EBD5]/[0.05]";
+
+/** Final growth-stage benchmark tile accent. */
+export const MV_UPSIDE_BENCHMARK_TILE_DESTINATION =
+  "border-[#B8EBD5]/15";

@@ -270,6 +270,14 @@ export const DASHBOARD_PRODUCT_ACCENT_YIELD_CLASS = "bg-[#F5D76E]";
 export const DASHBOARD_PRODUCT_ACCENT_YIELD_FEATURED_CLASS = "w-1 bg-[#F5D76E]";
 export const DASHBOARD_PRODUCT_ACCENT_ARCHIVED_CLASS = "bg-white/30";
 
+/** Left accent on dashboard stat chips — matches category chip colors. */
+export const DASHBOARD_STAT_CHIP_BORDER_EARN_CLASS = "border-l-[#B8EBD5]/70";
+export const DASHBOARD_STAT_CHIP_BORDER_SAIL_CLASS = "border-l-[#C4B5FD]/70";
+export const DASHBOARD_STAT_CHIP_BORDER_ARCHIVED_CLASS = "border-l-white/25";
+export const DASHBOARD_STAT_CHIP_BORDER_MAIDEN_CLASS = "border-l-[#FF8A7A]/70";
+export const DASHBOARD_STAT_CHIP_BORDER_YIELD_CLASS = "border-l-[#F5D76E]/70";
+export const DASHBOARD_STAT_CHIP_BORDER_MUTED_CLASS = "border-l-white/30";
+
 export const DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_GOLD_CLASS = "text-[#F5D76E]";
 export const DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_MINT_CLASS = "text-[#B8EBD5]";
 export const DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_MUTED_CLASS = "text-white/60";
