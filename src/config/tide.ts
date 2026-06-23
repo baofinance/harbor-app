@@ -2,7 +2,7 @@
 
 export const TIDE_CONFIG = {
   distributorAddress:
-    "0x1169dd8b75f2b752f8989911da5be29eede89256" as `0x${string}`,
+    "0x8FfbE3917D83E77459c27910690Bbea73E7E38b9" as `0x${string}`,
   tideTokenAddress:
     "0xB324bA448Ac468015cB86039314ada42E198aA5c" as `0x${string}`,
   baoTokenAddress:
