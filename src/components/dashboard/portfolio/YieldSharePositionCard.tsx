@@ -1,146 +1,108 @@
 "use client";
 
+import Link from "next/link";
 import { TokenLogo } from "@/components/shared";
-import { GenesisMarketChainCell } from "@/components/genesis/GenesisMarketSharedRowCells";
-import {
-  chainFromMarketId,
-  iconSymbolFromMarketLabel,
-} from "@/components/dashboard/dashboardRowPresentation";
+import { iconSymbolFromMarketLabel } from "@/components/dashboard/dashboardRowPresentation";
 import type { FounderMetricRow } from "@/hooks/useFounderMetrics";
 import { formatPercent, formatUSD } from "@/utils/formatters";
 import { DASHBOARD_YIELD_ROW_PENDING_CLASS } from "../dashboardBrand";
-import { DashboardMetricLabel } from "../DashboardMetricLabel";
-import { yieldMetricCopy } from "../dashboardMetricCopy";
 import { DashboardYieldBoostBadge } from "../DashboardYieldBoostBadge";
-import { DASHBOARD_MARKET_ICON_PX } from "../dashboardRowListStyles";
 import {
-  DASHBOARD_NUMERIC_ROW_PRIMARY_CLASS,
-  DASHBOARD_NUMERIC_ROW_SECONDARY_CLASS,
-  DASHBOARD_POSITION_SUBTITLE_CLASS,
-  DASHBOARD_POSITION_TITLE_CLASS,
+  DASHBOARD_INSET_METRIC_CORAL_CLASS,
+  DASHBOARD_INSET_METRIC_LABEL_CLASS,
+  DASHBOARD_INSET_METRIC_MUTED_CLASS,
+  DASHBOARD_INSET_METRIC_VALUE_CLASS,
+  DASHBOARD_INSET_TITLE_CLASS,
+  DASHBOARD_YIELD_ROW_GRID_CLASS,
 } from "../dashboardTypography";
+import { DASHBOARD_INSET_MARKET_ICON_PX } from "../dashboardRowListStyles";
 import { formatDashboardEarnedUsd, formatMarketLabel } from "./dashboardPortfolioUtils";
-import { PORTFOLIO_POSITION_ROW_CLASS } from "./portfolioStyles";
-import { StatusBadge } from "./StatusBadge";
+import { DASHBOARD_INSET_ROW_SHELL_CLASS } from "./portfolioStyles";
 
-const NETWORK_ICON_PX = 16;
+function InlineMetric({
+  label,
+  value,
+  valueClassName,
+  title,
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+  title?: string;
+}) {
+  return (
+    <span className="whitespace-nowrap text-sm" title={title}>
+      <span className={DASHBOARD_INSET_METRIC_LABEL_CLASS}>{label} </span>
+      <span
+        className={
+          valueClassName ?? DASHBOARD_INSET_METRIC_VALUE_CLASS
+        }
+      >
+        {value}
+      </span>
+    </span>
+  );
+}
 
 export function YieldSharePositionCard({ row }: { row: FounderMetricRow }) {
-  const { chainName, chainLogo } = chainFromMarketId(row.marketId);
   const showBoost = row.ownershipSharePct > 0;
   const hasPending = row.outstandingUSD > 0;
   const marketName = formatMarketLabel(row.marketName);
   const iconSymbol = iconSymbolFromMarketLabel(row.marketName);
-
-  const boostCopy = yieldMetricCopy("boost");
-  const pendingCopy = yieldMetricCopy("pending");
-  const mvCopy = yieldMetricCopy("mvOwnership");
-  const poolCopy = yieldMetricCopy("yieldPoolPct");
-  const distributedCopy = yieldMetricCopy("distributed");
+  const href = `/genesis/${row.marketId}`;
 
   return (
-    <article
-      className={`${PORTFOLIO_POSITION_ROW_CLASS} flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${
-        hasPending
-          ? `${DASHBOARD_YIELD_ROW_PENDING_CLASS} border-l-2 border-l-[#FF8A7A]/35`
-          : ""
+    <Link
+      href={href}
+      className={`${DASHBOARD_INSET_ROW_SHELL_CLASS} ${DASHBOARD_YIELD_ROW_GRID_CLASS} ${
+        hasPending ? DASHBOARD_YIELD_ROW_PENDING_CLASS : ""
       }`}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-2.5">
-        <GenesisMarketChainCell
-          chainName={chainName}
-          chainLogo={chainLogo}
-          size={NETWORK_ICON_PX}
-        />
+      <div className="flex min-w-0 items-center gap-2.5">
         <TokenLogo
           symbol={iconSymbol}
-          size={DASHBOARD_MARKET_ICON_PX}
+          size={DASHBOARD_INSET_MARKET_ICON_PX}
           className="shrink-0 ring-0"
         />
-        <div className="min-w-0 flex-1 space-y-0">
-          <p className={DASHBOARD_POSITION_TITLE_CLASS} title={marketName}>
-            {marketName}
-          </p>
-          <p className={DASHBOARD_POSITION_SUBTITLE_CLASS}>Revenue share</p>
-        </div>
-        {hasPending ? (
-          <StatusBadge label="Pending distribution" variant="coral" />
-        ) : null}
+        <p className={DASHBOARD_INSET_TITLE_CLASS} title={marketName}>
+          {marketName}
+        </p>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-end sm:gap-4">
-        <div className="flex flex-wrap items-end gap-x-3 gap-y-1.5">
-          <div className="min-w-0 space-y-0">
-            <DashboardMetricLabel label={boostCopy.label} tip={boostCopy.tip} />
-            <div className="mt-0.5">
-              {showBoost ? (
-                <DashboardYieldBoostBadge multiplier={row.boostMultiplier} />
-              ) : (
-                <span className="text-xs text-[#1E4775]/40">—</span>
-              )}
-            </div>
-          </div>
-          <div className="min-w-0 space-y-0">
-            <DashboardMetricLabel
-              label={pendingCopy.label}
-              tip={pendingCopy.tip}
-              context={pendingCopy.context}
-            />
-            <p
-              className={`truncate ${
-                hasPending
-                  ? DASHBOARD_NUMERIC_ROW_PRIMARY_CLASS
-                  : DASHBOARD_NUMERIC_ROW_SECONDARY_CLASS
-              } ${hasPending ? "text-[#FF8A7A]" : "text-[#1E4775]/40"}`}
-            >
-              {formatDashboardEarnedUsd(row.outstandingUSD)}
-            </p>
-          </div>
-        </div>
+      <InlineMetric
+        label="Pending"
+        value={formatDashboardEarnedUsd(row.outstandingUSD)}
+        valueClassName={
+          hasPending
+            ? DASHBOARD_INSET_METRIC_CORAL_CLASS
+            : DASHBOARD_INSET_METRIC_MUTED_CLASS
+        }
+      />
 
-        <div
-          className="hidden h-8 border-l border-[#1E4775]/15 sm:block"
-          aria-hidden
-        />
+      <InlineMetric
+        label="Ownership"
+        value={formatPercent(row.ownershipSharePct, { decimals: 2 })}
+        title="Your share of this market's genesis deposit cap."
+      />
 
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 sm:flex sm:flex-wrap sm:items-end sm:gap-x-3">
-          <Metric
-            label={mvCopy.label}
-            tip={mvCopy.tip}
-            value={formatPercent(row.ownershipSharePct, { decimals: 2 })}
-          />
-          <Metric
-            label={poolCopy.label}
-            tip={poolCopy.tip}
-            value={formatPercent(row.yieldSharePct, { decimals: 4 })}
-          />
-          <Metric
-            label={distributedCopy.label}
-            tip={distributedCopy.tip}
-            context={distributedCopy.context}
-            value={formatUSD(row.paidUSD, { compact: false })}
-          />
-        </div>
-      </div>
-    </article>
-  );
-}
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm">
+        <span className={DASHBOARD_INSET_METRIC_LABEL_CLASS}>Boost</span>
+        {showBoost ? (
+          <DashboardYieldBoostBadge multiplier={row.boostMultiplier} surface="dark" />
+        ) : (
+          <span className={DASHBOARD_INSET_METRIC_MUTED_CLASS}>—</span>
+        )}
+      </span>
 
-function Metric({
-  label,
-  tip,
-  context,
-  value,
-}: {
-  label: string;
-  tip?: string;
-  context?: string;
-  value: string;
-}) {
-  return (
-    <div className="min-w-0 space-y-0">
-      <DashboardMetricLabel label={label} tip={tip} context={context} />
-      <p className={`truncate ${DASHBOARD_NUMERIC_ROW_SECONDARY_CLASS}`}>{value}</p>
-    </div>
+      <InlineMetric
+        label="Distributed"
+        value={formatUSD(row.paidUSD, { compact: false })}
+        valueClassName={
+          row.paidUSD > 0
+            ? DASHBOARD_INSET_METRIC_VALUE_CLASS
+            : DASHBOARD_INSET_METRIC_MUTED_CLASS
+        }
+      />
+    </Link>
   );
 }

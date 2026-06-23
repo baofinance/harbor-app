@@ -31,6 +31,16 @@ export const PORTFOLIO_POSITION_GRID_CLASS =
 /** Full-width position rows — one card per row (yield share list). */
 export const PORTFOLIO_POSITION_STACK_CLASS = "grid grid-cols-1 gap-1.5";
 
+/** Seamless inset row stack inside frosted product cards (Phase B). */
+export const DASHBOARD_INSET_ROW_STACK_CLASS = "flex flex-col";
+
+/** Dark inset row inside product accordion — no white card shell. */
+export const DASHBOARD_INSET_ROW_SHELL_CLASS =
+  "min-h-[48px] w-full border-b border-white/[0.06] px-3 py-3 sm:px-4 transition-colors duration-150 hover:bg-white/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-white/30 last:border-b-0";
+
+export const DASHBOARD_INSET_ROW_CLASS =
+  `flex items-center ${DASHBOARD_INSET_ROW_SHELL_CLASS}`;
+
 export const PORTFOLIO_WIDGET_GRID_CLASS =
   "grid grid-cols-1 gap-2.5 lg:grid-cols-2 lg:gap-3";
 

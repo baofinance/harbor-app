@@ -16,7 +16,7 @@ export const DASHBOARD_ACTIVITY_INSET_CLASS =
 /** Spacing rhythm — large / medium / small. */
 export const DASHBOARD_GAP_MAJOR = "space-y-4";
 
-export const DASHBOARD_GAP_CATEGORY = "space-y-1.5";
+export const DASHBOARD_GAP_CATEGORY = "space-y-3";
 
 export const DASHBOARD_GAP_INNER = "space-y-1.5";
 

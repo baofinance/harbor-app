@@ -183,6 +183,12 @@ export const DASHBOARD_PRODUCT_CARD_HEADER_FEATURED_CLASS =
 export const DASHBOARD_PRODUCT_CARD_HEADER_BUTTON_CLASS =
   `w-full rounded-lg text-left transition-colors duration-150 ${DASHBOARD_SECTION_HEADER_HOVER_CLASS} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/30`;
 
+export const DASHBOARD_PRODUCT_HEADER_NAV_LINK_CLASS =
+  "inline-flex shrink-0 items-center gap-0.5 rounded-md py-0.5 pr-1 transition-colors hover:text-white/95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/30";
+
+export const DASHBOARD_PRODUCT_HEADER_EXPAND_BTN_CLASS =
+  `flex min-w-0 flex-1 items-center gap-2 rounded-md py-0.5 pl-1 text-left transition-colors duration-150 ${DASHBOARD_SECTION_HEADER_HOVER_CLASS} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/30`;
+
 export const DASHBOARD_PRODUCT_CARD_HEADER_ROW_CLASS =
   "flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5 sm:gap-x-2.5";
 
@@ -194,9 +200,6 @@ export const DASHBOARD_PRODUCT_TITLE_CLASS =
 export const DASHBOARD_PRODUCT_TITLE_FEATURED_CLASS =
   "text-xs font-semibold uppercase tracking-normal text-white/90";
 
-export const DASHBOARD_PRODUCT_TAGLINE_CLASS =
-  "hidden text-[10px] normal-case tracking-normal text-white/45 sm:block";
-
 export const DASHBOARD_PRODUCT_AMOUNT_CLASS =
   "font-mono text-sm font-semibold tabular-nums text-white/95";
 
@@ -206,6 +209,30 @@ export const DASHBOARD_PRODUCT_ACCENT_BAR_CLASS = "absolute inset-y-0 left-0 w-[
 
 export const DASHBOARD_MV_PREVIEW_CLASS =
   "flex w-full flex-col gap-2 border-t border-white/[0.08] px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-4";
+
+/** Portfolio hero — 5-column mockup grid. */
+export const DASHBOARD_HERO_GRID_CLASS =
+  "grid grid-cols-1 gap-4 divide-y divide-white/[0.08] md:grid-cols-2 md:divide-y lg:grid-cols-[1.1fr_1.4fr_repeat(3,minmax(0,1fr))] lg:gap-0 lg:divide-x lg:divide-y-0 lg:divide-white/[0.08]";
+
+export const DASHBOARD_HERO_STATS_ROW_CLASS =
+  "md:col-span-2 md:grid md:grid-cols-3 md:gap-4 md:border-t md:border-white/[0.08] md:pt-4 lg:contents lg:border-t-0 lg:pt-0";
+
+export const DASHBOARD_HERO_COLUMN_CLASS =
+  "min-w-0 py-3 first:pt-0 last:pb-0 lg:px-4 lg:py-0 lg:first:pl-0 lg:last:pr-0";
+
+export const DASHBOARD_HERO_STAT_LABEL_CLASS =
+  "text-[10px] font-semibold uppercase tracking-wide text-white/50";
+
+export const DASHBOARD_HERO_STAT_CONTEXT_CLASS =
+  "text-[9px] font-normal normal-case tracking-normal text-white/40";
+
+export const DASHBOARD_HERO_STAT_VALUE_CLASS =
+  "font-mono text-xl font-bold tabular-nums text-white sm:text-2xl";
+
+export const DASHBOARD_SECTION_SUMMARY_CLASS =
+  "min-w-0 truncate text-xs tabular-nums text-white/85 sm:text-sm";
+
+export const DASHBOARD_SECTION_SUMMARY_SEPARATOR_CLASS = "text-white/35";
 
 /** Portfolio hero — primary page focal point. */
 export const DASHBOARD_PORTFOLIO_HERO_CLASS = `${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} px-4 py-4 sm:px-5 sm:py-5`;

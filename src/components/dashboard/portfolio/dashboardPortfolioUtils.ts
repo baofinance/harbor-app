@@ -11,6 +11,108 @@ import {
   ALLOCATION_LEGEND_DOT_SAIL,
 } from "../dashboardBrand";
 import type { DashboardProductSummaryMetric } from "../DashboardProductCard";
+import type { DashboardProductId } from "../dashboardProductMeta";
+
+export type DashboardSectionSummarySegment = {
+  text: string;
+  tone?: "default" | "gold" | "coral" | "mint" | "muted";
+};
+
+function findMetric(
+  metrics: DashboardProductSummaryMetric[],
+  label: string,
+): DashboardProductSummaryMetric | undefined {
+  return metrics.find((m) => m.label === label);
+}
+
+function loadingOrDash(value: string): string {
+  return value;
+}
+
+export function toSectionSummarySegments(
+  productId: DashboardProductId,
+  metrics: DashboardProductSummaryMetric[],
+): DashboardSectionSummarySegment[] {
+  if (metrics.length === 0) return [];
+
+  const summaryOnly = metrics.length === 1 && metrics[0]?.label === "Summary";
+  if (summaryOnly) {
+    return [{ text: metrics[0]!.value, tone: "muted" }];
+  }
+
+  const loadingOnly = metrics.length === 1 && metrics[0]?.label === "Loading";
+  if (loadingOnly) {
+    return [{ text: "…", tone: "muted" }];
+  }
+
+  switch (productId) {
+    case "yield": {
+      const markets = findMetric(metrics, "Markets");
+      const earned = findMetric(metrics, "Earned");
+      const pending = findMetric(metrics, "Pending");
+      const segments: DashboardSectionSummarySegment[] = [];
+      if (markets) {
+        segments.push({ text: loadingOrDash(markets.value) });
+      }
+      if (earned) {
+        segments.push({
+          text:
+            earned.value === "…" ? "…" : `Earned ${earned.value}`,
+          tone: earned.value !== "…" && earned.value !== "$0.00" ? "gold" : "default",
+        });
+      }
+      if (pending) {
+        segments.push({
+          text:
+            pending.value === "…" ? "…" : `Pending ${pending.value}`,
+          tone: "coral",
+        });
+      }
+      return segments;
+    }
+    case "earn": {
+      const positions = findMetric(metrics, "Positions");
+      const value = findMetric(metrics, "Value");
+      const earned = findMetric(metrics, "Earned");
+      const segments: DashboardSectionSummarySegment[] = [];
+      if (positions) {
+        segments.push({ text: loadingOrDash(positions.value) });
+      }
+      if (value) {
+        segments.push({
+          text: value.value === "…" ? "…" : `Value ${value.value}`,
+        });
+      }
+      if (earned) {
+        segments.push({
+          text: earned.value === "…" ? "…" : `Earned ${earned.value}`,
+          tone: earned.value !== "…" && earned.value !== "$0.00" ? "mint" : "default",
+        });
+      }
+      return segments;
+    }
+    case "maiden":
+    case "sail":
+    case "archived": {
+      const positions = findMetric(metrics, "Positions");
+      const value = findMetric(metrics, "Value");
+      const segments: DashboardSectionSummarySegment[] = [];
+      if (positions) {
+        segments.push({ text: loadingOrDash(positions.value) });
+      }
+      if (value) {
+        segments.push({
+          text: value.value === "…" ? "…" : `Value ${value.value}`,
+        });
+      }
+      return segments;
+    }
+    default:
+      return metrics.map((m) => ({
+        text: m.value === "…" ? "…" : `${m.label} ${m.value}`,
+      }));
+  }
+}
 
 export type PortfolioAllocationSlice = {
   id: string;

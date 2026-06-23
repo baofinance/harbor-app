@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowsUpDownIcon } from "@heroicons/react/24/outline";
+import { AdjustmentsHorizontalIcon } from "@heroicons/react/24/outline";
 import {
   DASHBOARD_MODULE_LABELS,
   DEFAULT_DASHBOARD_MODULE_ORDER,
@@ -49,7 +49,7 @@ export function DashboardModuleLayoutControls({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
-        <ArrowsUpDownIcon className="h-3.5 w-3.5" aria-hidden />
+        <AdjustmentsHorizontalIcon className="h-3.5 w-3.5" aria-hidden />
         Customize layout
       </button>
 

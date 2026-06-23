@@ -20,7 +20,7 @@ export const DASHBOARD_YIELD_METRIC_COPY: Record<
   DashboardMetricCopy
 > = {
   mvOwnership: {
-    label: "MV ownership",
+    label: "Ownership",
     tip: "Your share of this market's genesis deposit cap.",
   },
   boost: {

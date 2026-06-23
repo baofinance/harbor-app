@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import { isAddress, type Address } from "viem";
 import { markets } from "@/config/markets";
@@ -13,10 +13,7 @@ import {
   buildAchievements,
   buildFoundingMarkets,
   buildJourneyMetrics,
-  buildOpportunities,
   buildPortfolioHealth,
-  buildRevenuePeriods,
-  buildRevenueSparkline,
   buildTimelineEvents,
   buildWelcomeHighlights,
   buildYieldHubSnapshot,
@@ -33,7 +30,6 @@ type UseDashboardEngagementParams = {
   positionTotals: { maiden: number; earn: number; sail: number; archived: number };
   totalEarned: number;
   totalOutstanding: number;
-  onYieldDetails?: () => void;
 };
 
 export function useDashboardEngagement(params: UseDashboardEngagementParams) {
@@ -143,14 +139,6 @@ export function useDashboardEngagement(params: UseDashboardEngagementParams) {
   );
 
   const yieldHub = useMemo(() => buildYieldHubSnapshot(input), [input]);
-  const revenuePeriods = useMemo(
-    () => buildRevenuePeriods(yieldEvents, params.totalEarned),
-    [yieldEvents, params.totalEarned],
-  );
-  const revenueSparkline = useMemo(
-    () => buildRevenueSparkline(yieldEvents),
-    [yieldEvents],
-  );
   const founding = useMemo(() => buildFoundingMarkets(input), [input]);
   const achievements = useMemo(() => buildAchievements(input), [input]);
   const timeline = useMemo(
@@ -159,25 +147,15 @@ export function useDashboardEngagement(params: UseDashboardEngagementParams) {
   );
   const journey = useMemo(() => buildJourneyMetrics(input), [input]);
   const health = useMemo(() => buildPortfolioHealth(input), [input]);
-  const opportunities = useMemo(
-    () =>
-      buildOpportunities(input, {
-        onYieldDetails: params.onYieldDetails,
-      }),
-    [input, params.onYieldDetails],
-  );
   const welcome = useMemo(() => buildWelcomeHighlights(input), [input]);
 
   return {
     yieldHub,
-    revenuePeriods,
-    revenueSparkline,
     founding,
     achievements,
     timeline,
     journey,
     health,
-    opportunities,
     welcome,
     marksDeposits,
   };

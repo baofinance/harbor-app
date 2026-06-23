@@ -36,9 +36,9 @@ export const ALLOCATION_LEGEND_DOT_SAIL = "bg-[#C4B5FD]";
 
 export const ALLOCATION_LEGEND_DOT_ARCHIVED = "bg-white/50";
 
-/** Yield row highlight when pending distribution > 0 */
+/** Yield row highlight when pending distribution > 0 (dark inset rows) */
 export const DASHBOARD_YIELD_ROW_PENDING_CLASS =
-  "ring-1 ring-[#FF8A7A]/25 bg-gradient-to-r from-[#FF8A7A]/[0.04] to-white";
+  "border-l-2 border-l-[#FF8A7A]/35 bg-white/[0.02]";
 
 /** Accordion premium easing */
 export const DASHBOARD_ACCORDION_TRANSITION =

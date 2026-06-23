@@ -5,7 +5,7 @@ import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
 import { DashboardContentRowSkeleton } from "./DashboardContentRow";
 import { DashboardEmptyState } from "./portfolio/DashboardEmptyState";
 import { PositionCard } from "./portfolio/PositionCard";
-import { PORTFOLIO_POSITION_STACK_CLASS } from "./portfolio/portfolioStyles";
+import { DASHBOARD_INSET_ROW_STACK_CLASS } from "./portfolio/portfolioStyles";
 
 export type DashboardEmptyStateConfig = {
   title: string;
@@ -21,7 +21,6 @@ export type DashboardPositionsListProps = {
   emptyState?: DashboardEmptyStateConfig;
   /** @deprecated Use emptyState */
   emptyHint?: ReactNode;
-  onManage?: (row: DashboardPositionRow) => void;
   loadingSkeletonCount?: number;
 };
 
@@ -31,7 +30,6 @@ export function DashboardPositionsList({
   error,
   emptyState,
   emptyHint,
-  onManage,
   loadingSkeletonCount = 3,
 }: DashboardPositionsListProps) {
   if (error) {
@@ -40,9 +38,9 @@ export function DashboardPositionsList({
 
   if (loading) {
     return (
-      <div className={PORTFOLIO_POSITION_STACK_CLASS}>
+      <div className={DASHBOARD_INSET_ROW_STACK_CLASS}>
         {Array.from({ length: loadingSkeletonCount }, (_, i) => (
-          <DashboardContentRowSkeleton key={i} variant="index" />
+          <DashboardContentRowSkeleton key={i} variant="inset" />
         ))}
       </div>
     );
@@ -65,9 +63,9 @@ export function DashboardPositionsList({
   }
 
   return (
-    <div className={PORTFOLIO_POSITION_STACK_CLASS}>
+    <div className={DASHBOARD_INSET_ROW_STACK_CLASS}>
       {rows.map((row) => (
-        <PositionCard key={row.id} row={row} onManage={onManage} />
+        <PositionCard key={row.id} row={row} />
       ))}
     </div>
   );

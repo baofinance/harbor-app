@@ -90,6 +90,9 @@ export const DASHBOARD_POSITION_DETAIL_CLASS =
 /** Token icon in dashboard market cells — must match {@link DashboardMarketColumnHeader} ghost. */
 export const DASHBOARD_MARKET_ICON_PX = 24;
 
+/** Inset position rows inside frosted product cards (mockup 20px). */
+export const DASHBOARD_INSET_MARKET_ICON_PX = 20;
+
 /** Column alignment — network + market left, type + deposit center, action right. */
 export const DASHBOARD_POSITIONS_COL_NETWORK_CLASSNAME =
   "flex items-center justify-start";

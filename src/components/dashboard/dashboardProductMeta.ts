@@ -53,10 +53,8 @@ export type DashboardProductId =
 export type DashboardProductMeta = {
   id: DashboardProductId;
   title: string;
-  tagline?: string;
   titleClass?: string;
-  viewAllHref?: string;
-  viewAllLabel?: string;
+  headerHref?: string;
   icon: ComponentType<{ className?: string }>;
   iconBadgeClass: string;
   accentBarClass: string;
@@ -69,8 +67,7 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
     maiden: {
       id: "maiden",
       title: "Maiden Voyage",
-      viewAllHref: "/genesis",
-      viewAllLabel: "Go",
+      headerHref: "/genesis",
       icon: SparklesIcon,
       iconBadgeClass: DASHBOARD_PRODUCT_ICON_MV_CLASS,
       accentBarClass: DASHBOARD_PRODUCT_ACCENT_MV_CLASS,
@@ -78,7 +75,7 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
     earn: {
       id: "earn",
       title: "Earn",
-      tagline: "Active yield positions",
+      headerHref: "/earn",
       icon: CurrencyDollarIcon,
       iconBadgeClass: DASHBOARD_PRODUCT_ICON_EARN_CLASS,
       accentBarClass: DASHBOARD_PRODUCT_ACCENT_EARN_CLASS,
@@ -86,7 +83,7 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
     sail: {
       id: "sail",
       title: "Sail",
-      tagline: "Directional positions",
+      headerHref: "/sail",
       icon: WalletIcon,
       iconBadgeClass: DASHBOARD_PRODUCT_ICON_SAIL_CLASS,
       accentBarClass: DASHBOARD_PRODUCT_ACCENT_SAIL_CLASS,
@@ -94,7 +91,6 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
     archived: {
       id: "archived",
       title: "Archived",
-      tagline: "Completed positions",
       titleClass: "text-xs font-semibold uppercase tracking-normal text-white/60",
       icon: ArchiveBoxIcon,
       iconBadgeClass: DASHBOARD_PRODUCT_ICON_ARCHIVED_CLASS,
@@ -104,9 +100,8 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
     yield: {
       id: "yield",
       title: "Revenue share",
-      tagline: "Founding ownership · revenue · distributions",
       titleClass: DASHBOARD_PRODUCT_TITLE_FEATURED_CLASS,
-      featured: true,
+      headerHref: "/genesis",
       icon: ChartBarIcon,
       iconBadgeClass: DASHBOARD_PRODUCT_ICON_YIELD_FEATURED_CLASS,
       accentBarClass: DASHBOARD_PRODUCT_ACCENT_YIELD_FEATURED_CLASS,
