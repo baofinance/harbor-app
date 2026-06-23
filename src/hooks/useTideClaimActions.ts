@@ -15,6 +15,7 @@ import { TIDE_CONFIG } from "@/config/tide";
 import { useTideAllocationSnapshot } from "@/hooks/useTideAllocationSnapshot";
 import { useTideTransactionModal } from "@/hooks/useTideTransactionModal";
 import {
+  formatTideClaimWindowFooter,
   formatTideClaimWindowMessage,
   getTideClaimWindowStatus,
   getVeBaoClaimBlockReason,
@@ -53,7 +54,6 @@ export function useTideClaimActions() {
     abi: HARBOR_TIDE_DISTRIBUTOR_ABI,
     functionName: "startDate",
     chainId: TIDE_CONFIG.chainId,
-    query: { enabled: isConnected && !isWrongChain },
   });
 
   const { data: endDate, isLoading: isLoadingEnd } = useReadContract({
@@ -61,7 +61,6 @@ export function useTideClaimActions() {
     abi: HARBOR_TIDE_DISTRIBUTOR_ABI,
     functionName: "endDate",
     chainId: TIDE_CONFIG.chainId,
-    query: { enabled: isConnected && !isWrongChain },
   });
 
   const { data: hasClaimedVeBao, refetch: refetchVeBaoClaimed } = useReadContract({
@@ -110,6 +109,13 @@ export function useTideClaimActions() {
   const claimWindowMessage = isWrongChain
     ? "Switch to Ethereum mainnet to claim"
     : formatTideClaimWindowMessage(
+        claimWindowStatus,
+        startDate as bigint | undefined,
+        endDate as bigint | undefined
+      );
+  const claimWindowFooter = isWrongChain
+    ? "Switch to Ethereum mainnet to claim"
+    : formatTideClaimWindowFooter(
         claimWindowStatus,
         startDate as bigint | undefined,
         endDate as bigint | undefined
@@ -250,6 +256,7 @@ export function useTideClaimActions() {
     isChainLoading,
     claimWindowStatus,
     claimWindowMessage,
+    claimWindowFooter,
     veBaoAllocation: veBaoSnapshot.allocation,
     standardAllocation: standardSnapshot.allocation,
     hasClaimedVeBao: Boolean(hasClaimedVeBao),

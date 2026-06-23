@@ -26,7 +26,9 @@ export type TideFeatureCardProps = {
   subtitleClass: string;
   badge?: string;
   badgeVariant?: StatusBadgeVariant;
-  footer: string;
+  footer?: string;
+  footerExtra?: ReactNode;
+  footerExtraClassName?: string;
   isConnected: boolean;
   disconnectedMessage: string;
   children: ReactNode;
@@ -42,13 +44,15 @@ export function TideFeatureCard({
   badge,
   badgeVariant = "neutral",
   footer,
+  footerExtra,
+  footerExtraClassName,
   isConnected,
   disconnectedMessage,
   children,
 }: TideFeatureCardProps) {
   return (
     <article
-      className={`${DASHBOARD_PRODUCT_CARD_CLASS} relative flex min-h-[320px] flex-col`}
+      className={`${DASHBOARD_PRODUCT_CARD_CLASS} relative flex min-h-[320px] flex-col lg:h-full`}
     >
       <div
         className={`${DASHBOARD_PRODUCT_ACCENT_BAR_CLASS} ${accentBarClass}`}
@@ -82,7 +86,7 @@ export function TideFeatureCard({
         {isConnected ? (
           children
         ) : (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 py-4 text-center">
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 py-6 text-center lg:justify-center">
             <div className={TIDE_DISCONNECTED_RING}>
               <Link2 className="h-7 w-7 text-white/30" strokeWidth={1.5} />
             </div>
@@ -93,10 +97,36 @@ export function TideFeatureCard({
         )}
       </div>
 
-      <footer className={`${TIDE_CARD_FOOTER} flex items-center gap-1.5 px-3 py-2.5 sm:px-4`}>
-        <Info className="h-3.5 w-3.5 shrink-0 text-white/40" strokeWidth={1.75} />
-        <span className="text-[11px] text-white/45">{footer}</span>
-      </footer>
+      {footer || footerExtra ? (
+        <footer
+          className={`${TIDE_CARD_FOOTER} flex flex-col gap-1 px-3 py-2.5 sm:px-4`}
+        >
+          {footer ? (
+            <div className="flex items-center gap-1.5">
+              <Info
+                className="h-3.5 w-3.5 shrink-0 text-white/40"
+                strokeWidth={1.75}
+              />
+              <span className="text-[11px] text-white/45">{footer}</span>
+            </div>
+          ) : footerExtra ? (
+            <div className="flex items-center gap-1.5">
+              <Info
+                className="h-3.5 w-3.5 shrink-0 text-white/40"
+                strokeWidth={1.75}
+              />
+              <p className={footerExtraClassName ?? "text-[11px] text-white/45"}>
+                {footerExtra}
+              </p>
+            </div>
+          ) : null}
+          {footer && footerExtra ? (
+            <p className={footerExtraClassName ?? "text-[10px] text-white/45"}>
+              {footerExtra}
+            </p>
+          ) : null}
+        </footer>
+      ) : null}
     </article>
   );
 }

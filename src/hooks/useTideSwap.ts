@@ -91,7 +91,29 @@ export function useTideSwap() {
     chainId: TIDE_CONFIG.chainId,
   });
 
+  const { data: maxBaoCap } = useReadContract({
+    address: distributor,
+    abi: HARBOR_TIDE_DISTRIBUTOR_ABI,
+    functionName: "MAX_BAO",
+    chainId: TIDE_CONFIG.chainId,
+  });
+
   const balance = balanceRaw ?? 0n;
+
+  const maxBaoWei = useMemo(() => {
+    if (isConnected && balance > 0n) return balance;
+    return (maxBaoCap ?? 0n) as bigint;
+  }, [isConnected, balance, maxBaoCap]);
+
+  const { data: maxTideOutWei } = useReadContract({
+    address: distributor,
+    abi: HARBOR_TIDE_DISTRIBUTOR_ABI,
+    functionName: "baoToTide",
+    args: [maxBaoWei],
+    chainId: TIDE_CONFIG.chainId,
+    query: { enabled: maxBaoWei > 0n },
+  });
+
   const allowance = allowanceRaw ?? 0n;
   const balanceFormatted = formatToken(balance, TIDE_CONFIG.baoDecimals, 4);
 
@@ -215,6 +237,17 @@ export function useTideSwap() {
 
   const swapRateLabel = "0.1758 TIDE per BAO";
 
+  const maxSwapConversionLabel = useMemo(() => {
+    if (maxBaoWei <= 0n || maxTideOutWei === undefined) return null;
+    const baoLabel = formatToken(maxBaoWei, TIDE_CONFIG.baoDecimals, 0);
+    const tideLabel = formatToken(
+      maxTideOutWei as bigint,
+      TIDE_CONFIG.tideDecimals,
+      0
+    );
+    return `${baoLabel} BAO → ${tideLabel} TIDE`;
+  }, [maxBaoWei, maxTideOutWei]);
+
   return {
     isConnected,
     balance,
@@ -236,6 +269,7 @@ export function useTideSwap() {
     swapError,
     executeSwap,
     swapRateLabel,
+    maxSwapConversionLabel,
     txModal: txModal.modal,
     closeTxModal: txModal.close,
   };

@@ -1,28 +1,54 @@
 "use client";
 
 import { Gift } from "lucide-react";
+import {
+  TIDE_AIRDROP_BUCKETS,
+  type TideAirdropBucketAmount,
+  type TideAirdropBucketKey,
+} from "@/config/tide";
 import { useTideAirdropEligibility } from "@/hooks/useTideAirdropEligibility";
+import { formatTideAirdropMonthYear } from "@/utils/tideDistributor";
 import { formatTideTokenAmount } from "@/utils/tideSnapshot";
 import { TideFeatureCard } from "./TideFeatureCard";
 import {
   TIDE_AMOUNT_CLASS,
+  TIDE_AMOUNT_SM_CLASS,
+  TIDE_CARD_CONTENT_STACK,
+  TIDE_FOOTER_EXTRA_CORAL_CLASS,
   TIDE_INSET_LABEL_CLASS,
   TIDE_META_TEXT,
   TIDE_THEME,
 } from "./tideCardStyles";
 
-function formatAirdropDate(timestampMs: number): string {
-  return new Date(timestampMs).toLocaleDateString(undefined, {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+function AirdropBucketRow({
+  label,
+  amount,
+  themeInset,
+}: {
+  label: string;
+  amount: TideAirdropBucketAmount;
+  themeInset: string;
+}) {
+  return (
+    <div className={`flex w-full items-center justify-between gap-3 px-4 py-2.5 ${themeInset}`}>
+      <p className={`${TIDE_INSET_LABEL_CLASS} text-white/55`}>{label}</p>
+      <p className={`${TIDE_AMOUNT_SM_CLASS} text-base sm:text-lg`}>
+        {formatTideTokenAmount(amount.amountTokens)}{" "}
+        <span className="text-sm text-white/50">TIDE</span>
+      </p>
+    </div>
+  );
 }
 
 export function TideAirdropCard() {
-  const { isConnected, isLoading, allocation, hasAllocation, airdropDate, snapshotBlock } =
-    useTideAirdropEligibility();
+  const {
+    isConnected,
+    isLoading,
+    buckets,
+    totalTokens,
+    hasAllocation,
+    airdropDate,
+  } = useTideAirdropEligibility();
   const theme = TIDE_THEME.coral;
 
   return (
@@ -31,37 +57,44 @@ export function TideAirdropCard() {
       accentBarClass={theme.accentBar}
       iconBadgeClass={theme.iconBadge}
       title="Airdrop"
-      subtitle="veBAO snapshot"
+      subtitle="veBAO · Boosters · Raise · Marks"
       subtitleClass={theme.subtitle}
       badge="Snapshot"
       badgeVariant={theme.badgeVariant}
-      footer="Read from vebao_tide_airdrop.json"
+      footer="Eligibility from tide_airdrop.json"
+      footerExtra={
+        airdropDate
+          ? `Will be airdropped ${formatTideAirdropMonthYear(airdropDate)}`
+          : undefined
+      }
+      footerExtraClassName={TIDE_FOOTER_EXTRA_CORAL_CLASS}
       isConnected={isConnected}
       disconnectedMessage="Connect wallet to view your snapshot airdrop allocation"
     >
       {isLoading ? (
         <p className={TIDE_META_TEXT}>Loading snapshot…</p>
-      ) : hasAllocation && allocation ? (
-        <div className="flex w-full flex-col items-center gap-4 py-2 text-center">
-          <div>
-            <p className={`mb-1 ${TIDE_INSET_LABEL_CLASS} text-white/50`}>
-              Snapshot allocation
+      ) : hasAllocation && buckets ? (
+        <div className={TIDE_CARD_CONTENT_STACK}>
+          <div className="text-center">
+            <p className={`mb-1.5 ${TIDE_INSET_LABEL_CLASS} text-white/50`}>
+              Total allocation
             </p>
             <p className={TIDE_AMOUNT_CLASS}>
-              {formatTideTokenAmount(allocation.amountTokens)}{" "}
+              {formatTideTokenAmount(totalTokens)}{" "}
               <span className="text-lg text-white/60 sm:text-xl">TIDE</span>
             </p>
           </div>
-          {airdropDate ? (
-            <div className={`w-full px-4 py-3 ${theme.highlight}`}>
-              <p className={`text-sm font-medium ${theme.highlightText}`}>
-                Will be airdropped on {formatAirdropDate(airdropDate)}
-              </p>
-            </div>
-          ) : null}
-          {snapshotBlock ? (
-            <p className={TIDE_META_TEXT}>Snapshot block {snapshotBlock.toLocaleString()}</p>
-          ) : null}
+
+          <div className="flex w-full flex-col gap-3 sm:gap-3.5">
+            {TIDE_AIRDROP_BUCKETS.map(({ key, label }) => (
+              <AirdropBucketRow
+                key={key}
+                label={label}
+                amount={buckets[key as TideAirdropBucketKey]}
+                themeInset={theme.inset}
+              />
+            ))}
+          </div>
         </div>
       ) : (
         <div className="py-4 text-center">

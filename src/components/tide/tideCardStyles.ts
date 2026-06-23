@@ -58,7 +58,11 @@ export {
   MV_FOOTER_PANEL as TIDE_CARD_FOOTER,
 };
 
-export const TIDE_CARD_BODY = "flex flex-1 flex-col px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3";
+export const TIDE_CARD_BODY =
+  "flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3 sm:px-4 sm:pb-4 sm:pt-4 lg:pt-5";
+
+/** Top-aligned stacked content; card body flex-1 leaves space above footer on lg. */
+export const TIDE_CARD_CONTENT_STACK = "flex w-full flex-col gap-4 sm:gap-5";
 
 export const TIDE_DISCONNECTED_RING =
   "flex h-20 w-20 items-center justify-center rounded-full border border-dashed border-white/15 bg-[#122a47]/28 backdrop-blur-sm";
@@ -75,3 +79,12 @@ export const TIDE_PRIMARY_BUTTON_CLASS =
   "w-full rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-[#1E4775] shadow-sm transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40";
 
 export const TIDE_INPUT_SHELL_CLASS = `${MV_STAT_TILE} flex items-center gap-2 px-3 py-2`;
+
+export const TIDE_FOOTER_EXTRA_CORAL_CLASS =
+  "text-[10px] font-medium leading-snug text-[#FF8A7A]";
+
+export const TIDE_FOOTER_EXTRA_MINT_CLASS =
+  "text-[10px] font-medium leading-snug text-[#B8EBD5]";
+
+export const TIDE_FOOTER_EXTRA_BLUE_CLASS =
+  "font-mono text-[10px] tabular-nums leading-snug text-[#8CB8DC]";

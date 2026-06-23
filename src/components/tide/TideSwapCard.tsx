@@ -5,6 +5,9 @@ import { useTideSwap } from "@/hooks/useTideSwap";
 import { TideFeatureCard } from "./TideFeatureCard";
 import { TideTransactionModal } from "./TideTransactionModal";
 import {
+  TIDE_AMOUNT_SM_CLASS,
+  TIDE_CARD_CONTENT_STACK,
+  TIDE_FOOTER_EXTRA_BLUE_CLASS,
   TIDE_INSET_LABEL_CLASS,
   TIDE_INPUT_SHELL_CLASS,
   TIDE_META_TEXT,
@@ -31,6 +34,7 @@ export function TideSwapCard() {
     swapError,
     executeSwap,
     swapRateLabel,
+    maxSwapConversionLabel,
     txModal,
     closeTxModal,
   } = useTideSwap();
@@ -53,21 +57,32 @@ export function TideSwapCard() {
         subtitle="BAO → TIDE"
         subtitleClass={theme.subtitle}
         footer={`${swapRateLabel} via distributor`}
+        footerExtra={
+          maxSwapConversionLabel
+            ? `Max swap ${maxSwapConversionLabel}`
+            : undefined
+        }
+        footerExtraClassName={TIDE_FOOTER_EXTRA_BLUE_CLASS}
         isConnected={isConnected}
         disconnectedMessage="Connect wallet to swap BAO for TIDE"
       >
-        <div className="flex w-full flex-col gap-4">
+        <div className={TIDE_CARD_CONTENT_STACK}>
           {!windowOpen ? (
             <p className={`text-center ${TIDE_META_TEXT}`}>
               Swap is only available during the distributor claim window.
             </p>
           ) : null}
 
-          <div className="flex items-center justify-between text-sm">
-            <span className={TIDE_META_TEXT}>BAO balance</span>
-            <span className="font-mono tabular-nums text-white/90">
-              {isBalanceLoading ? "…" : balanceFormatted}
-            </span>
+          <div className={`px-4 py-3 text-center ${theme.inset}`}>
+            <p
+              className={`mb-1.5 ${TIDE_INSET_LABEL_CLASS} text-[#8CB8DC]/85`}
+            >
+              BAO balance
+            </p>
+            <p className={TIDE_AMOUNT_SM_CLASS}>
+              {isBalanceLoading ? "…" : balanceFormatted}{" "}
+              <span className="text-base text-white/55">BAO</span>
+            </p>
           </div>
 
           <div className="space-y-1.5">
@@ -75,7 +90,7 @@ export function TideSwapCard() {
               htmlFor="tide-swap-bao-amount"
               className={TIDE_INSET_LABEL_CLASS}
             >
-              You pay
+              You swap
             </label>
             <div className={TIDE_INPUT_SHELL_CLASS}>
               <input
@@ -109,38 +124,40 @@ export function TideSwapCard() {
             ) : null}
           </div>
 
-          <div className="space-y-1.5">
-            <p className={TIDE_INSET_LABEL_CLASS}>You receive</p>
-            <div
-              className={`flex items-center justify-between px-3 py-2.5 ${theme.highlight}`}
-            >
-              <span className="font-mono text-lg tabular-nums text-white/95">
-                {isPreviewLoading && baoAmount ? "…" : tideOutput || "0"}
-              </span>
-              <span className="text-sm font-medium text-white/55">TIDE</span>
+          <div className="space-y-3.5 sm:space-y-4">
+            <div className="space-y-1.5">
+              <p className={TIDE_INSET_LABEL_CLASS}>You receive</p>
+              <div
+                className={`flex items-center justify-between px-3 py-2.5 ${theme.highlight}`}
+              >
+                <span className="font-mono text-lg tabular-nums text-white/95">
+                  {isPreviewLoading && baoAmount ? "…" : tideOutput || "0"}
+                </span>
+                <span className="text-sm font-medium text-white/55">TIDE</span>
+              </div>
             </div>
+
+            {swapError ? (
+              <p className="rounded-lg border border-[#FF8A7A]/30 bg-[#FF8A7A]/10 px-3 py-2 text-xs text-[#FF8A7A]">
+                {swapError}
+              </p>
+            ) : null}
+
+            <button
+              type="button"
+              disabled={!canSwap}
+              onClick={() => void executeSwap()}
+              className={TIDE_PRIMARY_BUTTON_CLASS}
+            >
+              {isSwapping
+                ? needsApproval
+                  ? "Approving…"
+                  : "Swapping…"
+                : needsApproval
+                  ? "Approve & Swap"
+                  : "Swap"}
+            </button>
           </div>
-
-          {swapError ? (
-            <p className="rounded-lg border border-[#FF8A7A]/30 bg-[#FF8A7A]/10 px-3 py-2 text-xs text-[#FF8A7A]">
-              {swapError}
-            </p>
-          ) : null}
-
-          <button
-            type="button"
-            disabled={!canSwap}
-            onClick={() => void executeSwap()}
-            className={TIDE_PRIMARY_BUTTON_CLASS}
-          >
-            {isSwapping
-              ? needsApproval
-                ? "Approving…"
-                : "Swapping…"
-              : needsApproval
-                ? "Approve & Swap"
-                : "Swap"}
-          </button>
         </div>
       </TideFeatureCard>
 

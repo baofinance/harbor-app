@@ -37,16 +37,11 @@ export function TideDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3 lg:items-stretch lg:gap-4">
         <TideAirdropCard />
         <TideClaimCard />
         <TideSwapCard />
       </div>
-
-      <p className={`text-center ${MV_META_TEXT} opacity-80`}>
-        Claims read from vebao_tide_allocation.json; swap uses distributor
-        convertBao
-      </p>
     </section>
   );
 }

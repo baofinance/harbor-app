@@ -29,6 +29,39 @@ export function formatTideClaimWindowMessage(
   return null;
 }
 
+function formatTideWindowMonthYear(timestampSec: bigint): string {
+  return new Date(Number(timestampSec) * 1000).toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+/** Compact claim window copy for card footers. */
+export function formatTideClaimWindowFooter(
+  status: TideClaimWindowStatus,
+  startDate?: bigint,
+  endDate?: bigint
+): string | null {
+  if (status === "loading") return null;
+  if (status === "not_started" && startDate !== undefined) {
+    return `Claims open ${formatTideWindowMonthYear(startDate)}`;
+  }
+  if (status === "open" && endDate !== undefined) {
+    return `Claim window open · ends ${formatTideWindowMonthYear(endDate)}`;
+  }
+  if (status === "ended" && endDate !== undefined) {
+    return `Claim window ended ${formatTideWindowMonthYear(endDate)}`;
+  }
+  return null;
+}
+
+export function formatTideAirdropMonthYear(timestampMs: number): string {
+  return new Date(timestampMs).toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export function getVeBaoClaimBlockReason(
   status: VeClaimStatus | undefined
 ): string | null {

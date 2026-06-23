@@ -16,7 +16,7 @@ export const TIDE_CONFIG = {
   tideDecimals: 18,
   chainId: 1,
   dataPaths: {
-    airdrop: "/data/tide/vebao_tide_airdrop.json",
+    airdrop: "/data/tide/tide_airdrop.json",
     /** Path 2 — veBAO merkle claim (claimVeBao). */
     veBaoAllocation: "/data/tide/vebao_tide_allocation.json",
     /** Path 3 — standard merkle claim (claimStandard). Same file on test deploy; split for production. */
@@ -41,3 +41,36 @@ export type TideAllocationSnapshot = {
 };
 
 export type TideClaimAllocation = TideAllocationRow;
+
+/** Airdrop eligibility buckets — amounts are TIDE (not wei unless `amount` is set). */
+export const TIDE_AIRDROP_BUCKETS = [
+  { key: "veBaoSnapshot", label: "veBAO" },
+  { key: "boosters", label: "Boosters" },
+  { key: "raise", label: "Raise" },
+  { key: "ledgerMarks", label: "Marks" },
+] as const;
+
+export type TideAirdropBucketKey = (typeof TIDE_AIRDROP_BUCKETS)[number]["key"];
+
+export type TideAirdropBucketAmount = {
+  /** Optional wei string when known; UI uses amountTokens. */
+  amount?: string;
+  amountTokens: number;
+};
+
+export type TideAirdropAllocationRow = {
+  address: string;
+  /** Legacy row: veBAO snapshot total when `buckets` is omitted. */
+  amount?: string;
+  amountTokens?: number;
+  buckets?: Partial<Record<TideAirdropBucketKey, TideAirdropBucketAmount>>;
+};
+
+export type TideAirdropSnapshot = {
+  name?: string;
+  description?: string;
+  snapshotBlock?: number;
+  /** Optional pool sizes per bucket (informational). */
+  bucketPools?: Partial<Record<TideAirdropBucketKey, number>>;
+  allocations: TideAirdropAllocationRow[];
+};
