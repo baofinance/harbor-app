@@ -59,7 +59,7 @@ export {
 };
 
 export const TIDE_CARD_BODY =
-  "flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3 sm:px-4 sm:pb-4 sm:pt-4 lg:pt-5";
+  "flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3 sm:px-4 sm:pb-4 sm:pt-4 lg:justify-end lg:pt-5";
 
 /** Top-aligned stacked content; card body flex-1 leaves space above footer on lg. */
 export const TIDE_CARD_CONTENT_STACK = "flex w-full flex-col gap-4 sm:gap-5";
