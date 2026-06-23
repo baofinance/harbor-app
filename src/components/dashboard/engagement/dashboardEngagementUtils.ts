@@ -39,11 +39,6 @@ export type DashboardEngagementInput = {
   totalOutstanding: number;
 };
 
-export type RevenuePeriodBucket = {
-  label: string;
-  usd: number;
-};
-
 export type Achievement = {
   id: string;
   icon: string;
@@ -54,6 +49,8 @@ export type Achievement = {
 
 export type TimelineEventKind = "deposit" | "revenue" | "voyage" | "archived";
 
+export type TimelineEventValueTone = "positive" | "muted";
+
 export type TimelineEvent = {
   id: string;
   label: string;
@@ -61,15 +58,8 @@ export type TimelineEvent = {
   timestamp: number;
   relativeLabel: string;
   kind: TimelineEventKind;
-};
-
-export type Opportunity = {
-  id: string;
-  icon: string;
-  label: string;
-  href?: string;
-  onClick?: () => void;
-  emphasis?: boolean;
+  valueLabel?: string | null;
+  valueTone?: TimelineEventValueTone;
 };
 
 export type YieldHubSnapshot = {
@@ -110,60 +100,9 @@ function relativeTime(ts: number, now = Date.now()): string {
   const days = Math.floor(diff / DAY_MS);
   if (days <= 0) return "Today";
   if (days === 1) return "Yesterday";
-  if (days < 7) return `${days} days ago`;
-  if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
-  return `${Math.floor(days / 30)} months ago`;
-}
-
-export function buildRevenuePeriods(
-  events: YieldDistributionEvent[],
-  totalEarned: number,
-): RevenuePeriodBucket[] {
-  const now = Date.now();
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-  const dayStart = startOfDay.getTime();
-  const weekStart = dayStart - 6 * DAY_MS;
-  const monthStart = dayStart - 29 * DAY_MS;
-
-  let today = 0;
-  let week = 0;
-  let month = 0;
-
-  for (const e of events) {
-    const ts = new Date(e.createdAt).getTime();
-    const usd = parseUsd(e.amountUSD);
-    if (ts >= dayStart) today += usd;
-    if (ts >= weekStart) week += usd;
-    if (ts >= monthStart) month += usd;
-  }
-
-  return [
-    { label: "Today", usd: today },
-    { label: "This week", usd: week },
-    { label: "This month", usd: month },
-    { label: "All time", usd: totalEarned },
-  ];
-}
-
-export function buildRevenueSparkline(
-  events: YieldDistributionEvent[],
-  days = 14,
-): number[] {
-  const now = Date.now();
-  const buckets = Array.from({ length: days }, () => 0);
-  for (const e of events) {
-    const ts = new Date(e.createdAt).getTime();
-    const dayIndex = Math.floor((now - ts) / DAY_MS);
-    if (dayIndex >= 0 && dayIndex < days) {
-      buckets[days - 1 - dayIndex] += parseUsd(e.amountUSD);
-    }
-  }
-  let cumulative = 0;
-  return buckets.map((v) => {
-    cumulative += v;
-    return cumulative;
-  });
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return `${Math.floor(days / 30)}mo ago`;
 }
 
 export function buildYieldHubSnapshot(
@@ -316,10 +255,12 @@ export function buildTimelineEvents(
     events.push({
       id: `yield-${e.createdAt}-${e.amountUSD}-${e.genesis}`,
       label: "Revenue distribution received",
-      detail: marketName ? `${marketName} · ${amount}` : amount,
+      detail: marketName ?? "",
       timestamp: ts,
       relativeLabel: relativeTime(ts),
       kind: "revenue",
+      valueLabel: amount,
+      valueTone: "positive",
     });
   }
 
@@ -329,10 +270,12 @@ export function buildTimelineEvents(
     events.push({
       id: `deposit-${d.timestamp}-${d.label}`,
       label: `Deposited into ${marketLabel}`,
-      detail: formatUsdShort(d.usd),
+      detail: "",
       timestamp: ts,
       relativeLabel: relativeTime(ts),
       kind: "deposit",
+      valueLabel: formatUsdShort(d.usd),
+      valueTone: "positive",
     });
   }
 
@@ -356,6 +299,8 @@ export function buildTimelineEvents(
       timestamp: ts,
       relativeLabel: ts > 0 ? relativeTime(ts) : "Completed",
       kind: "voyage",
+      valueLabel: null,
+      valueTone: "muted",
     });
   }
 
@@ -369,6 +314,8 @@ export function buildTimelineEvents(
       timestamp: 0,
       relativeLabel: "Archived",
       kind: "archived",
+      valueLabel: null,
+      valueTone: "muted",
     });
   }
 
@@ -425,44 +372,6 @@ export function buildPortfolioHealth(input: DashboardEngagementInput): Portfolio
       ? "Some positions may benefit from a quick review."
       : "Your portfolio looks healthy.",
   };
-}
-
-export function buildOpportunities(
-  input: DashboardEngagementInput,
-  handlers: { onYieldDetails?: () => void },
-): Opportunity[] {
-  const ops: Opportunity[] = [];
-
-  if (input.activeVoyage?.status === "deposits_open") {
-    ops.push({
-      id: "new_voyage",
-      icon: "⚓",
-      label: `New maiden voyage open · ${input.activeVoyage.flowLabel}`,
-      href: "/genesis",
-      emphasis: true,
-    });
-  }
-
-  if (input.yieldRows.length > 0) {
-    ops.push({
-      id: "yield",
-      icon: "🌊",
-      label: "View revenue share details",
-      onClick: handlers.onYieldDetails,
-    });
-  }
-
-  const topEarn = [...input.allPositionRows].sort((a, b) => b.usd - a.usd)[0];
-  if (topEarn && topEarn.category === "earn") {
-    ops.push({
-      id: "earn_pool",
-      icon: "📈",
-      label: `Add to ${formatMarketLabel(topEarn.marketLabel)} stability pool`,
-      href: "/anchor",
-    });
-  }
-
-  return ops.slice(0, 4);
 }
 
 function formatUsdShort(usd: number): string {

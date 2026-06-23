@@ -53,6 +53,7 @@ export function DashboardFoundingTracker({
             <StatusBadge
               label={m.status === "active" ? "Active" : "Completed"}
               variant={m.status === "active" ? "green" : "neutral"}
+              surface="dark"
             />
           </li>
         ))}

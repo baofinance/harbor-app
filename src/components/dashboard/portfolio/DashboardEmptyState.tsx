@@ -8,29 +8,33 @@ import { PORTFOLIO_CARD_SHELL_DARK, PORTFOLIO_MUTED_CLASS } from "./portfolioSty
 export type DashboardEmptyStateProps = {
   title: string;
   message: string;
+  trustLine?: string;
   href?: string;
   linkLabel?: string;
   positionCount?: number;
   compact?: boolean;
   action?: ReactNode;
+  accentBorderClass?: string;
 };
 
 export function DashboardEmptyState({
   title,
   message,
+  trustLine,
   href,
   linkLabel,
   positionCount = 0,
   compact = false,
   action,
+  accentBorderClass = "",
 }: DashboardEmptyStateProps) {
   const showCount = positionCount > 0;
   const countLabel =
     positionCount === 1 ? "1 position" : `${positionCount} positions`;
 
   const shellClass = compact
-    ? `${PORTFOLIO_CARD_SHELL_DARK} px-3.5 py-3 text-center sm:px-4`
-    : `${PORTFOLIO_CARD_SHELL_DARK} px-4 py-4 text-center sm:px-5 sm:py-5`;
+    ? `${PORTFOLIO_CARD_SHELL_DARK} px-3 py-2.5 text-center sm:px-3 ${accentBorderClass}`
+    : `${PORTFOLIO_CARD_SHELL_DARK} px-4 py-4 text-center sm:px-5 sm:py-5 ${accentBorderClass}`;
 
   return (
     <div className={shellClass}>
@@ -40,6 +44,11 @@ export function DashboardEmptyState({
       <p className={`mt-1.5 ${PORTFOLIO_MUTED_CLASS} ${compact ? "text-xs" : ""}`}>
         {message}
       </p>
+      {trustLine ? (
+        <p className={`mt-2 ${PORTFOLIO_MUTED_CLASS} ${compact ? "text-[11px]" : "text-xs"}`}>
+          {trustLine}
+        </p>
+      ) : null}
       {showCount ? (
         <p className="mt-2 text-xs text-white/45">{countLabel}</p>
       ) : null}

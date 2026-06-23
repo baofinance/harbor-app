@@ -1,89 +1,57 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import {
   MV_CARD_INNER_GRADIENT,
   MV_CARD_SHELL,
-  MV_SECTION_LABEL,
 } from "@/components/genesis/maidenVoyageLayoutStyles";
-import {
-  DASHBOARD_PRODUCT_CARD_COLLAPSED_HOVER_CLASS,
-  DASHBOARD_PRODUCT_CARD_HEADER_BUTTON_CLASS,
-} from "../dashboardStyles";
-import { PORTFOLIO_MUTED_CLASS } from "../portfolio/portfolioStyles";
-import {
-  PORTFOLIO_ACCORDION_BODY_CLASS,
-  PORTFOLIO_CHEVRON_CLASS,
-} from "../portfolio/portfolioStyles";
+import { DASHBOARD_SECTION_TITLE_CLASS } from "../dashboardTypography";
+import type { TimelineEvent } from "./dashboardEngagementUtils";
+import { DashboardActivityTimeline } from "./DashboardActivityTimeline";
+
+const VISIBLE_EVENT_LIMIT = 5;
 
 export type DashboardActivitySectionProps = {
-  defaultExpanded?: boolean;
-  latestEvent?: { label: string; relativeLabel: string } | null;
-  isConnected?: boolean;
-  children: React.ReactNode;
+  events: TimelineEvent[];
+  isConnected: boolean;
 };
 
 export function DashboardActivitySection({
-  defaultExpanded = false,
-  latestEvent = null,
-  isConnected = false,
-  children,
+  events,
+  isConnected,
 }: DashboardActivitySectionProps) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
+  const [expanded, setExpanded] = useState(false);
 
-  const previewText =
-    isConnected && latestEvent
-      ? `${latestEvent.label} · ${latestEvent.relativeLabel}`
-      : isConnected
-        ? "No recent events yet"
-        : null;
+  const hasMore = events.length > VISIBLE_EVENT_LIMIT;
+  const visibleEvents = expanded
+    ? events
+    : events.slice(0, VISIBLE_EVENT_LIMIT);
 
   return (
     <section
-      className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} overflow-hidden ${
-        !expanded ? DASHBOARD_PRODUCT_CARD_COLLAPSED_HOVER_CLASS : ""
-      }`}
+      className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} overflow-hidden`}
       aria-label="Recent Activity"
     >
-      <div
-        className={`px-3 py-2 sm:px-4 sm:py-2.5 ${
-          expanded ? "border-b border-white/[0.08]" : ""
-        }`}
-      >
-        <button
-          type="button"
-          className={DASHBOARD_PRODUCT_CARD_HEADER_BUTTON_CLASS}
-          aria-expanded={expanded}
-          aria-label={expanded ? "Collapse Recent Activity" : "Expand Recent Activity"}
-          onClick={() => setExpanded((v) => !v)}
-        >
-          <div className="flex min-w-0 items-center justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <h2 className={MV_SECTION_LABEL}>Recent Activity</h2>
-              {!expanded && previewText ? (
-                <p className={`mt-0.5 truncate ${PORTFOLIO_MUTED_CLASS}`}>{previewText}</p>
-              ) : null}
-            </div>
-            <ChevronDownIcon
-              className={`${PORTFOLIO_CHEVRON_CLASS} pointer-events-none shrink-0 ${
-                expanded ? "rotate-180" : ""
-              }`}
+      <div className="flex items-center justify-between gap-3 px-3 py-2 sm:px-4 sm:py-2.5">
+        <h2 className={DASHBOARD_SECTION_TITLE_CLASS}>Recent Activity</h2>
+        {isConnected && hasMore ? (
+          <button
+            type="button"
+            className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-white/55 transition-colors hover:text-white/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/30"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {expanded ? "Show less" : "View all"}
+            <ChevronRightIcon
+              className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-90" : ""}`}
               aria-hidden
             />
-          </div>
-        </button>
+          </button>
+        ) : null}
       </div>
-      <div
-        className={`${PORTFOLIO_ACCORDION_BODY_CLASS} ${
-          expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-        }`}
-      >
-        <div className="overflow-hidden">
-          <div className="space-y-2.5 px-3 pb-2.5 pt-2 sm:space-y-3 sm:px-4 sm:pb-3">
-            {children}
-          </div>
-        </div>
+      <div className="px-3 pb-2.5 pt-0 sm:px-4 sm:pb-3">
+        <DashboardActivityTimeline events={visibleEvents} isConnected={isConnected} />
       </div>
     </section>
   );

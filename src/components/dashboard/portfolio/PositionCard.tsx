@@ -1,25 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { TokenLogo } from "@/components/shared";
-import { GenesisMarketChainCell } from "@/components/genesis/GenesisMarketSharedRowCells";
 import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
-import { INDEX_MANAGE_BUTTON_CLASS_COMPACT } from "@/utils/indexPageManageButton";
 import { formatUSD } from "@/utils/formatters";
+import {
+  DASHBOARD_INSET_METRIC_LABEL_CLASS,
+  DASHBOARD_INSET_METRIC_VALUE_CLASS,
+  DASHBOARD_INSET_SUBTITLE_CLASS,
+  DASHBOARD_INSET_TITLE_CLASS,
+} from "../dashboardTypography";
 import {
   formatMarketLabel,
   parsePositionDetail,
+  positionValueContext,
   positionValueLabel,
 } from "./dashboardPortfolioUtils";
+import { DASHBOARD_INSET_MARKET_ICON_PX } from "../dashboardRowListStyles";
 import {
-  PORTFOLIO_POSITION_LABEL_CLASS,
-  PORTFOLIO_POSITION_ROW_CLASS,
+  DASHBOARD_INSET_ROW_SHELL_CLASS,
+  DASHBOARD_INSET_ROW_SUBGRID_CLASS,
 } from "./portfolioStyles";
 import { StatusBadge } from "./StatusBadge";
-
-const NETWORK_ICON_PX = 14;
-const MARKET_ICON_PX = 20;
 
 function statusVariant(
   tone: DashboardPositionRow["statusTone"],
@@ -29,69 +31,84 @@ function statusVariant(
   return "neutral";
 }
 
-export type PositionCardProps = {
+function PositionSubtitle({
+  row,
+  positionType,
+  positionSubtype,
+}: {
   row: DashboardPositionRow;
-  onManage?: (row: DashboardPositionRow) => void;
-};
+  positionType: string;
+  positionSubtype?: string;
+}) {
+  if (row.category === "earn" && positionSubtype) {
+    return (
+      <p className={DASHBOARD_INSET_SUBTITLE_CLASS} title={`${positionType} · ${positionSubtype}`}>
+        <span className="text-white/40">{positionType}</span>
+        <span className="text-white/40"> · </span>
+        <span className="font-medium text-white/65">{positionSubtype}</span>
+      </p>
+    );
+  }
 
-export function PositionCard({ row, onManage }: PositionCardProps) {
-  const { positionType, positionSubtype } = parsePositionDetail(row.detail);
-  const valueDisplay = row.usdUnpriced ? "—" : formatUSD(row.usd, { compact: false });
-  const marketName = formatMarketLabel(row.marketLabel);
   const typeLabel = positionSubtype
     ? `${positionType} · ${positionSubtype}`
     : positionType;
 
-  const manageBtn = onManage ? (
-    <button
-      type="button"
-      className={`${INDEX_MANAGE_BUTTON_CLASS_COMPACT} inline-flex items-center gap-0.5`}
-      onClick={() => void onManage(row)}
-    >
-      Manage
-      <ChevronRightIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-    </button>
-  ) : (
-    <Link
-      href={row.href}
-      className={`${INDEX_MANAGE_BUTTON_CLASS_COMPACT} inline-flex items-center gap-0.5`}
-    >
-      Manage
-      <ChevronRightIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-    </Link>
+  return (
+    <p className={DASHBOARD_INSET_SUBTITLE_CLASS} title={typeLabel}>
+      {typeLabel}
+    </p>
   );
+}
+
+export type PositionCardProps = {
+  row: DashboardPositionRow;
+};
+
+export function PositionCard({ row }: PositionCardProps) {
+  const { positionType, positionSubtype } = parsePositionDetail(row.detail);
+  const valueDisplay = row.usdUnpriced ? "—" : formatUSD(row.usd, { compact: false });
+  const marketName = formatMarketLabel(row.marketLabel);
+  const valueContext = positionValueContext(row);
+  const valueLabel = positionValueLabel(row.category);
 
   return (
-    <article
-      className={`${PORTFOLIO_POSITION_ROW_CLASS} flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between`}
+    <Link
+      href={row.href}
+      className={`${DASHBOARD_INSET_ROW_SHELL_CLASS} ${DASHBOARD_INSET_ROW_SUBGRID_CLASS} grid grid-cols-1 gap-2 sm:grid-cols-subgrid sm:gap-x-3`}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-2">
-        <GenesisMarketChainCell
-          chainName={row.chainName}
-          chainLogo={row.chainLogo}
-          size={NETWORK_ICON_PX}
+      <div className="flex min-w-0 items-center gap-2.5">
+        <TokenLogo
+          symbol={row.iconSymbol}
+          size={DASHBOARD_INSET_MARKET_ICON_PX}
+          className="shrink-0 ring-0"
         />
-        <TokenLogo symbol={row.iconSymbol} size={MARKET_ICON_PX} className="shrink-0 ring-0" />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-[#1E4775]" title={marketName}>
+        <div className="min-w-0 flex-1 space-y-0">
+          <p className={DASHBOARD_INSET_TITLE_CLASS} title={marketName}>
             {marketName}
           </p>
-          <p className={`truncate text-xs text-[#1E4775]/55`} title={typeLabel}>
-            {typeLabel}
-          </p>
+          <PositionSubtitle
+            row={row}
+            positionType={positionType}
+            positionSubtype={positionSubtype}
+          />
         </div>
-        <StatusBadge label={row.statusLabel} variant={statusVariant(row.statusTone)} />
+        <StatusBadge
+          label={row.statusLabel}
+          variant={statusVariant(row.statusTone)}
+          surface="dark"
+        />
       </div>
 
-      <div className="flex items-center justify-between gap-2 sm:justify-end">
-        <div className="sm:text-right">
-          <p className={PORTFOLIO_POSITION_LABEL_CLASS}>{positionValueLabel(row.category)}</p>
-          <p className="font-mono text-base font-semibold tabular-nums text-[#1E4775]">
-            {valueDisplay}
-          </p>
-        </div>
-        {manageBtn}
+      <div className="min-w-0 text-left sm:text-right">
+        <span className="whitespace-nowrap text-sm">
+          <span className={DASHBOARD_INSET_METRIC_LABEL_CLASS}>{valueLabel}</span>{" "}
+          <span className={DASHBOARD_INSET_METRIC_VALUE_CLASS}>{valueDisplay}</span>
+        </span>
+        {valueContext ? (
+          <p className="mt-0.5 text-[10px] text-white/35 sm:text-right">{valueContext}</p>
+        ) : null}
       </div>
-    </article>
+    </Link>
   );
 }
