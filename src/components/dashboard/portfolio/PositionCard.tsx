@@ -17,7 +17,10 @@ import {
   positionValueLabel,
 } from "./dashboardPortfolioUtils";
 import { DASHBOARD_INSET_MARKET_ICON_PX } from "../dashboardRowListStyles";
-import { DASHBOARD_INSET_ROW_CLASS } from "./portfolioStyles";
+import {
+  DASHBOARD_INSET_ROW_SHELL_CLASS,
+  DASHBOARD_INSET_ROW_SUBGRID_CLASS,
+} from "./portfolioStyles";
 import { StatusBadge } from "./StatusBadge";
 
 function statusVariant(
@@ -72,9 +75,9 @@ export function PositionCard({ row }: PositionCardProps) {
   return (
     <Link
       href={row.href}
-      className={`${DASHBOARD_INSET_ROW_CLASS} flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between`}
+      className={`${DASHBOARD_INSET_ROW_SHELL_CLASS} ${DASHBOARD_INSET_ROW_SUBGRID_CLASS} grid grid-cols-1 gap-2 sm:grid-cols-subgrid sm:gap-x-3`}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+      <div className="flex min-w-0 items-center gap-2.5">
         <TokenLogo
           symbol={row.iconSymbol}
           size={DASHBOARD_INSET_MARKET_ICON_PX}
@@ -97,9 +100,9 @@ export function PositionCard({ row }: PositionCardProps) {
         />
       </div>
 
-      <div className="shrink-0 sm:text-right">
-        <span className="whitespace-nowrap text-sm sm:inline-flex sm:items-baseline sm:gap-1">
-          <span className={DASHBOARD_INSET_METRIC_LABEL_CLASS}>{valueLabel}</span>
+      <div className="min-w-0 text-left sm:text-right">
+        <span className="whitespace-nowrap text-sm">
+          <span className={DASHBOARD_INSET_METRIC_LABEL_CLASS}>{valueLabel}</span>{" "}
           <span className={DASHBOARD_INSET_METRIC_VALUE_CLASS}>{valueDisplay}</span>
         </span>
         {valueContext ? (

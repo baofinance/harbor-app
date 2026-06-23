@@ -34,6 +34,18 @@ export const PORTFOLIO_POSITION_STACK_CLASS = "grid grid-cols-1 gap-1.5";
 /** Seamless inset row stack inside frosted product cards (Phase B). */
 export const DASHBOARD_INSET_ROW_STACK_CLASS = "flex flex-col";
 
+/** Parent grid for yield rows — fixed metric columns align labels across rows. */
+export const DASHBOARD_YIELD_METRICS_STACK_CLASS =
+  "grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_7.25rem_8.5rem_7rem_9rem]";
+
+/** Parent grid for earn/sail/maiden rows — fixed value column. */
+export const DASHBOARD_POSITION_METRICS_STACK_CLASS =
+  "grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_9rem]";
+
+/** Row participates in parent metric column grid. */
+export const DASHBOARD_INSET_ROW_SUBGRID_CLASS =
+  "col-span-full grid grid-cols-subgrid items-center gap-x-3";
+
 /** Dark inset row inside product accordion — no white card shell. */
 export const DASHBOARD_INSET_ROW_SHELL_CLASS =
   "min-h-[48px] w-full border-b border-white/[0.06] px-3 py-3 sm:px-4 transition-colors duration-150 hover:bg-white/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-white/30 last:border-b-0";

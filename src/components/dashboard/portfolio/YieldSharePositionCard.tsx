@@ -13,11 +13,13 @@ import {
   DASHBOARD_INSET_METRIC_MUTED_CLASS,
   DASHBOARD_INSET_METRIC_VALUE_CLASS,
   DASHBOARD_INSET_TITLE_CLASS,
-  DASHBOARD_YIELD_ROW_GRID_CLASS,
 } from "../dashboardTypography";
 import { DASHBOARD_INSET_MARKET_ICON_PX } from "../dashboardRowListStyles";
 import { formatDashboardEarnedUsd, formatMarketLabel } from "./dashboardPortfolioUtils";
-import { DASHBOARD_INSET_ROW_SHELL_CLASS } from "./portfolioStyles";
+import {
+  DASHBOARD_INSET_ROW_SHELL_CLASS,
+  DASHBOARD_INSET_ROW_SUBGRID_CLASS,
+} from "./portfolioStyles";
 
 function InlineMetric({
   label,
@@ -32,14 +34,8 @@ function InlineMetric({
 }) {
   return (
     <span className="whitespace-nowrap text-sm" title={title}>
-      <span className={DASHBOARD_INSET_METRIC_LABEL_CLASS}>{label} </span>
-      <span
-        className={
-          valueClassName ?? DASHBOARD_INSET_METRIC_VALUE_CLASS
-        }
-      >
-        {value}
-      </span>
+      <span className={DASHBOARD_INSET_METRIC_LABEL_CLASS}>{label}</span>{" "}
+      <span className={valueClassName ?? DASHBOARD_INSET_METRIC_VALUE_CLASS}>{value}</span>
     </span>
   );
 }
@@ -54,7 +50,7 @@ export function YieldSharePositionCard({ row }: { row: FounderMetricRow }) {
   return (
     <Link
       href={href}
-      className={`${DASHBOARD_INSET_ROW_SHELL_CLASS} ${DASHBOARD_YIELD_ROW_GRID_CLASS} ${
+      className={`${DASHBOARD_INSET_ROW_SHELL_CLASS} ${DASHBOARD_INSET_ROW_SUBGRID_CLASS} grid-cols-1 gap-2 sm:gap-x-3 ${
         hasPending ? DASHBOARD_YIELD_ROW_PENDING_CLASS : ""
       }`}
     >
@@ -85,7 +81,7 @@ export function YieldSharePositionCard({ row }: { row: FounderMetricRow }) {
         title="Your share of this market's genesis deposit cap."
       />
 
-      <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm">
+      <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap text-sm">
         <span className={DASHBOARD_INSET_METRIC_LABEL_CLASS}>Boost</span>
         {showBoost ? (
           <DashboardYieldBoostBadge multiplier={row.boostMultiplier} surface="dark" />

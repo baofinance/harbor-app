@@ -13,6 +13,8 @@ import {
   DASHBOARD_PRODUCT_CARD_HEADER_MUTED_CLASS,
   DASHBOARD_PRODUCT_HEADER_EXPAND_BTN_CLASS,
   DASHBOARD_PRODUCT_HEADER_NAV_LINK_CLASS,
+  DASHBOARD_PRODUCT_HEADER_NAV_STATIC_CLASS,
+  DASHBOARD_PRODUCT_HEADER_ROW_CLASS,
 } from "./dashboardStyles";
 import {
   PORTFOLIO_ACCORDION_BODY_CLASS,
@@ -97,25 +99,26 @@ export function DashboardProductCard({
         aria-hidden
       />
       <div
-        className={`${DASHBOARD_PRODUCT_CARD_HEADER_CLASS} ${
+        className={`${DASHBOARD_PRODUCT_CARD_HEADER_CLASS} px-3 sm:px-4 ${
           headerMuted ? DASHBOARD_PRODUCT_CARD_HEADER_MUTED_CLASS : ""
         } ${expanded && hasChildren ? DASHBOARD_PRODUCT_CARD_HEADER_EXPANDED_CLASS : ""}`}
       >
-        <div className="flex w-full min-w-0 items-center gap-2 px-0 py-1.5 sm:gap-2.5 sm:py-2.5">
-          <span className={`${meta.iconBadgeClass} shrink-0`} aria-hidden>
-            <Icon className="h-4 w-4" />
-          </span>
-
+        <div className={DASHBOARD_PRODUCT_HEADER_ROW_CLASS}>
           {meta.headerHref ? (
-            <Link
-              href={meta.headerHref}
-              className={DASHBOARD_PRODUCT_HEADER_NAV_LINK_CLASS}
-            >
+            <Link href={meta.headerHref} className={DASHBOARD_PRODUCT_HEADER_NAV_LINK_CLASS}>
+              <span className={`${meta.iconBadgeClass} shrink-0`} aria-hidden>
+                <Icon className="h-4 w-4" />
+              </span>
               <h2 className={titleClass}>{meta.title}</h2>
               <ChevronRightIcon className="h-3.5 w-3.5 shrink-0 text-white/45" aria-hidden />
             </Link>
           ) : (
-            <h2 className={`${titleClass} shrink-0`}>{meta.title}</h2>
+            <div className={DASHBOARD_PRODUCT_HEADER_NAV_STATIC_CLASS}>
+              <span className={`${meta.iconBadgeClass} shrink-0`} aria-hidden>
+                <Icon className="h-4 w-4" />
+              </span>
+              <h2 className={titleClass}>{meta.title}</h2>
+            </div>
           )}
 
           {hasChildren ? (
@@ -127,11 +130,11 @@ export function DashboardProductCard({
               onClick={onToggle}
             >
               {showSummary ? (
-                <span className="min-w-0 flex-1 truncate text-right">
+                <span className="flex min-w-0 flex-1 items-center justify-end truncate">
                   <DashboardSectionSummaryText segments={summarySegments} />
                 </span>
               ) : (
-                <span className="flex-1" />
+                <span className="flex-1" aria-hidden />
               )}
               <ChevronDownIcon
                 className={`${PORTFOLIO_CHEVRON_CLASS} pointer-events-none shrink-0 ${
@@ -141,14 +144,14 @@ export function DashboardProductCard({
               />
             </button>
           ) : showSummary ? (
-            <div className="min-w-0 flex-1 truncate text-right">
+            <div className="flex min-w-0 flex-1 items-center justify-end truncate py-2 pr-3 -mr-3 sm:pr-4 sm:-mr-4">
               <DashboardSectionSummaryText segments={summarySegments} />
             </div>
           ) : null}
         </div>
 
         {showExpandedMetrics ? (
-          <div className="mt-2 flex w-full min-w-0 justify-end border-t border-white/[0.04] px-3 pt-2 sm:px-4">
+          <div className="mt-2 flex w-full min-w-0 justify-end border-t border-white/[0.04] pt-2">
             {expandedMetrics}
           </div>
         ) : null}

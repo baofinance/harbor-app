@@ -5,7 +5,7 @@ import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
 import { DashboardContentRowSkeleton } from "./DashboardContentRow";
 import { DashboardEmptyState } from "./portfolio/DashboardEmptyState";
 import { PositionCard } from "./portfolio/PositionCard";
-import { DASHBOARD_INSET_ROW_STACK_CLASS } from "./portfolio/portfolioStyles";
+import { DASHBOARD_POSITION_METRICS_STACK_CLASS } from "./portfolio/portfolioStyles";
 
 export type DashboardEmptyStateConfig = {
   title: string;
@@ -38,7 +38,7 @@ export function DashboardPositionsList({
 
   if (loading) {
     return (
-      <div className={DASHBOARD_INSET_ROW_STACK_CLASS}>
+      <div className={DASHBOARD_POSITION_METRICS_STACK_CLASS}>
         {Array.from({ length: loadingSkeletonCount }, (_, i) => (
           <DashboardContentRowSkeleton key={i} variant="inset" />
         ))}
@@ -63,7 +63,7 @@ export function DashboardPositionsList({
   }
 
   return (
-    <div className={DASHBOARD_INSET_ROW_STACK_CLASS}>
+    <div className={DASHBOARD_POSITION_METRICS_STACK_CLASS}>
       {rows.map((row) => (
         <PositionCard key={row.id} row={row} />
       ))}

@@ -175,19 +175,28 @@ export const DASHBOARD_PRODUCT_CARD_FEATURED_COLLAPSED_HOVER_CLASS =
   "transition-[box-shadow] duration-200 hover:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.28)] hover:ring-1 hover:ring-[#F5D76E]/20";
 
 export const DASHBOARD_PRODUCT_CARD_HEADER_CLASS =
-  "flex flex-col gap-0 px-3 py-1 sm:px-4 sm:py-1.5";
+  "flex flex-col gap-0";
 
 export const DASHBOARD_PRODUCT_CARD_HEADER_FEATURED_CLASS =
-  "px-3 py-1.5 sm:px-4 sm:py-2";
+  "";
 
 export const DASHBOARD_PRODUCT_CARD_HEADER_BUTTON_CLASS =
   `w-full rounded-lg text-left transition-colors duration-150 ${DASHBOARD_SECTION_HEADER_HOVER_CLASS} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/30`;
 
+const DASHBOARD_PRODUCT_HEADER_HIT_FOCUS_CLASS =
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-white/30";
+
+export const DASHBOARD_PRODUCT_HEADER_ROW_CLASS =
+  "flex min-h-[2.75rem] w-full items-stretch";
+
 export const DASHBOARD_PRODUCT_HEADER_NAV_LINK_CLASS =
-  "inline-flex shrink-0 items-center gap-0.5 rounded-md py-0.5 pr-1 transition-colors hover:text-white/95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/30";
+  `inline-flex shrink-0 items-center gap-2.5 self-stretch py-2 pl-3 pr-2.5 -ml-3 transition-colors duration-150 sm:pl-4 sm:-ml-4 ${DASHBOARD_SECTION_HEADER_HOVER_CLASS} ${DASHBOARD_PRODUCT_HEADER_HIT_FOCUS_CLASS}`;
+
+export const DASHBOARD_PRODUCT_HEADER_NAV_STATIC_CLASS =
+  "inline-flex shrink-0 items-center gap-2.5 self-stretch py-2 pl-3 pr-2.5 -ml-3 sm:pl-4 sm:-ml-4";
 
 export const DASHBOARD_PRODUCT_HEADER_EXPAND_BTN_CLASS =
-  `flex min-w-0 flex-1 items-center gap-2 rounded-md py-0.5 pl-1 text-left transition-colors duration-150 ${DASHBOARD_SECTION_HEADER_HOVER_CLASS} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/30`;
+  `flex min-w-0 flex-1 items-center gap-2 self-stretch py-2 pl-2 pr-3 -mr-3 text-left transition-colors duration-150 sm:pr-4 sm:-mr-4 ${DASHBOARD_SECTION_HEADER_HOVER_CLASS} ${DASHBOARD_PRODUCT_HEADER_HIT_FOCUS_CLASS}`;
 
 export const DASHBOARD_PRODUCT_CARD_HEADER_ROW_CLASS =
   "flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5 sm:gap-x-2.5";
@@ -212,13 +221,16 @@ export const DASHBOARD_MV_PREVIEW_CLASS =
 
 /** Portfolio hero — 5-column mockup grid. */
 export const DASHBOARD_HERO_GRID_CLASS =
-  "grid grid-cols-1 gap-4 divide-y divide-white/[0.08] md:grid-cols-2 md:divide-y lg:grid-cols-[1.1fr_1.4fr_repeat(3,minmax(0,1fr))] lg:gap-0 lg:divide-x lg:divide-y-0 lg:divide-white/[0.08]";
+  "grid grid-cols-1 gap-4 divide-y divide-white/[0.08] md:grid-cols-2 md:divide-y lg:grid-cols-[minmax(0,1fr)_minmax(0,2.35fr)_repeat(3,minmax(5.25rem,0.68fr))] lg:gap-0 lg:divide-x lg:divide-y-0 lg:divide-white/[0.08]";
 
 export const DASHBOARD_HERO_STATS_ROW_CLASS =
   "md:col-span-2 md:grid md:grid-cols-3 md:gap-4 md:border-t md:border-white/[0.08] md:pt-4 lg:contents lg:border-t-0 lg:pt-0";
 
 export const DASHBOARD_HERO_COLUMN_CLASS =
   "min-w-0 py-3 first:pt-0 last:pb-0 lg:px-4 lg:py-0 lg:first:pl-0 lg:last:pr-0";
+
+/** Yield stat columns — compact width, right-aligned on desktop. */
+export const DASHBOARD_HERO_YIELD_COLUMN_CLASS = `${DASHBOARD_HERO_COLUMN_CLASS} lg:pl-5 lg:text-right`;
 
 export const DASHBOARD_HERO_STAT_LABEL_CLASS =
   "text-[10px] font-semibold uppercase tracking-wide text-white/50";

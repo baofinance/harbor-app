@@ -5,7 +5,7 @@ import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import type { FounderMetricRow } from "@/hooks/useFounderMetrics";
 import { DashboardContentRowSkeleton } from "../DashboardContentRow";
 import { DASHBOARD_EMPTY_REVENUE_SHARE_ACCENT_CLASS } from "../dashboardBrand";
-import { DASHBOARD_INSET_ROW_STACK_CLASS } from "./portfolioStyles";
+import { DASHBOARD_YIELD_METRICS_STACK_CLASS } from "./portfolioStyles";
 import { DashboardEmptyState } from "./DashboardEmptyState";
 import { YieldSharePositionCard } from "./YieldSharePositionCard";
 
@@ -30,7 +30,7 @@ export function DashboardYieldShareCardList({
 
   if (isLoading) {
     return (
-      <div className={DASHBOARD_INSET_ROW_STACK_CLASS}>
+      <div className={DASHBOARD_YIELD_METRICS_STACK_CLASS}>
         <DashboardContentRowSkeleton variant="inset" />
       </div>
     );
@@ -56,7 +56,7 @@ export function DashboardYieldShareCardList({
 
   return (
     <div>
-      <div className={DASHBOARD_INSET_ROW_STACK_CLASS}>
+      <div className={DASHBOARD_YIELD_METRICS_STACK_CLASS}>
         {visibleRows.map((row) => (
           <YieldSharePositionCard key={row.marketId} row={row} />
         ))}

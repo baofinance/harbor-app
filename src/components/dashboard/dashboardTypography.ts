@@ -88,6 +88,6 @@ export const DASHBOARD_INSET_METRIC_MUTED_CLASS =
 export const DASHBOARD_INSET_METRIC_CORAL_CLASS =
   "font-mono text-sm tabular-nums text-[#FF8A7A]";
 
-/** Revenue share row grid inside product accordion */
+/** Revenue share row — use inside {@link DASHBOARD_YIELD_METRICS_STACK_CLASS}. */
 export const DASHBOARD_YIELD_ROW_GRID_CLASS =
-  "grid w-full grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,auto))] sm:items-center sm:gap-x-4";
+  "grid-cols-1 gap-2 sm:grid-cols-subgrid sm:gap-x-3";
