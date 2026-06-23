@@ -1,5 +1,9 @@
 import Image from "next/image";
 import { IndexPageTitleSection } from "@/components/shared/IndexPageTitleSection";
+import {
+  MV_CARD_INNER_GRADIENT,
+  MV_CARD_SHELL,
+} from "@/components/genesis/maidenVoyageLayoutStyles";
 import { TideDashboard } from "@/components/tide";
 
 export default function TidePage() {
@@ -13,13 +17,13 @@ export default function TidePage() {
 
         <TideDashboard />
 
-        <section className="mt-8 rounded-xl border border-white/15 bg-[#2c2c2c] p-2 shadow-[0_12px_40px_rgba(0,0,0,0.45)] ring-1 ring-black/40 sm:p-3">
+        <section className={`mt-8 ${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} p-2 sm:p-3`}>
           <Image
             src="/marketing/tide-content-flow.png"
             alt="TIDE protocol revenue and burn flow"
             width={1024}
             height={768}
-            className="h-auto w-full rounded-lg border border-white/10 shadow-inner"
+            className="h-auto w-full rounded-xl"
           />
         </section>
       </main>

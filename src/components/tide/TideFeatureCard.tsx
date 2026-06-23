@@ -3,22 +3,29 @@
 import type { ReactNode } from "react";
 import { Info, Link2 } from "lucide-react";
 import {
+  DASHBOARD_PRODUCT_ACCENT_BAR_CLASS,
+  DASHBOARD_PRODUCT_CARD_CLASS,
+  DASHBOARD_PRODUCT_TITLE_CLASS,
+} from "@/components/dashboard/dashboardStyles";
+import { StatusBadge } from "@/components/dashboard/portfolio/StatusBadge";
+import type { StatusBadgeVariant } from "@/components/dashboard/portfolio/StatusBadge";
+import {
+  TIDE_CAPTION_CLASS,
   TIDE_CARD_BODY,
   TIDE_CARD_FOOTER,
-  TIDE_CARD_HEADER,
-  TIDE_CARD_SHELL,
   TIDE_DISCONNECTED_RING,
   TIDE_LABEL_CLASS,
 } from "./tideCardStyles";
 
 export type TideFeatureCardProps = {
   icon: ReactNode;
-  iconBgClass: string;
+  accentBarClass: string;
+  iconBadgeClass: string;
   title: string;
   subtitle: string;
   subtitleClass: string;
   badge?: string;
-  badgeClass?: string;
+  badgeVariant?: StatusBadgeVariant;
   footer: string;
   isConnected: boolean;
   disconnectedMessage: string;
@@ -27,58 +34,68 @@ export type TideFeatureCardProps = {
 
 export function TideFeatureCard({
   icon,
-  iconBgClass,
+  accentBarClass,
+  iconBadgeClass,
   title,
   subtitle,
   subtitleClass,
   badge,
-  badgeClass,
+  badgeVariant = "neutral",
   footer,
   isConnected,
   disconnectedMessage,
   children,
 }: TideFeatureCardProps) {
   return (
-    <article className={TIDE_CARD_SHELL}>
-      <header className={TIDE_CARD_HEADER}>
-        <div className="flex min-w-0 items-center gap-3">
-          <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${iconBgClass}`}
-          >
-            {icon}
+    <article
+      className={`${DASHBOARD_PRODUCT_CARD_CLASS} relative flex min-h-[320px] flex-col`}
+    >
+      <div
+        className={`${DASHBOARD_PRODUCT_ACCENT_BAR_CLASS} ${accentBarClass}`}
+        aria-hidden
+      />
+
+      <header className="px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className={iconBadgeClass} aria-hidden>
+              {icon}
+            </span>
+            <div className="min-w-0">
+              <h3 className={DASHBOARD_PRODUCT_TITLE_CLASS}>{title}</h3>
+              <p className={`${TIDE_LABEL_CLASS} mt-0.5 ${subtitleClass}`}>
+                {subtitle}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <h3 className="text-base font-semibold text-white">{title}</h3>
-            <p className={`${TIDE_LABEL_CLASS} ${subtitleClass}`}>{subtitle}</p>
-          </div>
+          {badge ? (
+            <StatusBadge
+              label={badge}
+              variant={badgeVariant}
+              surface="dark"
+            />
+          ) : null}
         </div>
-        {badge ? (
-          <span
-            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${badgeClass ?? "bg-white/10 text-white/60"}`}
-          >
-            {badge}
-          </span>
-        ) : null}
       </header>
 
       <div className={TIDE_CARD_BODY}>
         {isConnected ? (
           children
         ) : (
-          <div className="flex flex-col items-center gap-3 text-center">
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 py-4 text-center">
             <div className={TIDE_DISCONNECTED_RING}>
-              <Link2 className="h-7 w-7 text-white/25" strokeWidth={1.5} />
+              <Link2 className="h-7 w-7 text-white/30" strokeWidth={1.5} />
             </div>
-            <p className="max-w-[220px] text-sm leading-snug text-white/45">
+            <p className={`max-w-[220px] ${TIDE_CAPTION_CLASS} text-white/55`}>
               {disconnectedMessage}
             </p>
           </div>
         )}
       </div>
 
-      <footer className={TIDE_CARD_FOOTER}>
-        <Info className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-        <span>{footer}</span>
+      <footer className={`${TIDE_CARD_FOOTER} flex items-center gap-1.5 px-3 py-2.5 sm:px-4`}>
+        <Info className="h-3.5 w-3.5 shrink-0 text-white/40" strokeWidth={1.75} />
+        <span className="text-[11px] text-white/45">{footer}</span>
       </footer>
     </article>
   );

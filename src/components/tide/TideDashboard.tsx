@@ -1,6 +1,13 @@
 "use client";
 
 import { ConnectWallet } from "@/components/Wallet";
+import { DASHBOARD_GAP_MAJOR } from "@/components/dashboard/dashboardDensity";
+import { DASHBOARD_PORTFOLIO_HERO_TITLE_CLASS } from "@/components/dashboard/dashboardStyles";
+import {
+  MV_CARD_INNER_GRADIENT,
+  MV_CARD_SHELL,
+  MV_META_TEXT,
+} from "@/components/genesis/maidenVoyageLayoutStyles";
 import { useAccount } from "wagmi";
 import { TideAirdropCard } from "./TideAirdropCard";
 import { TideClaimCard } from "./TideClaimCard";
@@ -10,31 +17,33 @@ export function TideDashboard() {
   const { isConnected } = useAccount();
 
   return (
-    <section className="mt-8">
-      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-white sm:text-2xl">
-            Your TIDE Dashboard
-          </h2>
-          <p className="mt-1 text-sm text-white/45">
-            Snapshot-based airdrop &amp; claim data; swap reads Bao V2 wallet
-            balance
-          </p>
-        </div>
-        {!isConnected ? (
-          <div className="shrink-0">
-            <ConnectWallet />
+    <section className={`mt-8 ${DASHBOARD_GAP_MAJOR}`}>
+      <div className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} px-4 py-3 sm:px-5 sm:py-4`}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h2 className={DASHBOARD_PORTFOLIO_HERO_TITLE_CLASS}>
+              Your TIDE Dashboard
+            </h2>
+            <p className={`mt-1 ${MV_META_TEXT}`}>
+              Snapshot-based airdrop &amp; claim data; swap reads Bao V2 wallet
+              balance
+            </p>
           </div>
-        ) : null}
+          {!isConnected ? (
+            <div className="shrink-0">
+              <ConnectWallet />
+            </div>
+          ) : null}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4">
         <TideAirdropCard />
         <TideClaimCard />
         <TideSwapCard />
       </div>
 
-      <p className="mt-4 text-center text-[11px] text-white/30">
+      <p className={`text-center ${MV_META_TEXT} opacity-80`}>
         Claims read from vebao_tide_allocation.json; swap uses distributor
         convertBao
       </p>

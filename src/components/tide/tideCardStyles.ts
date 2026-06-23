@@ -1,56 +1,77 @@
-/** Harbor theme accents used on the TIDE dashboard cards. */
+import {
+  DASHBOARD_PRODUCT_ACCENT_EARN_CLASS,
+  DASHBOARD_PRODUCT_ACCENT_MV_CLASS,
+  DASHBOARD_PRODUCT_ICON_EARN_CLASS,
+  DASHBOARD_PRODUCT_ICON_MV_CLASS,
+} from "@/components/dashboard/dashboardStyles";
+import {
+  MV_CAPTION_TEXT,
+  MV_FOOTER_PANEL,
+  MV_META_TEXT,
+  MV_SECTION_LABEL,
+  MV_STAT_TILE,
+} from "@/components/genesis/maidenVoyageLayoutStyles";
+import type { StatusBadgeVariant } from "@/components/dashboard/portfolio/StatusBadge";
+
+/** Harbor theme accents — aligned with dashboard product cards. */
 export const TIDE_THEME = {
   coral: {
-    iconBg: "bg-[#FF8A7A]",
-    iconText: "text-white",
+    accentBar: DASHBOARD_PRODUCT_ACCENT_MV_CLASS,
+    iconBadge: DASHBOARD_PRODUCT_ICON_MV_CLASS,
     subtitle: "text-[#FF8A7A]",
-    badge: "bg-[#FF8A7A]/20 text-[#FF8A7A]",
-    highlight: "border-[#FF8A7A]/35 bg-[#FF8A7A]/10",
+    badgeVariant: "coral" as StatusBadgeVariant,
+    highlight: `${MV_STAT_TILE} border-[#FF8A7A]/25`,
     highlightText: "text-[#FF8A7A]",
-    inset: "border-[#FF8A7A]/20 bg-[#FF8A7A]/5",
+    inset: MV_STAT_TILE,
+    valueAccent: "text-white",
   },
   mint: {
-    iconBg: "bg-[#B8EBD5]/20",
-    iconText: "text-[#B8EBD5]",
+    accentBar: DASHBOARD_PRODUCT_ACCENT_EARN_CLASS,
+    iconBadge: DASHBOARD_PRODUCT_ICON_EARN_CLASS,
     subtitle: "text-[#B8EBD5]",
-    badge: "bg-[#B8EBD5]/15 text-[#B8EBD5]",
-    highlight: "border-[#B8EBD5]/30 bg-[#B8EBD5]/8",
+    badgeVariant: "green" as StatusBadgeVariant,
+    highlight: `${MV_STAT_TILE} border-[#B8EBD5]/25`,
     highlightText: "text-[#B8EBD5]",
-    inset: "border-[#B8EBD5]/20 bg-[#B8EBD5]/5",
+    inset: MV_STAT_TILE,
+    valueAccent: "text-[#B8EBD5]",
   },
   blue: {
-    iconBg: "bg-[#1E4775]",
-    iconText: "text-white",
+    accentBar: "bg-[#1E4775]",
+    iconBadge:
+      "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#8CB8DC]/25 bg-[#1E4775]/55 text-[#8CB8DC] backdrop-blur-md",
     subtitle: "text-[#8CB8DC]",
-    badge: "bg-[#1E4775]/50 text-[#8CB8DC]",
-    highlight: "border-[#1E4775]/40 bg-[#1E4775]/20",
+    badgeVariant: "neutral" as StatusBadgeVariant,
+    highlight: `${MV_STAT_TILE} border-[#1E4775]/40`,
     highlightText: "text-[#8CB8DC]",
+    inset: MV_STAT_TILE,
+    valueAccent: "text-white",
     button:
-      "bg-[#1E4775] text-white enabled:hover:bg-[#17395F] disabled:opacity-40",
+      "bg-white text-[#1E4775] enabled:hover:bg-white/90 disabled:opacity-40",
     maxButton: "text-[#8CB8DC]",
   },
 } as const;
 
-export const TIDE_CARD_SHELL =
-  "flex flex-col rounded-xl border border-white/10 bg-[#1a1a1a]/90 shadow-[0_12px_40px_rgba(0,0,0,0.35)] ring-1 ring-black/30 min-h-[320px]";
+export {
+  MV_META_TEXT as TIDE_META_TEXT,
+  MV_SECTION_LABEL as TIDE_LABEL_CLASS,
+  MV_CAPTION_TEXT as TIDE_CAPTION_CLASS,
+  MV_FOOTER_PANEL as TIDE_CARD_FOOTER,
+};
 
-export const TIDE_CARD_HEADER =
-  "flex items-start justify-between gap-3 border-b border-white/8 px-4 py-3 sm:px-5";
-
-export const TIDE_CARD_BODY =
-  "flex flex-1 flex-col items-center justify-center px-4 py-6 sm:px-5";
-
-export const TIDE_CARD_FOOTER =
-  "flex items-center gap-1.5 border-t border-white/8 px-4 py-2.5 text-[11px] text-white/40 sm:px-5";
+export const TIDE_CARD_BODY = "flex flex-1 flex-col px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3";
 
 export const TIDE_DISCONNECTED_RING =
-  "flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-white/20";
+  "flex h-20 w-20 items-center justify-center rounded-full border border-dashed border-white/15 bg-[#122a47]/28 backdrop-blur-sm";
 
 export const TIDE_AMOUNT_CLASS =
-  "font-mono text-3xl font-semibold tabular-nums text-white sm:text-4xl";
+  "font-mono text-2xl font-bold tabular-nums text-white sm:text-3xl";
 
 export const TIDE_AMOUNT_SM_CLASS =
-  "font-mono text-xl font-semibold tabular-nums text-white sm:text-2xl";
+  "font-mono text-lg font-semibold tabular-nums text-white sm:text-xl";
 
-export const TIDE_LABEL_CLASS =
-  "text-[10px] font-semibold uppercase tracking-[0.14em]";
+export const TIDE_INSET_LABEL_CLASS = `${MV_SECTION_LABEL} text-[10px] uppercase tracking-wide`;
+
+export const TIDE_PRIMARY_BUTTON_CLASS =
+  "w-full rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-[#1E4775] shadow-sm transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40";
+
+export const TIDE_INPUT_SHELL_CLASS = `${MV_STAT_TILE} flex items-center gap-2 px-3 py-2`;
