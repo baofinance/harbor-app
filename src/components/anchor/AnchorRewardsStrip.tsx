@@ -14,10 +14,12 @@ import {
   AnchorVaprTooltipContent,
   type AnchorVaprPositionApr,
 } from "@/components/anchor/AnchorVaprTooltipContent";
-import { HarborStatTile } from "@/components/shared/HarborStatTile";
 import {
   HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS,
   HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS,
+  HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS,
+  HARBOR_STAT_TILE_INTRO_STRIP_GRID_6_CLASS,
+  HARBOR_STAT_TILE_INTRO_STRIP_SHELL_CLASS,
   HARBOR_STAT_TILE_INTRO_TITLE_CLASS,
 } from "@/components/shared/harborStatTileStyles";
 import {
@@ -653,150 +655,148 @@ export function AnchorRewardsStrip(props: AnchorRewardsStripProps) {
                   : "0";
 
             return (
-              <div className="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-                <HarborStatTile variant="intro" className="col-span-2 sm:col-span-1">
-                  <div className="flex items-center justify-center gap-2">
-                    <h2 className={HARBOR_STAT_TILE_INTRO_TITLE_CLASS}>Rewards</h2>
-                    <InfoTooltip
-                      label={
-                        <div className="space-y-3">
-                          <div>
-                            <h3 className="mb-2 text-lg font-bold">
-                              Anchor Ledger Marks
-                            </h3>
-                            <p className="leading-relaxed text-white/90">
-                              Anchor Ledger Marks are earned by holding anchor
-                              tokens and depositing into stability pools.
-                            </p>
-                          </div>
-
-                          <div className="border-t border-white/20 pt-3">
-                            <p className="mb-2 leading-relaxed text-white/90">
-                              Each mark represents your contribution to
-                              stabilizing Harbor markets through token holdings
-                              and pool deposits.
-                            </p>
-                          </div>
-
-                          <div className="space-y-2">
-                            <div className="flex items-start gap-2">
-                              <span className="mt-0.5 text-white/70">•</span>
-                              <p className="leading-relaxed text-white/90">
-                                The more you contribute, the deeper your mark on
-                                the ledger.
-                              </p>
-                            </div>
-                            <div className="flex items-start gap-2">
-                              <span className="mt-0.5 text-white/70">•</span>
-                              <p className="leading-relaxed text-white/90">
-                                When $TIDE surfaces, these marks will convert
-                                into your share of rewards and governance power.
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="border-t border-white/20 pt-3">
-                            <p className="italic leading-relaxed text-white/80">
-                              Think of them as a record of your journey — every
-                              mark, a line in Harbor&apos;s logbook.
-                            </p>
-                          </div>
-                        </div>
-                      }
-                      side="right"
-                    />
-                  </div>
-                </HarborStatTile>
-
-                <HarborStatTile variant="intro">
-                  <div className="flex flex-col items-center justify-center text-center">
-                    <div className={HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS}>
-                      Total Deposits
-                    </div>
-                    <div className={HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS}>
-                      {totalStabilityPoolDepositsUSD > 0
-                        ? formatCompactUSD(totalStabilityPoolDepositsUSD)
-                        : "$0.00"}
-                    </div>
-                  </div>
-                </HarborStatTile>
-
-                <HarborStatTile variant="intro">
-                  <div className="flex flex-col items-center justify-center text-center">
-                    <div className={HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS}>
-                      Claimable Value
-                    </div>
-                    <div className={HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS}>
-                      $
-                      {totalRewardsForBar > 0
-                        ? totalRewardsForBar.toFixed(2)
-                        : "0.00"}
-                    </div>
-                  </div>
-                </HarborStatTile>
-
-                <HarborStatTile variant="intro">
-                  <div className="flex flex-col items-center justify-center text-center">
+              <div className="mb-2">
+                <div className={HARBOR_STAT_TILE_INTRO_STRIP_SHELL_CLASS}>
+                  <div className={HARBOR_STAT_TILE_INTRO_STRIP_GRID_6_CLASS}>
                     <div
-                      className={`${HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS} flex items-center justify-center gap-1`}
+                      className={`${HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS} col-span-2 sm:col-span-1`}
                     >
-                      vAPR
-                      <InfoTooltip
-                        side="left"
-                        label={
-                          <AnchorVaprTooltipContent
-                            positionAPRs={positionAPRs}
-                            blendedAPR={blendedAPRForBar}
-                            showLiveAprLoading={showLiveAprLoading}
-                            isErrorAllRewards={isErrorAllRewards}
-                            projectedAPR={projectedAPR}
-                          />
-                        }
-                      >
-                        <span className="cursor-help text-xs text-white/50">
-                          [?]
-                        </span>
-                      </InfoTooltip>
-                    </div>
-                    <div className={HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS}>
-                      {blendedAPRForBar > 0
-                        ? `${blendedAPRForBar.toFixed(2)}%`
-                        : "-"}
-                    </div>
-                  </div>
-                </HarborStatTile>
+                      <div className="flex items-center justify-center gap-2">
+                        <h2 className={HARBOR_STAT_TILE_INTRO_TITLE_CLASS}>
+                          Rewards
+                        </h2>
+                        <InfoTooltip
+                          label={
+                            <div className="space-y-3">
+                              <div>
+                                <h3 className="mb-2 text-lg font-bold">
+                                  Anchor Ledger Marks
+                                </h3>
+                                <p className="leading-relaxed text-white/90">
+                                  Anchor Ledger Marks are earned by holding anchor
+                                  tokens and depositing into stability pools.
+                                </p>
+                              </div>
 
-                <HarborStatTile variant="intro">
-                  <div className="flex flex-col items-center justify-center text-center">
-                    <button
-                      onClick={onClaimAll}
-                      disabled={isClaimingAll || isCompoundingAll}
-                      className={INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL}
-                    >
-                      Claim
-                    </button>
-                  </div>
-                </HarborStatTile>
+                              <div className="border-t border-white/20 pt-3">
+                                <p className="mb-2 leading-relaxed text-white/90">
+                                  Each mark represents your contribution to
+                                  stabilizing Harbor markets through token holdings
+                                  and pool deposits.
+                                </p>
+                              </div>
 
-                <HarborStatTile variant="intro">
-                  <div className="flex flex-col items-center justify-center text-center">
-                    <div className={HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS}>
-                      Anchor Ledger Marks
+                              <div className="space-y-2">
+                                <div className="flex items-start gap-2">
+                                  <span className="mt-0.5 text-white/70">•</span>
+                                  <p className="leading-relaxed text-white/90">
+                                    The more you contribute, the deeper your mark on
+                                    the ledger.
+                                  </p>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                  <span className="mt-0.5 text-white/70">•</span>
+                                  <p className="leading-relaxed text-white/90">
+                                    When $TIDE surfaces, these marks will convert
+                                    into your share of rewards and governance power.
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="border-t border-white/20 pt-3">
+                                <p className="italic leading-relaxed text-white/80">
+                                  Think of them as a record of your journey — every
+                                  mark, a line in Harbor&apos;s logbook.
+                                </p>
+                              </div>
+                            </div>
+                          }
+                          side="right"
+                        />
+                      </div>
                     </div>
-                    <div className="mt-1 flex flex-wrap items-baseline justify-center gap-2">
-                      <span
-                        className={`${HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS} mt-0`}
+
+                    <div className={HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS}>
+                      <div className={HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS}>
+                        Total Deposits
+                      </div>
+                      <div className={HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS}>
+                        {totalStabilityPoolDepositsUSD > 0
+                          ? formatCompactUSD(totalStabilityPoolDepositsUSD)
+                          : "$0.00"}
+                      </div>
+                    </div>
+
+                    <div className={HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS}>
+                      <div className={HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS}>
+                        Claimable Value
+                      </div>
+                      <div className={HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS}>
+                        $
+                        {totalRewardsForBar > 0
+                          ? totalRewardsForBar.toFixed(2)
+                          : "0.00"}
+                      </div>
+                    </div>
+
+                    <div className={HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS}>
+                      <div
+                        className={`${HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS} flex items-center justify-center gap-1`}
                       >
-                        {ledgerMarksDisplay}
-                      </span>
-                      {marksPerDayText ? (
-                        <span className="text-[10px] font-medium text-white/60">
-                          {marksPerDayText}
+                        vAPR
+                        <InfoTooltip
+                          side="left"
+                          label={
+                            <AnchorVaprTooltipContent
+                              positionAPRs={positionAPRs}
+                              blendedAPR={blendedAPRForBar}
+                              showLiveAprLoading={showLiveAprLoading}
+                              isErrorAllRewards={isErrorAllRewards}
+                              projectedAPR={projectedAPR}
+                            />
+                          }
+                        >
+                          <span className="cursor-help text-xs text-white/50">
+                            [?]
+                          </span>
+                        </InfoTooltip>
+                      </div>
+                      <div className={HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS}>
+                        {blendedAPRForBar > 0
+                          ? `${blendedAPRForBar.toFixed(2)}%`
+                          : "-"}
+                      </div>
+                    </div>
+
+                    <div className={HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS}>
+                      <button
+                        onClick={onClaimAll}
+                        disabled={isClaimingAll || isCompoundingAll}
+                        className={INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL}
+                      >
+                        Claim
+                      </button>
+                    </div>
+
+                    <div className={HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS}>
+                      <div className={HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS}>
+                        Anchor Ledger Marks
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-baseline justify-center gap-2">
+                        <span
+                          className={`${HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS} mt-0`}
+                        >
+                          {ledgerMarksDisplay}
                         </span>
-                      ) : null}
+                        {marksPerDayText ? (
+                          <span className="text-[10px] font-medium text-white/60">
+                            {marksPerDayText}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
-                </HarborStatTile>
+                </div>
               </div>
             );
 }

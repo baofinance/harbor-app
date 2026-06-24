@@ -202,7 +202,7 @@ export function GenesisUpsideHeroMetric({
                 }`}
                 style={upsideSliderThumbStyle(preset, sliderMin, sliderMax)}
               >
-                {formatPresetLabel(preset)}
+                {formatUpsidePresetLabel(preset)}
               </button>
             );
           })}

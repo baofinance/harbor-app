@@ -8,7 +8,6 @@ import { useSailPageData } from "@/hooks/useSailPageData";
 import { SailManageModal } from "@/components/SailManageModal";
 import { MarksBoostBadge } from "@/components/MarksBoostBadge";
 import {
-  SailLedgerMarksBar,
   SailMarksSubgraphErrorBanner,
   SailMarketsSections,
   SailMarketsTableHeader,
@@ -24,11 +23,6 @@ import {
   type DefinedMarket,
 } from "@/config/markets";
 import { HarborPageShell } from "@/components/shared/HarborPageShell";
-import {
-  HARBOR_SECTION_ACCENT_SAIL_CLASS,
-  HARBOR_SECTION_ICON_SAIL_CLASS,
-} from "@/components/shared/harborSectionCardStyles";
-import { ChartBarIcon } from "@heroicons/react/24/outline";
 import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
 import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
 import { IndexMarketsLoadError } from "@/components/shared/IndexMarketsLoadError";
@@ -166,19 +160,15 @@ export default function SailPage() {
 
           {!sailViewBasic && (
             <>
-              {isConnected && (
-                <SailUserStatsCards
-                  sailUserStats={sailUserStats}
-                  pnlFromMarkets={pnlFromMarkets}
-                  pnlSummaryLoading={sailPnLSummary.isLoading}
-                />
-              )}
-
               {sailMarksError && (
                 <SailMarksSubgraphErrorBanner error={sailMarksError} />
               )}
 
-              <SailLedgerMarksBar
+              <SailUserStatsCards
+                isConnected={isConnected}
+                sailUserStats={sailUserStats}
+                pnlFromMarkets={pnlFromMarkets}
+                pnlSummaryLoading={sailPnLSummary.isLoading}
                 isLoadingSailMarks={isLoadingSailMarks}
                 totalSailMarks={totalSailMarks}
                 sailMarksPerDay={sailMarksPerDay}
@@ -190,16 +180,6 @@ export default function SailPage() {
             <IndexMarketsLoadError onRetry={() => refetchReads()} />
           ) : (
             <SailMarketsSections
-              sectionCard={
-                !sailViewBasic
-                  ? {
-                      title: "Markets",
-                      icon: ChartBarIcon,
-                      accentBarClass: HARBOR_SECTION_ACCENT_SAIL_CLASS,
-                      iconBadgeClass: HARBOR_SECTION_ICON_SAIL_CLASS,
-                    }
-                  : undefined
-              }
               toolbarProps={{
                 sailChainOptions,
                 showNetworkFilter: sailChainOptions.length > 1,

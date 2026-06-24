@@ -32,6 +32,18 @@ export const HARBOR_STAT_TILE_INTRO_STRIP_SHELL_CLASS = `rounded-xl overflow-hid
 export const HARBOR_STAT_TILE_INTRO_STRIP_GRID_CLASS =
   "grid grid-cols-2 lg:grid-cols-4 divide-x divide-y divide-white/[0.08] lg:divide-y-0";
 
+/** Six-column rewards strip (Anchor rewards bar). */
+export const HARBOR_STAT_TILE_INTRO_STRIP_GRID_6_CLASS =
+  "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-y divide-white/[0.08] lg:divide-y-0";
+
+/** Three-column strip (Sail marks-only). */
+export const HARBOR_STAT_TILE_INTRO_STRIP_GRID_3_CLASS =
+  "grid grid-cols-1 sm:grid-cols-3 divide-x divide-y divide-white/[0.08] sm:divide-y-0";
+
+/** Seven-column strip (Sail user stats + marks). */
+export const HARBOR_STAT_TILE_INTRO_STRIP_GRID_7_CLASS =
+  "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 divide-x divide-y divide-white/[0.08] lg:divide-y-0";
+
 export const HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS =
   "flex min-w-0 flex-col items-center justify-center px-3 py-2.5 text-center";
 

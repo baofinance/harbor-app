@@ -21,7 +21,6 @@ import {
  ExclamationTriangleIcon,
  XCircleIcon,
  ClockIcon,
- Squares2X2Icon,
  ChevronDownIcon,
  ChevronUpIcon,
  ArrowTopRightOnSquareIcon,
@@ -55,11 +54,6 @@ import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection
 import { useReadContract, useAccount } from "wagmi";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 import { HarborPageShell } from "@/components/shared/HarborPageShell";
-import { HarborSectionCard } from "@/components/shared/HarborSectionCard";
-import {
-  HARBOR_SECTION_ACCENT_NEUTRAL_CLASS,
-  HARBOR_SECTION_ICON_NEUTRAL_CLASS,
-} from "@/components/shared/harborSectionCardStyles";
 import { HarborConfigBadge, type HarborConfigBadgeVariant } from "@/components/shared/HarborConfigBadge";
 import {
   HARBOR_HEALTH_PILL_CRITICAL,
@@ -265,28 +259,7 @@ function WithdrawalStatusBadge({ status }: { status: WithdrawalStatus }) {
     return <HarborConfigBadge config={WITHDRAWAL_CONFIG[status]} size="sm" />;
 }
 
-function TransparencyMarketsShell({
-    glass,
-    children,
-}: {
-    glass: boolean;
-    children: React.ReactNode;
-}) {
-    if (glass) {
-        return (
-            <HarborSectionCard
-                title="Markets"
-                icon={Squares2X2Icon}
-                accentBarClass={HARBOR_SECTION_ACCENT_NEUTRAL_CLASS}
-                iconBadgeClass={HARBOR_SECTION_ICON_NEUTRAL_CLASS}
-                className="mt-2 space-y-2 sm:mt-3"
-                ariaLabel="Protocol markets"
-            >
-                {children}
-            </HarborSectionCard>
-        );
-    }
-
+function TransparencyMarketsShell({ children }: { children: React.ReactNode }) {
     return (
         <section
             className="mt-2 space-y-2 sm:mt-3"
@@ -1710,7 +1683,7 @@ export default function TransparencyPage() {
             <HarborPageShell>
                     {!isBasicLayout ? <TransparencyHeroIntroCards /> : null}
 
-                    <TransparencyMarketsShell glass={!isBasicLayout}>
+                    <TransparencyMarketsShell>
                         <div className={INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}>
                             <div className="w-full lg:flex-1 lg:min-w-0">
                                 <div className={INDEX_MARKETS_TOOLBAR_FILTERS_ROW_CLASS}>

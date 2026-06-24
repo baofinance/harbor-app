@@ -23,10 +23,6 @@ import {
   type DefinedMarket,
 } from "@/config/markets";
 import { HarborPageShell } from "@/components/shared/HarborPageShell";
-import {
-  HARBOR_SECTION_ACCENT_EARN_CLASS,
-  HARBOR_SECTION_ICON_EARN_CLASS,
-} from "@/components/shared/harborSectionCardStyles";
 import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
 import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
 import { POLLING_INTERVALS } from "@/config/polling";
@@ -49,7 +45,6 @@ import {
   CheckCircleIcon,
   XMarkIcon,
   QuestionMarkCircleIcon,
-  CurrencyDollarIcon,
 } from "@heroicons/react/24/outline";
 import { AnchorDepositWithdrawModal } from "@/components/AnchorDepositWithdrawModal";
 import { AnchorClaimAllModal } from "@/components/AnchorClaimAllModal";
@@ -600,16 +595,6 @@ export default function AnchorPage() {
                   }
                 : {}),
             }}
-            sectionCard={
-              !anchorViewBasic
-                ? {
-                    title: "Markets",
-                    icon: CurrencyDollarIcon,
-                    accentBarClass: HARBOR_SECTION_ACCENT_EARN_CLASS,
-                    iconBadgeClass: HARBOR_SECTION_ICON_EARN_CLASS,
-                  }
-                : undefined
-            }
           >
             {/* Market Cards/Rows */}
             {(() => {
