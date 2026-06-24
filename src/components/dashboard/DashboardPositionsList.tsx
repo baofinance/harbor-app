@@ -40,7 +40,7 @@ export function DashboardPositionsList({
     return (
       <div className={DASHBOARD_POSITION_METRICS_STACK_CLASS}>
         {Array.from({ length: loadingSkeletonCount }, (_, i) => (
-          <DashboardContentRowSkeleton key={i} variant="inset" />
+          <DashboardContentRowSkeleton key={i} variant="index" />
         ))}
       </div>
     );

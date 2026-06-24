@@ -36,11 +36,11 @@ export const DASHBOARD_INSET_ROW_STACK_CLASS = "flex flex-col";
 
 /** Parent grid for yield rows — fixed metric columns align labels across rows. */
 export const DASHBOARD_YIELD_METRICS_STACK_CLASS =
-  "grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_7.25rem_8.5rem_7rem_9rem]";
+  "grid grid-cols-1 gap-y-2 sm:grid-cols-[minmax(0,1fr)_7.25rem_8.5rem_7rem_9rem] sm:gap-y-2";
 
 /** Parent grid for earn/sail/maiden rows — fixed value column. */
 export const DASHBOARD_POSITION_METRICS_STACK_CLASS =
-  "grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_9rem]";
+  "grid grid-cols-1 gap-y-2 sm:grid-cols-[minmax(0,1fr)_9rem] sm:gap-y-2";
 
 /** Row participates in parent metric column grid. */
 export const DASHBOARD_INSET_ROW_SUBGRID_CLASS =

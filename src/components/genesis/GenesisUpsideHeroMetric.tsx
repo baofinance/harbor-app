@@ -42,6 +42,26 @@ function formatDepositInputValue(amount: number): string {
   return String(Math.round(amount));
 }
 
+/** Linear position on the slider track (0–100). */
+function depositSliderPositionPct(
+  value: number,
+  min: number,
+  max: number,
+): number {
+  if (max <= min) return 0;
+  const clamped = Math.min(max, Math.max(min, value));
+  return ((clamped - min) / (max - min)) * 100;
+}
+
+function presetLabelTransform(
+  index: number,
+  total: number,
+): string {
+  if (total <= 1 || index === 0) return "translateX(0)";
+  if (index === total - 1) return "translateX(-100%)";
+  return "translateX(-50%)";
+}
+
 export type GenesisUpsideHeroMetricProps = {
   revenueSharePct: number | null;
   depositUsd: number;
@@ -61,11 +81,22 @@ export function GenesisUpsideHeroMetric({
   const sliderMin = MAIDEN_VOYAGE_UPSIDE_COPY.sliderMinUsd;
   const sliderMaxPreset = MAIDEN_VOYAGE_UPSIDE_COPY.sliderMaxUsd;
   const maxDeposit = capUsd ?? 10_000_000;
-  const sliderMax = Math.min(sliderMaxPreset, maxDeposit);
+  const sliderMax = Math.min(
+    maxDeposit,
+    Math.max(sliderMaxPreset, depositUsd > 0 ? depositUsd : sliderMin),
+  );
 
   const sliderValue = useMemo(
     () => Math.min(sliderMax, Math.max(sliderMin, depositUsd)),
     [depositUsd, sliderMin, sliderMax],
+  );
+
+  const visiblePresets = useMemo(
+    () =>
+      MAIDEN_VOYAGE_UPSIDE_COPY.depositPresets.filter(
+        (preset) => preset >= sliderMin && preset <= sliderMax,
+      ),
+    [sliderMin, sliderMax],
   );
 
   useEffect(() => {
@@ -126,18 +157,26 @@ export function GenesisUpsideHeroMetric({
               aria-valuemax={sliderMax}
               aria-valuenow={sliderValue}
             />
-            <div className="mt-2 flex justify-between gap-1">
-              {MAIDEN_VOYAGE_UPSIDE_COPY.depositPresets.map((preset) => {
-                if (preset > sliderMax) return null;
+            <div className="relative mt-2 h-5">
+              {visiblePresets.map((preset, index) => {
                 const isActive = depositUsd === preset;
+                const pct = depositSliderPositionPct(
+                  preset,
+                  sliderMin,
+                  sliderMax,
+                );
                 return (
                   <button
                     key={preset}
                     type="button"
                     onClick={() => onDepositChange(preset)}
-                    className={`text-[10px] font-medium tabular-nums transition-colors sm:text-[11px] ${
+                    className={`absolute top-0 text-[10px] font-medium tabular-nums transition-colors sm:text-[11px] ${
                       isActive ? "text-white" : "text-white/40 hover:text-white/65"
                     }`}
+                    style={{
+                      left: `${pct}%`,
+                      transform: presetLabelTransform(index, visiblePresets.length),
+                    }}
                   >
                     {formatPresetLabel(preset)}
                   </button>

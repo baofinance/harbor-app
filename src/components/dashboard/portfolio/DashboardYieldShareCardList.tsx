@@ -31,7 +31,7 @@ export function DashboardYieldShareCardList({
   if (isLoading) {
     return (
       <div className={DASHBOARD_YIELD_METRICS_STACK_CLASS}>
-        <DashboardContentRowSkeleton variant="inset" />
+        <DashboardContentRowSkeleton variant="index" />
       </div>
     );
   }

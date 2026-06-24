@@ -38,8 +38,8 @@ export function GenesisRevenueShareCalculator({
   const [depositUsd, setDepositUsd] = useState(initialDepositUsd);
 
   useEffect(() => {
-    setDepositUsd(initialDepositUsd);
-  }, [initialDepositUsd]);
+    setDepositUsd(clampDeposit(initialDepositUsd, capUsd));
+  }, [initialDepositUsd, capUsd]);
 
   const revenueSharePct = useMemo(
     () =>

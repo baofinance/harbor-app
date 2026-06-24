@@ -187,6 +187,7 @@ export const MV_UPSIDE_STAGE_LAUNCH = {
   earnings: "text-[#4A9784]",
   icon: "border-[#4A9784]/30 bg-[#4A9784]/10 text-[#4A9784]",
   hover: "hover:border-[#4A9784]/30 hover:bg-[#4A9784]/[0.04]",
+  accentBar: "border-l-[3px] border-l-[#4A9784]",
 } as const;
 
 export const MV_UPSIDE_STAGE_GROWTH = {
@@ -195,6 +196,7 @@ export const MV_UPSIDE_STAGE_GROWTH = {
   earnings: "text-[#C4B5FD]",
   icon: "border-[#C4B5FD]/30 bg-[#C4B5FD]/10 text-[#C4B5FD]",
   hover: "hover:border-[#C4B5FD]/30 hover:bg-[#C4B5FD]/[0.04]",
+  accentBar: "border-l-[3px] border-l-[#C4B5FD]",
 } as const;
 
 export const MV_UPSIDE_STAGE_SCALE = {
@@ -203,6 +205,7 @@ export const MV_UPSIDE_STAGE_SCALE = {
   earnings: "text-[#9EC5F5]",
   icon: "border-[#5B8FD4]/30 bg-[#5B8FD4]/10 text-[#9EC5F5]",
   hover: "hover:border-[#5B8FD4]/30 hover:bg-[#5B8FD4]/[0.04]",
+  accentBar: "border-l-[3px] border-l-[#9EC5F5]",
 } as const;
 
 export type UpsideGrowthStageId = "launch" | "growth" | "scale";

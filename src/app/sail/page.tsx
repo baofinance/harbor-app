@@ -6,8 +6,8 @@ import { useChainId, useSwitchChain } from "wagmi";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useSailPageData } from "@/hooks/useSailPageData";
 import { SailManageModal } from "@/components/SailManageModal";
+import { MarksBoostBadge } from "@/components/MarksBoostBadge";
 import {
-  SailExtendedHero,
   SailLedgerMarksBar,
   SailMarksSubgraphErrorBanner,
   SailMarketsSections,
@@ -155,10 +155,11 @@ export default function SailPage() {
   return (
     <>
       <HarborPageShell>
-          {!sailViewBasic ? (
+          {!sailViewBasic && activeSailBoostEndTimestamp != null ? (
             <div className="mb-2">
-              <SailExtendedHero
-                boostEndTimestamp={activeSailBoostEndTimestamp}
+              <MarksBoostBadge
+                multiplier={2}
+                endTimestamp={activeSailBoostEndTimestamp}
               />
             </div>
           ) : null}

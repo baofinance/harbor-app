@@ -5,11 +5,9 @@ import { TokenLogo } from "@/components/shared";
 import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
 import { formatUSD } from "@/utils/formatters";
 import {
-  DASHBOARD_INSET_METRIC_LABEL_CLASS,
-  DASHBOARD_INSET_METRIC_MUTED_CLASS,
-  DASHBOARD_INSET_METRIC_VALUE_CLASS,
-  DASHBOARD_INSET_SUBTITLE_CLASS,
-  DASHBOARD_INSET_TITLE_CLASS,
+  DASHBOARD_POSITION_METRIC_LABEL_CLASS,
+  DASHBOARD_POSITION_SUBTITLE_CLASS,
+  DASHBOARD_POSITION_TITLE_CLASS,
 } from "../dashboardTypography";
 import {
   formatDashboardPnL,
@@ -21,8 +19,8 @@ import {
 } from "./dashboardPortfolioUtils";
 import { DASHBOARD_INSET_MARKET_ICON_PX } from "../dashboardRowListStyles";
 import {
-  DASHBOARD_INSET_ROW_SHELL_CLASS,
   DASHBOARD_INSET_ROW_SUBGRID_CLASS,
+  PORTFOLIO_POSITION_ROW_CLASS,
 } from "./portfolioStyles";
 import { StatusBadge } from "./StatusBadge";
 
@@ -45,10 +43,10 @@ function PositionSubtitle({
 }) {
   if (row.category === "earn" && positionSubtype) {
     return (
-      <p className={DASHBOARD_INSET_SUBTITLE_CLASS} title={`${positionType} · ${positionSubtype}`}>
-        <span className="text-white/40">{positionType}</span>
-        <span className="text-white/40"> · </span>
-        <span className="font-medium text-white/65">{positionSubtype}</span>
+      <p className={DASHBOARD_POSITION_SUBTITLE_CLASS} title={`${positionType} · ${positionSubtype}`}>
+        <span className="text-[#1E4775]/45">{positionType}</span>
+        <span className="text-[#1E4775]/45"> · </span>
+        <span className="font-medium text-[#1E4775]/70">{positionSubtype}</span>
       </p>
     );
   }
@@ -58,7 +56,7 @@ function PositionSubtitle({
     : positionType;
 
   return (
-    <p className={DASHBOARD_INSET_SUBTITLE_CLASS} title={typeLabel}>
+    <p className={DASHBOARD_POSITION_SUBTITLE_CLASS} title={typeLabel}>
       {typeLabel}
     </p>
   );
@@ -84,7 +82,7 @@ export function PositionCard({ row }: PositionCardProps) {
   return (
     <Link
       href={row.href}
-      className={`${DASHBOARD_INSET_ROW_SHELL_CLASS} ${DASHBOARD_INSET_ROW_SUBGRID_CLASS} grid grid-cols-1 gap-2 sm:grid-cols-subgrid sm:gap-x-3`}
+      className={`${PORTFOLIO_POSITION_ROW_CLASS} ${DASHBOARD_INSET_ROW_SUBGRID_CLASS} grid grid-cols-1 gap-2 sm:grid-cols-subgrid sm:gap-x-3`}
     >
       <div className="flex min-w-0 items-center gap-2.5">
         <TokenLogo
@@ -93,7 +91,7 @@ export function PositionCard({ row }: PositionCardProps) {
           className="shrink-0 ring-0"
         />
         <div className="min-w-0 flex-1 space-y-0">
-          <p className={DASHBOARD_INSET_TITLE_CLASS} title={marketName}>
+          <p className={DASHBOARD_POSITION_TITLE_CLASS} title={marketName}>
             {marketName}
           </p>
           <PositionSubtitle
@@ -105,14 +103,15 @@ export function PositionCard({ row }: PositionCardProps) {
         <StatusBadge
           label={row.statusLabel}
           variant={statusVariant(row.statusTone)}
-          surface="dark"
         />
       </div>
 
       <div className="min-w-0 text-left sm:text-right">
         <span className="whitespace-nowrap text-sm">
-          <span className={DASHBOARD_INSET_METRIC_LABEL_CLASS}>{valueLabel}</span>{" "}
-          <span className={DASHBOARD_INSET_METRIC_VALUE_CLASS}>{valueDisplay}</span>
+          <span className={DASHBOARD_POSITION_METRIC_LABEL_CLASS}>{valueLabel}</span>{" "}
+          <span className="font-mono text-sm font-semibold tabular-nums text-[#1E4775] sm:text-base">
+            {valueDisplay}
+          </span>
         </span>
         {row.category === "leverage" ? (
           pnlFormatted ? (
@@ -121,12 +120,12 @@ export function PositionCard({ row }: PositionCardProps) {
               {formatDashboardPnLPercent(row.unrealizedPnLPercent ?? 0)})
             </p>
           ) : (
-            <p className={`mt-0.5 sm:text-right ${DASHBOARD_INSET_METRIC_MUTED_CLASS}`}>
+            <p className="mt-0.5 font-mono text-sm tabular-nums text-[#1E4775]/40 sm:text-right">
               —
             </p>
           )
         ) : valueContext ? (
-          <p className="mt-0.5 text-[10px] text-white/35 sm:text-right">{valueContext}</p>
+          <p className="mt-0.5 text-[10px] text-[#1E4775]/40 sm:text-right">{valueContext}</p>
         ) : null}
       </div>
     </Link>

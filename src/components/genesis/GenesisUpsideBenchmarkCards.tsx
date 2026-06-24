@@ -59,7 +59,7 @@ function BenchmarkCard({
 
   return (
     <div
-      className={`${MV_UPSIDE_BENCHMARK_TILE} ${theme.hover} min-w-0 px-2.5 py-2.5 sm:px-3 sm:py-3 ${
+      className={`${MV_UPSIDE_BENCHMARK_TILE} ${theme.hover} ${theme.accentBar} min-w-0 px-2.5 py-2.5 sm:px-3 sm:py-3 ${
         isUpdated ? MV_UPSIDE_BENCHMARK_TILE_UPDATED : ""
       }`}
     >
@@ -87,9 +87,9 @@ function BenchmarkCard({
             <GenesisUpsideAnimatedUsdRange
               lowUsd={row.yourEarningsLowUsd}
               highUsd={row.yourEarningsHighUsd}
-              className={`font-mono text-sm font-bold tabular-nums sm:text-base ${theme.earnings}`}
+              className="font-mono text-sm font-bold tabular-nums text-white sm:text-base"
             />
-            <span className={`text-[10px] ${theme.earnings} opacity-80`}>
+            <span className="text-[10px] text-white/80">
               {MAIDEN_VOYAGE_UPSIDE_COPY.earningsSuffix}
             </span>
           </p>
