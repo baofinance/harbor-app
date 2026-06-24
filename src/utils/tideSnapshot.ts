@@ -29,6 +29,19 @@ export function hasTideAllocation(row: { amountTokens: number } | null): boolean
   return row !== null && row.amountTokens > 0;
 }
 
+export function emptyTideAirdropBuckets(): Record<
+  TideAirdropBucketKey,
+  TideAirdropBucketAmount
+> {
+  return TIDE_AIRDROP_BUCKETS.reduce(
+    (acc, { key }) => {
+      acc[key] = { amountTokens: 0 };
+      return acc;
+    },
+    {} as Record<TideAirdropBucketKey, TideAirdropBucketAmount>
+  );
+}
+
 export function normalizeTideAirdropBuckets(
   row: TideAirdropAllocationRow
 ): Record<TideAirdropBucketKey, TideAirdropBucketAmount> {

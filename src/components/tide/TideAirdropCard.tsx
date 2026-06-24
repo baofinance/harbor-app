@@ -46,7 +46,6 @@ export function TideAirdropCard() {
     isLoading,
     buckets,
     totalTokens,
-    hasAllocation,
     airdropDate,
   } = useTideAirdropEligibility();
   const theme = TIDE_THEME.coral;
@@ -73,7 +72,7 @@ export function TideAirdropCard() {
     >
       {isLoading ? (
         <p className={TIDE_META_TEXT}>Loading snapshot…</p>
-      ) : hasAllocation && buckets ? (
+      ) : buckets ? (
         <div className={TIDE_CARD_CONTENT_STACK}>
           <div className="text-center">
             <p className={`mb-1.5 ${TIDE_INSET_LABEL_CLASS} text-white/50`}>
@@ -96,13 +95,7 @@ export function TideAirdropCard() {
             ))}
           </div>
         </div>
-      ) : (
-        <div className="py-4 text-center">
-          <p className={TIDE_META_TEXT}>
-            No snapshot airdrop allocation for this wallet.
-          </p>
-        </div>
-      )}
+      ) : null}
     </TideFeatureCard>
   );
 }

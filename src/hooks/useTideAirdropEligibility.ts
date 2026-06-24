@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAccount, useReadContract } from "wagmi";
 import { HARBOR_TIDE_DISTRIBUTOR_ABI } from "@/abis/harborTideDistributor";
 import { TIDE_CONFIG, type TideAirdropSnapshot } from "@/config/tide";
-import { findTideAirdropAllocation } from "@/utils/tideSnapshot";
+import { findTideAirdropAllocation, emptyTideAirdropBuckets } from "@/utils/tideSnapshot";
 
 async function fetchAirdropSnapshot(): Promise<TideAirdropSnapshot> {
   const res = await fetch(TIDE_CONFIG.dataPaths.airdrop);
@@ -24,6 +24,11 @@ export function useTideAirdropEligibility() {
   });
 
   const airdrop = findTideAirdropAllocation(snapshotQuery.data, address);
+  const isLoading = snapshotQuery.isLoading;
+  const buckets =
+    isConnected && !isLoading
+      ? (airdrop?.buckets ?? emptyTideAirdropBuckets())
+      : null;
 
   const { data: startDate } = useReadContract({
     address: TIDE_CONFIG.distributorAddress,
@@ -34,10 +39,10 @@ export function useTideAirdropEligibility() {
 
   return {
     isConnected,
-    isLoading: snapshotQuery.isLoading,
+    isLoading,
     isError: snapshotQuery.isError,
     airdrop,
-    buckets: airdrop?.buckets ?? null,
+    buckets,
     totalTokens: airdrop?.totalTokens ?? 0,
     hasAllocation: airdrop !== null && (airdrop?.totalTokens ?? 0) > 0,
     airdropDate: startDate !== undefined ? Number(startDate) * 1000 : undefined,

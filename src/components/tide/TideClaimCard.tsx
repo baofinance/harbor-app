@@ -29,7 +29,7 @@ function ClaimBucket({
 }: {
   label: string;
   methodLabel: string;
-  amountTokens: number | null;
+  amountTokens: number;
   isLoading: boolean;
   themeInset: string;
   blockReason: string | null;
@@ -38,7 +38,8 @@ function ClaimBucket({
   isClaiming: boolean;
   onClaim: () => void;
 }) {
-  const hasBalance = amountTokens !== null && amountTokens > 0;
+  const displayTokens = amountTokens;
+  const hasBalance = displayTokens > 0;
 
   return (
     <div className="flex w-full flex-col gap-1.5">
@@ -53,22 +54,22 @@ function ClaimBucket({
 
         {isLoading ? (
           <p className={`mt-2 ${TIDE_META_TEXT}`}>Loading snapshot…</p>
-        ) : hasBalance ? (
+        ) : (
           <>
             <p className={`mt-2 ${TIDE_AMOUNT_SM_CLASS}`}>
-              {formatTideTokenAmount(amountTokens)}{" "}
+              {formatTideTokenAmount(displayTokens)}{" "}
               <span className="text-base text-white/55">TIDE</span>
             </p>
-            {alreadyClaimed ? (
+            {hasBalance && alreadyClaimed ? (
               <p className="mt-3 text-sm font-medium text-[#B8EBD5]">Claimed</p>
-            ) : blockReason ? (
+            ) : hasBalance && blockReason ? (
               <p className={`mt-3 ${TIDE_META_TEXT}`}>{blockReason}</p>
             ) : null}
             {!alreadyClaimed ? (
               <button
                 type="button"
                 onClick={onClaim}
-                disabled={!canClaim || isClaiming}
+                disabled={!canClaim || isClaiming || !hasBalance}
                 className={`mt-3 ${TIDE_PRIMARY_BUTTON_CLASS}`}
                 title={
                   methodLabel === "claimVeBao"
@@ -80,10 +81,6 @@ function ClaimBucket({
               </button>
             ) : null}
           </>
-        ) : (
-          <p className={`mt-2 ${TIDE_META_TEXT}`}>
-            No snapshot allocation for this wallet.
-          </p>
         )}
       </div>
     </div>
@@ -122,7 +119,7 @@ export function TideClaimCard() {
             <ClaimBucket
               label="veBao"
               methodLabel="claimVeBao"
-              amountTokens={claim.veBaoAllocation?.amountTokens ?? null}
+              amountTokens={claim.veBaoAllocation?.amountTokens ?? 0}
               isLoading={bucketLoading}
               themeInset={theme.inset}
               blockReason={claim.veBaoBlockReason}
@@ -134,7 +131,7 @@ export function TideClaimCard() {
             <ClaimBucket
               label="veFXN & liquid wrapper"
               methodLabel="claimStandard"
-              amountTokens={claim.standardAllocation?.amountTokens ?? null}
+              amountTokens={claim.standardAllocation?.amountTokens ?? 0}
               isLoading={bucketLoading}
               themeInset={theme.inset}
               blockReason={claim.standardBlockReason}

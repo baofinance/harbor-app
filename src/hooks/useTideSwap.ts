@@ -15,9 +15,15 @@ import { useTideTransactionModal } from "@/hooks/useTideTransactionModal";
 import { formatToken } from "@/utils/formatters";
 import { parseTideClaimError } from "@/utils/tideDistributor";
 
+function floorTokenWei(amount: bigint, decimals: number): bigint {
+  if (decimals <= 0) return amount;
+  const unit = 10n ** BigInt(decimals);
+  return (amount / unit) * unit;
+}
+
 export function useTideSwap() {
   const { address, isConnected } = useAccount();
-  const [baoAmount, setBaoAmount] = useState("");
+  const [baoAmount, setBaoAmountState] = useState("");
   const [isSwapping, setIsSwapping] = useState(false);
   const [swapError, setSwapError] = useState<string | null>(null);
   const txModal = useTideTransactionModal();
@@ -99,11 +105,19 @@ export function useTideSwap() {
   });
 
   const balance = balanceRaw ?? 0n;
+  const balanceFloorWei = useMemo(
+    () => floorTokenWei(balance, TIDE_CONFIG.baoDecimals),
+    [balance]
+  );
+
+  const setBaoAmount = useCallback((value: string) => {
+    setBaoAmountState(value.replace(/[^\d]/g, ""));
+  }, []);
 
   const maxBaoWei = useMemo(() => {
-    if (isConnected && balance > 0n) return balance;
+    if (isConnected && balanceFloorWei > 0n) return balanceFloorWei;
     return (maxBaoCap ?? 0n) as bigint;
-  }, [isConnected, balance, maxBaoCap]);
+  }, [isConnected, balanceFloorWei, maxBaoCap]);
 
   const { data: maxTideOutWei } = useReadContract({
     address: distributor,
@@ -115,7 +129,12 @@ export function useTideSwap() {
   });
 
   const allowance = allowanceRaw ?? 0n;
-  const balanceFormatted = formatToken(balance, TIDE_CONFIG.baoDecimals, 4);
+  const balanceFormatted = formatToken(
+    balanceFloorWei,
+    TIDE_CONFIG.baoDecimals,
+    0
+  );
+  const maxBaoAmount = balanceFormatted.replace(/,/g, "");
 
   const tideOut = (tideOutWei ?? 0n) as bigint;
   const minOut = (minTideOut ?? 0n) as bigint;
@@ -123,10 +142,14 @@ export function useTideSwap() {
   const windowEnd = endDate as bigint | undefined;
 
   const tideOutput = tideOutWei
-    ? formatToken(tideOut, TIDE_CONFIG.tideDecimals, 4)
+    ? formatToken(
+        floorTokenWei(tideOut, TIDE_CONFIG.tideDecimals),
+        TIDE_CONFIG.tideDecimals,
+        0
+      )
     : "";
 
-  const exceedsBalance = baoAmountWei > 0n && baoAmountWei > balance;
+  const exceedsBalance = baoAmountWei > 0n && baoAmountWei > balanceFloorWei;
   const belowMinOut =
     baoAmountWei > 0n && tideOutWei !== undefined && minTideOut !== undefined && tideOut < minOut;
 
@@ -203,7 +226,11 @@ export function useTideSwap() {
       await refetchBalance();
 
       const received = tideOutWei
-        ? formatToken(tideOut, TIDE_CONFIG.tideDecimals, 4)
+        ? formatToken(
+            floorTokenWei(tideOut, TIDE_CONFIG.tideDecimals),
+            TIDE_CONFIG.tideDecimals,
+            0
+          )
         : tideOutput;
 
       txModal.openSuccess(
@@ -241,7 +268,7 @@ export function useTideSwap() {
     if (maxBaoWei <= 0n || maxTideOutWei === undefined) return null;
     const baoLabel = formatToken(maxBaoWei, TIDE_CONFIG.baoDecimals, 0);
     const tideLabel = formatToken(
-      maxTideOutWei as bigint,
+      floorTokenWei(maxTideOutWei as bigint, TIDE_CONFIG.tideDecimals),
       TIDE_CONFIG.tideDecimals,
       0
     );
@@ -252,6 +279,7 @@ export function useTideSwap() {
     isConnected,
     balance,
     balanceFormatted,
+    maxBaoAmount,
     baoAmount,
     setBaoAmount,
     tideOutput,

@@ -19,6 +19,7 @@ export function TideSwapCard() {
   const {
     isConnected,
     balanceFormatted,
+    maxBaoAmount,
     baoAmount,
     setBaoAmount,
     tideOutput,
@@ -42,8 +43,8 @@ export function TideSwapCard() {
   const theme = TIDE_THEME.blue;
 
   const handleMax = () => {
-    if (balanceFormatted && balanceFormatted !== "0") {
-      setBaoAmount(balanceFormatted.replace(/,/g, ""));
+    if (maxBaoAmount && maxBaoAmount !== "0") {
+      setBaoAmount(maxBaoAmount);
     }
   };
 
@@ -95,10 +96,10 @@ export function TideSwapCard() {
             <div className={TIDE_INPUT_SHELL_CLASS}>
               <input
                 id="tide-swap-bao-amount"
-                type="number"
-                min="0"
-                step="any"
-                placeholder="0.0"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="0"
                 value={baoAmount}
                 onChange={(e) => setBaoAmount(e.target.value)}
                 className="min-w-0 flex-1 bg-transparent font-mono text-base text-white outline-none placeholder:text-white/25 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
