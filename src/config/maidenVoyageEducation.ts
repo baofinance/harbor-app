@@ -53,7 +53,7 @@ export const MAIDEN_VOYAGE_UPSIDE_COPY = {
   sectionCaption:
     "See what your founding deposit could become as this market grows.",
   depositLabel: "Your deposit",
-  revenueShareTitle: "Future Revenue Share",
+  revenueShareTitle: "Revenue share",
   revenueShareCaption: "Your share of future market revenue",
   benchmarkIntro: "If this market grows, your share could earn…",
   youEarn: "You earn",

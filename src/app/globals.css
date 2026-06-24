@@ -325,7 +325,7 @@ body.app-bg-megaeth .app-index-manage-btn:hover {
     color: transparent;
   }
 
-  /** Explore the Upside deposit slider — thumb size must match SLIDER_THUMB_PX in GenesisUpsideHeroMetric. */
+  /** Explore the Upside deposit slider — thumb size must match UPSIDE_SLIDER_THUMB_PX in maidenVoyageUpsideSlider.ts. */
   .mv-upside-slider {
     -webkit-appearance: none;
     appearance: none;

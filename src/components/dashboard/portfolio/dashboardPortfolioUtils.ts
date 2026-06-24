@@ -509,6 +509,33 @@ export function parsePositionDetail(detail: string): {
   return { positionType: detail };
 }
 
+/** Compact badge copy — replaces the subtitle under the market title. */
+export function dashboardPositionStatusLabel(
+  row: Pick<DashboardPositionRow, "category" | "detail" | "statusTone">,
+): string {
+  const { positionType, positionSubtype } = parsePositionDetail(row.detail);
+
+  if (row.category === "maiden_voyage") {
+    return row.statusTone === "ended" ? "Maiden voyage ended" : "Maiden voyage active";
+  }
+
+  if (row.category === "earn") {
+    if (positionSubtype === "wallet") return "Earn wallet";
+    if (positionSubtype === "stability") {
+      return positionType === "Sail pool"
+        ? "Sail stability pool"
+        : "Earn stability pool";
+    }
+  }
+
+  if (row.category === "leverage") {
+    if (positionSubtype === "marks") return "Sail marks";
+    if (positionSubtype === "position") return "Sail position";
+  }
+
+  return positionSubtype ?? positionType;
+}
+
 export function formatMarketLabel(label: string): string {
   return label.replace(/\s*-\s*/g, " / ");
 }

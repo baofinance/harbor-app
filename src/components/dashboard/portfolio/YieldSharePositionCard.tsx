@@ -53,7 +53,7 @@ export function YieldSharePositionCard({ row }: { row: FounderMetricRow }) {
   return (
     <Link
       href={href}
-      className={`${PORTFOLIO_POSITION_ROW_CLASS} ${DASHBOARD_INSET_ROW_SUBGRID_CLASS} grid-cols-1 gap-2 sm:gap-x-3`}
+      className={`${PORTFOLIO_POSITION_ROW_CLASS} ${DASHBOARD_INSET_ROW_SUBGRID_CLASS} grid grid-cols-1 items-center gap-2 sm:grid-cols-subgrid sm:gap-x-3`}
     >
       <div className="flex min-w-0 items-center gap-2.5">
         <TokenLogo

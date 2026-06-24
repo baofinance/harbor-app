@@ -18,7 +18,7 @@ export const PORTFOLIO_CARD_SHELL = `rounded-xl ${MV_POSITION_ROW}`;
 export const PORTFOLIO_COMPACT_CARD_CLASS = `${PORTFOLIO_CARD_SHELL} p-2.5 sm:p-3`;
 
 /** Solid white position row — matches Anchor / Genesis index tables. */
-export const PORTFOLIO_POSITION_ROW_CLASS = `${DASHBOARD_INDEX_ROW_SHELL_CLASS} p-2 sm:p-2.5`;
+export const PORTFOLIO_POSITION_ROW_CLASS = `${DASHBOARD_INDEX_ROW_SHELL_CLASS} min-h-[52px] p-2 sm:p-2.5`;
 
 export const PORTFOLIO_POSITION_LABEL_CLASS =
   "text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/45";

@@ -45,29 +45,25 @@ export function formatTvlBenchmarkLabel(tvlUsd: number): string {
   return `${formatUSD(tvlUsd, { compact: true, minDecimals: 0, maxDecimals: 0 })} TVL`;
 }
 
-function formatRangePart(value: number): string {
-  if (!Number.isFinite(value) || value <= 0) return "$0";
+function formatRangePart(value: number, preferCompact: boolean): string {
+  if (!Number.isFinite(value) || value <= 0) return "0";
 
-  if (value >= 1_000) {
-    return formatUSD(value, {
+  const rounded = Math.round(value);
+
+  if (preferCompact && rounded >= 1_000) {
+    return formatUSD(rounded, {
       compact: true,
       minDecimals: 0,
       maxDecimals: 0,
     }).replace(/^\$/, "");
   }
 
-  if (value >= 100) {
-    return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
-  }
+  return rounded.toLocaleString("en-US", { maximumFractionDigits: 0 });
+}
 
-  if (value >= 10) {
-    return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
-  }
-
-  return value.toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
+/** Use compact K/M on both ends when the high bound is ≥ $1K. */
+function useCompactRangeParts(lowUsd: number, highUsd: number): boolean {
+  return Math.round(highUsd) >= 1_000;
 }
 
 /** Compact dollar range, e.g. "$5k–10k" or "$5–10". */
@@ -78,8 +74,9 @@ export function formatUsdRange(
 ): string {
   const { approximate = false } = options;
   const prefix = approximate ? "≈ $" : "$";
-  const lowPart = formatRangePart(lowUsd);
-  const highPart = formatRangePart(highUsd);
+  const compact = useCompactRangeParts(lowUsd, highUsd);
+  const lowPart = formatRangePart(lowUsd, compact);
+  const highPart = formatRangePart(highUsd, compact);
 
   if (lowPart === highPart) {
     return `${prefix}${lowPart}`;

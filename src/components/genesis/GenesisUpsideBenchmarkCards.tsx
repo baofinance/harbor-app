@@ -62,38 +62,40 @@ function BenchmarkCard({
         isUpdated ? MV_UPSIDE_BENCHMARK_TILE_UPDATED : ""
       }`}
     >
-      {stage ? (
-        <p className="mb-2.5 flex justify-center">
-          <span
-            className={`inline-block rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider sm:text-[10px] ${theme.badge}`}
-          >
-            {stage.label}
-          </span>
-        </p>
-      ) : null}
-
-      <div className="flex flex-col items-center text-center">
+      <div className="flex items-center gap-2 sm:gap-2.5">
         <div
-          className={`mb-2.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border sm:h-9 sm:w-9 ${theme.icon}`}
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border sm:h-9 sm:w-9 ${theme.icon}`}
         >
           <Icon className="h-4 w-4 sm:h-[1.125rem] sm:w-[1.125rem]" aria-hidden />
         </div>
-        <p className="text-[11px] font-medium uppercase tracking-wide text-white/55 sm:text-xs">
-          {MAIDEN_VOYAGE_UPSIDE_COPY.youEarn}
-        </p>
-        <p className="mt-1 leading-tight">
-          <GenesisUpsideAnimatedUsdRange
-            lowUsd={row.yourEarningsLowUsd}
-            highUsd={row.yourEarningsHighUsd}
-            className="font-mono text-base font-bold tabular-nums text-white sm:text-lg"
-          />
-          <span className="text-xs text-white/80 sm:text-sm">
-            {MAIDEN_VOYAGE_UPSIDE_COPY.earningsSuffix}
-          </span>
-        </p>
-        <p className="mt-2 max-w-full px-0.5 font-mono text-[11px] leading-snug tabular-nums text-white/50 sm:text-xs">
-          {formatAssumptionLine(row)}
-        </p>
+
+        <div className="min-w-0 flex-1 text-center">
+          {stage ? (
+            <p className="mb-1.5 flex justify-center">
+              <span
+                className={`inline-block rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider sm:text-[10px] ${theme.badge}`}
+              >
+                {stage.label}
+              </span>
+            </p>
+          ) : null}
+          <p className="text-[11px] font-medium uppercase tracking-wide text-white/55 sm:text-xs">
+            {MAIDEN_VOYAGE_UPSIDE_COPY.youEarn}
+          </p>
+          <p className="mt-1 font-mono leading-tight tabular-nums">
+            <GenesisUpsideAnimatedUsdRange
+              lowUsd={row.yourEarningsLowUsd}
+              highUsd={row.yourEarningsHighUsd}
+              className="text-base font-bold text-white sm:text-lg"
+            />
+            <span className="text-xs text-white/80 sm:text-sm">
+              {MAIDEN_VOYAGE_UPSIDE_COPY.earningsSuffix}
+            </span>
+          </p>
+          <p className="mt-2 max-w-full font-mono text-[11px] leading-snug tabular-nums text-white/50 sm:text-xs">
+            {formatAssumptionLine(row)}
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -26,6 +26,15 @@ export const HARBOR_STAT_TILE_GLASS_CHIP_LABEL_CLASS =
 export const HARBOR_STAT_TILE_GLASS_CHIP_VALUE_CLASS =
   "font-mono text-sm tabular-nums font-semibold text-white/90 sm:text-base";
 
+/** Single frosted shell for multi-metric intro strips (Anchor protocol stats, etc.). */
+export const HARBOR_STAT_TILE_INTRO_STRIP_SHELL_CLASS = `rounded-xl overflow-hidden ${MV_GLASS_INSET_LIGHT}`;
+
+export const HARBOR_STAT_TILE_INTRO_STRIP_GRID_CLASS =
+  "grid grid-cols-2 lg:grid-cols-4 divide-x divide-y divide-white/[0.08] lg:divide-y-0";
+
+export const HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS =
+  "flex min-w-0 flex-col items-center justify-center px-3 py-2.5 text-center";
+
 /** Intro stat strip label (Anchor protocol stats). */
 export const HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS =
   "text-[11px] text-white/80 uppercase tracking-widest";

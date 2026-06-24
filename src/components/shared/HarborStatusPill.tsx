@@ -49,6 +49,14 @@ const VARIANT_CLASS_DARK: Record<HarborStatusPillVariant, string> = {
 
 function variantFromLabel(label: string, fallback: HarborStatusPillVariant): HarborStatusPillVariant {
   const normalized = label.trim().toLowerCase();
+  if (normalized.includes("ended")) return "ended";
+  if (normalized.includes("maiden voyage") && normalized.includes("active")) {
+    return "active";
+  }
+  if (normalized.includes("stability pool")) return "green";
+  if (normalized.includes("marks")) return "purple";
+  if (normalized.includes("wallet")) return "neutral";
+  if (normalized.includes("position")) return "neutral";
   switch (normalized) {
     case "wallet":
       return "neutral";
@@ -62,6 +70,8 @@ function variantFromLabel(label: string, fallback: HarborStatusPillVariant): Har
       return "coral";
     case "ended":
       return "ended";
+    case "active":
+      return "active";
     default:
       return fallback;
   }
@@ -72,11 +82,31 @@ function classFromLabel(
   variant: HarborStatusPillVariant,
   surface: "light" | "dark",
 ): string {
+  const normalized = label.trim().toLowerCase();
+
   if (surface === "dark") {
     return VARIANT_CLASS_DARK[variantFromLabel(label, variant)];
   }
 
-  const normalized = label.trim().toLowerCase();
+  if (normalized.includes("stability pool")) {
+    return HARBOR_STATUS_PILL_STABILITY_LIGHT;
+  }
+  if (normalized.includes("wallet")) {
+    return HARBOR_STATUS_PILL_WALLET_LIGHT;
+  }
+  if (normalized.includes("marks")) {
+    return HARBOR_STATUS_PILL_MARKS_LIGHT;
+  }
+  if (normalized.includes("maiden voyage") && normalized.includes("active")) {
+    return HARBOR_STATUS_PILL_ACTIVE_LIGHT;
+  }
+  if (normalized.includes("ended")) {
+    return HARBOR_STATUS_PILL_ENDED_LIGHT;
+  }
+  if (normalized.includes("position")) {
+    return HARBOR_STATUS_PILL_NEUTRAL_LIGHT;
+  }
+
   switch (normalized) {
     case "wallet":
       return HARBOR_STATUS_PILL_WALLET_LIGHT;

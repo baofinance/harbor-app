@@ -13,7 +13,7 @@ import {
   DASHBOARD_HERO_GRID_CLASS,
   DASHBOARD_HERO_STATS_ROW_CLASS,
   DASHBOARD_HERO_STAT_LABEL_CLASS,
-  DASHBOARD_HERO_YIELD_COLUMN_CLASS,
+  DASHBOARD_HERO_YIELD_STAT_CELL_CLASS,
 } from "./dashboardStyles";
 import {
   DASHBOARD_HERO_SUPPORTING_CLASS,
@@ -112,21 +112,21 @@ function HeroYieldStats({
 
   return (
     <div className={DASHBOARD_HERO_STATS_ROW_CLASS}>
-      <div className={DASHBOARD_HERO_YIELD_COLUMN_CLASS}>
+      <div className={DASHBOARD_HERO_YIELD_STAT_CELL_CLASS}>
         <DashboardHeroStatColumn
           label="Revenue share yield"
           value={formatStatUsd(revenueShareYieldUsd, isConnected, isLoading, true)}
           valueClassName={revenueShareYieldUsd > 0 ? "text-harbor-gold" : "text-white/80"}
         />
       </div>
-      <div className={DASHBOARD_HERO_YIELD_COLUMN_CLASS}>
+      <div className={DASHBOARD_HERO_YIELD_STAT_CELL_CLASS}>
         <DashboardHeroStatColumn
           label="Earn yield"
           value={formatStatUsd(earnYieldUsd, isConnected, isEarnLoading, true)}
           valueClassName={earnYieldUsd > 0 ? "text-harbor-mint" : "text-white/80"}
         />
       </div>
-      <div className={DASHBOARD_HERO_YIELD_COLUMN_CLASS}>
+      <div className={DASHBOARD_HERO_YIELD_STAT_CELL_CLASS}>
         <DashboardHeroStatColumn
           label="Total earned"
           value={formatStatUsd(
@@ -199,13 +199,13 @@ export function DashboardPortfolioHero({
           />
         ) : (
           <div className={DASHBOARD_HERO_STATS_ROW_CLASS}>
-            <div className={DASHBOARD_HERO_YIELD_COLUMN_CLASS}>
+            <div className={DASHBOARD_HERO_YIELD_STAT_CELL_CLASS}>
               <DashboardHeroStatColumn label="Revenue share yield" value="—" />
             </div>
-            <div className={DASHBOARD_HERO_YIELD_COLUMN_CLASS}>
+            <div className={DASHBOARD_HERO_YIELD_STAT_CELL_CLASS}>
               <DashboardHeroStatColumn label="Earn yield" value="—" />
             </div>
-            <div className={DASHBOARD_HERO_YIELD_COLUMN_CLASS}>
+            <div className={DASHBOARD_HERO_YIELD_STAT_CELL_CLASS}>
               <DashboardHeroStatColumn label="Total earned" value="—" />
             </div>
           </div>

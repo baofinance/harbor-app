@@ -216,18 +216,20 @@ export const DASHBOARD_PRODUCT_ACCENT_BAR_CLASS = "absolute inset-y-0 left-0 w-[
 export const DASHBOARD_MV_PREVIEW_CLASS =
   "flex w-full flex-col gap-2 border-t border-white/[0.08] px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-4";
 
-/** Portfolio hero — 5-column mockup grid. */
+/** Portfolio hero — value | allocation | yield stats (3-up). */
 export const DASHBOARD_HERO_GRID_CLASS =
-  "grid grid-cols-1 gap-4 divide-y divide-white/[0.08] md:grid-cols-2 md:divide-y lg:grid-cols-[minmax(0,1fr)_minmax(0,2.35fr)_repeat(3,minmax(5.25rem,0.68fr))] lg:gap-0 lg:divide-x lg:divide-y-0 lg:divide-white/[0.08]";
+  "grid grid-cols-1 gap-4 divide-y divide-white/[0.08] md:grid-cols-2 md:divide-y lg:grid-cols-[minmax(0,1fr)_minmax(0,2.35fr)_minmax(0,auto)] lg:items-center lg:gap-0 lg:divide-x lg:divide-y-0 lg:divide-white/[0.08]";
 
+/** Yield stats row — 3 columns on tablet; single flex group on desktop hero. */
 export const DASHBOARD_HERO_STATS_ROW_CLASS =
-  "md:col-span-2 md:grid md:grid-cols-3 md:gap-4 md:border-t md:border-white/[0.08] md:pt-4 lg:contents lg:border-t-0 lg:pt-0";
+  "md:col-span-2 md:grid md:grid-cols-3 md:items-center md:divide-x md:divide-white/[0.08] md:border-t md:border-white/[0.08] md:pt-4 lg:col-span-1 lg:flex lg:items-center lg:justify-end lg:self-center lg:border-t-0 lg:pt-0 lg:divide-x lg:divide-white/[0.08]";
 
 export const DASHBOARD_HERO_COLUMN_CLASS =
-  "min-w-0 py-3 first:pt-0 last:pb-0 lg:px-4 lg:py-0 lg:first:pl-0 lg:last:pr-0";
+  "min-w-0 py-3 first:pt-0 last:pb-0 lg:px-4 lg:py-0 lg:first:pl-0";
 
-/** Yield stat columns — compact width, right-aligned on desktop. */
-export const DASHBOARD_HERO_YIELD_COLUMN_CLASS = `${DASHBOARD_HERO_COLUMN_CLASS} lg:pl-5 lg:text-right`;
+/** Individual yield stat cell inside {@link DASHBOARD_HERO_STATS_ROW_CLASS}. */
+export const DASHBOARD_HERO_YIELD_STAT_CELL_CLASS =
+  "min-w-0 px-4 py-2 md:px-3 md:py-0 lg:px-5 lg:text-right";
 
 export const DASHBOARD_HERO_STAT_LABEL_CLASS =
   "text-[10px] font-semibold uppercase tracking-wide text-white/50";
