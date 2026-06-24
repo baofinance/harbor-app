@@ -324,6 +324,56 @@ body.app-bg-megaeth .app-index-manage-btn:hover {
     -webkit-text-fill-color: transparent;
     color: transparent;
   }
+
+  /** Explore the Upside deposit slider — thumb size must match SLIDER_THUMB_PX in GenesisUpsideHeroMetric. */
+  .mv-upside-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 9999px;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .mv-upside-slider::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 9999px;
+  }
+
+  .mv-upside-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    margin-top: -5px;
+    border-radius: 9999px;
+    border: 2px solid #0a1929;
+    background: #b8ebd5;
+    box-shadow: 0 0 0 2px rgba(184, 235, 213, 0.28);
+    cursor: grab;
+  }
+
+  .mv-upside-slider:active::-webkit-slider-thumb {
+    cursor: grabbing;
+    box-shadow: 0 0 0 3px rgba(184, 235, 213, 0.4);
+  }
+
+  .mv-upside-slider::-moz-range-track {
+    height: 6px;
+    border-radius: 9999px;
+    background: transparent;
+  }
+
+  .mv-upside-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 9999px;
+    border: 2px solid #0a1929;
+    background: #b8ebd5;
+    box-shadow: 0 0 0 2px rgba(184, 235, 213, 0.28);
+    cursor: grab;
+  }
 }
 
 .wallet-icon:has(.wallet-icon-client) .wallet-placeholder {

@@ -17,8 +17,13 @@ import {
   MV_UPSIDE_OWNERSHIP_ICON,
   MV_UPSIDE_OWNERSHIP_PANEL,
   MV_UPSIDE_OWNERSHIP_TEXT,
-  MV_UPSIDE_SLIDER,
 } from "./maidenVoyageLayoutStyles";
+
+/** Must match `.mv-upside-slider` thumb width in globals.css. */
+const SLIDER_THUMB_PX = 16;
+
+const SLIDER_FILL_COLOR = "#B8EBD5";
+const SLIDER_TRACK_COLOR = "rgba(255, 255, 255, 0.12)";
 
 function parseInputNumber(value: string, fallback: number): number {
   const parsed = Number(value.replace(/,/g, ""));
@@ -42,24 +47,33 @@ function formatDepositInputValue(amount: number): string {
   return String(Math.round(amount));
 }
 
-/** Linear position on the slider track (0–100). */
-function depositSliderPositionPct(
+function sliderRatio(value: number, min: number, max: number): number {
+  if (max <= min) return 0;
+  const clamped = Math.min(max, Math.max(min, value));
+  return (clamped - min) / (max - min);
+}
+
+/** Align ticks/labels with native range thumb center (accounts for thumb width). */
+function sliderThumbLeftStyle(
   value: number,
   min: number,
   max: number,
-): number {
-  if (max <= min) return 0;
-  const clamped = Math.min(max, Math.max(min, value));
-  return ((clamped - min) / (max - min)) * 100;
+): { left: string; transform: string } {
+  const ratio = sliderRatio(value, min, max);
+  const half = SLIDER_THUMB_PX / 2;
+  return {
+    left: `calc(${ratio * 100}% + ${half}px - ${ratio * SLIDER_THUMB_PX}px)`,
+    transform: "translateX(-50%)",
+  };
 }
 
-function presetLabelTransform(
-  index: number,
-  total: number,
-): string {
-  if (total <= 1 || index === 0) return "translateX(0)";
-  if (index === total - 1) return "translateX(-100%)";
-  return "translateX(-50%)";
+function sliderFillBackground(value: number, min: number, max: number): string {
+  const pct = sliderRatio(value, min, max) * 100;
+  return `linear-gradient(to right, ${SLIDER_FILL_COLOR} 0%, ${SLIDER_FILL_COLOR} ${pct}%, ${SLIDER_TRACK_COLOR} ${pct}%, ${SLIDER_TRACK_COLOR} 100%)`;
+}
+
+function isNearPreset(depositUsd: number, preset: number): boolean {
+  return Math.abs(depositUsd - preset) < 50;
 }
 
 export type GenesisUpsideHeroMetricProps = {
@@ -99,6 +113,11 @@ export function GenesisUpsideHeroMetric({
     [sliderMin, sliderMax],
   );
 
+  const sliderBackground = useMemo(
+    () => sliderFillBackground(sliderValue, sliderMin, sliderMax),
+    [sliderValue, sliderMin, sliderMax],
+  );
+
   useEffect(() => {
     if (
       prevRevenueShareRef.current === revenueSharePct ||
@@ -119,7 +138,7 @@ export function GenesisUpsideHeroMetric({
   return (
     <div className="flex flex-col gap-2.5">
       <div className={MV_UPSIDE_DEPOSIT_PANEL}>
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-end">
+        <div className="flex flex-col gap-4">
           <div className="min-w-0">
             <label htmlFor="mv-upside-deposit" className={MV_SECTION_LABEL}>
               {MAIDEN_VOYAGE_UPSIDE_COPY.depositLabel}
@@ -143,40 +162,46 @@ export function GenesisUpsideHeroMetric({
             </div>
           </div>
 
-          <div className="min-w-0">
-            <input
-              type="range"
-              min={sliderMin}
-              max={sliderMax}
-              step={100}
-              value={sliderValue}
-              onChange={(e) => onDepositChange(Number(e.target.value))}
-              className={MV_UPSIDE_SLIDER}
-              aria-label="Adjust deposit amount"
-              aria-valuemin={sliderMin}
-              aria-valuemax={sliderMax}
-              aria-valuenow={sliderValue}
-            />
-            <div className="relative mt-2 h-5">
-              {visiblePresets.map((preset, index) => {
-                const isActive = depositUsd === preset;
-                const pct = depositSliderPositionPct(
-                  preset,
-                  sliderMin,
-                  sliderMax,
-                );
+          <div className="min-w-0 px-2 sm:px-2.5">
+            <div className="relative">
+              {visiblePresets.map((preset) => (
+                <span
+                  key={`tick-${preset}`}
+                  className="pointer-events-none absolute top-1/2 z-0 h-2 w-px -translate-y-1/2 bg-white/25"
+                  style={sliderThumbLeftStyle(preset, sliderMin, sliderMax)}
+                  aria-hidden
+                />
+              ))}
+              <input
+                type="range"
+                min={sliderMin}
+                max={sliderMax}
+                step={100}
+                value={sliderValue}
+                onChange={(e) => onDepositChange(Number(e.target.value))}
+                className="mv-upside-slider relative z-10"
+                style={{ background: sliderBackground }}
+                aria-label="Adjust deposit amount"
+                aria-valuemin={sliderMin}
+                aria-valuemax={sliderMax}
+                aria-valuenow={sliderValue}
+              />
+            </div>
+
+            <div className="relative mt-3 h-5">
+              {visiblePresets.map((preset) => {
+                const isActive = isNearPreset(depositUsd, preset);
                 return (
                   <button
                     key={preset}
                     type="button"
                     onClick={() => onDepositChange(preset)}
-                    className={`absolute top-0 text-[10px] font-medium tabular-nums transition-colors sm:text-[11px] ${
-                      isActive ? "text-white" : "text-white/40 hover:text-white/65"
+                    className={`absolute top-0 whitespace-nowrap text-[10px] font-medium tabular-nums transition-colors sm:text-[11px] ${
+                      isActive
+                        ? "text-[#B8EBD5]"
+                        : "text-white/40 hover:text-white/70"
                     }`}
-                    style={{
-                      left: `${pct}%`,
-                      transform: presetLabelTransform(index, visiblePresets.length),
-                    }}
+                    style={sliderThumbLeftStyle(preset, sliderMin, sliderMax)}
                   >
                     {formatPresetLabel(preset)}
                   </button>

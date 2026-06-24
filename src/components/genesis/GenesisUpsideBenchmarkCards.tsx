@@ -17,7 +17,6 @@ import { GenesisUpsideAnimatedUsdRange } from "./GenesisUpsideAnimatedMetrics";
 import {
   MV_UPSIDE_BENCHMARK_TILE,
   MV_UPSIDE_BENCHMARK_TILE_UPDATED,
-  MV_UPSIDE_NEUTRAL_META,
   MV_UPSIDE_STAGE_BY_ID,
   type UpsideGrowthStageId,
 } from "./maidenVoyageLayoutStyles";
@@ -64,7 +63,7 @@ function BenchmarkCard({
       }`}
     >
       {stage ? (
-        <p className="mb-2 flex justify-center">
+        <p className="mb-2.5 flex justify-center">
           <span
             className={`inline-block rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider sm:text-[10px] ${theme.badge}`}
           >
@@ -73,30 +72,28 @@ function BenchmarkCard({
         </p>
       ) : null}
 
-      <div className="flex items-start gap-2">
+      <div className="flex flex-col items-center text-center">
         <div
-          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border sm:h-9 sm:w-9 ${theme.icon}`}
+          className={`mb-2.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border sm:h-9 sm:w-9 ${theme.icon}`}
         >
-          <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
+          <Icon className="h-4 w-4 sm:h-[1.125rem] sm:w-[1.125rem]" aria-hidden />
         </div>
-        <div className="min-w-0 flex-1 text-left">
-          <p className={`${MV_UPSIDE_NEUTRAL_META} normal-case`}>
-            {MAIDEN_VOYAGE_UPSIDE_COPY.youEarn}
-          </p>
-          <p className="mt-0.5 truncate leading-tight">
-            <GenesisUpsideAnimatedUsdRange
-              lowUsd={row.yourEarningsLowUsd}
-              highUsd={row.yourEarningsHighUsd}
-              className="font-mono text-sm font-bold tabular-nums text-white sm:text-base"
-            />
-            <span className="text-[10px] text-white/80">
-              {MAIDEN_VOYAGE_UPSIDE_COPY.earningsSuffix}
-            </span>
-          </p>
-          <p className="mt-1.5 truncate font-mono text-[10px] leading-snug tabular-nums text-white/50">
-            {formatAssumptionLine(row)}
-          </p>
-        </div>
+        <p className="text-[11px] font-medium uppercase tracking-wide text-white/55 sm:text-xs">
+          {MAIDEN_VOYAGE_UPSIDE_COPY.youEarn}
+        </p>
+        <p className="mt-1 leading-tight">
+          <GenesisUpsideAnimatedUsdRange
+            lowUsd={row.yourEarningsLowUsd}
+            highUsd={row.yourEarningsHighUsd}
+            className="font-mono text-base font-bold tabular-nums text-white sm:text-lg"
+          />
+          <span className="text-xs text-white/80 sm:text-sm">
+            {MAIDEN_VOYAGE_UPSIDE_COPY.earningsSuffix}
+          </span>
+        </p>
+        <p className="mt-2 max-w-full px-0.5 font-mono text-[11px] leading-snug tabular-nums text-white/50 sm:text-xs">
+          {formatAssumptionLine(row)}
+        </p>
       </div>
     </div>
   );

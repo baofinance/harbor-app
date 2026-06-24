@@ -176,10 +176,6 @@ export const MV_UPSIDE_OWNERSHIP_ICON =
 /** Deposit row shell. */
 export const MV_UPSIDE_DEPOSIT_PANEL = `${MV_STAT_TILE} px-3 py-3 sm:px-4 sm:py-4`;
 
-/** Range slider track (use with accent-[#B8EBD5]). */
-export const MV_UPSIDE_SLIDER =
-  "h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-[#B8EBD5]";
-
 /** Growth-stage benchmark themes (Launch / Growth / Scale). */
 export const MV_UPSIDE_STAGE_LAUNCH = {
   badge:
