@@ -12,9 +12,9 @@ import {
   parseUpsideDepositInput,
   upsideDepositToSliderPosition,
   upsideSliderFillBackground,
+  upsideSliderMarkStyle,
   upsideSliderPositionToDeposit,
   upsideSliderSteps,
-  upsideSliderThumbStyle,
 } from "@/utils/maidenVoyageUpsideSlider";
 import { GenesisUpsideAnimatedNumber } from "./GenesisUpsideAnimatedMetrics";
 import {
@@ -143,20 +143,26 @@ export function GenesisUpsideHeroMetric({
         </div>
 
         <div className="min-w-0 pb-0.5">
-          <div className="relative px-2">
-            {visiblePresets.map((preset) => (
-              <span
-                key={`tick-${preset}`}
-                className="pointer-events-none absolute top-1/2 z-0 h-2 w-px -translate-y-1/2 bg-white/25"
-                style={upsideSliderThumbStyle(
-                  preset,
-                  sliderMin,
-                  sliderMax,
-                  sliderPivot,
-                )}
-                aria-hidden
-              />
-            ))}
+          <div className="relative">
+            {visiblePresets.map((preset) => {
+              const markStyle = upsideSliderMarkStyle(
+                preset,
+                sliderMin,
+                sliderMax,
+                sliderPivot,
+              );
+              return (
+                <span
+                  key={`tick-${preset}`}
+                  className="pointer-events-none absolute top-1/2 z-0 h-2 w-px bg-white/25"
+                  style={{
+                    left: markStyle.left,
+                    transform: `${markStyle.transform} translateY(-50%)`,
+                  }}
+                  aria-hidden
+                />
+              );
+            })}
             <input
               type="range"
               min={0}
@@ -201,7 +207,7 @@ export function GenesisUpsideHeroMetric({
 
       <div className="mt-2.5 grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 sm:gap-x-5 lg:gap-x-6">
         <div aria-hidden />
-        <div className="relative h-5 px-2">
+        <div className="relative h-5">
           {visiblePresets.map((preset) => {
             const isActive = isNearUpsidePreset(depositUsd, preset);
             return (
@@ -214,7 +220,7 @@ export function GenesisUpsideHeroMetric({
                     ? "text-[#B8EBD5]"
                     : "text-white/40 hover:text-white/70"
                 }`}
-                style={upsideSliderThumbStyle(
+                style={upsideSliderMarkStyle(
                   preset,
                   sliderMin,
                   sliderMax,

@@ -21,8 +21,9 @@ describe("maidenVoyageUpsideSlider", () => {
 
   it("places $1K between min and pivot on the first half of the track", () => {
     const ratio = upsideDepositToTrackRatio(1_000, MIN, MAX, PIVOT);
-    expect(ratio).toBeGreaterThan(0.1);
-    expect(ratio).toBeLessThan(0.25);
+    expect(ratio).toBeCloseTo(0.5 * (1_000 - MIN) / (PIVOT - MIN), 5);
+    expect(ratio).toBeGreaterThan(0.05);
+    expect(ratio).toBeLessThan(0.1);
   });
 
   it("round-trips preset values through slider positions", () => {

@@ -1,4 +1,4 @@
-/** Piecewise log-scale deposit slider — $500 at min, pivot ($5K) at center, max at end. */
+/** Piecewise linear deposit slider — min at 0%, pivot ($5K) at 50%, max at 100%. */
 
 export const UPSIDE_SLIDER_THUMB_PX = 16;
 
@@ -8,33 +8,36 @@ export function upsideSliderSteps(): number {
   return SLIDER_POSITION_STEPS;
 }
 
-function logBounds(minUsd: number, maxUsd: number): { logMin: number; logSpan: number } {
-  const safeMin = Math.max(minUsd, 1);
-  const safeMax = Math.max(maxUsd, safeMin + 1);
-  const logMin = Math.log(safeMin);
-  return { logMin, logSpan: Math.log(safeMax) - logMin };
-}
-
-function logSegmentRatio(valueUsd: number, minUsd: number, maxUsd: number): number {
-  const { logMin, logSpan } = logBounds(minUsd, maxUsd);
-  if (logSpan <= 0) return 0;
+function linearSegmentRatio(
+  valueUsd: number,
+  minUsd: number,
+  maxUsd: number,
+): number {
+  if (maxUsd <= minUsd) return 0;
   const clamped = Math.min(maxUsd, Math.max(minUsd, valueUsd));
-  return (Math.log(Math.max(clamped, 1)) - logMin) / logSpan;
+  return (clamped - minUsd) / (maxUsd - minUsd);
 }
 
-function logSegmentDeposit(ratio: number, minUsd: number, maxUsd: number): number {
-  const { logMin, logSpan } = logBounds(minUsd, maxUsd);
+function linearSegmentDeposit(
+  ratio: number,
+  minUsd: number,
+  maxUsd: number,
+): number {
   const clampedRatio = Math.min(1, Math.max(0, ratio));
-  const raw = Math.exp(logMin + clampedRatio * logSpan);
+  const raw = minUsd + clampedRatio * (maxUsd - minUsd);
   const stepped = Math.round(raw / 100) * 100;
   return Math.min(maxUsd, Math.max(minUsd, stepped));
 }
 
-function usePivotScale(minUsd: number, maxUsd: number, pivotUsd: number): boolean {
+function usePivotScale(
+  minUsd: number,
+  maxUsd: number,
+  pivotUsd: number,
+): boolean {
   return pivotUsd > minUsd && pivotUsd < maxUsd;
 }
 
-/** 0–1 position on the track (piecewise log with pivot at 50%). */
+/** 0–1 position on the track (piecewise linear with pivot at 50%). */
 export function upsideDepositToTrackRatio(
   valueUsd: number,
   minUsd: number,
@@ -42,14 +45,14 @@ export function upsideDepositToTrackRatio(
   pivotUsd: number,
 ): number {
   if (!usePivotScale(minUsd, maxUsd, pivotUsd)) {
-    return logSegmentRatio(valueUsd, minUsd, maxUsd);
+    return linearSegmentRatio(valueUsd, minUsd, maxUsd);
   }
 
   const clamped = Math.min(maxUsd, Math.max(minUsd, valueUsd));
   if (clamped <= pivotUsd) {
-    return 0.5 * logSegmentRatio(clamped, minUsd, pivotUsd);
+    return 0.5 * linearSegmentRatio(clamped, minUsd, pivotUsd);
   }
-  return 0.5 + 0.5 * logSegmentRatio(clamped, pivotUsd, maxUsd);
+  return 0.5 + 0.5 * linearSegmentRatio(clamped, pivotUsd, maxUsd);
 }
 
 export function upsideTrackRatioToDeposit(
@@ -61,13 +64,13 @@ export function upsideTrackRatioToDeposit(
   const clampedRatio = Math.min(1, Math.max(0, ratio));
 
   if (!usePivotScale(minUsd, maxUsd, pivotUsd)) {
-    return logSegmentDeposit(clampedRatio, minUsd, maxUsd);
+    return linearSegmentDeposit(clampedRatio, minUsd, maxUsd);
   }
 
   if (clampedRatio <= 0.5) {
-    return logSegmentDeposit(clampedRatio / 0.5, minUsd, pivotUsd);
+    return linearSegmentDeposit(clampedRatio / 0.5, minUsd, pivotUsd);
   }
-  return logSegmentDeposit((clampedRatio - 0.5) / 0.5, pivotUsd, maxUsd);
+  return linearSegmentDeposit((clampedRatio - 0.5) / 0.5, pivotUsd, maxUsd);
 }
 
 export function upsideDepositToSliderPosition(
@@ -96,8 +99,11 @@ export function upsideSliderPositionToDeposit(
   );
 }
 
-/** Align ticks/labels with native range thumb center (accounts for thumb width). */
-export function upsideSliderThumbStyle(
+/**
+ * Align ticks/labels with native range thumb center.
+ * Assumes the track spans the full width of the relative parent (no extra px-* inset).
+ */
+export function upsideSliderMarkStyle(
   valueUsd: number,
   minUsd: number,
   maxUsd: number,
@@ -105,10 +111,24 @@ export function upsideSliderThumbStyle(
 ): { left: string; transform: string } {
   const ratio = upsideDepositToTrackRatio(valueUsd, minUsd, maxUsd, pivotUsd);
   const half = UPSIDE_SLIDER_THUMB_PX / 2;
+  let transform = "translateX(-50%)";
+  if (ratio <= 0.001) transform = "translateX(0)";
+  else if (ratio >= 0.999) transform = "translateX(-100%)";
+
   return {
-    left: `calc(${ratio * 100}% + ${half}px - ${ratio * UPSIDE_SLIDER_THUMB_PX}px)`,
-    transform: "translateX(-50%)",
+    left: `calc(${half}px + ${ratio} * (100% - ${UPSIDE_SLIDER_THUMB_PX}px))`,
+    transform,
   };
+}
+
+/** @deprecated Use {@link upsideSliderMarkStyle}. */
+export function upsideSliderThumbStyle(
+  valueUsd: number,
+  minUsd: number,
+  maxUsd: number,
+  pivotUsd: number,
+): { left: string; transform: string } {
+  return upsideSliderMarkStyle(valueUsd, minUsd, maxUsd, pivotUsd);
 }
 
 export function upsideSliderFillBackground(
@@ -117,7 +137,10 @@ export function upsideSliderFillBackground(
   maxUsd: number,
   pivotUsd: number,
 ): string {
-  const pct = upsideDepositToTrackRatio(valueUsd, minUsd, maxUsd, pivotUsd) * 100;
+  const ratio = upsideDepositToTrackRatio(valueUsd, minUsd, maxUsd, pivotUsd);
+  const half = UPSIDE_SLIDER_THUMB_PX / 2;
+  const pct =
+    ((half + ratio * (100 - UPSIDE_SLIDER_THUMB_PX)) / 100) * 100;
   const fill = "#B8EBD5";
   const track = "rgba(255, 255, 255, 0.12)";
   return `linear-gradient(to right, ${fill} 0%, ${fill} ${pct}%, ${track} ${pct}%, ${track} 100%)`;
