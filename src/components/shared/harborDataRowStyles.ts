@@ -30,6 +30,10 @@ export const HARBOR_MOBILE_METRIC_LABEL_CLASS =
 /** Primary value text on white rows. */
 export const HARBOR_ROW_VALUE_TEXT_CLASS = "font-medium text-sm text-harbor-blue";
 
+/** Market name in white table rows — matches Earn / Sail / Genesis explorer. */
+export const HARBOR_ROW_MARKET_TITLE_CLASS =
+  "min-w-0 truncate font-medium text-sm text-harbor-blue lg:text-base";
+
 /** Secondary detail text on white rows. */
 export const HARBOR_ROW_DETAIL_TEXT_CLASS = "truncate text-xs leading-snug text-harbor-blue/70";
 

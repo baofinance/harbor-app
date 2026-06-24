@@ -18,6 +18,7 @@ import {
   DASHBOARD_INDEX_ROW_SHELL_CLASS,
   DASHBOARD_MARKET_ICON_PX,
   DASHBOARD_POSITION_DETAIL_CLASS,
+  DASHBOARD_POSITIONS_MARKET_TITLE_CLASS,
   DASHBOARD_POSITIONS_VALUE_TEXT_CLASS,
   DASHBOARD_POSITIONS_ACTION_FOOTPRINT_CLASSNAME,
   DASHBOARD_POSITIONS_COL_ACTION_CLASSNAME,
@@ -91,7 +92,7 @@ export function DashboardPositionRowView({
             />
             <TokenLogo symbol={row.iconSymbol} size={DASHBOARD_MARKET_ICON_PX} className="shrink-0 ring-0" />
             <div className="min-w-0 flex-1">
-              <span className={`block truncate ${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS}`}>
+              <span className={`block ${DASHBOARD_POSITIONS_MARKET_TITLE_CLASS}`}>
                 {row.marketLabel}
               </span>
               <span
@@ -135,7 +136,7 @@ export function DashboardPositionRowView({
           <TokenLogo symbol={row.iconSymbol} size={DASHBOARD_MARKET_ICON_PX} className="shrink-0 ring-0" />
           <div className="min-w-0 flex-1">
             <span
-              className={`block truncate ${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS}`}
+              className={`block ${DASHBOARD_POSITIONS_MARKET_TITLE_CLASS}`}
               title={row.marketLabel}
             >
               {row.marketLabel}

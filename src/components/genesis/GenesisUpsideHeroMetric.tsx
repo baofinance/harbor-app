@@ -49,6 +49,7 @@ export function GenesisUpsideHeroMetric({
   const prevRevenueShareRef = useRef(revenueSharePct);
 
   const sliderMin = MAIDEN_VOYAGE_UPSIDE_COPY.sliderMinUsd;
+  const sliderPivot = MAIDEN_VOYAGE_UPSIDE_COPY.sliderPivotUsd;
   const sliderMaxPreset = MAIDEN_VOYAGE_UPSIDE_COPY.sliderMaxUsd;
   const maxDeposit = capUsd ?? 10_000_000;
   const sliderMax = Math.min(
@@ -59,8 +60,14 @@ export function GenesisUpsideHeroMetric({
   const sliderSteps = upsideSliderSteps();
 
   const sliderPosition = useMemo(
-    () => upsideDepositToSliderPosition(depositUsd, sliderMin, sliderMax),
-    [depositUsd, sliderMin, sliderMax],
+    () =>
+      upsideDepositToSliderPosition(
+        depositUsd,
+        sliderMin,
+        sliderMax,
+        sliderPivot,
+      ),
+    [depositUsd, sliderMin, sliderMax, sliderPivot],
   );
 
   const visiblePresets = useMemo(
@@ -72,8 +79,9 @@ export function GenesisUpsideHeroMetric({
   );
 
   const sliderBackground = useMemo(
-    () => upsideSliderFillBackground(depositUsd, sliderMin, sliderMax),
-    [depositUsd, sliderMin, sliderMax],
+    () =>
+      upsideSliderFillBackground(depositUsd, sliderMin, sliderMax, sliderPivot),
+    [depositUsd, sliderMin, sliderMax, sliderPivot],
   );
 
   useEffect(() => {
@@ -140,7 +148,12 @@ export function GenesisUpsideHeroMetric({
               <span
                 key={`tick-${preset}`}
                 className="pointer-events-none absolute top-1/2 z-0 h-2 w-px -translate-y-1/2 bg-white/25"
-                style={upsideSliderThumbStyle(preset, sliderMin, sliderMax)}
+                style={upsideSliderThumbStyle(
+                  preset,
+                  sliderMin,
+                  sliderMax,
+                  sliderPivot,
+                )}
                 aria-hidden
               />
             ))}
@@ -156,6 +169,7 @@ export function GenesisUpsideHeroMetric({
                     Number(e.target.value),
                     sliderMin,
                     sliderMax,
+                    sliderPivot,
                   ),
                 )
               }
@@ -200,7 +214,12 @@ export function GenesisUpsideHeroMetric({
                     ? "text-[#B8EBD5]"
                     : "text-white/40 hover:text-white/70"
                 }`}
-                style={upsideSliderThumbStyle(preset, sliderMin, sliderMax)}
+                style={upsideSliderThumbStyle(
+                  preset,
+                  sliderMin,
+                  sliderMax,
+                  sliderPivot,
+                )}
               >
                 {formatUpsidePresetLabel(preset)}
               </button>

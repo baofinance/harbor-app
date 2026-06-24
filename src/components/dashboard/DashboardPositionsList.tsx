@@ -2,10 +2,14 @@
 
 import type { ReactNode } from "react";
 import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
+import { DashboardArchivedWithdrawNotice } from "./DashboardArchivedWithdrawNotice";
 import { DashboardContentRowSkeleton } from "./DashboardContentRow";
 import { DashboardEmptyState } from "./portfolio/DashboardEmptyState";
 import { PositionCard } from "./portfolio/PositionCard";
-import { DASHBOARD_POSITION_METRICS_STACK_CLASS } from "./portfolio/portfolioStyles";
+import {
+  DASHBOARD_ARCHIVED_POSITION_METRICS_STACK_CLASS,
+  DASHBOARD_POSITION_METRICS_STACK_CLASS,
+} from "./portfolio/portfolioStyles";
 
 export type DashboardEmptyStateConfig = {
   title: string;
@@ -22,6 +26,8 @@ export type DashboardPositionsListProps = {
   /** @deprecated Use emptyState */
   emptyHint?: ReactNode;
   loadingSkeletonCount?: number;
+  onManage?: (row: DashboardPositionRow) => void;
+  showWithdrawNotice?: boolean;
 };
 
 export function DashboardPositionsList({
@@ -31,14 +37,20 @@ export function DashboardPositionsList({
   emptyState,
   emptyHint,
   loadingSkeletonCount = 3,
+  onManage,
+  showWithdrawNotice = false,
 }: DashboardPositionsListProps) {
+  const stackClass = onManage
+    ? DASHBOARD_ARCHIVED_POSITION_METRICS_STACK_CLASS
+    : DASHBOARD_POSITION_METRICS_STACK_CLASS;
+
   if (error) {
     return <p className="text-sm text-white/70">{error}</p>;
   }
 
   if (loading) {
     return (
-      <div className={DASHBOARD_POSITION_METRICS_STACK_CLASS}>
+      <div className={stackClass}>
         {Array.from({ length: loadingSkeletonCount }, (_, i) => (
           <DashboardContentRowSkeleton key={i} variant="index" />
         ))}
@@ -63,10 +75,13 @@ export function DashboardPositionsList({
   }
 
   return (
-    <div className={DASHBOARD_POSITION_METRICS_STACK_CLASS}>
-      {rows.map((row) => (
-        <PositionCard key={row.id} row={row} />
-      ))}
+    <div className="space-y-2">
+      {showWithdrawNotice ? <DashboardArchivedWithdrawNotice /> : null}
+      <div className={stackClass}>
+        {rows.map((row) => (
+          <PositionCard key={row.id} row={row} onWithdraw={onManage} />
+        ))}
+      </div>
     </div>
   );
 }

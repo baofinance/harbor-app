@@ -65,6 +65,7 @@ export const MAIDEN_VOYAGE_UPSIDE_COPY = {
   explainerToggleShow: "Show details",
   explainerToggleHide: "Hide details",
   sliderMinUsd: 500,
+  sliderPivotUsd: 5_000,
   sliderMaxUsd: 10_000,
   depositPresets: [500, 1_000, 5_000, 10_000] as const,
   growthStages: [

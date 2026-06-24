@@ -62,14 +62,14 @@ function BenchmarkCard({
         isUpdated ? MV_UPSIDE_BENCHMARK_TILE_UPDATED : ""
       }`}
     >
-      <div className="flex items-center gap-2 sm:gap-2.5">
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2 sm:gap-x-2.5">
         <div
           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border sm:h-9 sm:w-9 ${theme.icon}`}
         >
           <Icon className="h-4 w-4 sm:h-[1.125rem] sm:w-[1.125rem]" aria-hidden />
         </div>
 
-        <div className="min-w-0 flex-1 text-center">
+        <div className="min-w-0 text-center">
           {stage ? (
             <p className="mb-1.5 flex justify-center">
               <span
@@ -96,6 +96,9 @@ function BenchmarkCard({
             {formatAssumptionLine(row)}
           </p>
         </div>
+
+        {/* Balance column — keeps center text aligned to the card, not the remainder after the icon */}
+        <div className="h-8 w-8 shrink-0 sm:h-9 sm:w-9" aria-hidden />
       </div>
     </div>
   );

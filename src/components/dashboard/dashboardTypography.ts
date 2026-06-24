@@ -3,9 +3,10 @@
  * Dashboard-only; does not modify shared Maiden Voyage globals.
  */
 
+import { HARBOR_ROW_MARKET_TITLE_CLASS } from "@/components/shared/harborDataRowStyles";
+
 // Position rows (white index-style bars)
-export const DASHBOARD_POSITION_TITLE_CLASS =
-  "truncate text-sm font-bold leading-snug text-[#1E4775] sm:text-base";
+export const DASHBOARD_POSITION_TITLE_CLASS = HARBOR_ROW_MARKET_TITLE_CLASS;
 
 export const DASHBOARD_POSITION_SUBTITLE_CLASS =
   "truncate text-xs leading-snug text-[#1E4775]/70";
@@ -19,7 +20,7 @@ export const DASHBOARD_SECTION_HEADER_TITLE_CLASS =
 
 // Numeric hierarchy
 export const DASHBOARD_NUMERIC_HERO_CLASS =
-  "font-mono text-4xl font-bold tabular-nums leading-none text-white sm:text-5xl lg:text-[3.25rem]";
+  "font-mono text-2xl font-bold tabular-nums leading-none text-white sm:text-3xl";
 
 export const DASHBOARD_NUMERIC_CHIP_CLASS =
   "font-mono text-sm font-semibold tabular-nums text-white";

@@ -207,7 +207,7 @@ if (!isConnected || !address) return null;
             if (walletPositionsByToken.size === 0) return null;
 
             return (
-              <section className="mb-4">
+              <section className="mb-4 mt-4">
                 <div className="space-y-2">
                   {/* Header with coral tag */}
                   <div className="flex items-center gap-2 mb-2">

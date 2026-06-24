@@ -42,6 +42,13 @@ export const DASHBOARD_YIELD_METRICS_STACK_CLASS =
 export const DASHBOARD_POSITION_METRICS_STACK_CLASS =
   "grid grid-cols-1 gap-y-2 sm:grid-cols-[minmax(0,1fr)_9rem] sm:gap-y-2";
 
+/** Archived rows — market | deposited value | withdraw action. */
+export const DASHBOARD_ARCHIVED_POSITION_METRICS_STACK_CLASS =
+  "grid grid-cols-1 gap-y-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,auto)_5.75rem] sm:gap-y-2 sm:gap-x-3";
+
+export const DASHBOARD_ARCHIVED_POSITION_ROW_CLASS =
+  "col-span-full grid grid-cols-subgrid items-center gap-x-3";
+
 /** Row participates in parent metric column grid. */
 export const DASHBOARD_INSET_ROW_SUBGRID_CLASS =
   "col-span-full grid grid-cols-subgrid items-center gap-x-3";
