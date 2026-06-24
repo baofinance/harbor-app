@@ -58,7 +58,7 @@ export function GenesisRevenueShareCalculator({
 
   return (
     <section
-      className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} relative w-full overflow-hidden px-4 py-3 sm:px-5 sm:py-4 ${className}`.trim()}
+      className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} relative w-full overflow-hidden px-4 py-4 sm:px-5 sm:py-5 ${className}`.trim()}
       aria-label="Explore the upside"
     >
       <GenesisUpsideBackdrop />

@@ -1,3 +1,9 @@
+import { HarborStatTile } from "@/components/shared/HarborStatTile";
+import {
+  HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS,
+  HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS,
+} from "@/components/shared/harborStatTileStyles";
+
 export type SailUserStatsCardsProps = {
   sailUserStats: {
     totalPositionsUSD: number;
@@ -33,63 +39,60 @@ export function SailUserStatsCards({
         return `${dollar}${pctText}`;
       })();
 
+  const pnlValueClass =
+    pnlFromMarkets.totalPnL > 0
+      ? "text-harbor-mint"
+      : pnlFromMarkets.totalPnL < 0
+        ? "text-harbor-coral"
+        : "text-white";
+
   return (
-    <div className="mb-2 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-      <div className="bg-black/20 backdrop-blur-sm rounded-md overflow-hidden px-3 py-2">
+    <div className="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <HarborStatTile variant="intro">
         <div className="flex flex-col items-center justify-center text-center">
-          <div className="text-[11px] text-white/80 uppercase tracking-widest">
+          <div className={HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS}>
             Your Positions ($)
           </div>
-          <div className="text-sm font-semibold text-white font-mono mt-1">
+          <div className={HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS}>
             {sailUserStats.totalPositionsUSD > 0
               ? `$${sailUserStats.totalPositionsUSD.toFixed(2)}`
               : "$0.00"}
           </div>
         </div>
-      </div>
+      </HarborStatTile>
 
-      <div className="bg-black/20 backdrop-blur-sm rounded-md overflow-hidden px-3 py-2">
+      <HarborStatTile variant="intro">
         <div className="flex flex-col items-center justify-center text-center">
-          <div className="text-[11px] text-white/80 uppercase tracking-widest">
+          <div className={HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS}>
             Avg Leverage
           </div>
-          <div className="text-sm font-semibold text-white font-mono mt-1">
+          <div className={HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS}>
             {sailUserStats.averageLeverage > 0
               ? `${sailUserStats.averageLeverage.toFixed(2)}x`
               : "-"}
           </div>
         </div>
-      </div>
+      </HarborStatTile>
 
-      <div className="bg-black/20 backdrop-blur-sm rounded-md overflow-hidden px-3 py-2">
+      <HarborStatTile variant="intro">
         <div className="flex flex-col items-center justify-center text-center">
-          <div className="text-[11px] text-white/80 uppercase tracking-widest">
-            Positions
-          </div>
-          <div className="text-sm font-semibold text-white font-mono mt-1">
+          <div className={HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS}>Positions</div>
+          <div className={HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS}>
             {sailUserStats.positionsCount}
           </div>
         </div>
-      </div>
+      </HarborStatTile>
 
-      <div className="bg-black/20 backdrop-blur-sm rounded-md overflow-hidden px-3 py-2">
+      <HarborStatTile variant="intro">
         <div className="flex flex-col items-center justify-center text-center">
-          <div className="text-[11px] text-white/80 uppercase tracking-widest">
-            Your PnL
-          </div>
+          <div className={HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS}>Your PnL</div>
           <div
-            className={`text-sm font-semibold font-mono mt-1 ${
-              pnlFromMarkets.totalPnL > 0
-                ? "text-green-400"
-                : pnlFromMarkets.totalPnL < 0
-                  ? "text-red-400"
-                  : "text-white"
-            }`}
+            className={`${HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS} ${pnlValueClass}`}
           >
             {pnlText}
           </div>
         </div>
-      </div>
+      </HarborStatTile>
     </div>
   );
 }

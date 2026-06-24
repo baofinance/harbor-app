@@ -165,9 +165,60 @@ export const MV_UPCOMING_BADGE =
 export const MV_UPSIDE_OWNERSHIP_GLOW =
   "shadow-[0_0_40px_-12px_rgba(255,138,122,0.35)]";
 
-/** Explore the Upside — elevated ownership shell (coral-tinted premium panel). */
+/** Explore the Upside — elevated ownership shell (horizontal bar). */
 export const MV_UPSIDE_OWNERSHIP_PANEL =
-  "relative overflow-hidden rounded-2xl border border-[#FF8A7A]/20 bg-gradient-to-b from-[#FF8A7A]/[0.08] via-[#122a47]/60 to-[#0a1929]/40 backdrop-blur-md";
+  "relative overflow-hidden rounded-xl border border-[#FF8A7A]/25 bg-gradient-to-r from-[#FF8A7A]/[0.06] via-[#122a47]/55 to-[#0a1929]/40 backdrop-blur-md";
+
+/** Ownership bar sparkle icon tile. */
+export const MV_UPSIDE_OWNERSHIP_ICON =
+  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#FF8A7A]/30 bg-[#FF8A7A]/[0.12] text-[#FF8A7A]";
+
+/** Deposit row shell. */
+export const MV_UPSIDE_DEPOSIT_PANEL = `${MV_STAT_TILE} px-3 py-3 sm:px-4 sm:py-4`;
+
+/** Range slider track (use with accent-[#B8EBD5]). */
+export const MV_UPSIDE_SLIDER =
+  "h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-[#B8EBD5]";
+
+/** Growth-stage benchmark themes (Launch / Growth / Scale). */
+export const MV_UPSIDE_STAGE_LAUNCH = {
+  badge:
+    "border-[#4A9784]/45 bg-[#4A9784]/10 text-[#4A9784]",
+  earnings: "text-[#4A9784]",
+  icon: "border-[#4A9784]/30 bg-[#4A9784]/10 text-[#4A9784]",
+  hover: "hover:border-[#4A9784]/30 hover:bg-[#4A9784]/[0.04]",
+} as const;
+
+export const MV_UPSIDE_STAGE_GROWTH = {
+  badge:
+    "border-[#C4B5FD]/45 bg-[#C4B5FD]/10 text-[#C4B5FD]",
+  earnings: "text-[#C4B5FD]",
+  icon: "border-[#C4B5FD]/30 bg-[#C4B5FD]/10 text-[#C4B5FD]",
+  hover: "hover:border-[#C4B5FD]/30 hover:bg-[#C4B5FD]/[0.04]",
+} as const;
+
+export const MV_UPSIDE_STAGE_SCALE = {
+  badge:
+    "border-[#5B8FD4]/45 bg-[#5B8FD4]/15 text-[#9EC5F5]",
+  earnings: "text-[#9EC5F5]",
+  icon: "border-[#5B8FD4]/30 bg-[#5B8FD4]/10 text-[#9EC5F5]",
+  hover: "hover:border-[#5B8FD4]/30 hover:bg-[#5B8FD4]/[0.04]",
+} as const;
+
+export type UpsideGrowthStageId = "launch" | "growth" | "scale";
+
+export const MV_UPSIDE_STAGE_BY_ID: Record<
+  UpsideGrowthStageId,
+  typeof MV_UPSIDE_STAGE_LAUNCH
+> = {
+  launch: MV_UPSIDE_STAGE_LAUNCH,
+  growth: MV_UPSIDE_STAGE_GROWTH,
+  scale: MV_UPSIDE_STAGE_SCALE,
+};
+
+/** Explainer footer icon tile. */
+export const MV_UPSIDE_EXPLAINER_ICON =
+  "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.06] text-white/55";
 
 /** Revenue share % — same accent gradient as hero headlines. */
 export const MV_UPSIDE_OWNERSHIP_TEXT = MV_ACCENT_GRADIENT;
@@ -195,7 +246,7 @@ export const MV_UPSIDE_OWNERSHIP_FLASH =
   "ring-1 ring-[#FF8A7A]/40 shadow-[0_0_48px_-10px_rgba(255,138,122,0.45)]";
 
 /** Benchmark outcome tile — hover + update feedback. */
-export const MV_UPSIDE_BENCHMARK_TILE = `${MV_STAT_TILE} transition-all duration-200 hover:-translate-y-px hover:border-[#B8EBD5]/30 hover:bg-[#B8EBD5]/[0.04] hover:shadow-[0_0_20px_-10px_rgba(184,235,213,0.22)]`;
+export const MV_UPSIDE_BENCHMARK_TILE = `${MV_STAT_TILE} transition-all duration-200 hover:-translate-y-px`;
 
 export const MV_UPSIDE_BENCHMARK_TILE_UPDATED =
   "border-[#B8EBD5]/25 bg-[#B8EBD5]/[0.05]";

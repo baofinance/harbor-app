@@ -1,5 +1,7 @@
 "use client";
 
+import { CalculatorIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
+import { MAIDEN_VOYAGE_UPSIDE_COPY } from "@/config/maidenVoyageEducation";
 import {
   UPSIDE_BENCHMARK_TVLS_USD,
   UPSIDE_HISTORICAL_REVENUE_RATE_HIGH_PCT,
@@ -11,22 +13,36 @@ import {
   MV_BODY_TEXT,
   MV_CAPTION_TEXT,
   MV_DETAILS_PANEL,
+  MV_UPSIDE_EXPLAINER_ICON,
 } from "./maidenVoyageLayoutStyles";
 
 export function GenesisUpsideBenchmarkExplainer() {
   return (
     <details className={`${MV_DETAILS_PANEL} group rounded-xl`}>
-      <summary className="cursor-pointer list-none px-3 py-2 sm:px-4 [&::-webkit-details-marker]:hidden">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm font-semibold text-white/90">
-            How are these estimates calculated?
-          </span>
+      <summary className="cursor-pointer list-none px-3 py-3 sm:px-4 [&::-webkit-details-marker]:hidden">
+        <div className="flex items-center gap-3">
+          <div className={MV_UPSIDE_EXPLAINER_ICON}>
+            <CalculatorIcon className="h-4 w-4" aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1 text-left">
+            <p className="text-sm font-semibold text-white/90">
+              How are these estimates calculated?
+            </p>
+            <p className={`mt-0.5 ${MV_CAPTION_TEXT}`}>
+              {MAIDEN_VOYAGE_UPSIDE_COPY.explainerSubtitle}
+            </p>
+          </div>
           <span
-            className="shrink-0 text-xs font-semibold uppercase tracking-wide text-white/45 transition group-open:text-white/65"
+            className="flex shrink-0 items-center gap-1 text-xs font-medium text-white/50 transition group-open:text-white/70"
             aria-hidden
           >
-            <span className="group-open:hidden">Show</span>
-            <span className="hidden group-open:inline">Hide</span>
+            <span className="group-open:hidden">
+              {MAIDEN_VOYAGE_UPSIDE_COPY.explainerToggleShow}
+            </span>
+            <span className="hidden group-open:inline">
+              {MAIDEN_VOYAGE_UPSIDE_COPY.explainerToggleHide}
+            </span>
+            <ChevronDownIcon className="h-3.5 w-3.5 transition group-open:rotate-180" />
           </span>
         </div>
       </summary>

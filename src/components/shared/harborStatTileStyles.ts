@@ -1,8 +1,7 @@
 import { MV_GLASS_INSET_LIGHT } from "@/components/genesis/maidenVoyageLayoutStyles";
 
-/** Intro tiles under index page titles (Earn, Sail, Genesis extended). */
-export const HARBOR_STAT_TILE_INTRO_CLASS =
-  "bg-black/[0.10] backdrop-blur-sm rounded-lg border border-white/10 overflow-hidden px-3 py-2.5 flex flex-col items-center justify-center text-center relative";
+/** Intro tiles under index page heroes (Earn, Sail extended). */
+export const HARBOR_STAT_TILE_INTRO_CLASS = `rounded-xl overflow-hidden px-3 py-2.5 flex flex-col items-center justify-center text-center relative ${MV_GLASS_INSET_LIGHT}`;
 
 export const HARBOR_STAT_TILE_INTRO_ICON_CLASS = "w-5 h-5 shrink-0 text-harbor-coral";
 

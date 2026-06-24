@@ -20,8 +20,6 @@ import {
   GenesisVoyageFooterNotice,
   GenesisYieldShareRulesCard,
 } from "@/components/genesis";
-import { GenesisHeaderSummary } from "@/components/GenesisHeaderSummary";
-import { GenesisPageTitleSection } from "@/components/genesis/GenesisPageTitleSection";
 import { MV_DETAILS_PANEL } from "@/components/genesis/maidenVoyageLayoutStyles";
 import { computeMaidenVoyageConfidenceStats } from "@/utils/maidenVoyageConfidenceStats";
 import { computeMaidenVoyageStatsBarData } from "@/utils/maidenVoyageStatsBar";
@@ -487,12 +485,6 @@ export default function GenesisIndexPage() {
   return (
     <>
     <HarborPageShell>
-        {genesisViewBasic ? (
-          <GenesisPageTitleSection />
-        ) : (
-          <GenesisHeaderSummary />
-        )}
-
         {combinedHasIndexerErrors ? (
           <GenesisErrorBanner
             tone="warning"

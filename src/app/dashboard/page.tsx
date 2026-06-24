@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DashboardConnectNotice } from "@/components/dashboard/DashboardConnectNotice";
-import { DashboardPageTitleSection } from "@/components/dashboard/DashboardPageTitleSection";
 import { DashboardPortfolioHero } from "@/components/dashboard/DashboardPortfolioHero";
 import {
   DashboardProductCard,
@@ -396,8 +395,7 @@ export default function DashboardPage() {
 
   return (
     <HarborPageShell mainClassName="space-y-3">
-      <div className="relative flex items-start justify-between gap-3">
-        <DashboardPageTitleSection />
+      <div className="relative flex items-start justify-end">
         <DashboardModuleLayoutControls
           order={moduleOrder}
           onOrderChange={setModuleOrder}

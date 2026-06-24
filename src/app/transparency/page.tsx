@@ -71,7 +71,6 @@ import {
   HARBOR_WITHDRAWAL_PILL_OPEN,
   HARBOR_WITHDRAWAL_PILL_WAITING,
 } from "@/components/shared/harborStatusPillStyles";
-import { IndexPageTitleSection } from "@/components/shared/IndexPageTitleSection";
 import { TransparencyHeroIntroCards } from "@/components/transparency/TransparencyHeroIntroCards";
 import {
   INDEX_MARKETS_TOOLBAR_FILTERS_ROW_CLASS,
@@ -1709,13 +1708,6 @@ export default function TransparencyPage() {
 
         return (
             <HarborPageShell>
-                    <div className="mb-2">
-                        <IndexPageTitleSection
-                            title="Transparency"
-                            subtitle="Real-time protocol metrics from on-chain data"
-                        />
-                    </div>
-
                     {!isBasicLayout ? <TransparencyHeroIntroCards /> : null}
 
                     <TransparencyMarketsShell glass={!isBasicLayout}>

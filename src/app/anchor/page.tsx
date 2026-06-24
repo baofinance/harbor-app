@@ -100,7 +100,6 @@ import { AnchorMarketsSections } from "@/components/anchor/AnchorMarketsSections
 import { AnchorMarketGroupExpandedSection } from "@/components/anchor/AnchorMarketGroupExpandedSection";
 import { AnchorMarketsTableHeader } from "@/components/anchor/AnchorMarketsTableHeader";
 import { AnchorBasicMarketCardsGrid } from "@/components/anchor/AnchorBasicMarketCardsGrid";
-import { AnchorPageTitleSection } from "@/components/anchor/AnchorPageTitleSection";
 import { AnchorHeroIntroCards } from "@/components/anchor/AnchorHeroIntroCards";
 import { AnchorStatsStrip } from "@/components/anchor/AnchorStatsStrip";
 import { AnchorRewardsStrip } from "@/components/anchor/AnchorRewardsStrip";
@@ -108,6 +107,7 @@ import { AnchorEarningsSection } from "@/components/anchor/AnchorEarningsSection
 import { AnchorWalletPositionsSection } from "@/components/anchor/AnchorWalletPositionsSection";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
 import { IndexMarketsLoadError } from "@/components/shared/IndexMarketsLoadError";
+import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
 import {
   AnchorVaprTooltipContent,
   type AnchorVaprPositionApr,
@@ -469,7 +469,6 @@ export default function AnchorPage() {
   return (
     <>
       <HarborPageShell>
-          <AnchorPageTitleSection />
           {!anchorViewBasic && (
             <>
               <AnchorHeroIntroCards />

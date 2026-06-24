@@ -12,7 +12,6 @@ import {
   SailMarksSubgraphErrorBanner,
   SailMarketsSections,
   SailMarketsTableHeader,
-  SailPageTitleSection,
   SailUserStatsCards,
   SailMarketRow,
   SailBasicMarketCardsGrid,
@@ -156,15 +155,13 @@ export default function SailPage() {
   return (
     <>
       <HarborPageShell>
-          <div className="mb-2">
-            <SailPageTitleSection />
-
-            {!sailViewBasic && (
+          {!sailViewBasic ? (
+            <div className="mb-2">
               <SailExtendedHero
                 boostEndTimestamp={activeSailBoostEndTimestamp}
               />
-            )}
-          </div>
+            </div>
+          ) : null}
 
           {!sailViewBasic && (
             <>
