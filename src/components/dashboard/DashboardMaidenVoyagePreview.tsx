@@ -36,7 +36,7 @@ export function DashboardMaidenVoyagePreview({
     <div className={DASHBOARD_MV_PREVIEW_CLASS}>
       <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#FF8A7A]/90">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-harbor-coral/90">
             Active voyage
           </p>
           <p className="truncate text-sm font-medium text-white/90">{voyage.voyageLabel}</p>

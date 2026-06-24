@@ -15,6 +15,7 @@ import {
 } from "@/hooks/useAnchorLedgerMarks";
 import { useMarketBoostWindows } from "@/hooks/useMarketBoostWindows";
 import { CONTRACTS } from "@/config/contracts";
+import { HarborPageShell } from "@/components/shared/HarborPageShell";
 import { IndexPageTitleSection } from "@/components/shared/IndexPageTitleSection";
 import { INDEX_MARKETS_TOOLBAR_ROW_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
 import { FilterSingleSelectDropdown } from "@/components/FilterSingleSelectDropdown";
@@ -1029,8 +1030,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
  const leaderboardData = leaderboardRows;
 
  return (
- <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
- <main className="container mx-auto px-4 sm:px-10 pb-6 pt-2 sm:pt-4">
+ <HarborPageShell>
         <div className="mb-2">
           <IndexPageTitleSection title="Ledger Marks" subtitle="Leaderboard" />
         </div>
@@ -1685,7 +1685,6 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
  ))
  )}
  </section>
- </main>
- </div>
+ </HarborPageShell>
  );
 }

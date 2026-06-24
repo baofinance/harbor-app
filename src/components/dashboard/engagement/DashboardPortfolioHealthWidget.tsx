@@ -23,9 +23,9 @@ export function DashboardPortfolioHealthWidget({
 
   const statusColor =
     health.status === "strong"
-      ? "text-[#B8EBD5]"
+      ? "text-harbor-mint"
       : health.status === "attention"
-        ? "text-[#F5D76E]"
+        ? "text-harbor-gold"
         : "text-white/70";
 
   return (

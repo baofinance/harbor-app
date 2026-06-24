@@ -3,6 +3,13 @@
  * Network | Lifecycle | Voyage | Type | Phase | Est. capacity | Launch window | Action
  */
 
+import {
+  HARBOR_DATA_ROW_SHELL_CLASS,
+  HARBOR_ROW_BODY_CLASS,
+  HARBOR_TABLE_HEADER_LABEL_CLASS,
+  HARBOR_TABLE_HEADER_WRAP_CLASS,
+} from "@/components/shared/harborDataRowStyles";
+
 /** md+ column tracks — must match on header and every row (same discipline as anchorMarketsTableGrid). */
 export const MV_EXPLORER_TABLE_GRID_COLS_CLASSNAME =
   "md:grid-cols-[32px_minmax(0,0.75fr)_minmax(0,1.32fr)_minmax(0,0.88fr)_minmax(0,0.72fr)_minmax(0,0.88fr)_minmax(0,0.92fr)_minmax(0,0.8fr)]";
@@ -12,15 +19,14 @@ export const MV_EXPLORER_TABLE_MIN_WIDTH_CLASSNAME = "md:min-w-[880px]";
 
 /** Desktop header — matches AnchorMarketsTableHeader shell. */
 export const MV_EXPLORER_TABLE_HEADER_WRAP_CLASSNAME =
-  "hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0 rounded-md border border-[#1E4775]/15 shadow-sm";
+  `hidden md:block ${HARBOR_TABLE_HEADER_WRAP_CLASS}`;
 
-export const MV_EXPLORER_TABLE_HEADER_GRID_CLASSNAME = `grid ${MV_EXPLORER_TABLE_GRID_COLS_CLASSNAME} gap-3 lg:gap-3.5 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold`;
+export const MV_EXPLORER_TABLE_HEADER_GRID_CLASSNAME = `grid ${MV_EXPLORER_TABLE_GRID_COLS_CLASSNAME} gap-3 lg:gap-3.5 items-center ${HARBOR_TABLE_HEADER_LABEL_CLASS}`;
 
 /** Desktop row grid (md+). */
-export const MV_EXPLORER_TABLE_ROW_DESKTOP_CLASSNAME = `hidden md:grid ${MV_EXPLORER_TABLE_GRID_COLS_CLASSNAME} gap-3 lg:gap-3.5 items-center text-sm py-2.5 px-2 min-h-[52px]`;
+export const MV_EXPLORER_TABLE_ROW_DESKTOP_CLASSNAME = `hidden md:grid ${MV_EXPLORER_TABLE_GRID_COLS_CLASSNAME} gap-3 lg:gap-3.5 items-center ${HARBOR_ROW_BODY_CLASS}`;
 
-export const MV_EXPLORER_TABLE_ROW_SHELL_CLASSNAME =
-  "rounded-md border border-[#1E4775]/15 bg-white shadow-sm overflow-hidden transition-colors md:hover:bg-[rgb(var(--surface-selected-rgb))]";
+export const MV_EXPLORER_TABLE_ROW_SHELL_CLASSNAME = HARBOR_DATA_ROW_SHELL_CLASS;
 
 /** Mobile stacked layout (< md) — primary actions top-right like Anchor index rows. */
 export const MV_EXPLORER_TABLE_ROW_MOBILE_CLASSNAME =

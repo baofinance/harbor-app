@@ -6,11 +6,14 @@ import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
 import { formatUSD } from "@/utils/formatters";
 import {
   DASHBOARD_INSET_METRIC_LABEL_CLASS,
+  DASHBOARD_INSET_METRIC_MUTED_CLASS,
   DASHBOARD_INSET_METRIC_VALUE_CLASS,
   DASHBOARD_INSET_SUBTITLE_CLASS,
   DASHBOARD_INSET_TITLE_CLASS,
 } from "../dashboardTypography";
 import {
+  formatDashboardPnL,
+  formatDashboardPnLPercent,
   formatMarketLabel,
   parsePositionDetail,
   positionValueContext,
@@ -71,6 +74,12 @@ export function PositionCard({ row }: PositionCardProps) {
   const marketName = formatMarketLabel(row.marketLabel);
   const valueContext = positionValueContext(row);
   const valueLabel = positionValueLabel(row.category);
+  const pnlFormatted =
+    row.category === "leverage" &&
+    row.unrealizedPnLUsd !== undefined &&
+    row.unrealizedPnLUsd !== 0
+      ? formatDashboardPnL(row.unrealizedPnLUsd)
+      : null;
 
   return (
     <Link
@@ -105,7 +114,18 @@ export function PositionCard({ row }: PositionCardProps) {
           <span className={DASHBOARD_INSET_METRIC_LABEL_CLASS}>{valueLabel}</span>{" "}
           <span className={DASHBOARD_INSET_METRIC_VALUE_CLASS}>{valueDisplay}</span>
         </span>
-        {valueContext ? (
+        {row.category === "leverage" ? (
+          pnlFormatted ? (
+            <p className={`mt-0.5 sm:text-right ${pnlFormatted.className}`}>
+              {pnlFormatted.text} (
+              {formatDashboardPnLPercent(row.unrealizedPnLPercent ?? 0)})
+            </p>
+          ) : (
+            <p className={`mt-0.5 sm:text-right ${DASHBOARD_INSET_METRIC_MUTED_CLASS}`}>
+              —
+            </p>
+          )
+        ) : valueContext ? (
           <p className="mt-0.5 text-[10px] text-white/35 sm:text-right">{valueContext}</p>
         ) : null}
       </div>

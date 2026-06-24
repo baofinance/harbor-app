@@ -24,6 +24,12 @@ import {
   markets as marketsConfig,
   type DefinedMarket,
 } from "@/config/markets";
+import { HarborPageShell } from "@/components/shared/HarborPageShell";
+import {
+  HARBOR_SECTION_ACCENT_SAIL_CLASS,
+  HARBOR_SECTION_ICON_SAIL_CLASS,
+} from "@/components/shared/harborSectionCardStyles";
+import { ChartBarIcon } from "@heroicons/react/24/outline";
 import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
 import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
 import { IndexMarketsLoadError } from "@/components/shared/IndexMarketsLoadError";
@@ -149,8 +155,7 @@ export default function SailPage() {
 
   return (
     <>
-      <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
-        <main className="container mx-auto px-4 sm:px-10 pb-6 pt-2 sm:pt-4">
+      <HarborPageShell>
           <div className="mb-2">
             <SailPageTitleSection />
 
@@ -187,6 +192,16 @@ export default function SailPage() {
             <IndexMarketsLoadError onRetry={() => refetchReads()} />
           ) : (
             <SailMarketsSections
+              sectionCard={
+                !sailViewBasic
+                  ? {
+                      title: "Markets",
+                      icon: ChartBarIcon,
+                      accentBarClass: HARBOR_SECTION_ACCENT_SAIL_CLASS,
+                      iconBadgeClass: HARBOR_SECTION_ICON_SAIL_CLASS,
+                    }
+                  : undefined
+              }
               toolbarProps={{
                 sailChainOptions,
                 showNetworkFilter: sailChainOptions.length > 1,
@@ -282,7 +297,7 @@ export default function SailPage() {
               void openManageModal(marketId, m, "redeem");
             }}
           />
-        </main>
+      </HarborPageShell>
 
         {manageModal && (
           <SailManageModal
@@ -315,7 +330,6 @@ export default function SailPage() {
             fxSAVEPrice={sailPageFxSAVEPrice}
           />
         )}
-      </div>
     </>
   );
 }

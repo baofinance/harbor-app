@@ -11,9 +11,9 @@ const TONE_CLASS: Record<
   string
 > = {
   default: "text-white/85",
-  gold: "text-[#F5D76E]",
-  coral: "text-[#FF8A7A]",
-  mint: "text-[#B8EBD5]",
+  gold: "text-harbor-gold",
+  coral: "text-harbor-coral",
+  mint: "text-harbor-mint",
   muted: "text-white/55",
 };
 

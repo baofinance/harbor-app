@@ -148,7 +148,7 @@ function DashboardYieldRowView({ row }: { row: FounderMetricRow }) {
           <YieldMobileMetric
             label="Pending distribution"
             value={formatUSD(row.outstandingUSD, { compact: false })}
-            valueClassName={row.outstandingUSD > 0 ? "text-[#FF8A7A]" : ""}
+            valueClassName={row.outstandingUSD > 0 ? "text-harbor-coral" : ""}
           />
         </div>
       </div>
@@ -194,7 +194,7 @@ function DashboardYieldRowView({ row }: { row: FounderMetricRow }) {
         <div className={DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME}>
           <span
             className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} tabular-nums ${
-              row.outstandingUSD > 0 ? "text-[#FF8A7A]" : ""
+              row.outstandingUSD > 0 ? "text-harbor-coral" : ""
             }`}
           >
             {formatUSD(row.outstandingUSD, { compact: false })}

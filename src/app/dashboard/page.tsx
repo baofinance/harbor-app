@@ -31,6 +31,7 @@ import {
 } from "@/components/dashboard/portfolio/dashboardPortfolioUtils";
 import { DashboardYieldShareCardList } from "@/components/dashboard/portfolio/DashboardYieldShareCardList";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
+import { HarborPageShell } from "@/components/shared/HarborPageShell";
 import { useDashboardActiveVoyage } from "@/hooks/useDashboardActiveVoyage";
 import { useFounderMetrics } from "@/hooks/useFounderMetrics";
 import {
@@ -394,22 +395,20 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="relative mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col font-sans text-white">
-      <main className="mx-auto w-full max-w-[1600px] space-y-3 px-3 pb-6 pt-2 sm:px-10 sm:pt-4">
-        <div className="relative flex items-start justify-between gap-3">
-          <DashboardPageTitleSection />
-          <DashboardModuleLayoutControls
-            order={moduleOrder}
-            onOrderChange={setModuleOrder}
-          />
-        </div>
+    <HarborPageShell mainClassName="space-y-3">
+      <div className="relative flex items-start justify-between gap-3">
+        <DashboardPageTitleSection />
+        <DashboardModuleLayoutControls
+          order={moduleOrder}
+          onOrderChange={setModuleOrder}
+        />
+      </div>
 
-        {!isConnected ? <DashboardConnectNotice /> : null}
+      {!isConnected ? <DashboardConnectNotice /> : null}
 
-        <div className="space-y-4">
-          {moduleOrder.map((moduleId) => renderModule(moduleId))}
-        </div>
-      </main>
-    </div>
+      <div className="space-y-4">
+        {moduleOrder.map((moduleId) => renderModule(moduleId))}
+      </div>
+    </HarborPageShell>
   );
 }

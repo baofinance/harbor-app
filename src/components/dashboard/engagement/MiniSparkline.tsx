@@ -1,5 +1,7 @@
 "use client";
 
+import { DASHBOARD_BRAND_GOLD } from "../dashboardBrand";
+
 export type MiniSparklineProps = {
   data: number[];
   width?: number;
@@ -12,7 +14,7 @@ export function MiniSparkline({
   data,
   width = 120,
   height = 36,
-  stroke = "#F5D76E",
+  stroke = DASHBOARD_BRAND_GOLD,
   className = "",
 }: MiniSparklineProps) {
   if (data.length < 2) {

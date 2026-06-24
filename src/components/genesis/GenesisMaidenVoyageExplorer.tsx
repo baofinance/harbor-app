@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
-import { BellIcon } from "@heroicons/react/24/outline";
+import { BellIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { HarborSectionCard } from "@/components/shared/HarborSectionCard";
+import {
+  HARBOR_SECTION_ACCENT_MV_CLASS,
+  HARBOR_SECTION_ICON_MV_CLASS,
+} from "@/components/shared/harborSectionCardStyles";
 import {
   FEATURED_COMPLETED_MARKET_IDS,
   getGenesisMarketTypeLabel,
@@ -287,12 +292,8 @@ export function GenesisMaidenVoyageExplorer({
 
   const hasRows = visibleGenesisRows.length > 0 || visibleUpcoming.length > 0;
 
-  return (
-    <section
-      id="maiden-voyage-explorer"
-      className="mb-8 scroll-mt-24"
-      aria-label="Maiden Voyage markets"
-    >
+  const explorerBody = (
+    <>
       <GenesisMaidenVoyageToolbar
         viewBasic={viewBasic}
         statusFilter={tab}
@@ -356,25 +357,51 @@ export function GenesisMaidenVoyageExplorer({
               <div className={MV_EXPLORER_TABLE_INNER_CLASSNAME}>
                 <GenesisMaidenVoyageTableHeader />
                 {archivedMarkets.map(([id, mkt]) => (
-                <GenesisExplorerRow
-                  key={id}
-                  marketId={id}
-                  mkt={mkt}
-                  genesisMarkets={genesisMarkets}
-                  reads={reads}
-                  isConnected={isConnected}
-                  address={address}
-                  claimingMarket={claimingMarket}
-                  onClaim={onClaim}
-                  onManage={onManage}
-                  archived
-                />
+                  <GenesisExplorerRow
+                    key={id}
+                    marketId={id}
+                    mkt={mkt}
+                    genesisMarkets={genesisMarkets}
+                    reads={reads}
+                    isConnected={isConnected}
+                    address={address}
+                    claimingMarket={claimingMarket}
+                    onClaim={onClaim}
+                    onManage={onManage}
+                    archived
+                  />
                 ))}
               </div>
             </div>
           }
         />
       ) : null}
+    </>
+  );
+
+  if (!viewBasic) {
+    return (
+      <HarborSectionCard
+        id="maiden-voyage-explorer"
+        title="All voyages"
+        icon={SparklesIcon}
+        accentBarClass={HARBOR_SECTION_ACCENT_MV_CLASS}
+        iconBadgeClass={HARBOR_SECTION_ICON_MV_CLASS}
+        className="mb-8 scroll-mt-24 space-y-2"
+        ariaLabel="Maiden Voyage markets"
+      >
+        {explorerBody}
+      </HarborSectionCard>
+    );
+  }
+
+  return (
+    <section
+      id="maiden-voyage-explorer"
+      className="mb-8 scroll-mt-24"
+      aria-label="Maiden Voyage markets"
+    >
+      {explorerBody}
     </section>
   );
 }

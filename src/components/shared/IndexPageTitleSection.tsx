@@ -1,4 +1,8 @@
 import type { ReactNode } from "react";
+import {
+  INDEX_PAGE_TITLE_HEADING_CLASS,
+  INDEX_PAGE_TITLE_SUBTITLE_CLASS,
+} from "./indexPageTitleStyles";
 
 /**
  * Shared hero title band for Genesis (Maiden Voyage), Sail, and Anchor index pages.
@@ -26,7 +30,7 @@ export function IndexPageTitleSection({
   const inner = (
     <>
       <div className="flex items-center justify-center px-4 pt-2 pb-1 sm:pt-3 sm:pb-1">
-        <h1 className="font-bold font-mono text-white text-5xl sm:text-6xl md:text-7xl text-center leading-[1.05]">
+        <h1 className={`${INDEX_PAGE_TITLE_HEADING_CLASS} text-center`}>
           <span className="text-white">{title}</span>
           {titleAccentSuffix ? (
             <span className="text-white whitespace-nowrap">
@@ -38,7 +42,7 @@ export function IndexPageTitleSection({
       </div>
       {subtitle ? (
         <div className="flex items-center justify-center px-4 pb-1 mt-1 sm:mt-2">
-          <p className="text-white/85 text-lg sm:text-xl text-center max-w-2xl leading-snug font-medium tracking-tight">
+          <p className={INDEX_PAGE_TITLE_SUBTITLE_CLASS}>
             {subtitle}
           </p>
         </div>

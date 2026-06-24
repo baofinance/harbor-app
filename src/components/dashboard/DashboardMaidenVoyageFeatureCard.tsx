@@ -50,13 +50,13 @@ export function DashboardMaidenVoyageFeatureCard({
 
   return (
     <section
-      className={`${MV_MAIN_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} relative overflow-hidden border-l-[4px] border-l-[#FF8A7A] px-4 py-4 sm:px-5 sm:py-4`}
+      className={`${MV_MAIN_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} relative overflow-hidden border-l-[4px] border-l-harbor-coral px-4 py-4 sm:px-5 sm:py-4`}
       aria-label="Maiden Voyage"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-3">
           <div>
-            <p className="text-sm font-semibold text-[#FF8A7A]">Maiden Voyage</p>
+            <p className="text-sm font-semibold text-harbor-coral">Maiden Voyage</p>
             <p className="mt-1 text-xs text-white/60">
               Harbor&apos;s flagship founding product
             </p>
@@ -121,7 +121,7 @@ function Metric({
       <p className={MV_SECTION_LABEL}>{label}</p>
       <p
         className={`mt-0.5 font-mono text-sm font-semibold tabular-nums ${
-          highlight ? "text-[#F5D76E]" : "text-white/90"
+          highlight ? "text-harbor-gold" : "text-white/90"
         }`}
       >
         {value}

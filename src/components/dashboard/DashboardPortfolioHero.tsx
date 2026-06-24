@@ -115,23 +115,20 @@ function HeroYieldStats({
       <div className={DASHBOARD_HERO_YIELD_COLUMN_CLASS}>
         <DashboardHeroStatColumn
           label="Revenue share yield"
-          context="All time"
           value={formatStatUsd(revenueShareYieldUsd, isConnected, isLoading, true)}
-          valueClassName={revenueShareYieldUsd > 0 ? "text-[#F5D76E]" : "text-white/80"}
+          valueClassName={revenueShareYieldUsd > 0 ? "text-harbor-gold" : "text-white/80"}
         />
       </div>
       <div className={DASHBOARD_HERO_YIELD_COLUMN_CLASS}>
         <DashboardHeroStatColumn
           label="Earn yield"
-          context="All time"
           value={formatStatUsd(earnYieldUsd, isConnected, isEarnLoading, true)}
-          valueClassName={earnYieldUsd > 0 ? "text-[#B8EBD5]" : "text-white/80"}
+          valueClassName={earnYieldUsd > 0 ? "text-harbor-mint" : "text-white/80"}
         />
       </div>
       <div className={DASHBOARD_HERO_YIELD_COLUMN_CLASS}>
         <DashboardHeroStatColumn
           label="Total earned"
-          context="Combined"
           value={formatStatUsd(
             totalYieldEarned,
             isConnected,

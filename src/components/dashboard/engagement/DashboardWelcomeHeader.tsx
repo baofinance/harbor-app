@@ -39,7 +39,7 @@ export function DashboardWelcomeHeader({
       <div className="space-y-2">
         <p className="text-base text-white/85 sm:text-lg">
           You&apos;ve earned{" "}
-          <span className="font-mono font-semibold text-[#F5D76E]">
+          <span className="font-mono font-semibold text-harbor-gold">
             {isLoading ? "…" : welcome.earnedLabel}
           </span>
           {welcome.boostLabel ? (

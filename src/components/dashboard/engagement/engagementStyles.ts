@@ -21,6 +21,6 @@ export const ENGAGEMENT_VALUE_CLASS =
 
 export const ENGAGEMENT_MUTED_CLASS = "text-xs text-white/50";
 
-export const ENGAGEMENT_ACCENT_GOLD = "border-l-[3px] border-l-[#F5D76E]";
-export const ENGAGEMENT_ACCENT_CORAL = "border-l-[3px] border-l-[#FF8A7A]";
-export const ENGAGEMENT_ACCENT_MINT = "border-l-[3px] border-l-[#B8EBD5]";
+export const ENGAGEMENT_ACCENT_GOLD = "border-l-[3px] border-l-harbor-gold";
+export const ENGAGEMENT_ACCENT_CORAL = "border-l-[3px] border-l-harbor-coral";
+export const ENGAGEMENT_ACCENT_MINT = "border-l-[3px] border-l-harbor-mint";

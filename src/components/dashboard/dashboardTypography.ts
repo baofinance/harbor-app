@@ -25,7 +25,7 @@ export const DASHBOARD_NUMERIC_CHIP_CLASS =
   "font-mono text-sm font-semibold tabular-nums text-white";
 
 export const DASHBOARD_NUMERIC_CHIP_PRIMARY_CLASS =
-  "font-mono text-sm font-semibold tabular-nums text-[#F5D76E]";
+  "font-mono text-sm font-semibold tabular-nums text-harbor-gold";
 
 export const DASHBOARD_NUMERIC_ROW_PRIMARY_CLASS =
   "font-mono text-base font-bold tabular-nums text-[#1E4775]";
@@ -56,7 +56,7 @@ export const DASHBOARD_ACTIVITY_VALUE_CELL_CLASS =
   "col-start-3 row-start-1 sm:col-start-4 sm:row-start-auto";
 
 export const DASHBOARD_ACTIVITY_VALUE_POSITIVE_CLASS =
-  "font-mono text-sm tabular-nums text-[#B8EBD5]";
+  "font-mono text-sm tabular-nums text-harbor-mint";
 
 export const DASHBOARD_ACTIVITY_VALUE_MUTED_CLASS =
   "font-mono text-sm tabular-nums text-white/35";
@@ -86,7 +86,7 @@ export const DASHBOARD_INSET_METRIC_MUTED_CLASS =
   "font-mono text-sm tabular-nums text-white/40";
 
 export const DASHBOARD_INSET_METRIC_CORAL_CLASS =
-  "font-mono text-sm tabular-nums text-[#FF8A7A]";
+  "font-mono text-sm tabular-nums text-harbor-coral";
 
 /** Revenue share row — use inside {@link DASHBOARD_YIELD_METRICS_STACK_CLASS}. */
 export const DASHBOARD_YIELD_ROW_GRID_CLASS =

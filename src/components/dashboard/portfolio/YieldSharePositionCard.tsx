@@ -5,7 +5,6 @@ import { TokenLogo } from "@/components/shared";
 import { iconSymbolFromMarketLabel } from "@/components/dashboard/dashboardRowPresentation";
 import type { FounderMetricRow } from "@/hooks/useFounderMetrics";
 import { formatPercent, formatUSD } from "@/utils/formatters";
-import { DASHBOARD_YIELD_ROW_PENDING_CLASS } from "../dashboardBrand";
 import { DashboardYieldBoostBadge } from "../DashboardYieldBoostBadge";
 import {
   DASHBOARD_INSET_METRIC_CORAL_CLASS,
@@ -50,9 +49,7 @@ export function YieldSharePositionCard({ row }: { row: FounderMetricRow }) {
   return (
     <Link
       href={href}
-      className={`${DASHBOARD_INSET_ROW_SHELL_CLASS} ${DASHBOARD_INSET_ROW_SUBGRID_CLASS} grid-cols-1 gap-2 sm:gap-x-3 ${
-        hasPending ? DASHBOARD_YIELD_ROW_PENDING_CLASS : ""
-      }`}
+      className={`${DASHBOARD_INSET_ROW_SHELL_CLASS} ${DASHBOARD_INSET_ROW_SUBGRID_CLASS} grid-cols-1 gap-2 sm:gap-x-3`}
     >
       <div className="flex min-w-0 items-center gap-2.5">
         <TokenLogo

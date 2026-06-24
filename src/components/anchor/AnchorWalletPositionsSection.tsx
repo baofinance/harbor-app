@@ -12,6 +12,7 @@ import { INDEX_MANAGE_BUTTON_CLASS_DESKTOP } from "@/utils/indexPageManageButton
 import { formatCompactUSD } from "@/utils/anchor";
 import { formatToken } from "@/utils/formatters";
 import { TokenLogo, getLogoPath } from "@/components/shared";
+import { HARBOR_DATA_ROW_HOVER_CLASS } from "@/components/shared/harborDataRowStyles";
 import NetworkIconCell from "@/components/NetworkIconCell";
 import type { DefinedMarket } from "@/config/markets";
 import { DEBUG_ANCHOR } from "@/config/debug";
@@ -224,7 +225,7 @@ if (!isConnected || !address) return null;
                     return (
                       <div
                         key={position.tokenAddress}
-                        className="bg-white border border-[#1E4775]/10 rounded-md p-3 hover:bg-[rgb(var(--surface-selected-rgb))] transition-colors"
+                        className={`bg-white border border-harbor-blue/15 rounded-md p-3 ${HARBOR_DATA_ROW_HOVER_CLASS}`}
                       >
                         {/* Desktop layout (>= lg) - same tracks as AnchorMarketsTableHeader */}
                         <div className={ANCHOR_MARKETS_WALLET_ROW_LG_CLASSNAME}>

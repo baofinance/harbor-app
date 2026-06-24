@@ -36,11 +36,11 @@ type EventIconConfig = {
 function eventIconConfig(kind: TimelineEventKind): EventIconConfig {
   switch (kind) {
     case "revenue":
-      return { Icon: BanknotesIcon, className: "h-5 w-5 text-[#F5D76E]" };
+      return { Icon: BanknotesIcon, className: "h-5 w-5 text-harbor-gold" };
     case "deposit":
-      return { Icon: ArrowDownCircleIcon, className: "h-5 w-5 text-[#B8EBD5]" };
+      return { Icon: ArrowDownCircleIcon, className: "h-5 w-5 text-harbor-mint" };
     case "voyage":
-      return { Icon: CheckCircleIcon, className: "h-5 w-5 text-[#FF8A7A]" };
+      return { Icon: CheckCircleIcon, className: "h-5 w-5 text-harbor-coral" };
     case "archived":
       return { Icon: ArchiveBoxIcon, className: "h-5 w-5 text-white/40" };
     default:

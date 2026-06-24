@@ -21,9 +21,7 @@ import {
  ExclamationTriangleIcon,
  XCircleIcon,
  ClockIcon,
- CurrencyDollarIcon,
  Squares2X2Icon,
- EyeIcon,
  ChevronDownIcon,
  ChevronUpIcon,
  ArrowTopRightOnSquareIcon,
@@ -56,13 +54,26 @@ import { buildTokenPriceInput } from "@/utils/tokenPriceInput";
 import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
 import { useReadContract, useAccount } from "wagmi";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
-import { IndexPageTitleSection } from "@/components/shared/IndexPageTitleSection";
+import { HarborPageShell } from "@/components/shared/HarborPageShell";
+import { HarborSectionCard } from "@/components/shared/HarborSectionCard";
 import {
-  INDEX_HERO_INTRO_BODY_CLASS,
-  INDEX_HERO_INTRO_CARD_CLASS,
-  INDEX_HERO_INTRO_CARD_RING_ACCENT_CLASS,
-  INDEX_HERO_INTRO_ICON_CLASS,
-  INDEX_HERO_INTRO_TITLE_CLASS,
+  HARBOR_SECTION_ACCENT_NEUTRAL_CLASS,
+  HARBOR_SECTION_ICON_NEUTRAL_CLASS,
+} from "@/components/shared/harborSectionCardStyles";
+import { HarborConfigBadge, type HarborConfigBadgeVariant } from "@/components/shared/HarborConfigBadge";
+import {
+  HARBOR_HEALTH_PILL_CRITICAL,
+  HARBOR_HEALTH_PILL_GENESIS,
+  HARBOR_HEALTH_PILL_HEALTHY,
+  HARBOR_HEALTH_PILL_WARNING,
+  HARBOR_WITHDRAWAL_PILL_EXPIRED,
+  HARBOR_WITHDRAWAL_PILL_NONE,
+  HARBOR_WITHDRAWAL_PILL_OPEN,
+  HARBOR_WITHDRAWAL_PILL_WAITING,
+} from "@/components/shared/harborStatusPillStyles";
+import { IndexPageTitleSection } from "@/components/shared/IndexPageTitleSection";
+import { TransparencyHeroIntroCards } from "@/components/transparency/TransparencyHeroIntroCards";
+import {
   INDEX_MARKETS_TOOLBAR_FILTERS_ROW_CLASS,
   INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS,
 } from "@/components/shared/indexMarketsToolbarStyles";
@@ -92,66 +103,50 @@ type FeeBand = {
 type HealthStatus = "green" | "yellow" | "red" | "genesis";
 type WithdrawalStatus = "none" | "waiting" | "open" | "expired";
 
-type BadgeVariantConfig = {
-    label: string;
-    /** Harbor fee tiers: single surface token (preferred over bg+text). */
-    surfaceClass?: string;
-    bg?: string;
-    text?: string;
-    icon?: React.ElementType;
-    size?: "sm" | "md";
-};
+type BadgeVariantConfig = HarborConfigBadgeVariant;
 
 const HEALTH_CONFIG: Record<HealthStatus, BadgeVariantConfig> = {
     green: {
         label: "Healthy",
-        bg: "bg-green-500/20",
-        text: "text-green-700",
+        surfaceClass: HARBOR_HEALTH_PILL_HEALTHY,
         icon: ShieldCheckIcon,
     },
     yellow: {
         label: "Warning",
-        bg: "bg-yellow-500/20",
-        text: "text-yellow-700",
+        surfaceClass: HARBOR_HEALTH_PILL_WARNING,
         icon: ExclamationTriangleIcon,
     },
     red: {
         label: "Critical",
-        bg: "bg-red-500/20",
-        text: "text-red-700",
+        surfaceClass: HARBOR_HEALTH_PILL_CRITICAL,
         icon: XCircleIcon,
     },
     genesis: {
         label: "Genesis",
-        bg: "bg-[#E9DFF0]/85",
-        text: "text-[#6C4E84]",
+        surfaceClass: HARBOR_HEALTH_PILL_GENESIS,
     },
 };
 
 const WITHDRAWAL_CONFIG: Record<WithdrawalStatus, BadgeVariantConfig> = {
     none: {
-        bg: "bg-white/10",
-        text: "text-white/40",
+        surfaceClass: HARBOR_WITHDRAWAL_PILL_NONE,
         label: "None",
-        icon: ClockIcon
+        icon: ClockIcon,
     },
     waiting: {
-        bg: "bg-blue-500/20",
-        text: "text-blue-400",
+        surfaceClass: HARBOR_WITHDRAWAL_PILL_WAITING,
         label: "Waiting",
-        icon: ClockIcon
+        icon: ClockIcon,
     },
     open: {
-        bg: "bg-harbor-mint/20",
-        text: "text-harbor-mint",
+        surfaceClass: HARBOR_WITHDRAWAL_PILL_OPEN,
         label: "Open",
-        icon: ClockIcon
+        icon: ClockIcon,
     },
     expired: {
-        bg: "bg-harbor-coral/20",
-        text: "text-harbor-coral",
+        surfaceClass: HARBOR_WITHDRAWAL_PILL_EXPIRED,
         label: "Expired",
-        icon: ClockIcon
+        icon: ClockIcon,
     },
 };
 
@@ -252,31 +247,54 @@ function bandsFromConfig(config: any): FeeBand[] {
     return bands;
 }
 
-export function Badge({
-                          config,
-                          size = "md",
-                      }: {
-    config: BadgeVariantConfig;
-    size?: "sm" | "md";
+function HealthBadge({
+    status,
+    compact = false,
+}: {
+    status: HealthStatus;
+    compact?: boolean;
 }) {
-    const { label, surfaceClass, bg = "", text = "", icon: Icon } = config;
-    const surface =
-        surfaceClass ?? `${bg} ${text}`.trim();
+    return (
+        <HarborConfigBadge
+            config={HEALTH_CONFIG[status]}
+            size={compact ? "sm" : "md"}
+        />
+    );
+}
 
-    const sizeClasses =
-        size === "sm"
-            ? "px-2 py-0.5 text-[10px] gap-1 rounded-md"
-            : "px-2 py-0.5 text-xs gap-1 rounded-full";
+function WithdrawalStatusBadge({ status }: { status: WithdrawalStatus }) {
+    return <HarborConfigBadge config={WITHDRAWAL_CONFIG[status]} size="sm" />;
+}
 
-    const iconSize = size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5";
+function TransparencyMarketsShell({
+    glass,
+    children,
+}: {
+    glass: boolean;
+    children: React.ReactNode;
+}) {
+    if (glass) {
+        return (
+            <HarborSectionCard
+                title="Markets"
+                icon={Squares2X2Icon}
+                accentBarClass={HARBOR_SECTION_ACCENT_NEUTRAL_CLASS}
+                iconBadgeClass={HARBOR_SECTION_ICON_NEUTRAL_CLASS}
+                className="mt-2 space-y-2 sm:mt-3"
+                ariaLabel="Protocol markets"
+            >
+                {children}
+            </HarborSectionCard>
+        );
+    }
 
     return (
-        <span
-            className={`inline-flex items-center font-medium ${sizeClasses} ${surface}`}
+        <section
+            className="mt-2 space-y-2 sm:mt-3"
+            aria-label="Protocol markets"
         >
-      {Icon && <Icon className={iconSize} />}
-            {label}
-    </span>
+            {children}
+        </section>
     );
 }
 
@@ -1227,7 +1245,7 @@ function FeeBandBadge({
                     : `${pct.toFixed(2)}% fee`;
 
     return (
-        <Badge
+        <HarborConfigBadge
             config={{
                 label,
                 surfaceClass: HARBOR_FEE_BAND_PILL_CLASS[kind],
@@ -1422,22 +1440,6 @@ function ContractAddressItem({
             </div>
         </div>
     );
-}
-
-
-function HealthBadge({
-                         status,
-                         compact = false,
-                     }: {
-    status: HealthStatus;
-    compact?: boolean;
-}) {
-    return <Badge config={HEALTH_CONFIG[status]} size={compact ? "sm" : "md"} />;
-}
-
-
-function WithdrawalStatusBadge({ status }: { status: WithdrawalStatus }) {
-    return <Badge config={WITHDRAWAL_CONFIG[status]} size="sm" />;
 }
 
 
@@ -1706,8 +1708,7 @@ export default function TransparencyPage() {
         }, [allPoolRewards]);
 
         return (
-            <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
-                <main className="container mx-auto px-4 sm:px-10 pb-6 pt-2 sm:pt-4">
+            <HarborPageShell>
                     <div className="mb-2">
                         <IndexPageTitleSection
                             title="Transparency"
@@ -1715,50 +1716,9 @@ export default function TransparencyPage() {
                         />
                     </div>
 
-                    {!isBasicLayout && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
-                            <div className={INDEX_HERO_INTRO_CARD_CLASS}>
-                                <div className="flex items-center justify-center gap-2 mb-1">
-                                    <EyeIcon className={INDEX_HERO_INTRO_ICON_CLASS} />
-                                    <h2 className={INDEX_HERO_INTRO_TITLE_CLASS}>
-                                        Fully On-Chain
-                                    </h2>
-                                </div>
-                                <p className={INDEX_HERO_INTRO_BODY_CLASS}>
-                                    All data fetched directly from smart contracts
-                                </p>
-                            </div>
-                            <div
-                                className={`${INDEX_HERO_INTRO_CARD_CLASS} ${INDEX_HERO_INTRO_CARD_RING_ACCENT_CLASS}`}
-                            >
-                                <div className="flex items-center justify-center gap-2 mb-1">
-                                    <CurrencyDollarIcon className={INDEX_HERO_INTRO_ICON_CLASS} />
-                                    <h2 className={INDEX_HERO_INTRO_TITLE_CLASS}>
-                                        Real-Time
-                                    </h2>
-                                </div>
-                                <p className={INDEX_HERO_INTRO_BODY_CLASS}>
-                                    Click refresh to update data
-                                </p>
-                            </div>
-                            <div className={INDEX_HERO_INTRO_CARD_CLASS}>
-                                <div className="flex items-center justify-center gap-2 mb-1">
-                                    <Squares2X2Icon className={INDEX_HERO_INTRO_ICON_CLASS} />
-                                    <h2 className={INDEX_HERO_INTRO_TITLE_CLASS}>
-                                        All Markets
-                                    </h2>
-                                </div>
-                                <p className={INDEX_HERO_INTRO_BODY_CLASS}>
-                                    View metrics for all Harbor markets
-                                </p>
-                            </div>
-                        </div>
-                    )}
+                    {!isBasicLayout ? <TransparencyHeroIntroCards /> : null}
 
-                    <section
-                        className="space-y-2 mt-2 sm:mt-3"
-                        aria-label="Protocol markets"
-                    >
+                    <TransparencyMarketsShell glass={!isBasicLayout}>
                         <div className={INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}>
                             <div className="w-full lg:flex-1 lg:min-w-0">
                                 <div className={INDEX_MARKETS_TOOLBAR_FILTERS_ROW_CLASS}>
@@ -1986,9 +1946,8 @@ export default function TransparencyPage() {
                                 )}
                             </>
                         )}
-                    </section>
-                </main>
-            </div>
+                    </TransparencyMarketsShell>
+            </HarborPageShell>
         );
     }
 

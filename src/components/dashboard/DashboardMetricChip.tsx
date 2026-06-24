@@ -1,11 +1,10 @@
 "use client";
 
+import { HarborStatTile } from "@/components/shared/HarborStatTile";
 import {
-  DASHBOARD_METRIC_CHIP_CLASS,
-  DASHBOARD_METRIC_CHIP_INLINE_CLASS,
-  DASHBOARD_METRIC_CHIP_LABEL_CLASS,
-  DASHBOARD_METRIC_CHIP_VALUE_CLASS,
-} from "./dashboardStyles";
+  HARBOR_STAT_TILE_GLASS_CHIP_LABEL_CLASS,
+  HARBOR_STAT_TILE_GLASS_CHIP_VALUE_CLASS,
+} from "@/components/shared/harborStatTileStyles";
 
 export type DashboardMetricChipProps = {
   label: string;
@@ -18,15 +17,13 @@ export type DashboardMetricChipProps = {
 export function DashboardMetricChip({
   label,
   value,
-  valueClassName = DASHBOARD_METRIC_CHIP_VALUE_CLASS,
+  valueClassName = HARBOR_STAT_TILE_GLASS_CHIP_VALUE_CLASS,
   inline = false,
 }: DashboardMetricChipProps) {
-  const shellClass = inline ? DASHBOARD_METRIC_CHIP_INLINE_CLASS : DASHBOARD_METRIC_CHIP_CLASS;
-
   return (
-    <div className={shellClass}>
+    <HarborStatTile variant={inline ? "glassChipInline" : "glassChip"}>
       <p
-        className={`w-full ${DASHBOARD_METRIC_CHIP_LABEL_CLASS} ${
+        className={`w-full ${HARBOR_STAT_TILE_GLASS_CHIP_LABEL_CLASS} ${
           inline ? "text-xs md:text-[11px] lg:text-xs xl:text-sm" : "text-sm"
         }`}
       >
@@ -39,6 +36,6 @@ export function DashboardMetricChip({
       >
         {value}
       </p>
-    </div>
+    </HarborStatTile>
   );
 }

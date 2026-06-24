@@ -133,17 +133,17 @@ export type PortfolioInsight = {
 
 const ALLOCATION_COLORS = {
   maiden: {
-    accent: "text-[#FF8A7A]",
-    bar: "bg-[#FF8A7A]",
-    dot: "bg-[#FF8A7A]",
+    accent: "text-harbor-coral",
+    bar: "bg-harbor-coral",
+    dot: "bg-harbor-coral",
   },
   earn: {
-    accent: "text-[#B8EBD5]",
+    accent: "text-harbor-mint",
     bar: ALLOCATION_BAR_EARN,
     dot: ALLOCATION_LEGEND_DOT_EARN,
   },
   sail: {
-    accent: "text-[#C4B5FD]",
+    accent: "text-harbor-purple",
     bar: ALLOCATION_BAR_SAIL,
     dot: ALLOCATION_LEGEND_DOT_SAIL,
   },
@@ -391,9 +391,9 @@ export type MarketCompositionSlice = {
 };
 
 const MARKET_COMPOSITION_COLORS = {
-  BTC: { accent: "text-[#F5D76E]", bar: "bg-[#F5D76E]" },
-  ETH: { accent: "text-[#C4B5FD]", bar: "bg-[#C4B5FD]" },
-  EUR: { accent: "text-[#B8EBD5]", bar: "bg-[#B8EBD5]" },
+  BTC: { accent: "text-harbor-gold", bar: "bg-harbor-gold" },
+  ETH: { accent: "text-harbor-purple", bar: "bg-harbor-purple" },
+  EUR: { accent: "text-harbor-mint", bar: "bg-harbor-mint" },
 } as const;
 
 function pegBucketFromMarketId(marketId?: string): keyof typeof MARKET_COMPOSITION_COLORS | null {
@@ -542,4 +542,22 @@ export function positionValueContext(
     return "At voyage end";
   }
   return undefined;
+}
+
+/** PnL text + dark inset color classes (matches sail page sign/format). */
+export function formatDashboardPnL(value: number): { text: string; className: string } {
+  const isPositive = value >= 0;
+  const sign = isPositive ? "+" : "-";
+  const text = `${sign}$${Math.abs(value).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+  const className = isPositive
+    ? "font-mono text-[11px] tabular-nums text-harbor-mint"
+    : "font-mono text-[11px] tabular-nums text-harbor-coral";
+  return { text, className };
+}
+
+export function formatDashboardPnLPercent(percent: number): string {
+  return `${percent >= 0 ? "+" : ""}${percent.toFixed(1)}%`;
 }

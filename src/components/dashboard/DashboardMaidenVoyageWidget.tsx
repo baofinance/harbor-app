@@ -50,7 +50,7 @@ export function DashboardMaidenVoyageWidget({
 
   return (
     <section
-      className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} relative overflow-hidden border-l-[3px] border-l-[#FF8A7A] ${
+      className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} relative overflow-hidden border-l-[3px] border-l-harbor-coral ${
         compact ? "" : ""
       }`}
       aria-label="Active maiden voyage"
@@ -58,7 +58,7 @@ export function DashboardMaidenVoyageWidget({
       <div className="px-4 py-3.5 sm:px-5 sm:py-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#FF8A7A]/90">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-harbor-coral/90">
               Current voyage
             </p>
             <p className="mt-0.5 truncate text-base font-semibold text-white/95">

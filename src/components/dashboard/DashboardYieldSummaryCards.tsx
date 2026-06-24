@@ -61,7 +61,7 @@ export function DashboardYieldSummaryCards({
           value={earnedValue}
           valueClassName={
             isConnected && totalEarned > 0
-              ? "font-mono text-sm tabular-nums font-semibold text-[#B8EBD5] sm:text-base"
+              ? "font-mono text-sm tabular-nums font-semibold text-harbor-mint sm:text-base"
               : DASHBOARD_PRODUCT_HEADER_METRIC_VALUE_CLASS
           }
         />
@@ -70,7 +70,7 @@ export function DashboardYieldSummaryCards({
           value={outstandingValue}
           valueClassName={
             isConnected && totalOutstanding > 0
-              ? "font-mono text-sm tabular-nums font-semibold text-[#FF8A7A] sm:text-base"
+              ? "font-mono text-sm tabular-nums font-semibold text-harbor-coral sm:text-base"
               : DASHBOARD_PRODUCT_HEADER_METRIC_VALUE_CLASS
           }
         />
@@ -86,7 +86,7 @@ export function DashboardYieldSummaryCards({
         inline
         valueClassName={
           isConnected && totalEarned > 0
-            ? "text-[#B8EBD5]"
+            ? "text-harbor-mint"
             : DASHBOARD_METRIC_CHIP_VALUE_CLASS
         }
       />
@@ -95,7 +95,7 @@ export function DashboardYieldSummaryCards({
         value={outstandingValue}
         valueClassName={
           isConnected && totalOutstanding > 0
-            ? "text-[#FF8A7A]"
+            ? "text-harbor-coral"
             : DASHBOARD_METRIC_CHIP_VALUE_CLASS
         }
         inline
