@@ -12,6 +12,7 @@ import { INDEX_MANAGE_BUTTON_CLASS_DESKTOP } from "@/utils/indexPageManageButton
 import { formatCompactUSD } from "@/utils/anchor";
 import { formatToken } from "@/utils/formatters";
 import { TokenLogo, getLogoPath } from "@/components/shared";
+import { HarborStatusPill } from "@/components/shared/HarborStatusPill";
 import { HARBOR_DATA_ROW_HOVER_CLASS } from "@/components/shared/harborDataRowStyles";
 import NetworkIconCell from "@/components/NetworkIconCell";
 import type { DefinedMarket } from "@/config/markets";
@@ -37,6 +38,10 @@ export type AnchorWalletPositionsSectionProps = {
     initialDepositAsset?: string;
   }) => void;
 };
+
+function WalletPositionInactiveTag() {
+  return <HarborStatusPill label="Inactive" variant="ended" />;
+}
 
 export function AnchorWalletPositionsSection(props: AnchorWalletPositionsSectionProps) {
   const {
@@ -209,14 +214,6 @@ if (!isConnected || !address) return null;
             return (
               <section className="mb-4 mt-4">
                 <div className="space-y-2">
-                  {/* Header with coral tag */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="bg-[#FF8A7A] text-white text-xs font-medium uppercase tracking-wider px-2 py-1">
-                      You have anchor tokens that aren't earning yield
-                    </span>
-                  </div>
-
-                  {/* Token positions */}
                   {Array.from(walletPositionsByToken.values()).map(
                     (position) => {
                     const firstMarket = position.markets[0];
@@ -268,7 +265,8 @@ if (!isConnected || !address) return null;
                           <div></div>
 
                           {/* Position */}
-                          <div className="text-center min-w-0">
+                          <div className="flex min-w-0 flex-col items-center justify-center gap-1 text-center">
+                            <WalletPositionInactiveTag />
                             <span className="text-[#1E4775] font-medium text-xs font-mono">
                                 {formatToken(position.balance)}{" "}
                                 {position.symbol} (
@@ -349,7 +347,8 @@ if (!isConnected || !address) return null;
                           </div>
 
                           {/* Position */}
-                          <div className="text-center min-w-0">
+                          <div className="flex min-w-0 flex-col items-center justify-center gap-1 text-center">
+                            <WalletPositionInactiveTag />
                             <span className="text-[#1E4775] font-medium text-xs font-mono">
                                 {formatToken(position.balance)}{" "}
                                 {position.symbol} (
@@ -453,9 +452,12 @@ if (!isConnected || !address) return null;
                               </button>
                             </div>
                           </div>
-                          <div className="text-xs text-[#1E4775]/60">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <WalletPositionInactiveTag />
+                            <span className="text-xs text-[#1E4775]/60 font-mono">
                               {formatToken(position.balance)} {position.symbol}{" "}
                               ({formatCompactUSD(position.balanceUSD)})
+                            </span>
                           </div>
                           <div className="text-xs text-[#1E4775]/60 sm:hidden">
                             Deposit in a stability pool to earn yield

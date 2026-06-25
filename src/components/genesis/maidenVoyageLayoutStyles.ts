@@ -247,15 +247,14 @@ export const MV_UPSIDE_DEPOSIT_CHIP_ACTIVE =
 export const MV_UPSIDE_OWNERSHIP_FLASH =
   "ring-1 ring-[#FF8A7A]/40 shadow-[0_0_48px_-10px_rgba(255,138,122,0.45)]";
 
-/** Benchmark tile glass — lighter than stage strip, darker than frosted card shell. */
+/** Benchmark outcome tiles — white inset cards on dark Explore the Upside shell. */
 export const MV_UPSIDE_BENCHMARK_TILE_SURFACE =
-  "border-white/[0.08] bg-[#11243d]/48 backdrop-blur-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]";
+  "border-harbor-blue/15 bg-white shadow-sm";
 
-/** Benchmark outcome tile — mid-tone inset panel. */
-export const MV_UPSIDE_BENCHMARK_TILE = `rounded-xl border ${MV_UPSIDE_BENCHMARK_TILE_SURFACE} transition-all duration-200 hover:-translate-y-px hover:bg-[#11243d]/56`;
+export const MV_UPSIDE_BENCHMARK_TILE = `rounded-xl border ${MV_UPSIDE_BENCHMARK_TILE_SURFACE} transition-all duration-200 hover:-translate-y-px hover:bg-[rgb(var(--surface-selected-rgb))]`;
 
 export const MV_UPSIDE_BENCHMARK_TILE_UPDATED =
-  "border-white/[0.12] bg-[#11243d]/58";
+  "border-harbor-mint/35 bg-white ring-1 ring-harbor-mint/20";
 
 /** Final growth-stage benchmark tile accent. */
 export const MV_UPSIDE_BENCHMARK_TILE_DESTINATION =

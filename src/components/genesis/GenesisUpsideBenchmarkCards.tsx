@@ -79,20 +79,20 @@ function BenchmarkCard({
               </span>
             </p>
           ) : null}
-          <p className="text-[11px] font-medium uppercase tracking-wide text-white/55 sm:text-xs">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-harbor-blue/55 sm:text-xs">
             {MAIDEN_VOYAGE_UPSIDE_COPY.youEarn}
           </p>
           <p className="mt-1 font-mono leading-tight tabular-nums">
             <GenesisUpsideAnimatedUsdRange
               lowUsd={row.yourEarningsLowUsd}
               highUsd={row.yourEarningsHighUsd}
-              className="text-base font-bold text-white sm:text-lg"
+              className="text-base font-bold text-harbor-blue sm:text-lg"
             />
-            <span className="text-xs text-white/80 sm:text-sm">
+            <span className="text-xs text-harbor-blue/70 sm:text-sm">
               {MAIDEN_VOYAGE_UPSIDE_COPY.earningsSuffix}
             </span>
           </p>
-          <p className="mt-2 max-w-full font-mono text-[11px] leading-snug tabular-nums text-white/50 sm:text-xs">
+          <p className="mt-2 max-w-full font-mono text-[11px] leading-snug tabular-nums text-harbor-blue/50 sm:text-xs">
             {formatAssumptionLine(row)}
           </p>
         </div>
@@ -130,7 +130,7 @@ export function GenesisUpsideBenchmarkCards({
                 className="hidden items-center justify-center sm:flex"
                 aria-hidden
               >
-                <ChevronRightIcon className="h-3.5 w-3.5 text-white/25" />
+                <ChevronRightIcon className="h-3.5 w-3.5 text-harbor-blue/25" />
               </div>
             ) : null}
           </div>

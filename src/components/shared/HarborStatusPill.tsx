@@ -49,7 +49,7 @@ const VARIANT_CLASS_DARK: Record<HarborStatusPillVariant, string> = {
 
 function variantFromLabel(label: string, fallback: HarborStatusPillVariant): HarborStatusPillVariant {
   const normalized = label.trim().toLowerCase();
-  if (normalized.includes("ended")) return "ended";
+  if (normalized.includes("ended") || normalized.includes("inactive")) return "ended";
   if (normalized.includes("maiden voyage") && normalized.includes("active")) {
     return "active";
   }
@@ -100,7 +100,7 @@ function classFromLabel(
   if (normalized.includes("maiden voyage") && normalized.includes("active")) {
     return HARBOR_STATUS_PILL_ACTIVE_LIGHT;
   }
-  if (normalized.includes("ended")) {
+  if (normalized.includes("ended") || normalized.includes("inactive")) {
     return HARBOR_STATUS_PILL_ENDED_LIGHT;
   }
   if (normalized.includes("position")) {

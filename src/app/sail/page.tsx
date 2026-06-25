@@ -28,7 +28,6 @@ import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarke
 import { IndexMarketsLoadError } from "@/components/shared/IndexMarketsLoadError";
 import { useExpandedMarketIds } from "@/hooks/useExpandedMarketIds";
 import { useOpenMarketManageModal } from "@/hooks/useOpenMarketManageModal";
-import { formatCompactUSD } from "@/utils/anchor";
 import { isValidContractAddress } from "@/utils/isValidContractAddress";
 
 type SailManageModalPayload = {
@@ -192,12 +191,6 @@ export default function SailPage() {
                 shortFilterSelected,
                 setShortFilterSelected,
                 onClearFilters: clearFilters,
-                metrics: [
-                  {
-                    label: "Your Deposits",
-                    value: formatCompactUSD(sailUserStats.totalPositionsUSD || 0),
-                  },
-                ],
               }}
             >
               {sailViewBasic ? (
