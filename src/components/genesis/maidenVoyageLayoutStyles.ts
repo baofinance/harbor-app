@@ -185,6 +185,8 @@ export const MV_UPSIDE_STAGE_LAUNCH = {
     "border-[#4A9784]/45 bg-[#4A9784]/10 text-[#4A9784]",
   earnings: "text-[#4A9784]",
   icon: "border-[#4A9784]/30 bg-[#4A9784]/10 text-[#4A9784]",
+  iconBenchmark:
+    "border-[#4A9784]/40 bg-[#4A9784]/22 text-[#3d7a68]",
   hover: "hover:border-[#4A9784]/30 hover:bg-[#4A9784]/[0.04]",
   accentBar: "border-l-[3px] border-l-[#4A9784]",
 } as const;
@@ -194,6 +196,8 @@ export const MV_UPSIDE_STAGE_GROWTH = {
     "border-[#C4B5FD]/45 bg-[#C4B5FD]/10 text-[#C4B5FD]",
   earnings: "text-[#C4B5FD]",
   icon: "border-[#C4B5FD]/30 bg-[#C4B5FD]/10 text-[#C4B5FD]",
+  iconBenchmark:
+    "border-[#C4B5FD]/40 bg-[#C4B5FD]/24 text-[#9b8fd4]",
   hover: "hover:border-[#C4B5FD]/30 hover:bg-[#C4B5FD]/[0.04]",
   accentBar: "border-l-[3px] border-l-[#C4B5FD]",
 } as const;
@@ -203,6 +207,8 @@ export const MV_UPSIDE_STAGE_SCALE = {
     "border-[#5B8FD4]/45 bg-[#5B8FD4]/15 text-[#9EC5F5]",
   earnings: "text-[#9EC5F5]",
   icon: "border-[#5B8FD4]/30 bg-[#5B8FD4]/10 text-[#9EC5F5]",
+  iconBenchmark:
+    "border-[#5B8FD4]/45 bg-[#5B8FD4]/26 text-[#7eb0e8]",
   hover: "hover:border-[#5B8FD4]/30 hover:bg-[#5B8FD4]/[0.04]",
   accentBar: "border-l-[3px] border-l-[#9EC5F5]",
 } as const;

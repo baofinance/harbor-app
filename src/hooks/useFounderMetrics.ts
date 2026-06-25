@@ -5,7 +5,7 @@ import { useAccount } from "wagmi";
 import { isAddress, type Address } from "viem";
 import { markets } from "@/config/markets";
 import { getGraphHeaders, getGraphUrl } from "@/config/graph";
-import { deriveFounderWalletMetric, type FounderParticipant } from "@/utils/founderMetrics";
+import { deriveFounderWalletMetric, founderMetricRowHasRevenueShare, type FounderParticipant } from "@/utils/founderMetrics";
 
 type FounderGraphResponse = {
   maidenVoyageYieldGlobals?: Array<{ cumulativeYieldUSD?: string }>;
@@ -160,7 +160,7 @@ export function useFounderMetrics() {
             ...derived,
           };
         })
-        .filter((r) => r.ownershipSharePct > 0 || r.yieldSharePct > 0)
+        .filter(founderMetricRowHasRevenueShare)
         .sort((a, b) => b.outstandingUSD - a.outstandingUSD);
 
       setRows(nextRows);

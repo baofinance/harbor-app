@@ -58,13 +58,13 @@ function BenchmarkCard({
 
   return (
     <div
-      className={`${MV_UPSIDE_BENCHMARK_TILE} min-w-0 px-2.5 py-2.5 sm:px-3 sm:py-3 ${
+      className={`${MV_UPSIDE_BENCHMARK_TILE} ${theme.accentBar} min-w-0 px-2.5 py-2.5 sm:px-3 sm:py-3 ${
         isUpdated ? MV_UPSIDE_BENCHMARK_TILE_UPDATED : ""
       }`}
     >
       <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2 sm:gap-x-2.5">
         <div
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border sm:h-9 sm:w-9 ${theme.icon}`}
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border sm:h-9 sm:w-9 ${theme.iconBenchmark}`}
         >
           <Icon className="h-4 w-4 sm:h-[1.125rem] sm:w-[1.125rem]" aria-hidden />
         </div>
@@ -121,16 +121,16 @@ export function GenesisUpsideBenchmarkCards({
 
   return (
     <div className="relative pt-1">
-      <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-[1fr_auto_1fr_auto_1fr] sm:items-stretch sm:gap-1.5">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-x-1 sm:gap-x-1.5">
         {benchmarks.map((row, index) => (
           <div key={row.tvlUsd} className="contents">
             <BenchmarkCard row={row} isUpdated={cardsUpdated} />
             {index < benchmarks.length - 1 ? (
               <div
-                className="hidden items-center justify-center sm:flex"
+                className="flex items-center justify-center px-0.5 sm:px-1"
                 aria-hidden
               >
-                <ChevronRightIcon className="h-3.5 w-3.5 text-harbor-blue/25" />
+                <ChevronRightIcon className="h-3.5 w-3.5 shrink-0 text-harbor-blue/40 sm:h-4 sm:w-4" />
               </div>
             ) : null}
           </div>

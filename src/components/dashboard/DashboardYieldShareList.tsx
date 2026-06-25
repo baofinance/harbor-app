@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { FounderMetricRow } from "@/hooks/useFounderMetrics";
+import { founderMetricRowHasRevenueShare } from "@/utils/founderMetrics";
 import { GenesisMarketChainCell } from "@/components/genesis/GenesisMarketSharedRowCells";
 import { chainFromMarketId } from "@/components/dashboard/dashboardRowPresentation";
 import { formatPercent, formatUSD } from "@/utils/formatters";
@@ -233,7 +234,9 @@ export function DashboardYieldShareList({
     );
   }
 
-  if (rows.length === 0) {
+  const eligibleRows = rows.filter(founderMetricRowHasRevenueShare);
+
+  if (eligibleRows.length === 0) {
     return (
       <p className={DASHBOARD_EMPTY_ON_PANEL_CLASS}>
         No yield share rows for this wallet. If you have deposits, check{" "}
@@ -248,7 +251,7 @@ export function DashboardYieldShareList({
   return (
     <div className={DASHBOARD_YIELD_LIST_CLASS}>
       <YieldTable showColumnHeader>
-        {rows.map((row) => (
+        {eligibleRows.map((row) => (
           <DashboardYieldRowView key={row.marketId} row={row} />
         ))}
       </YieldTable>
