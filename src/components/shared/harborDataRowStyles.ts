@@ -27,6 +27,14 @@ export const HARBOR_ROW_BODY_CLASS = "text-sm py-2.5 px-2 min-h-[52px]";
 export const HARBOR_MOBILE_METRIC_LABEL_CLASS =
   "text-[10px] font-semibold uppercase tracking-wider text-harbor-blue/55";
 
+/** Inline stat label in white index row bars (Earn markets, dashboard positions). */
+export const HARBOR_ROW_METRIC_LABEL_CLASS =
+  "text-[10px] font-semibold uppercase tracking-wide text-harbor-blue/60";
+
+/** Numeric stat in white index row bars — matches Earn market columns. */
+export const HARBOR_ROW_METRIC_VALUE_CLASS =
+  "font-medium text-xs font-mono tabular-nums text-harbor-blue";
+
 /** Primary value text on white rows. */
 export const HARBOR_ROW_VALUE_TEXT_CLASS = "font-medium text-sm text-harbor-blue";
 

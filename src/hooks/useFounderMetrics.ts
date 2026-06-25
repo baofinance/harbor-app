@@ -160,14 +160,7 @@ export function useFounderMetrics() {
             ...derived,
           };
         })
-        .filter(
-          (r) =>
-            r.ownershipSharePct > 0 ||
-            r.yieldSharePct > 0 ||
-            r.totalEarnedUSD > 0 ||
-            Math.abs(r.outstandingUSD) > 0 ||
-            r.paidUSD > 0
-        )
+        .filter((r) => r.ownershipSharePct > 0 || r.yieldSharePct > 0)
         .sort((a, b) => b.outstandingUSD - a.outstandingUSD);
 
       setRows(nextRows);

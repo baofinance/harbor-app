@@ -7,6 +7,7 @@ import { INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL } from "@/utils/indexPageMana
 import { formatUSD } from "@/utils/formatters";
 import {
   DASHBOARD_POSITION_METRIC_LABEL_CLASS,
+  DASHBOARD_POSITION_METRIC_VALUE_CLASS,
   DASHBOARD_POSITION_TITLE_CLASS,
 } from "../dashboardTypography";
 import {
@@ -80,7 +81,7 @@ export function PositionCard({ row, onWithdraw }: PositionCardProps) {
         title={valueTitle || undefined}
       >
         <span className={DASHBOARD_POSITION_METRIC_LABEL_CLASS}>{valueLabel}</span>{" "}
-        <span className="font-mono text-sm font-semibold tabular-nums text-[#1E4775] sm:text-base">
+        <span className={`${DASHBOARD_POSITION_METRIC_VALUE_CLASS} font-semibold`}>
           {valueDisplay}
         </span>
         {pnlFormatted ? (

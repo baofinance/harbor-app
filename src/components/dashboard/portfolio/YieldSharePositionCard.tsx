@@ -8,6 +8,7 @@ import { formatPercent, formatUSD } from "@/utils/formatters";
 import { DashboardYieldBoostBadge } from "../DashboardYieldBoostBadge";
 import {
   DASHBOARD_POSITION_METRIC_LABEL_CLASS,
+  DASHBOARD_POSITION_METRIC_VALUE_CLASS,
   DASHBOARD_POSITION_TITLE_CLASS,
 } from "../dashboardTypography";
 import { DASHBOARD_INSET_MARKET_ICON_PX } from "../dashboardRowListStyles";
@@ -34,7 +35,7 @@ function InlineMetric({
       <span
         className={
           valueClassName ??
-          "font-mono text-sm tabular-nums text-[#1E4775] sm:text-base"
+          `${DASHBOARD_POSITION_METRIC_VALUE_CLASS} font-semibold`
         }
       >
         {value}
@@ -71,8 +72,8 @@ export function YieldSharePositionCard({ row }: { row: FounderMetricRow }) {
         value={formatDashboardEarnedUsd(row.outstandingUSD)}
         valueClassName={
           hasPending
-            ? "font-mono text-sm tabular-nums text-harbor-coral sm:text-base"
-            : "font-mono text-sm tabular-nums text-[#1E4775]/40 sm:text-base"
+            ? `${DASHBOARD_POSITION_METRIC_VALUE_CLASS} font-semibold text-harbor-coral`
+            : `${DASHBOARD_POSITION_METRIC_VALUE_CLASS} text-harbor-blue/40`
         }
       />
 
@@ -87,7 +88,7 @@ export function YieldSharePositionCard({ row }: { row: FounderMetricRow }) {
         {showBoost ? (
           <DashboardYieldBoostBadge multiplier={row.boostMultiplier} />
         ) : (
-          <span className="font-mono text-sm tabular-nums text-[#1E4775]/40 sm:text-base">
+          <span className={`${DASHBOARD_POSITION_METRIC_VALUE_CLASS} text-harbor-blue/40`}>
             —
           </span>
         )}
@@ -98,8 +99,8 @@ export function YieldSharePositionCard({ row }: { row: FounderMetricRow }) {
         value={formatUSD(row.paidUSD, { compact: false })}
         valueClassName={
           row.paidUSD > 0
-            ? "font-mono text-sm tabular-nums text-[#1E4775] sm:text-base"
-            : "font-mono text-sm tabular-nums text-[#1E4775]/40 sm:text-base"
+            ? `${DASHBOARD_POSITION_METRIC_VALUE_CLASS} font-semibold`
+            : `${DASHBOARD_POSITION_METRIC_VALUE_CLASS} text-harbor-blue/40`
         }
       />
     </Link>

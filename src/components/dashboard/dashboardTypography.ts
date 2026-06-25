@@ -3,7 +3,11 @@
  * Dashboard-only; does not modify shared Maiden Voyage globals.
  */
 
-import { HARBOR_ROW_MARKET_TITLE_CLASS } from "@/components/shared/harborDataRowStyles";
+import {
+  HARBOR_ROW_MARKET_TITLE_CLASS,
+  HARBOR_ROW_METRIC_LABEL_CLASS,
+  HARBOR_ROW_METRIC_VALUE_CLASS,
+} from "@/components/shared/harborDataRowStyles";
 
 // Position rows (white index-style bars)
 export const DASHBOARD_POSITION_TITLE_CLASS = HARBOR_ROW_MARKET_TITLE_CLASS;
@@ -11,8 +15,9 @@ export const DASHBOARD_POSITION_TITLE_CLASS = HARBOR_ROW_MARKET_TITLE_CLASS;
 export const DASHBOARD_POSITION_SUBTITLE_CLASS =
   "truncate text-xs leading-snug text-[#1E4775]/70";
 
-export const DASHBOARD_POSITION_METRIC_LABEL_CLASS =
-  "text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/55";
+export const DASHBOARD_POSITION_METRIC_LABEL_CLASS = HARBOR_ROW_METRIC_LABEL_CLASS;
+
+export const DASHBOARD_POSITION_METRIC_VALUE_CLASS = HARBOR_ROW_METRIC_VALUE_CLASS;
 
 // Section accordion headers (REVENUE SHARE, EARN, …)
 export const DASHBOARD_SECTION_HEADER_TITLE_CLASS =
@@ -29,10 +34,9 @@ export const DASHBOARD_NUMERIC_CHIP_PRIMARY_CLASS =
   "font-mono text-sm font-semibold tabular-nums text-harbor-gold";
 
 export const DASHBOARD_NUMERIC_ROW_PRIMARY_CLASS =
-  "font-mono text-base font-bold tabular-nums text-[#1E4775]";
+  "font-mono text-xs font-bold tabular-nums text-[#1E4775]";
 
-export const DASHBOARD_NUMERIC_ROW_SECONDARY_CLASS =
-  "font-mono text-sm font-semibold tabular-nums text-[#1E4775] sm:text-base";
+export const DASHBOARD_NUMERIC_ROW_SECONDARY_CLASS = HARBOR_ROW_METRIC_VALUE_CLASS;
 
 // Activity feed
 export const DASHBOARD_ACTIVITY_TIMESTAMP_CLASS =
