@@ -98,7 +98,7 @@ export function PositionCard({ row, onWithdraw }: PositionCardProps) {
       <div className={`${PORTFOLIO_POSITION_ROW_CLASS} ${DASHBOARD_ARCHIVED_POSITION_ROW_CLASS}`}>
         {marketCell}
         {valueCell}
-        <div className="flex justify-start sm:justify-end">
+        <div className="flex justify-start pl-3 sm:justify-end sm:pl-5">
           <button
             type="button"
             className={`${INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL} !min-w-[5.25rem] px-3 py-1.5 text-[10px] sm:!min-w-[5.75rem] sm:py-2 sm:text-xs`}
