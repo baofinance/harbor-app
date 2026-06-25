@@ -51,7 +51,7 @@ export type DashboardPositionRow = {
   /** Sail leveraged positions — unrealized PnL when cost basis is available. */
   unrealizedPnLUsd?: number;
   unrealizedPnLPercent?: number;
-  href: "/genesis" | "/anchor" | "/sail";
+  href: "/genesis" | "/earn" | "/sail";
 };
 
 const SAIL_POSITIONS_QUERY = `
@@ -510,7 +510,7 @@ export function useDashboardPositions() {
               statusLabel: "Wallet",
               usd,
               usdUnpriced,
-              href: "/anchor",
+              href: "/earn",
             })
           );
         }
@@ -537,7 +537,7 @@ export function useDashboardPositions() {
               statusLabel: "Stability",
               usd,
               usdUnpriced,
-              href: "/anchor",
+              href: "/earn",
             })
           );
         }
@@ -564,7 +564,7 @@ export function useDashboardPositions() {
               statusLabel: "Stability",
               usd,
               usdUnpriced,
-              href: "/anchor",
+              href: "/earn",
             })
           );
         }
@@ -601,7 +601,7 @@ export function useDashboardPositions() {
           statusLabel: "Wallet",
           usd,
           usdUnpriced,
-          href: "/anchor",
+          href: "/earn",
         })
       );
     }
@@ -633,7 +633,7 @@ export function useDashboardPositions() {
           statusLabel: "Stability",
           usd,
           usdUnpriced,
-          href: "/anchor",
+          href: "/earn",
         })
       );
     }

@@ -17,6 +17,7 @@ import { GenesisUpsideAnimatedUsdRange } from "./GenesisUpsideAnimatedMetrics";
 import {
   MV_UPSIDE_BENCHMARK_TILE,
   MV_UPSIDE_BENCHMARK_TILE_UPDATED,
+  MV_UPSIDE_NEUTRAL_META,
   MV_UPSIDE_STAGE_BY_ID,
   type UpsideGrowthStageId,
 } from "./maidenVoyageLayoutStyles";
@@ -79,20 +80,20 @@ function BenchmarkCard({
               </span>
             </p>
           ) : null}
-          <p className="text-[11px] font-medium uppercase tracking-wide text-harbor-blue/55 sm:text-xs">
+          <p className={`${MV_UPSIDE_NEUTRAL_META} sm:text-xs`}>
             {MAIDEN_VOYAGE_UPSIDE_COPY.youEarn}
           </p>
           <p className="mt-1 font-mono leading-tight tabular-nums">
             <GenesisUpsideAnimatedUsdRange
               lowUsd={row.yourEarningsLowUsd}
               highUsd={row.yourEarningsHighUsd}
-              className="text-base font-bold text-harbor-blue sm:text-lg"
+              className={`text-base font-bold sm:text-lg ${theme.earnings}`}
             />
-            <span className="text-xs text-harbor-blue/70 sm:text-sm">
+            <span className={`text-xs sm:text-sm ${theme.earnings} opacity-80`}>
               {MAIDEN_VOYAGE_UPSIDE_COPY.earningsSuffix}
             </span>
           </p>
-          <p className="mt-2 max-w-full font-mono text-[11px] leading-snug tabular-nums text-harbor-blue/50 sm:text-xs">
+          <p className="mt-2 max-w-full font-mono text-[11px] leading-snug tabular-nums text-white/45 sm:text-xs">
             {formatAssumptionLine(row)}
           </p>
         </div>
@@ -130,7 +131,7 @@ export function GenesisUpsideBenchmarkCards({
                 className="flex items-center justify-center px-0.5 sm:px-1"
                 aria-hidden
               >
-                <ChevronRightIcon className="h-3.5 w-3.5 shrink-0 text-harbor-blue/40 sm:h-4 sm:w-4" />
+                <ChevronRightIcon className="h-3.5 w-3.5 shrink-0 text-white/35 sm:h-4 sm:w-4" />
               </div>
             ) : null}
           </div>

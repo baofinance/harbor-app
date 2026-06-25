@@ -1,4 +1,5 @@
 import type { FounderMetricRow } from "@/hooks/useFounderMetrics";
+import { founderMetricRowHasGenesisDeposit } from "@/utils/founderMetrics";
 import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
 import { markets } from "@/config/markets";
 import { formatUSD } from "@/utils/formatters";
@@ -260,6 +261,7 @@ export function aggregateYieldShareSummary(rows: FounderMetricRow[]) {
   const revenueSharePct = rows.reduce((s, r) => s + r.yieldSharePct, 0);
   const pendingDistributionUsd = rows.reduce((s, r) => s + r.outstandingUSD, 0);
   const boostMultiplier = rows.reduce((max, r) => {
+    if (!founderMetricRowHasGenesisDeposit(r)) return max;
     const m = r.boostMultiplier ?? 0;
     return m > max ? m : max;
   }, 0);

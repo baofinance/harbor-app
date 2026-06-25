@@ -4,6 +4,7 @@ import Link from "next/link";
 import { TokenLogo } from "@/components/shared";
 import { iconSymbolFromMarketLabel } from "@/components/dashboard/dashboardRowPresentation";
 import type { FounderMetricRow } from "@/hooks/useFounderMetrics";
+import { founderMetricRowHasGenesisDeposit } from "@/utils/founderMetrics";
 import { formatPercent, formatUSD } from "@/utils/formatters";
 import { DashboardYieldBoostBadge } from "../DashboardYieldBoostBadge";
 import {
@@ -44,9 +45,11 @@ function InlineMetric({
   );
 }
 
+const NO_DEPOSIT_VALUE_CLASS = `${DASHBOARD_POSITION_METRIC_VALUE_CLASS} text-harbor-blue/40`;
+
 export function YieldSharePositionCard({ row }: { row: FounderMetricRow }) {
-  const showBoost = row.ownershipSharePct > 0;
-  const hasPending = row.outstandingUSD > 0;
+  const hasDeposit = founderMetricRowHasGenesisDeposit(row);
+  const hasPending = hasDeposit && row.outstandingUSD > 0;
   const marketName = formatMarketLabel(row.marketName);
   const iconSymbol = iconSymbolFromMarketLabel(row.marketName);
   const href = `/genesis/${row.marketId}`;
@@ -69,38 +72,43 @@ export function YieldSharePositionCard({ row }: { row: FounderMetricRow }) {
 
       <InlineMetric
         label="Pending"
-        value={formatDashboardEarnedUsd(row.outstandingUSD)}
+        value={
+          hasDeposit ? formatDashboardEarnedUsd(row.outstandingUSD) : "—"
+        }
         valueClassName={
           hasPending
             ? `${DASHBOARD_POSITION_METRIC_VALUE_CLASS} font-semibold text-harbor-coral`
-            : `${DASHBOARD_POSITION_METRIC_VALUE_CLASS} text-harbor-blue/40`
+            : NO_DEPOSIT_VALUE_CLASS
         }
       />
 
       <InlineMetric
         label="Ownership"
-        value={formatPercent(row.ownershipSharePct, { decimals: 2 })}
+        value={
+          hasDeposit
+            ? formatPercent(row.ownershipSharePct, { decimals: 2 })
+            : "—"
+        }
+        valueClassName={hasDeposit ? undefined : NO_DEPOSIT_VALUE_CLASS}
         title="Your share of this market's genesis deposit cap."
       />
 
       <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap text-sm">
         <span className={DASHBOARD_POSITION_METRIC_LABEL_CLASS}>Boost</span>
-        {showBoost ? (
+        {hasDeposit ? (
           <DashboardYieldBoostBadge multiplier={row.boostMultiplier} />
         ) : (
-          <span className={`${DASHBOARD_POSITION_METRIC_VALUE_CLASS} text-harbor-blue/40`}>
-            —
-          </span>
+          <span className={NO_DEPOSIT_VALUE_CLASS}>—</span>
         )}
       </span>
 
       <InlineMetric
         label="Distributed"
-        value={formatUSD(row.paidUSD, { compact: false })}
+        value={hasDeposit ? formatUSD(row.paidUSD, { compact: false }) : "—"}
         valueClassName={
-          row.paidUSD > 0
+          hasDeposit && row.paidUSD > 0
             ? `${DASHBOARD_POSITION_METRIC_VALUE_CLASS} font-semibold`
-            : `${DASHBOARD_POSITION_METRIC_VALUE_CLASS} text-harbor-blue/40`
+            : NO_DEPOSIT_VALUE_CLASS
         }
       />
     </Link>
