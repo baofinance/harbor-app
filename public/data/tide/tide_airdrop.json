@@ -1,14 +1,14 @@
 {
   "name": "tide_airdrop",
-  "description": "TIDE airdrop eligibility per wallet. Each row has buckets: veBaoSnapshot, boosters, raise, ledgerMarks (amountTokens; optional amount wei on veBaoSnapshot).",
+  "description": "TIDE airdrop eligibility per wallet. Buckets: veBaoSnapshot, boosters, raise, ledgerMarks. Raise: 50M TIDE pro-rata by USDC deposited in raise contract (refunded wallets excluded). Ledger marks: pro-rata from maiden voyage (launch/euro/metals) and anchor-sail leaderboards, 25M TIDE total, min 10 TIDE, 40% per-wallet cap with redistribution.",
   "snapshotBlock": 25000000,
   "bucketPools": {
     "veBaoSnapshot": 50000000,
     "boosters": 0,
-    "raise": 0,
-    "ledgerMarks": 0
+    "raise": 50000000,
+    "ledgerMarks": 25000000
   },
-  "addressCount": 695,
+  "addressCount": 746,
   "allocations": [
     {
       "address": "0xbba953fd09825a7a3e611ce36903c1e94d7c8b46",
@@ -60,7 +60,7 @@
           "amountTokens": 0
         },
         "ledgerMarks": {
-          "amountTokens": 0
+          "amountTokens": 2634917.474577666
         }
       }
     },
@@ -129,7 +129,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 4466696.522365789
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -150,7 +150,7 @@
           "amountTokens": 0
         },
         "ledgerMarks": {
-          "amountTokens": 0
+          "amountTokens": 72263.1538184005
         }
       }
     },
@@ -219,7 +219,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 44485.39267001476
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -255,10 +255,10 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 4515830.184111812
         },
         "ledgerMarks": {
-          "amountTokens": 0
+          "amountTokens": 2029744.458741449
         }
       }
     },
@@ -273,7 +273,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 446669.65223657887
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -363,7 +363,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 446669.65223657887
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -579,7 +579,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 134000.89567097367
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -597,7 +597,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 6011280.179799879
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -618,7 +618,7 @@
           "amountTokens": 0
         },
         "ledgerMarks": {
-          "amountTokens": 0
+          "amountTokens": 78478.00282049293
         }
       }
     },
@@ -669,10 +669,10 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 4696284.72361539
         },
         "ledgerMarks": {
-          "amountTokens": 0
+          "amountTokens": 164270.18666869658
         }
       }
     },
@@ -687,10 +687,10 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 4686904.660918422
         },
         "ledgerMarks": {
-          "amountTokens": 0
+          "amountTokens": 440200.1641532601
         }
       }
     },
@@ -705,7 +705,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 60065.656262874865
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -741,10 +741,10 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 4101767.416488504
         },
         "ledgerMarks": {
-          "amountTokens": 0
+          "amountTokens": 82135.51753382894
         }
       }
     },
@@ -759,7 +759,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 4094174.0350805
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -777,7 +777,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 4045487.0403066943
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -795,7 +795,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 4043253.692045512
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -813,7 +813,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 4042807.022393275
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -975,7 +975,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 72186.52414623537
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -993,7 +993,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 648197.9319317829
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -1065,10 +1065,10 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 223334.82611828943
         },
         "ledgerMarks": {
-          "amountTokens": 0
+          "amountTokens": 159383.4464672803
         }
       }
     },
@@ -1245,7 +1245,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 116997.87265496081
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -1569,7 +1569,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 44666.965223657884
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -2145,7 +2145,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 85698.03947811002
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -2865,7 +2865,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 475199.70521336637
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -3009,7 +3009,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 43368.8355668722
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -3045,7 +3045,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 108652.11507802412
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -3063,7 +3063,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 266661.7823852376
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -3189,7 +3189,7 @@
           "amountTokens": 0
         },
         "raise": {
-          "amountTokens": 0
+          "amountTokens": 319408.274886331
         },
         "ledgerMarks": {
           "amountTokens": 0
@@ -4938,7 +4938,7 @@
           "amountTokens": 0
         },
         "ledgerMarks": {
-          "amountTokens": 0
+          "amountTokens": 369522.4339317097
         }
       }
     },
@@ -6468,7 +6468,7 @@
           "amountTokens": 0
         },
         "ledgerMarks": {
-          "amountTokens": 0
+          "amountTokens": 72532.101301596
         }
       }
     },
@@ -9672,7 +9672,7 @@
           "amountTokens": 0
         },
         "ledgerMarks": {
-          "amountTokens": 0
+          "amountTokens": 114103.85688343199
         }
       }
     },
@@ -9960,7 +9960,7 @@
           "amountTokens": 0
         },
         "ledgerMarks": {
-          "amountTokens": 0
+          "amountTokens": 87705.09592302024
         }
       }
     },
@@ -12514,6 +12514,873 @@
         },
         "raise": {
           "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 0
+        }
+      }
+    },
+    {
+      "address": "0x619e71ec0d528520961571Dcea6f13f8B63410E3",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 10000000
+        }
+      }
+    },
+    {
+      "address": "0x754Ba099408892F500e3675b9816ea1B0dc33CBb",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 1254665.86748682
+        }
+      }
+    },
+    {
+      "address": "0x2880a6bb2cD1DF6E03dC8BbFBEd009DE586c2603",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 864737.1726538904
+        }
+      }
+    },
+    {
+      "address": "0x13F210c8bAf5f5DBAFf3E917E2e5A49E73BBAF12",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 751176.1843285181
+        }
+      }
+    },
+    {
+      "address": "0x1a9152528AEFbcD9E5df4E0770f4F510e7056913",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 1318878.5114962521
+        }
+      }
+    },
+    {
+      "address": "0xaa17879e7cac3AEE12D6aa568691e638EF0C57f0",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 463371.8018946546
+        }
+      }
+    },
+    {
+      "address": "0xCA0073964efe7f9422CeB16901018b1DB0cC4785",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 225804.11246379136
+        }
+      }
+    },
+    {
+      "address": "0xE60849FA39c4D4Ebef88C95cB27583bA2ea26E78",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 118219.20502722214
+        }
+      }
+    },
+    {
+      "address": "0xbA26035B9CD76cdA5b767A966b8A3392E476Fc0F",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 175835.6229225865
+        }
+      }
+    },
+    {
+      "address": "0xf7e9CAaaEEb6cC9657E1Dd490F044114AecC31B2",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 170702.1403623129
+        }
+      }
+    },
+    {
+      "address": "0x9db1D99D1C79A3A2C0123fcd0abB13d9B7c75657",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 109840.18836993122
+        }
+      }
+    },
+    {
+      "address": "0xecfFe7b0E11935CdB4f2107ff22140b67d36dCED",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 145867.7770328705
+        }
+      }
+    },
+    {
+      "address": "0x8335459a89A17Ed8ed128aa98F9AF86802DACF30",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 157772.60478254504
+        }
+      }
+    },
+    {
+      "address": "0xA0DD64775018b624978cCf55fE11c50dA621534E",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 102190.15456681137
+        }
+      }
+    },
+    {
+      "address": "0x6453E9D859fE2578DfC4aa8D3ec7B3a80574C00f",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 89598.7911276712
+        }
+      }
+    },
+    {
+      "address": "0x8b7698945dBCedF33F5e8d9E62B1Af8101318575",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 93502.63138432144
+        }
+      }
+    },
+    {
+      "address": "0x92aA2c306e27EEB662B6Eb5ce2dCf3c517Ef8875",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 88274.67654112467
+        }
+      }
+    },
+    {
+      "address": "0x061B84FDe0aa74ecbF8eCDB0481576feE9Ae35aa",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 99706.75751900906
+        }
+      }
+    },
+    {
+      "address": "0x742fC5146d7Ff18291E3B7499811AD87015Fc7E4",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 80188.07276658318
+        }
+      }
+    },
+    {
+      "address": "0x930FEAE1B277FF60B836D2cE27f162555A5B98b9",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 79994.86495332766
+        }
+      }
+    },
+    {
+      "address": "0x31632636D664895f1BD9D03f5F7c162A2A6980EB",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 78435.25118114927
+        }
+      }
+    },
+    {
+      "address": "0xcadF9F065e96516483afF69fBd8D0b81201199d9",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 76975.70685722087
+        }
+      }
+    },
+    {
+      "address": "0xDC1330EF8dc913C39bd29F9523418eEEacEf03D6",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 235731.06143630683
+        }
+      }
+    },
+    {
+      "address": "0xC8499D0311CA31A60e11D58A5A7e4F1C24B95575",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 76613.88757279716
+        }
+      }
+    },
+    {
+      "address": "0xAE7Dbb17bc40D53A6363409c6B1ED88d3cFdc31e",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 79016.29383135507
+        }
+      }
+    },
+    {
+      "address": "0x8AcF2f327e47FdDD1124a55eb4eFC1DfdAcAA34c",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 74568.15273129639
+        }
+      }
+    },
+    {
+      "address": "0x3Fdaf8A9af23D27C884e10820130eAB1dB6dDBeD",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 81916.5577939347
+        }
+      }
+    },
+    {
+      "address": "0xdd9c0BB1102D45357bEC81BbdffBb615D64C0ff9",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 73103.77575602735
+        }
+      }
+    },
+    {
+      "address": "0xc16A44D0759ec03c677E97eF020a2345d4dC27Fb",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 73042.86412978396
+        }
+      }
+    },
+    {
+      "address": "0x7F14A89F5333A334C0EA3B5AAA7Dc2c8E1C72de6",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 73042.53960728759
+        }
+      }
+    },
+    {
+      "address": "0x50b3Bf1B3119afc37A25c841c06C1BDD05Da1Fab",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 73042.31553223058
+        }
+      }
+    },
+    {
+      "address": "0xF7e64540f42094497E2De0F06232992b03942898",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 73042.1764511607
+        }
+      }
+    },
+    {
+      "address": "0xDD0CDF8D98d9Ad3ADfaa49AaECD444Bfa01d9C9a",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 74922.89064444692
+        }
+      }
+    },
+    {
+      "address": "0x33abAf6F3D324c68140932903FCf108cfb0548B0",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 72810.37930180691
+        }
+      }
+    },
+    {
+      "address": "0xaC46415C44240C0087589BB8E0e29281DFcCd279",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 74070.83176999423
+        }
+      }
+    },
+    {
+      "address": "0x22138A0CFf84952C018cbcBF5650149017d6b292",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 131021.0328642255
+        }
+      }
+    },
+    {
+      "address": "0x2f75E925C38f83785A7D0630f65Aed8C65C1454f",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 72482.3942758982
+        }
+      }
+    },
+    {
+      "address": "0x1e085ff3CdD38b1E5F04Ace2345966056F0C85E4",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 74204.42112794313
+        }
+      }
+    },
+    {
+      "address": "0x3e3672B23eB22946A31263d2D178bF0fB1f4BBFD",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 80488.5578336963
+        }
+      }
+    },
+    {
+      "address": "0xF1e73F7d7656b9b00d970b58aaB3Bb19b5518060",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 72240.88923314106
+        }
+      }
+    },
+    {
+      "address": "0x0e4d5032c0B076cB132a10347d940BfBB8354869",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 186861.57239097045
+        }
+      }
+    },
+    {
+      "address": "0x01878d9dBD9F27BA4cdBD19406EC158349bFAdeB",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 95710.96580205862
+        }
+      }
+    },
+    {
+      "address": "0x9bABfC1A1952a6ed2caC1922BFfE80c0506364a2",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 76768.84187349152
+        }
+      }
+    },
+    {
+      "address": "0x0cd7E1660D63a6aEbDA782a2Eb7f2875716aC3E8",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 76132.52620102082
+        }
+      }
+    },
+    {
+      "address": "0xC0ffeEBABE5D496B2DDE509f9fa189C25cF29671",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 74342.9784144772
+        }
+      }
+    },
+    {
+      "address": "0xf1674FE69b2920b4de51E909cbf060dd78724CD8",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 0
+        },
+        "ledgerMarks": {
+          "amountTokens": 73828.10488520244
+        }
+      }
+    },
+    {
+      "address": "0xA60AAdf62907bF06Dd714781d44Bbd4C2d783259",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 659284.4067011904
+        },
+        "ledgerMarks": {
+          "amountTokens": 0
+        }
+      }
+    },
+    {
+      "address": "0x55267Bc6A0a1fdCe935D482607A2e65903ef46ac",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 637505.5082362391
+        },
+        "ledgerMarks": {
+          "amountTokens": 0
+        }
+      }
+    },
+    {
+      "address": "0xDa95dD702845FA6Ca2192EF5C4EA6A523375BF52",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 362509.17566230905
+        },
+        "ledgerMarks": {
+          "amountTokens": 0
+        }
+      }
+    },
+    {
+      "address": "0x30a2837F3D319A3e1984DE5a32C0DF310e2496B7",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 80400.5374025842
+        },
+        "ledgerMarks": {
+          "amountTokens": 0
+        }
+      }
+    },
+    {
+      "address": "0x7C1A143abbe4603FDB125615A9209944b7f4234F",
+      "buckets": {
+        "veBaoSnapshot": {
+          "amountTokens": 0
+        },
+        "boosters": {
+          "amountTokens": 0
+        },
+        "raise": {
+          "amountTokens": 19550.77311201202
         },
         "ledgerMarks": {
           "amountTokens": 0

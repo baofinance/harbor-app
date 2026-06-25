@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAccount, usePublicClient } from "wagmi";
 import Image from "next/image";
 import {
+  ArrowDownTrayIcon,
   WalletIcon,
 } from "@heroicons/react/24/outline";
 import { markets } from "@/config/markets";
@@ -20,6 +21,7 @@ import { INDEX_MARKETS_TOOLBAR_ROW_CLASS } from "@/components/shared/indexMarket
 import { FilterSingleSelectDropdown } from "@/components/FilterSingleSelectDropdown";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 import { AnchorLedgerMarksHero } from "@/components/anchor/AnchorLedgerMarksHero";
+import { downloadLedgerMarksLeaderboardJson } from "@/utils/ledgerMarksLeaderboardExport";
 
 /** Match Navigation / index rows: horizontal scroll without visible scrollbar. */
 const SCROLLBAR_HIDE_X =
@@ -1028,6 +1030,28 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
   leaderboardTab === "campaigns" ? campaignLeaderboardData : anchorSailLeaderboardData;
  const leaderboardData = leaderboardRows;
 
+ const handleDownloadLeaderboard = () => {
+  if (leaderboardData.length === 0) return;
+
+  if (leaderboardTab === "campaigns") {
+    downloadLedgerMarksLeaderboardJson({
+      tab: "campaigns",
+      campaignId: campaignTab,
+      sortBy: campaignSortBy,
+      sortDirection: campaignSortDirection,
+      rows: campaignLeaderboardData,
+    });
+    return;
+  }
+
+  downloadLedgerMarksLeaderboardJson({
+    tab: "anchor-sail",
+    sortBy: anchorSailSortBy,
+    sortDirection: anchorSailSortDirection,
+    rows: anchorSailLeaderboardData,
+  });
+ };
+
  return (
  <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
  <main className="container mx-auto px-4 sm:px-10 pb-6 pt-2 sm:pt-4">
@@ -1167,6 +1191,16 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
               minWidthClass="min-w-[235px]"
             />
           </div>
+          <button
+            type="button"
+            onClick={handleDownloadLeaderboard}
+            disabled={isLoading || leaderboardData.length === 0}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+            title="Download leaderboard JSON with full wallet addresses"
+          >
+            <ArrowDownTrayIcon className="h-4 w-4" aria-hidden />
+            Download JSON
+          </button>
         </div>
 
         {/* Ledger Marks Summary */}
