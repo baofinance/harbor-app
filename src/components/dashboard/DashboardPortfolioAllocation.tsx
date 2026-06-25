@@ -24,7 +24,7 @@ export function DashboardPortfolioAllocation({
   if (compact) {
     return (
       <section
-        className={`${PORTFOLIO_CARD_SHELL_DARK} border-l-[3px] border-l-[#F5D76E]/70 px-3 py-2.5 sm:px-3.5 sm:py-3`}
+        className={`${PORTFOLIO_CARD_SHELL_DARK} border-l-[3px] border-l-harbor-gold/70 px-3 py-2.5 sm:px-3.5 sm:py-3`}
         aria-label="Portfolio allocation"
       >
         <p className={PORTFOLIO_LABEL_CLASS}>Portfolio allocation</p>

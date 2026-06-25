@@ -22,7 +22,7 @@ export function GenesisUpsideBackdrop() {
         aria-hidden
       />
       <svg
-        className="absolute -right-2 -top-2 h-20 w-20 opacity-[0.05] sm:right-2 sm:top-2"
+        className="absolute -right-2 -top-2 h-20 w-20 opacity-[0.07] sm:right-2 sm:top-2"
         viewBox="0 0 80 80"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"

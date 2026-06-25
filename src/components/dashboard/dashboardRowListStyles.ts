@@ -7,15 +7,23 @@ import {
   MV_EXPLORER_TABLE_HEADER_WRAP_CLASSNAME,
 } from "@/components/genesis/genesisMaidenVoyageTableGrid";
 import { MV_POSITION_ROW } from "@/components/genesis/maidenVoyageLayoutStyles";
-import { DASHBOARD_ROW_INTERACTIVE_CLASS } from "./dashboardInteraction";
+import {
+  HARBOR_DATA_ROW_SHELL_CLASS,
+  HARBOR_MOBILE_METRIC_LABEL_CLASS,
+  HARBOR_ROW_DETAIL_TEXT_CLASS,
+  HARBOR_ROW_MARKET_TITLE_CLASS,
+  HARBOR_ROW_METRIC_VALUE_CLASS,
+  HARBOR_ROW_VALUE_TEXT_CLASS,
+  HARBOR_TABLE_HEADER_LABEL_CLASS,
+  HARBOR_TABLE_HEADER_WRAP_CLASS,
+} from "@/components/shared/harborDataRowStyles";
 import { DASHBOARD_EMPTY_HINT_CLASS } from "./dashboardStyles";
 
 /** Row shell inside glass dashboard panels (yield share, etc.). */
 export const DASHBOARD_PANEL_ROW_SHELL_CLASS = `py-2.5 px-2 min-h-[52px] ${MV_POSITION_ROW}`;
 
 /** Index-style row shell — matches Anchor / Genesis explorer tables on dark pages. */
-export const DASHBOARD_INDEX_ROW_SHELL_CLASS =
-  `rounded-md border border-[#1E4775]/10 bg-white shadow-none overflow-hidden ${DASHBOARD_ROW_INTERACTIVE_CLASS} md:hover:bg-[rgb(var(--surface-selected-rgb))]`;
+export const DASHBOARD_INDEX_ROW_SHELL_CLASS = HARBOR_DATA_ROW_SHELL_CLASS;
 
 /**
  * md+ column tracks — network | market | type | deposit | action (equal width).
@@ -40,8 +48,7 @@ export const DASHBOARD_INDEX_ROW_DESKTOP_CLASS = `hidden lg:grid ${DASHBOARD_POS
 export const DASHBOARD_INDEX_ROW_MOBILE_CLASS = "lg:hidden space-y-2.5 p-3 sm:p-4";
 
 /** Stacked metric cell for mobile yield / position detail rows. */
-export const DASHBOARD_INDEX_ROW_MOBILE_METRIC_LABEL_CLASS =
-  "text-[10px] font-semibold uppercase tracking-wider text-[#1E4775]/55";
+export const DASHBOARD_INDEX_ROW_MOBILE_METRIC_LABEL_CLASS = HARBOR_MOBILE_METRIC_LABEL_CLASS;
 
 export const DASHBOARD_INDEX_ROW_MOBILE_METRICS_GRID_CLASS =
   "grid grid-cols-2 gap-x-3 gap-y-2.5";
@@ -58,7 +65,7 @@ export const DASHBOARD_GLASS_VALUE_TEXT_CLASS = "font-medium text-sm text-white/
 
 /** Column labels above index-style position rows. */
 export const DASHBOARD_INDEX_TABLE_HEADER_WRAP_CLASS =
-  "hidden lg:block bg-white py-1.5 px-2 overflow-x-auto mb-2 rounded-md border border-[#1E4775]/15 shadow-sm";
+  `hidden lg:block ${HARBOR_TABLE_HEADER_WRAP_CLASS} mb-2`;
 
 export const DASHBOARD_POSITIONS_LIST_CLASS = "space-y-2";
 
@@ -66,7 +73,7 @@ export const DASHBOARD_POSITIONS_LIST_CLASS = "space-y-2";
 export const DASHBOARD_POSITIONS_ROW_GRID_CLASS = DASHBOARD_INDEX_ROW_DESKTOP_CLASS;
 
 /** Header grid — same tracks/gaps as body rows + Lifecycle typography. */
-export const DASHBOARD_POSITIONS_TABLE_HEADER_GRID_CLASSNAME = `${DASHBOARD_POSITIONS_TABLE_GRID_CLASSNAME} uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold`;
+export const DASHBOARD_POSITIONS_TABLE_HEADER_GRID_CLASSNAME = `${DASHBOARD_POSITIONS_TABLE_GRID_CLASSNAME} ${HARBOR_TABLE_HEADER_LABEL_CLASS}`;
 
 /** @deprecated Use DASHBOARD_POSITIONS_TABLE_HEADER_GRID_CLASSNAME */
 export const DASHBOARD_POSITIONS_HEADER_GRID_CLASS =
@@ -80,12 +87,13 @@ export const DASHBOARD_POSITIONS_TABLE_HEADER_WRAP_CLASSNAME =
 export const DASHBOARD_POSITIONS_HEADER_CELL_CLASSNAME =
   MV_EXPLORER_HEADER_CELL_CLASSNAME;
 
-/** Shared body text — compact sm only (no lg bump) for dashboard tables. */
-export const DASHBOARD_POSITIONS_VALUE_TEXT_CLASS =
-  "font-medium text-sm text-[#1E4775]";
+/** Shared body text — matches Earn market stat columns. */
+export const DASHBOARD_POSITIONS_VALUE_TEXT_CLASS = HARBOR_ROW_METRIC_VALUE_CLASS;
 
-export const DASHBOARD_POSITION_DETAIL_CLASS =
-  "truncate text-xs leading-snug text-[#1E4775]/70";
+/** Market title on white dashboard position rows. */
+export const DASHBOARD_POSITIONS_MARKET_TITLE_CLASS = HARBOR_ROW_MARKET_TITLE_CLASS;
+
+export const DASHBOARD_POSITION_DETAIL_CLASS = HARBOR_ROW_DETAIL_TEXT_CLASS;
 
 /** Token icon in dashboard market cells — must match {@link DashboardMarketColumnHeader} ghost. */
 export const DASHBOARD_MARKET_ICON_PX = 24;
@@ -127,7 +135,7 @@ export const DASHBOARD_YIELD_TABLE_GRID_CLASSNAME = `grid ${DASHBOARD_YIELD_TABL
 
 export const DASHBOARD_GLASS_YIELD_TABLE_HEADER_GRID_CLASSNAME = `${DASHBOARD_YIELD_TABLE_GRID_CLASSNAME} uppercase tracking-wider text-[10px] lg:text-[11px] text-white/55 font-semibold`;
 
-export const DASHBOARD_YIELD_TABLE_HEADER_GRID_CLASSNAME = `${DASHBOARD_YIELD_TABLE_GRID_CLASSNAME} uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold`;
+export const DASHBOARD_YIELD_TABLE_HEADER_GRID_CLASSNAME = `${DASHBOARD_YIELD_TABLE_GRID_CLASSNAME} ${HARBOR_TABLE_HEADER_LABEL_CLASS}`;
 
 export const DASHBOARD_YIELD_COL_NUMERIC_CLASSNAME =
   "flex w-full min-w-0 items-center justify-end truncate text-right tabular-nums";
@@ -138,10 +146,9 @@ export const DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME =
 export const DASHBOARD_YIELD_COL_BOOST_CLASSNAME =
   "flex w-full min-w-0 items-center justify-center text-center";
 
-export const DASHBOARD_INDEX_ROW_TEXT_CLASS = "text-[#1E4775]";
+export const DASHBOARD_INDEX_ROW_TEXT_CLASS = "text-harbor-blue";
 
-export const DASHBOARD_INDEX_TABLE_HEAD_CLASS =
-  "uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold";
+export const DASHBOARD_INDEX_TABLE_HEAD_CLASS = HARBOR_TABLE_HEADER_LABEL_CLASS;
 
 export const DASHBOARD_YIELD_ROW_GRID_CLASS = `${DASHBOARD_YIELD_TABLE_GRID_CLASSNAME} text-sm py-2.5 px-2 min-h-[52px]`;
 

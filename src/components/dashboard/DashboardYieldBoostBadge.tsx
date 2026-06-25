@@ -36,7 +36,7 @@ export function DashboardYieldBoostBadge({
     }
 
     return (
-      <span className="inline-flex items-center rounded-md border border-[#B8EBD5]/35 bg-[#B8EBD5]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#B8EBD5]">
+      <span className="inline-flex items-center rounded-md border border-harbor-mint/35 bg-harbor-mint/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-harbor-mint">
         {label}
       </span>
     );
@@ -51,7 +51,7 @@ export function DashboardYieldBoostBadge({
   }
 
   return (
-    <span className="inline-flex items-center rounded-md border border-[#3d8f7a]/45 bg-gradient-to-r from-[#B8EBD5]/30 to-[#B8EBD5]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#2d7a66] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35)]">
+    <span className="inline-flex items-center rounded-md border border-harbor-mint/45 bg-gradient-to-r from-harbor-mint/30 to-harbor-mint/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#2d7a66] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.35)]">
       {label}
     </span>
   );

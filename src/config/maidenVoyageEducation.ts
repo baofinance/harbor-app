@@ -53,19 +53,25 @@ export const MAIDEN_VOYAGE_UPSIDE_COPY = {
   sectionCaption:
     "See what your founding deposit could become as this market grows.",
   depositLabel: "Your deposit",
-  revenueShareTitle: "Future Revenue Share",
+  revenueShareTitle: "Revenue share",
   revenueShareCaption: "Your share of future market revenue",
   benchmarkIntro: "If this market grows, your share could earn…",
   youEarn: "You earn",
   youCouldEarn: "You could earn",
   marketRevenueSuffix: "market revenue",
   earningsSuffix: "/yr",
-  tryDepositLabel: "Try a deposit",
-  depositPresets: [500, 1_000, 5_000, 10_000] as const,
+  explainerSubtitle:
+    "See the assumptions and formulas behind these projections.",
+  explainerToggleShow: "Show details",
+  explainerToggleHide: "Hide details",
+  sliderMinUsd: 0,
+  sliderPivotUsd: 5_000,
+  /** Fallback when voyage cap is unknown. */
+  sliderFallbackMaxUsd: 10_000,
   growthStages: [
-    { label: "Launch", tvlUsd: 100_000 },
-    { label: "Growth", tvlUsd: 1_000_000 },
-    { label: "Scale", tvlUsd: 10_000_000 },
+    { id: "launch", label: "Launch", tvlUsd: 100_000 },
+    { id: "growth", label: "Growth", tvlUsd: 1_000_000 },
+    { id: "scale", label: "Scale", tvlUsd: 10_000_000 },
   ],
 } as const;
 

@@ -48,6 +48,9 @@ export type DashboardPositionRow = {
   usd: number;
   /** When true, on-chain/subgraph balance exists but USD could not be priced. */
   usdUnpriced?: boolean;
+  /** Sail leveraged positions — unrealized PnL when cost basis is available. */
+  unrealizedPnLUsd?: number;
+  unrealizedPnLPercent?: number;
   href: "/genesis" | "/anchor" | "/sail";
 };
 
@@ -101,6 +104,25 @@ function resolveUsdValue(
 
 function shouldShowPositionRow(balanceTokens: number, usd: number, usdUnpriced: boolean): boolean {
   return usdUnpriced || nonZeroUsd(usd) || balanceTokens > 1e-6;
+}
+
+/** Same formula as sail page: current value minus subgraph cost basis. */
+function sailUnrealizedPnL(
+  currentValueUsd: number,
+  totalCostBasisUSD?: string | number | null,
+): Pick<DashboardPositionRow, "unrealizedPnLUsd" | "unrealizedPnLPercent"> {
+  const costBasis =
+    typeof totalCostBasisUSD === "string"
+      ? parseFloat(totalCostBasisUSD || "0")
+      : (totalCostBasisUSD ?? 0);
+  if (!Number.isFinite(costBasis) || costBasis <= 0 || !nonZeroUsd(currentValueUsd)) {
+    return {};
+  }
+  const unrealizedPnLUsd = currentValueUsd - costBasis;
+  return {
+    unrealizedPnLUsd,
+    unrealizedPnLPercent: (unrealizedPnLUsd / costBasis) * 100,
+  };
 }
 
 function withChain(
@@ -624,6 +646,7 @@ export function useDashboardPositions() {
       id: string;
       tokenAddress: string;
       balanceUSD?: string;
+      totalCostBasisUSD?: string;
     }>;
     const rows: DashboardPositionRow[] = [];
     const tokensFromSailSubgraphRow = new Set<string>();
@@ -649,6 +672,7 @@ export function useDashboardPositions() {
           statusTone: "neutral",
           statusLabel: "Position",
           usd,
+          ...sailUnrealizedPnL(usd, p.totalCostBasisUSD),
           href: "/sail",
         })
       );

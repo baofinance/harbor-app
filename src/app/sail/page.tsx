@@ -6,13 +6,11 @@ import { useChainId, useSwitchChain } from "wagmi";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useSailPageData } from "@/hooks/useSailPageData";
 import { SailManageModal } from "@/components/SailManageModal";
+import { MarksBoostBadge } from "@/components/MarksBoostBadge";
 import {
-  SailExtendedHero,
-  SailLedgerMarksBar,
   SailMarksSubgraphErrorBanner,
   SailMarketsSections,
   SailMarketsTableHeader,
-  SailPageTitleSection,
   SailUserStatsCards,
   SailMarketRow,
   SailBasicMarketCardsGrid,
@@ -24,12 +22,12 @@ import {
   markets as marketsConfig,
   type DefinedMarket,
 } from "@/config/markets";
+import { HarborPageShell } from "@/components/shared/HarborPageShell";
 import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
 import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
 import { IndexMarketsLoadError } from "@/components/shared/IndexMarketsLoadError";
 import { useExpandedMarketIds } from "@/hooks/useExpandedMarketIds";
 import { useOpenMarketManageModal } from "@/hooks/useOpenMarketManageModal";
-import { formatCompactUSD } from "@/utils/anchor";
 import { isValidContractAddress } from "@/utils/isValidContractAddress";
 
 type SailManageModalPayload = {
@@ -149,33 +147,27 @@ export default function SailPage() {
 
   return (
     <>
-      <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
-        <main className="container mx-auto px-4 sm:px-10 pb-6 pt-2 sm:pt-4">
-          <div className="mb-2">
-            <SailPageTitleSection />
-
-            {!sailViewBasic && (
-              <SailExtendedHero
-                boostEndTimestamp={activeSailBoostEndTimestamp}
+      <HarborPageShell>
+          {!sailViewBasic && activeSailBoostEndTimestamp != null ? (
+            <div className="mb-2">
+              <MarksBoostBadge
+                multiplier={2}
+                endTimestamp={activeSailBoostEndTimestamp}
               />
-            )}
-          </div>
+            </div>
+          ) : null}
 
           {!sailViewBasic && (
             <>
-              {isConnected && (
-                <SailUserStatsCards
-                  sailUserStats={sailUserStats}
-                  pnlFromMarkets={pnlFromMarkets}
-                  pnlSummaryLoading={sailPnLSummary.isLoading}
-                />
-              )}
-
               {sailMarksError && (
                 <SailMarksSubgraphErrorBanner error={sailMarksError} />
               )}
 
-              <SailLedgerMarksBar
+              <SailUserStatsCards
+                isConnected={isConnected}
+                sailUserStats={sailUserStats}
+                pnlFromMarkets={pnlFromMarkets}
+                pnlSummaryLoading={sailPnLSummary.isLoading}
                 isLoadingSailMarks={isLoadingSailMarks}
                 totalSailMarks={totalSailMarks}
                 sailMarksPerDay={sailMarksPerDay}
@@ -199,12 +191,6 @@ export default function SailPage() {
                 shortFilterSelected,
                 setShortFilterSelected,
                 onClearFilters: clearFilters,
-                metrics: [
-                  {
-                    label: "Your Deposits",
-                    value: formatCompactUSD(sailUserStats.totalPositionsUSD || 0),
-                  },
-                ],
               }}
             >
               {sailViewBasic ? (
@@ -282,7 +268,7 @@ export default function SailPage() {
               void openManageModal(marketId, m, "redeem");
             }}
           />
-        </main>
+      </HarborPageShell>
 
         {manageModal && (
           <SailManageModal
@@ -315,7 +301,6 @@ export default function SailPage() {
             fxSAVEPrice={sailPageFxSAVEPrice}
           />
         )}
-      </div>
     </>
   );
 }

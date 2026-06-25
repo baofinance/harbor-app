@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DashboardConnectNotice } from "@/components/dashboard/DashboardConnectNotice";
-import { DashboardPageTitleSection } from "@/components/dashboard/DashboardPageTitleSection";
 import { DashboardPortfolioHero } from "@/components/dashboard/DashboardPortfolioHero";
 import {
   DashboardProductCard,
@@ -31,6 +30,7 @@ import {
 } from "@/components/dashboard/portfolio/dashboardPortfolioUtils";
 import { DashboardYieldShareCardList } from "@/components/dashboard/portfolio/DashboardYieldShareCardList";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
+import { HarborPageShell } from "@/components/shared/HarborPageShell";
 import { useDashboardActiveVoyage } from "@/hooks/useDashboardActiveVoyage";
 import { useFounderMetrics } from "@/hooks/useFounderMetrics";
 import {
@@ -38,6 +38,7 @@ import {
   type DashboardPositionRow,
 } from "@/hooks/useDashboardPositions";
 import { useDashboardEarnClaimable } from "@/hooks/useDashboardEarnClaimable";
+import { useDashboardManageModals } from "@/hooks/useDashboardManageModals";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 
 function sumRowsUsd(rows: DashboardPositionRow[]): number {
@@ -60,6 +61,8 @@ type PositionProductCardProps = {
   isConnected: boolean;
   earnClaimableUsd?: number;
   earnClaimableLoading?: boolean;
+  onManage?: (row: DashboardPositionRow) => void;
+  showWithdrawNotice?: boolean;
 };
 
 function PositionProductCard({
@@ -69,6 +72,8 @@ function PositionProductCard({
   isConnected,
   earnClaimableUsd = 0,
   earnClaimableLoading = false,
+  onManage,
+  showWithdrawNotice = false,
 }: PositionProductCardProps) {
   const defaultExpanded =
     productId === "archived"
@@ -125,6 +130,8 @@ function PositionProductCard({
         error={null}
         emptyState={group.emptyState}
         loadingSkeletonCount={group.rows.length === 0 ? 1 : 3}
+        onManage={onManage}
+        showWithdrawNotice={showWithdrawNotice}
       />
     </DashboardProductCard>
   );
@@ -144,6 +151,7 @@ export default function DashboardPage() {
   } = useDashboardPositions();
   const { earnClaimableUsd, isLoading: earnClaimableLoading } =
     useDashboardEarnClaimable();
+  const { openPositionManage, modals } = useDashboardManageModals();
   const { order: moduleOrder, setOrder: setModuleOrder } = useDashboardModuleLayout();
 
   const userToggledYield = useRef(false);
@@ -373,6 +381,8 @@ export default function DashboardPage() {
                   productId="archived"
                   compact={dashboardViewBasic}
                   isConnected={isConnected}
+                  onManage={openPositionManage}
+                  showWithdrawNotice
                 />
               ) : null}
             </div>
@@ -394,22 +404,20 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="relative mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col font-sans text-white">
-      <main className="mx-auto w-full max-w-[1600px] space-y-3 px-3 pb-6 pt-2 sm:px-10 sm:pt-4">
-        <div className="relative flex items-start justify-between gap-3">
-          <DashboardPageTitleSection />
-          <DashboardModuleLayoutControls
-            order={moduleOrder}
-            onOrderChange={setModuleOrder}
-          />
-        </div>
+    <HarborPageShell mainClassName="space-y-3">
+      <div className="relative flex items-start justify-end">
+        <DashboardModuleLayoutControls
+          order={moduleOrder}
+          onOrderChange={setModuleOrder}
+        />
+      </div>
 
-        {!isConnected ? <DashboardConnectNotice /> : null}
+      {!isConnected ? <DashboardConnectNotice /> : null}
 
-        <div className="space-y-4">
-          {moduleOrder.map((moduleId) => renderModule(moduleId))}
-        </div>
-      </main>
-    </div>
+      <div className="space-y-4">
+        {moduleOrder.map((moduleId) => renderModule(moduleId))}
+      </div>
+      {modals}
+    </HarborPageShell>
   );
 }

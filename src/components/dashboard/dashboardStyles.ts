@@ -4,6 +4,27 @@ import {
   DASHBOARD_SECTION_HEADER_OPEN_CLASS,
 } from "./dashboardBrand";
 import { DASHBOARD_SECTION_HEADER_HOVER_CLASS } from "./dashboardInteraction";
+import { HARBOR_BTN_SECONDARY_CLASS } from "@/components/shared/harborButtonStyles";
+import {
+  HARBOR_STATUS_PILL_ACTIVE_GLASS,
+  HARBOR_STATUS_PILL_ACTIVE_LIGHT,
+  HARBOR_STATUS_PILL_CORAL_LIGHT,
+  HARBOR_STATUS_PILL_ENDED_GLASS,
+  HARBOR_STATUS_PILL_ENDED_LIGHT,
+  HARBOR_STATUS_PILL_MARKS_LIGHT,
+  HARBOR_STATUS_PILL_NEUTRAL_GLASS,
+  HARBOR_STATUS_PILL_NEUTRAL_LIGHT,
+  HARBOR_STATUS_PILL_STABILITY_GLASS,
+  HARBOR_STATUS_PILL_STABILITY_LIGHT,
+  HARBOR_STATUS_PILL_WALLET_LIGHT,
+} from "@/components/shared/harborStatusPillStyles";
+import {
+  HARBOR_STAT_TILE_GLASS_CHIP_CLASS,
+  HARBOR_STAT_TILE_GLASS_CHIP_INLINE_CLASS,
+  HARBOR_STAT_TILE_GLASS_CHIP_LABEL_CLASS,
+  HARBOR_STAT_TILE_GLASS_CHIP_SURFACE,
+  HARBOR_STAT_TILE_GLASS_CHIP_VALUE_CLASS,
+} from "@/components/shared/harborStatTileStyles";
 import {
   MV_BODY_TEXT,
   MV_CAPTION_TEXT,
@@ -16,6 +37,7 @@ import {
   MV_POSITION_ROW,
   MV_SECTION_LABEL,
 } from "@/components/genesis/maidenVoyageLayoutStyles";
+import { INDEX_PAGE_TITLE_HEADING_LEFT_CLASS } from "@/components/shared/indexPageTitleStyles";
 
 export const DASHBOARD_GLASS_CARD_SHADOW = MV_GLASS_CARD_SHADOW;
 
@@ -63,9 +85,6 @@ export const DASHBOARD_SECTION_HEADER_ACTIONS_CELL_CLASS =
 export const DASHBOARD_SECTION_TITLE_BTN_CLASS =
   "flex shrink-0 items-center gap-2 rounded-md text-left hover:bg-white/[0.05]";
 
-export const DASHBOARD_SECTION_TITLE_CLASS =
-  "text-lg font-medium text-white font-geo";
-
 export const DASHBOARD_SECTION_ICON_CLASS = "h-5 w-5 shrink-0 text-white/45";
 
 export const DASHBOARD_SECTION_CHEVRON_CLASS = "h-5 w-5 text-white/55";
@@ -100,17 +119,17 @@ export const DASHBOARD_METRIC_STRIP_SCROLL_CLASS =
   "flex min-w-0 w-full flex-col gap-4 md:flex-row md:items-end md:justify-end md:gap-2.5 md:overflow-x-auto md:[-ms-overflow-style:none] md:[scrollbar-width:none] md:[&::-webkit-scrollbar]:hidden lg:gap-3";
 
 /** Frosted white stat cards on section headers. */
-export const DASHBOARD_METRIC_CHIP_SURFACE = `rounded-xl ${MV_GLASS_INSET_LIGHT}`;
+export const DASHBOARD_METRIC_CHIP_SURFACE = HARBOR_STAT_TILE_GLASS_CHIP_SURFACE;
 
 /** Metric tiles on section headers. */
-export const DASHBOARD_METRIC_CHIP_CLASS = `flex h-[4.75rem] w-[9.5rem] shrink-0 flex-col items-center justify-center overflow-hidden px-3 py-2 text-center sm:h-[5rem] sm:w-[10.5rem] ${DASHBOARD_METRIC_CHIP_SURFACE}`;
+export const DASHBOARD_METRIC_CHIP_CLASS = HARBOR_STAT_TILE_GLASS_CHIP_CLASS;
 
 /** Page stat strip chips — grid cells on mobile; compact fixed width from md for single-row fit. */
-export const DASHBOARD_METRIC_CHIP_INLINE_CLASS = `flex h-[4.25rem] min-w-0 w-full max-w-full shrink-0 flex-col items-center justify-center overflow-hidden px-2.5 py-2 text-center sm:h-[4.75rem] sm:px-3 md:h-[4rem] md:w-[6.75rem] md:max-w-[7rem] md:shrink-0 md:px-2 lg:h-[4.25rem] lg:w-[7.25rem] lg:max-w-[7.5rem] xl:h-[4.5rem] xl:w-[8rem] xl:max-w-[8.5rem] 2xl:h-[5rem] 2xl:w-[10.5rem] 2xl:max-w-none ${DASHBOARD_METRIC_CHIP_SURFACE}`;
+export const DASHBOARD_METRIC_CHIP_INLINE_CLASS = HARBOR_STAT_TILE_GLASS_CHIP_INLINE_CLASS;
 
-export const DASHBOARD_METRIC_CHIP_LABEL_CLASS = MV_SECTION_LABEL;
+export const DASHBOARD_METRIC_CHIP_LABEL_CLASS = HARBOR_STAT_TILE_GLASS_CHIP_LABEL_CLASS;
 
-export const DASHBOARD_METRIC_CHIP_VALUE_CLASS = "text-sm text-white/90 sm:text-base md:text-lg";
+export const DASHBOARD_METRIC_CHIP_VALUE_CLASS = HARBOR_STAT_TILE_GLASS_CHIP_VALUE_CLASS;
 
 /** Uppercase labels on glass table headers. */
 export const DASHBOARD_INDEX_TABLE_HEAD = MV_SECTION_LABEL;
@@ -119,39 +138,17 @@ export const DASHBOARD_INDEX_TABLE_HEAD = MV_SECTION_LABEL;
 export const DASHBOARD_STATUS_PILL_BASE =
   "inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold sm:text-xs";
 
-export const DASHBOARD_STATUS_PILL_ENDED_LIGHT =
-  `${DASHBOARD_STATUS_PILL_BASE} border border-dashed border-[#1E4775]/20 bg-[#1E4775]/[0.04] text-[#1E4775]/50`;
-
-export const DASHBOARD_STATUS_PILL_ACTIVE_LIGHT =
-  `${DASHBOARD_STATUS_PILL_BASE} border border-[#B8EBD5]/40 bg-[#B8EBD5]/15 text-[#2A7A5E]`;
-
-export const DASHBOARD_STATUS_PILL_NEUTRAL_LIGHT =
-  `${DASHBOARD_STATUS_PILL_BASE} border border-[#1E4775]/15 bg-[#1E4775]/[0.06] text-[#1E4775]/65`;
-
-export const DASHBOARD_STATUS_PILL_WALLET_LIGHT =
-  `${DASHBOARD_STATUS_PILL_BASE} border border-[#1E4775]/20 bg-[#1E4775]/[0.08] text-[#1E4775]/70`;
-
-export const DASHBOARD_STATUS_PILL_STABILITY_LIGHT =
-  `${DASHBOARD_STATUS_PILL_BASE} border border-[#B8EBD5]/30 bg-[#B8EBD5]/10 text-[#2A7A5E]/90`;
-
-export const DASHBOARD_STATUS_PILL_MARKS_LIGHT =
-  `${DASHBOARD_STATUS_PILL_BASE} border border-[#C4B5FD]/35 bg-[#C4B5FD]/12 text-[#7C6BB8]`;
-
-export const DASHBOARD_STATUS_PILL_CORAL_LIGHT =
-  `${DASHBOARD_STATUS_PILL_BASE} border border-[#FF8A7A]/40 bg-[#FF8A7A]/15 text-[#D45A4A] ring-1 ring-[#FF8A7A]/20`;
-
-/** Status pills on dark glass inset rows. */
-export const DASHBOARD_STATUS_PILL_ENDED_GLASS =
-  "inline-flex items-center rounded-md border border-white/[0.08] bg-[#0a1929]/40 px-2 py-0.5 text-[10px] font-semibold text-white/50 sm:text-xs";
-
-export const DASHBOARD_STATUS_PILL_ACTIVE_GLASS =
-  "inline-flex items-center rounded-md border border-[#B8EBD5]/35 bg-[#B8EBD5]/15 px-2 py-0.5 text-[10px] font-semibold text-[#B8EBD5] sm:text-xs";
-
-export const DASHBOARD_STATUS_PILL_NEUTRAL_GLASS =
-  "inline-flex items-center rounded-md border border-white/[0.09] bg-[#0a1929]/35 px-2 py-0.5 text-[10px] font-semibold text-white/70 sm:text-xs";
-
-export const DASHBOARD_STATUS_PILL_STABILITY_GLASS =
-  "inline-flex items-center rounded-md border border-[#B8EBD5]/35 bg-[#B8EBD5]/15 px-2 py-0.5 text-[10px] font-semibold text-[#B8EBD5] sm:text-xs";
+export const DASHBOARD_STATUS_PILL_ENDED_LIGHT = HARBOR_STATUS_PILL_ENDED_LIGHT;
+export const DASHBOARD_STATUS_PILL_ACTIVE_LIGHT = HARBOR_STATUS_PILL_ACTIVE_LIGHT;
+export const DASHBOARD_STATUS_PILL_NEUTRAL_LIGHT = HARBOR_STATUS_PILL_NEUTRAL_LIGHT;
+export const DASHBOARD_STATUS_PILL_WALLET_LIGHT = HARBOR_STATUS_PILL_WALLET_LIGHT;
+export const DASHBOARD_STATUS_PILL_STABILITY_LIGHT = HARBOR_STATUS_PILL_STABILITY_LIGHT;
+export const DASHBOARD_STATUS_PILL_MARKS_LIGHT = HARBOR_STATUS_PILL_MARKS_LIGHT;
+export const DASHBOARD_STATUS_PILL_CORAL_LIGHT = HARBOR_STATUS_PILL_CORAL_LIGHT;
+export const DASHBOARD_STATUS_PILL_ENDED_GLASS = HARBOR_STATUS_PILL_ENDED_GLASS;
+export const DASHBOARD_STATUS_PILL_ACTIVE_GLASS = HARBOR_STATUS_PILL_ACTIVE_GLASS;
+export const DASHBOARD_STATUS_PILL_NEUTRAL_GLASS = HARBOR_STATUS_PILL_NEUTRAL_GLASS;
+export const DASHBOARD_STATUS_PILL_STABILITY_GLASS = HARBOR_STATUS_PILL_STABILITY_GLASS;
 
 /** Group labels inside section bodies (Maiden Voyage, Earn, etc.). */
 export const DASHBOARD_GROUP_LABEL_CLASS = MV_SECTION_LABEL;
@@ -172,7 +169,7 @@ export const DASHBOARD_PRODUCT_CARD_COLLAPSED_HOVER_CLASS =
   "transition-[box-shadow] duration-200 hover:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.28)]";
 
 export const DASHBOARD_PRODUCT_CARD_FEATURED_COLLAPSED_HOVER_CLASS =
-  "transition-[box-shadow] duration-200 hover:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.28)] hover:ring-1 hover:ring-[#F5D76E]/20";
+  "transition-[box-shadow] duration-200 hover:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.28)] hover:ring-1 hover:ring-harbor-gold/20";
 
 export const DASHBOARD_PRODUCT_CARD_HEADER_CLASS =
   "flex flex-col gap-0";
@@ -219,18 +216,20 @@ export const DASHBOARD_PRODUCT_ACCENT_BAR_CLASS = "absolute inset-y-0 left-0 w-[
 export const DASHBOARD_MV_PREVIEW_CLASS =
   "flex w-full flex-col gap-2 border-t border-white/[0.08] px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-4";
 
-/** Portfolio hero — 5-column mockup grid. */
+/** Portfolio hero — value | allocation | yield stats (3-up). */
 export const DASHBOARD_HERO_GRID_CLASS =
-  "grid grid-cols-1 gap-4 divide-y divide-white/[0.08] md:grid-cols-2 md:divide-y lg:grid-cols-[minmax(0,1fr)_minmax(0,2.35fr)_repeat(3,minmax(5.25rem,0.68fr))] lg:gap-0 lg:divide-x lg:divide-y-0 lg:divide-white/[0.08]";
+  "grid grid-cols-1 gap-4 divide-y divide-white/[0.08] md:grid-cols-2 md:divide-y lg:grid-cols-[minmax(0,1fr)_minmax(0,2.35fr)_minmax(0,auto)] lg:items-center lg:gap-0 lg:divide-x lg:divide-y-0 lg:divide-white/[0.08]";
 
+/** Yield stats row — 3 columns on tablet; single flex group on desktop hero. */
 export const DASHBOARD_HERO_STATS_ROW_CLASS =
-  "md:col-span-2 md:grid md:grid-cols-3 md:gap-4 md:border-t md:border-white/[0.08] md:pt-4 lg:contents lg:border-t-0 lg:pt-0";
+  "md:col-span-2 md:grid md:grid-cols-3 md:items-center md:divide-x md:divide-white/[0.08] md:border-t md:border-white/[0.08] md:pt-4 lg:col-span-1 lg:flex lg:items-center lg:justify-end lg:self-center lg:border-t-0 lg:pt-0 lg:divide-x lg:divide-white/[0.08]";
 
 export const DASHBOARD_HERO_COLUMN_CLASS =
-  "min-w-0 py-3 first:pt-0 last:pb-0 lg:px-4 lg:py-0 lg:first:pl-0 lg:last:pr-0";
+  "min-w-0 py-3 first:pt-0 last:pb-0 lg:px-4 lg:py-0 lg:first:pl-0";
 
-/** Yield stat columns — compact width, right-aligned on desktop. */
-export const DASHBOARD_HERO_YIELD_COLUMN_CLASS = `${DASHBOARD_HERO_COLUMN_CLASS} lg:pl-5 lg:text-right`;
+/** Individual yield stat cell inside {@link DASHBOARD_HERO_STATS_ROW_CLASS}. */
+export const DASHBOARD_HERO_YIELD_STAT_CELL_CLASS =
+  "min-w-0 px-4 py-2 md:px-3 md:py-0 lg:px-5 lg:text-right";
 
 export const DASHBOARD_HERO_STAT_LABEL_CLASS =
   "text-[10px] font-semibold uppercase tracking-wide text-white/50";
@@ -283,8 +282,7 @@ export const DASHBOARD_PRODUCT_TOTAL_CLASS =
 
 export const DASHBOARD_PAGE_HEADER_CLASS = "min-w-0 text-left";
 
-export const DASHBOARD_PAGE_HEADER_TITLE_CLASS =
-  "font-bold font-mono text-white text-2xl leading-tight sm:text-3xl";
+export const DASHBOARD_PAGE_HEADER_TITLE_CLASS = INDEX_PAGE_TITLE_HEADING_LEFT_CLASS;
 
 export const DASHBOARD_PAGE_HEADER_SUBTITLE_CLASS =
   "mt-1 max-w-md text-sm font-medium leading-snug tracking-tight text-white/85 sm:text-base";
@@ -328,42 +326,41 @@ export const DASHBOARD_PRODUCT_HEADER_METRIC_VALUE_CLASS =
 const DASHBOARD_PRODUCT_ICON_BADGE_BASE =
   "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-[#0a1929]/55 backdrop-blur-md";
 
-export const DASHBOARD_PRODUCT_ICON_MV_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} border-[#FF8A7A]/25 text-[#FF8A7A]`;
+export const DASHBOARD_PRODUCT_ICON_MV_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} border-harbor-coral/25 text-harbor-coral`;
 
-export const DASHBOARD_PRODUCT_ICON_EARN_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} border-[#B8EBD5]/25 bg-[#B8EBD5]/8 text-[#B8EBD5]`;
+export const DASHBOARD_PRODUCT_ICON_EARN_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} border-harbor-mint/25 bg-harbor-mint/8 text-harbor-mint`;
 
-export const DASHBOARD_PRODUCT_ICON_SAIL_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} border-[#C4B5FD]/25 bg-[#C4B5FD]/8 text-[#C4B5FD]`;
+export const DASHBOARD_PRODUCT_ICON_SAIL_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} border-harbor-purple/25 bg-harbor-purple/8 text-harbor-purple`;
 
-export const DASHBOARD_PRODUCT_ICON_YIELD_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} border-[#F5D76E]/25 text-[#F5D76E]`;
+export const DASHBOARD_PRODUCT_ICON_YIELD_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} border-harbor-gold/25 text-harbor-gold`;
 
-export const DASHBOARD_PRODUCT_ICON_YIELD_FEATURED_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} h-8 w-8 border-[#F5D76E]/35 bg-[#F5D76E]/10 ring-1 ring-[#F5D76E]/30 text-[#F5D76E]`;
+export const DASHBOARD_PRODUCT_ICON_YIELD_FEATURED_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} h-8 w-8 border-harbor-gold/35 bg-harbor-gold/10 ring-1 ring-harbor-gold/30 text-harbor-gold`;
 
 export const DASHBOARD_PRODUCT_ICON_ARCHIVED_CLASS = `${DASHBOARD_PRODUCT_ICON_BADGE_BASE} border-white/10 text-white/40`;
 
-export const DASHBOARD_PRODUCT_ACCENT_MV_CLASS = "bg-[#FF8A7A]";
-export const DASHBOARD_PRODUCT_ACCENT_EARN_CLASS = "bg-[#B8EBD5]";
-export const DASHBOARD_PRODUCT_ACCENT_SAIL_CLASS = "bg-[#C4B5FD]";
-export const DASHBOARD_PRODUCT_ACCENT_YIELD_CLASS = "bg-[#F5D76E]";
+export const DASHBOARD_PRODUCT_ACCENT_MV_CLASS = "bg-harbor-coral";
+export const DASHBOARD_PRODUCT_ACCENT_EARN_CLASS = "bg-harbor-mint";
+export const DASHBOARD_PRODUCT_ACCENT_SAIL_CLASS = "bg-harbor-purple";
+export const DASHBOARD_PRODUCT_ACCENT_YIELD_CLASS = "bg-harbor-gold";
 export const DASHBOARD_PRODUCT_ACCENT_YIELD_FEATURED_CLASS =
-  "bg-gradient-to-b from-[#F5D76E] to-[#F5D76E]/60";
+  "bg-gradient-to-b from-harbor-gold to-harbor-gold/60";
 export const DASHBOARD_PRODUCT_ACCENT_ARCHIVED_CLASS = "bg-white/30";
 
 /** Left accent on dashboard stat chips — matches category chip colors. */
-export const DASHBOARD_STAT_CHIP_BORDER_EARN_CLASS = "border-l-[#B8EBD5]/45";
-export const DASHBOARD_STAT_CHIP_BORDER_SAIL_CLASS = "border-l-[#C4B5FD]/45";
+export const DASHBOARD_STAT_CHIP_BORDER_EARN_CLASS = "border-l-harbor-mint/45";
+export const DASHBOARD_STAT_CHIP_BORDER_SAIL_CLASS = "border-l-harbor-purple/45";
 export const DASHBOARD_STAT_CHIP_BORDER_ARCHIVED_CLASS = "border-l-white/18";
-export const DASHBOARD_STAT_CHIP_BORDER_MAIDEN_CLASS = "border-l-[#FF8A7A]/45";
-export const DASHBOARD_STAT_CHIP_BORDER_YIELD_CLASS = "border-l-[#F5D76E]/45";
+export const DASHBOARD_STAT_CHIP_BORDER_MAIDEN_CLASS = "border-l-harbor-coral/45";
+export const DASHBOARD_STAT_CHIP_BORDER_YIELD_CLASS = "border-l-harbor-gold/45";
 export const DASHBOARD_STAT_CHIP_BORDER_MUTED_CLASS = "border-l-white/18";
 
-export const DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_GOLD_CLASS = "text-[#F5D76E]";
-export const DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_MINT_CLASS = "text-[#B8EBD5]";
+export const DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_GOLD_CLASS = "text-harbor-gold";
+export const DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_MINT_CLASS = "text-harbor-mint";
 export const DASHBOARD_PRODUCT_SUMMARY_METRIC_VALUE_MUTED_CLASS = "text-white/60";
 
 export const DASHBOARD_PRODUCT_LOADING_HINT_CLASS = MV_META_TEXT;
 
-export const DASHBOARD_VIEW_ALL_BTN_CLASS =
-  "inline-flex shrink-0 items-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#1E4775] shadow-sm transition hover:bg-white/90 sm:px-3 sm:text-xs";
+export const DASHBOARD_VIEW_ALL_BTN_CLASS = HARBOR_BTN_SECONDARY_CLASS;
 
 /** @deprecated Use DASHBOARD_VIEW_ALL_BTN_CLASS */
 export const DASHBOARD_VIEW_ALL_LINK_CLASS = DASHBOARD_VIEW_ALL_BTN_CLASS;

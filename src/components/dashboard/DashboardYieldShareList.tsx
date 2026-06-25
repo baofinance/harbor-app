@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { FounderMetricRow } from "@/hooks/useFounderMetrics";
+import { founderMetricRowHasRevenueShare } from "@/utils/founderMetrics";
 import { GenesisMarketChainCell } from "@/components/genesis/GenesisMarketSharedRowCells";
 import { chainFromMarketId } from "@/components/dashboard/dashboardRowPresentation";
 import { formatPercent, formatUSD } from "@/utils/formatters";
@@ -22,6 +23,7 @@ import {
   DASHBOARD_INDEX_ROW_MOBILE_METRIC_LABEL_CLASS,
   DASHBOARD_INDEX_ROW_MOBILE_METRICS_GRID_CLASS,
   DASHBOARD_INDEX_TABLE_HEADER_WRAP_CLASS,
+  DASHBOARD_POSITIONS_MARKET_TITLE_CLASS,
   DASHBOARD_POSITIONS_VALUE_TEXT_CLASS,
   DASHBOARD_YIELD_COL_BOOST_CLASSNAME,
   DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME,
@@ -114,7 +116,7 @@ function DashboardYieldRowView({ row }: { row: FounderMetricRow }) {
             size={DASHBOARD_NETWORK_ICON_PX}
           />
           <span
-            className={`min-w-0 truncate ${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS}`}
+            className={DASHBOARD_POSITIONS_MARKET_TITLE_CLASS}
             title={row.marketName}
           >
             {row.marketName}
@@ -148,7 +150,7 @@ function DashboardYieldRowView({ row }: { row: FounderMetricRow }) {
           <YieldMobileMetric
             label="Pending distribution"
             value={formatUSD(row.outstandingUSD, { compact: false })}
-            valueClassName={row.outstandingUSD > 0 ? "text-[#FF8A7A]" : ""}
+            valueClassName={row.outstandingUSD > 0 ? "text-harbor-coral" : ""}
           />
         </div>
       </div>
@@ -163,7 +165,7 @@ function DashboardYieldRowView({ row }: { row: FounderMetricRow }) {
         </div>
         <div className={DASHBOARD_POSITIONS_COL_MARKET_CLASSNAME}>
           <span
-            className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} truncate`}
+            className={DASHBOARD_POSITIONS_MARKET_TITLE_CLASS}
             title={row.marketName}
           >
             {row.marketName}
@@ -194,7 +196,7 @@ function DashboardYieldRowView({ row }: { row: FounderMetricRow }) {
         <div className={DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME}>
           <span
             className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} tabular-nums ${
-              row.outstandingUSD > 0 ? "text-[#FF8A7A]" : ""
+              row.outstandingUSD > 0 ? "text-harbor-coral" : ""
             }`}
           >
             {formatUSD(row.outstandingUSD, { compact: false })}
@@ -232,7 +234,9 @@ export function DashboardYieldShareList({
     );
   }
 
-  if (rows.length === 0) {
+  const eligibleRows = rows.filter(founderMetricRowHasRevenueShare);
+
+  if (eligibleRows.length === 0) {
     return (
       <p className={DASHBOARD_EMPTY_ON_PANEL_CLASS}>
         No yield share rows for this wallet. If you have deposits, check{" "}
@@ -247,7 +251,7 @@ export function DashboardYieldShareList({
   return (
     <div className={DASHBOARD_YIELD_LIST_CLASS}>
       <YieldTable showColumnHeader>
-        {rows.map((row) => (
+        {eligibleRows.map((row) => (
           <DashboardYieldRowView key={row.marketId} row={row} />
         ))}
       </YieldTable>

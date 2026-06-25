@@ -3,15 +3,21 @@
  * Dashboard-only; does not modify shared Maiden Voyage globals.
  */
 
+import {
+  HARBOR_ROW_MARKET_TITLE_CLASS,
+  HARBOR_ROW_METRIC_LABEL_CLASS,
+  HARBOR_ROW_METRIC_VALUE_CLASS,
+} from "@/components/shared/harborDataRowStyles";
+
 // Position rows (white index-style bars)
-export const DASHBOARD_POSITION_TITLE_CLASS =
-  "truncate text-sm font-bold leading-snug text-[#1E4775] sm:text-base";
+export const DASHBOARD_POSITION_TITLE_CLASS = HARBOR_ROW_MARKET_TITLE_CLASS;
 
 export const DASHBOARD_POSITION_SUBTITLE_CLASS =
   "truncate text-xs leading-snug text-[#1E4775]/70";
 
-export const DASHBOARD_POSITION_METRIC_LABEL_CLASS =
-  "text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/55";
+export const DASHBOARD_POSITION_METRIC_LABEL_CLASS = HARBOR_ROW_METRIC_LABEL_CLASS;
+
+export const DASHBOARD_POSITION_METRIC_VALUE_CLASS = HARBOR_ROW_METRIC_VALUE_CLASS;
 
 // Section accordion headers (REVENUE SHARE, EARN, …)
 export const DASHBOARD_SECTION_HEADER_TITLE_CLASS =
@@ -19,19 +25,18 @@ export const DASHBOARD_SECTION_HEADER_TITLE_CLASS =
 
 // Numeric hierarchy
 export const DASHBOARD_NUMERIC_HERO_CLASS =
-  "font-mono text-4xl font-bold tabular-nums leading-none text-white sm:text-5xl lg:text-[3.25rem]";
+  "font-mono text-2xl font-bold tabular-nums leading-none text-white sm:text-3xl";
 
 export const DASHBOARD_NUMERIC_CHIP_CLASS =
   "font-mono text-sm font-semibold tabular-nums text-white";
 
 export const DASHBOARD_NUMERIC_CHIP_PRIMARY_CLASS =
-  "font-mono text-sm font-semibold tabular-nums text-[#F5D76E]";
+  "font-mono text-sm font-semibold tabular-nums text-harbor-gold";
 
 export const DASHBOARD_NUMERIC_ROW_PRIMARY_CLASS =
-  "font-mono text-base font-bold tabular-nums text-[#1E4775]";
+  "font-mono text-xs font-bold tabular-nums text-[#1E4775]";
 
-export const DASHBOARD_NUMERIC_ROW_SECONDARY_CLASS =
-  "font-mono text-sm font-semibold tabular-nums text-[#1E4775] sm:text-base";
+export const DASHBOARD_NUMERIC_ROW_SECONDARY_CLASS = HARBOR_ROW_METRIC_VALUE_CLASS;
 
 // Activity feed
 export const DASHBOARD_ACTIVITY_TIMESTAMP_CLASS =
@@ -56,7 +61,7 @@ export const DASHBOARD_ACTIVITY_VALUE_CELL_CLASS =
   "col-start-3 row-start-1 sm:col-start-4 sm:row-start-auto";
 
 export const DASHBOARD_ACTIVITY_VALUE_POSITIVE_CLASS =
-  "font-mono text-sm tabular-nums text-[#B8EBD5]";
+  "font-mono text-sm tabular-nums text-harbor-mint";
 
 export const DASHBOARD_ACTIVITY_VALUE_MUTED_CLASS =
   "font-mono text-sm tabular-nums text-white/35";
@@ -86,7 +91,7 @@ export const DASHBOARD_INSET_METRIC_MUTED_CLASS =
   "font-mono text-sm tabular-nums text-white/40";
 
 export const DASHBOARD_INSET_METRIC_CORAL_CLASS =
-  "font-mono text-sm tabular-nums text-[#FF8A7A]";
+  "font-mono text-sm tabular-nums text-harbor-coral";
 
 /** Revenue share row — use inside {@link DASHBOARD_YIELD_METRICS_STACK_CLASS}. */
 export const DASHBOARD_YIELD_ROW_GRID_CLASS =

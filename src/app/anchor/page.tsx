@@ -22,7 +22,7 @@ import {
   markets as marketsConfig,
   type DefinedMarket,
 } from "@/config/markets";
-import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
+import { HarborPageShell } from "@/components/shared/HarborPageShell";
 import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
 import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
 import { POLLING_INTERVALS } from "@/config/polling";
@@ -95,14 +95,13 @@ import { AnchorMarketsSections } from "@/components/anchor/AnchorMarketsSections
 import { AnchorMarketGroupExpandedSection } from "@/components/anchor/AnchorMarketGroupExpandedSection";
 import { AnchorMarketsTableHeader } from "@/components/anchor/AnchorMarketsTableHeader";
 import { AnchorBasicMarketCardsGrid } from "@/components/anchor/AnchorBasicMarketCardsGrid";
-import { AnchorPageTitleSection } from "@/components/anchor/AnchorPageTitleSection";
-import { AnchorHeroIntroCards } from "@/components/anchor/AnchorHeroIntroCards";
 import { AnchorStatsStrip } from "@/components/anchor/AnchorStatsStrip";
 import { AnchorRewardsStrip } from "@/components/anchor/AnchorRewardsStrip";
 import { AnchorEarningsSection } from "@/components/anchor/AnchorEarningsSection";
 import { AnchorWalletPositionsSection } from "@/components/anchor/AnchorWalletPositionsSection";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
 import { IndexMarketsLoadError } from "@/components/shared/IndexMarketsLoadError";
+import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
 import {
   AnchorVaprTooltipContent,
   type AnchorVaprPositionApr,
@@ -463,15 +462,10 @@ export default function AnchorPage() {
 
   return (
     <>
-      <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
-        <main className="container mx-auto px-4 sm:px-10 pb-6 pt-2 sm:pt-4">
-          <AnchorPageTitleSection />
+      <HarborPageShell>
           {!anchorViewBasic && (
             <>
-              <AnchorHeroIntroCards />
-              <div className="mt-2">
-                <AnchorStatsStrip anchorStats={anchorStats} />
-              </div>
+              <AnchorStatsStrip anchorStats={anchorStats} />
 
               {ledgerMarksError && (
                 <IndexMarksSubgraphErrorBanner error={ledgerMarksError} />
@@ -984,7 +978,7 @@ export default function AnchorPage() {
               });
             }}
           />
-        </main>
+      </HarborPageShell>
 
         {manageModal && (
           <AnchorDepositWithdrawModal
@@ -1832,7 +1826,6 @@ export default function AnchorPage() {
             </div>
           </div>
         )}
-      </div>
     </>
   );
 }

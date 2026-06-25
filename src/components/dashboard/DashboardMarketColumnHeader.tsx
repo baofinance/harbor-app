@@ -1,6 +1,7 @@
 import {
   DASHBOARD_MARKET_ICON_PX,
   DASHBOARD_POSITIONS_COL_MARKET_CLASSNAME,
+  DASHBOARD_POSITIONS_MARKET_TITLE_CLASS,
   DASHBOARD_POSITIONS_VALUE_TEXT_CLASS,
 } from "./dashboardRowListStyles";
 
@@ -26,7 +27,7 @@ export function DashboardMarketColumnHeader({
           />
         ) : null}
         <span
-          className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} invisible whitespace-nowrap`}
+          className={`${DASHBOARD_POSITIONS_MARKET_TITLE_CLASS} invisible whitespace-nowrap`}
           aria-hidden
         >
           {MARKET_HEADER_GHOST_LABEL}

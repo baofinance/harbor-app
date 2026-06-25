@@ -13,7 +13,7 @@ import {
   DASHBOARD_HERO_GRID_CLASS,
   DASHBOARD_HERO_STATS_ROW_CLASS,
   DASHBOARD_HERO_STAT_LABEL_CLASS,
-  DASHBOARD_HERO_YIELD_COLUMN_CLASS,
+  DASHBOARD_HERO_YIELD_STAT_CELL_CLASS,
 } from "./dashboardStyles";
 import {
   DASHBOARD_HERO_SUPPORTING_CLASS,
@@ -112,26 +112,23 @@ function HeroYieldStats({
 
   return (
     <div className={DASHBOARD_HERO_STATS_ROW_CLASS}>
-      <div className={DASHBOARD_HERO_YIELD_COLUMN_CLASS}>
+      <div className={DASHBOARD_HERO_YIELD_STAT_CELL_CLASS}>
         <DashboardHeroStatColumn
           label="Revenue share yield"
-          context="All time"
           value={formatStatUsd(revenueShareYieldUsd, isConnected, isLoading, true)}
-          valueClassName={revenueShareYieldUsd > 0 ? "text-[#F5D76E]" : "text-white/80"}
+          valueClassName={revenueShareYieldUsd > 0 ? "text-harbor-gold" : "text-white/80"}
         />
       </div>
-      <div className={DASHBOARD_HERO_YIELD_COLUMN_CLASS}>
+      <div className={DASHBOARD_HERO_YIELD_STAT_CELL_CLASS}>
         <DashboardHeroStatColumn
           label="Earn yield"
-          context="All time"
           value={formatStatUsd(earnYieldUsd, isConnected, isEarnLoading, true)}
-          valueClassName={earnYieldUsd > 0 ? "text-[#B8EBD5]" : "text-white/80"}
+          valueClassName={earnYieldUsd > 0 ? "text-harbor-mint" : "text-white/80"}
         />
       </div>
-      <div className={DASHBOARD_HERO_YIELD_COLUMN_CLASS}>
+      <div className={DASHBOARD_HERO_YIELD_STAT_CELL_CLASS}>
         <DashboardHeroStatColumn
           label="Total earned"
-          context="Combined"
           value={formatStatUsd(
             totalYieldEarned,
             isConnected,
@@ -202,13 +199,13 @@ export function DashboardPortfolioHero({
           />
         ) : (
           <div className={DASHBOARD_HERO_STATS_ROW_CLASS}>
-            <div className={DASHBOARD_HERO_YIELD_COLUMN_CLASS}>
+            <div className={DASHBOARD_HERO_YIELD_STAT_CELL_CLASS}>
               <DashboardHeroStatColumn label="Revenue share yield" value="—" />
             </div>
-            <div className={DASHBOARD_HERO_YIELD_COLUMN_CLASS}>
+            <div className={DASHBOARD_HERO_YIELD_STAT_CELL_CLASS}>
               <DashboardHeroStatColumn label="Earn yield" value="—" />
             </div>
-            <div className={DASHBOARD_HERO_YIELD_COLUMN_CLASS}>
+            <div className={DASHBOARD_HERO_YIELD_STAT_CELL_CLASS}>
               <DashboardHeroStatColumn label="Total earned" value="—" />
             </div>
           </div>

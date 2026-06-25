@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import type { FounderMetricRow } from "@/hooks/useFounderMetrics";
+import { founderMetricRowHasRevenueShare } from "@/utils/founderMetrics";
 import { DashboardContentRowSkeleton } from "../DashboardContentRow";
 import { DASHBOARD_EMPTY_REVENUE_SHARE_ACCENT_CLASS } from "../dashboardBrand";
 import { DASHBOARD_YIELD_METRICS_STACK_CLASS } from "./portfolioStyles";
@@ -31,12 +32,14 @@ export function DashboardYieldShareCardList({
   if (isLoading) {
     return (
       <div className={DASHBOARD_YIELD_METRICS_STACK_CLASS}>
-        <DashboardContentRowSkeleton variant="inset" />
+        <DashboardContentRowSkeleton variant="index" />
       </div>
     );
   }
 
-  if (rows.length === 0) {
+  const eligibleRows = rows.filter(founderMetricRowHasRevenueShare);
+
+  if (eligibleRows.length === 0) {
     return (
       <DashboardEmptyState
         title="Your revenue share starts here"
@@ -51,8 +54,10 @@ export function DashboardYieldShareCardList({
     );
   }
 
-  const visibleRows = expanded ? rows : rows.slice(0, VISIBLE_MARKET_LIMIT);
-  const hiddenCount = rows.length - VISIBLE_MARKET_LIMIT;
+  const visibleRows = expanded
+    ? eligibleRows
+    : eligibleRows.slice(0, VISIBLE_MARKET_LIMIT);
+  const hiddenCount = eligibleRows.length - VISIBLE_MARKET_LIMIT;
 
   return (
     <div>

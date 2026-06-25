@@ -22,6 +22,7 @@ import {
   formatUSD,
 } from "@/utils/sailDisplayFormat";
 import { getLogoPath } from "@/components/shared";
+import { HARBOR_DATA_ROW_SHELL_CLASS } from "@/components/shared/harborDataRowStyles";
 import {
   getSailSideLogoPath,
   sailTableSideIconPx,
@@ -207,7 +208,7 @@ export const SailMarketRow = React.memo(function SailMarketRow({
   return (
     <div
       key={id}
-      className={`rounded-md border border-[#1E4775]/15 bg-white shadow-sm overflow-hidden ${
+      className={`${HARBOR_DATA_ROW_SHELL_CLASS} ${
         isComingSoon ? "opacity-90 saturate-[0.78]" : ""
       }`}
     >

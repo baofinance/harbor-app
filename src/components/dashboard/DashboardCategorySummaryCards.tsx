@@ -12,12 +12,12 @@ import { DashboardPortfolioAllocation } from "./DashboardPortfolioAllocation";
 const ICON_BASE =
   "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-[#0a1929]/55";
 
-const ICON_EARN = `${ICON_BASE} border-[#B8EBD5]/35 text-[#B8EBD5]`;
-const ICON_SAIL = `${ICON_BASE} border-[#C4B5FD]/35 text-[#C4B5FD]`;
+const ICON_EARN = `${ICON_BASE} border-harbor-mint/35 text-harbor-mint`;
+const ICON_SAIL = `${ICON_BASE} border-harbor-purple/35 text-harbor-purple`;
 const ICON_ARCHIVED = `${ICON_BASE} border-white/15 text-white/50`;
 
-const ACCENT_EARN = "border-l-[3px] border-l-[#B8EBD5]/70";
-const ACCENT_SAIL = "border-l-[3px] border-l-[#C4B5FD]/70";
+const ACCENT_EARN = "border-l-[3px] border-l-harbor-mint/70";
+const ACCENT_SAIL = "border-l-[3px] border-l-harbor-purple/70";
 const ACCENT_ARCHIVED = "border-l-[3px] border-l-white/25";
 
 export type DashboardCategorySummaryCardsProps = {

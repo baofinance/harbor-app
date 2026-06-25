@@ -120,7 +120,7 @@ function Metric({
       <p className={ENGAGEMENT_LABEL_CLASS}>{label}</p>
       <p
         className={`${ENGAGEMENT_VALUE_CLASS} mt-0.5 ${
-          highlight ? "text-[#F5D76E]" : ""
+          highlight ? "text-harbor-gold" : ""
         }`}
       >
         {value}

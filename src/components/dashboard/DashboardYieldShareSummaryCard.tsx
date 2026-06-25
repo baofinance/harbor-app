@@ -41,7 +41,7 @@ export function DashboardYieldShareSummaryCard({
 
   return (
     <section
-      className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} relative overflow-hidden border-l-[3px] border-l-[#F5D76E]`}
+      className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} relative overflow-hidden border-l-[3px] border-l-harbor-gold`}
       aria-label="Yield share summary"
     >
       <div className="px-4 py-3.5 sm:px-5 sm:py-4">
@@ -93,7 +93,7 @@ function Metric({
       <p className={MV_SECTION_LABEL}>{label}</p>
       <p
         className={`mt-0.5 font-mono text-sm font-semibold tabular-nums sm:text-base ${
-          highlight ? "text-[#F5D76E]" : "text-white/90"
+          highlight ? "text-harbor-gold" : "text-white/90"
         }`}
       >
         {value}

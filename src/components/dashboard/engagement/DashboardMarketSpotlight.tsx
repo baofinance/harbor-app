@@ -40,7 +40,7 @@ export function DashboardMarketSpotlight({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#FF8A7A]/90">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-harbor-coral/90">
             Featured market
           </p>
           <p className={`${ENGAGEMENT_SECTION_TITLE_CLASS} mt-0.5 truncate`}>
@@ -57,7 +57,7 @@ export function DashboardMarketSpotlight({
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <GenesisVoyageStatusBadge status={voyage.status} />
         {closingSoon ? (
-          <span className="text-xs font-medium text-[#F5D76E]">Deposits closing soon</span>
+          <span className="text-xs font-medium text-harbor-gold">Deposits closing soon</span>
         ) : null}
       </div>
 

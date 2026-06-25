@@ -1,42 +1,39 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MAIDEN_VOYAGE_UPSIDE_COPY } from "@/config/maidenVoyageEducation";
 import {
   formatMaidenVoyageYieldSharePct,
 } from "@/utils/maidenVoyageYieldShareEstimate";
+import {
+  buildUpsideSliderTrackPresets,
+  formatUpsideDepositInput,
+  formatUpsidePresetLabel,
+  isNearUpsidePreset,
+  parseUpsideDepositInput,
+  upsideDepositToSliderPosition,
+  UPSIDE_SLIDER_THUMB_PX,
+  upsideSliderFillBackground,
+  upsideSliderMarkStyle,
+  upsideSliderPositionToDeposit,
+  upsideSliderSteps,
+} from "@/utils/maidenVoyageUpsideSlider";
 import { GenesisUpsideAnimatedNumber } from "./GenesisUpsideAnimatedMetrics";
 import {
-  MV_CAPTION_TEXT,
   MV_SECTION_LABEL,
-  MV_STAT_TILE,
-  MV_UPSIDE_DEPOSIT_CHIP,
-  MV_UPSIDE_DEPOSIT_CHIP_ACTIVE,
   MV_UPSIDE_DEPOSIT_INPUT_FOCUS,
+  MV_UPSIDE_DEPOSIT_PANEL,
   MV_UPSIDE_OWNERSHIP_FLASH,
-  MV_UPSIDE_OWNERSHIP_GLOW,
-  MV_UPSIDE_OWNERSHIP_PANEL,
   MV_UPSIDE_OWNERSHIP_TEXT,
 } from "./maidenVoyageLayoutStyles";
 
-function parseInputNumber(value: string, fallback: number): number {
-  const parsed = Number(value.replace(/,/g, ""));
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
-}
+const SLIDER_TRACK_INSET_PX = UPSIDE_SLIDER_THUMB_PX / 2;
 
 function formatYieldShareForAnimation(pct: number): string {
   if (!Number.isFinite(pct) || pct <= 0) return "—";
   if (pct >= 0.01) return `${pct.toFixed(2)}%`;
   if (pct >= 0.001) return `${pct.toFixed(3)}%`;
   return `${pct.toFixed(4)}%`;
-}
-
-function formatPresetLabel(amount: number): string {
-  if (amount >= 1_000) {
-    return `$${amount / 1_000}k`;
-  }
-  return `$${amount}`;
 }
 
 export type GenesisUpsideHeroMetricProps = {
@@ -55,6 +52,35 @@ export function GenesisUpsideHeroMetric({
   const [ownershipFlash, setOwnershipFlash] = useState(false);
   const prevRevenueShareRef = useRef(revenueSharePct);
 
+  const sliderMin = MAIDEN_VOYAGE_UPSIDE_COPY.sliderMinUsd;
+  const sliderPivot = MAIDEN_VOYAGE_UPSIDE_COPY.sliderPivotUsd;
+  const sliderMax =
+    capUsd ?? MAIDEN_VOYAGE_UPSIDE_COPY.sliderFallbackMaxUsd;
+
+  const sliderSteps = upsideSliderSteps();
+
+  const sliderPosition = useMemo(
+    () =>
+      upsideDepositToSliderPosition(
+        depositUsd,
+        sliderMin,
+        sliderMax,
+        sliderPivot,
+      ),
+    [depositUsd, sliderMin, sliderMax, sliderPivot],
+  );
+
+  const trackPresets = useMemo(
+    () => buildUpsideSliderTrackPresets(sliderMin, sliderPivot, sliderMax),
+    [sliderMin, sliderPivot, sliderMax],
+  );
+
+  const sliderBackground = useMemo(
+    () =>
+      upsideSliderFillBackground(depositUsd, sliderMin, sliderMax, sliderPivot),
+    [depositUsd, sliderMin, sliderMax, sliderPivot],
+  );
+
   useEffect(() => {
     if (
       prevRevenueShareRef.current === revenueSharePct ||
@@ -72,95 +98,139 @@ export function GenesisUpsideHeroMetric({
 
   const formatYieldShare = useCallback(formatYieldShareForAnimation, []);
 
-  const maxDeposit = capUsd ?? 10_000_000;
+  const revenueShareDisplay =
+    revenueSharePct != null && revenueSharePct > 0 ? (
+      <GenesisUpsideAnimatedNumber
+        value={revenueSharePct}
+        format={formatYieldShare}
+      />
+    ) : (
+      formatMaidenVoyageYieldSharePct(revenueSharePct)
+    );
+
+  const trackShellStyle = {
+    paddingLeft: SLIDER_TRACK_INSET_PX,
+    paddingRight: SLIDER_TRACK_INSET_PX,
+  } as const;
 
   return (
-    <div className="flex flex-col gap-2.5">
-      <div className={`${MV_STAT_TILE} px-3 py-2.5`}>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+    <div
+      className={`${MV_UPSIDE_DEPOSIT_PANEL} transition-shadow duration-300 ${
+        ownershipFlash ? MV_UPSIDE_OWNERSHIP_FLASH : ""
+      }`}
+    >
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-[auto_auto] gap-x-3 sm:gap-x-5 lg:gap-x-6">
+        <div className="col-start-1 row-start-1 self-end shrink-0">
           <label htmlFor="mv-upside-deposit" className={MV_SECTION_LABEL}>
             {MAIDEN_VOYAGE_UPSIDE_COPY.depositLabel}
           </label>
-          <div className="relative w-full sm:w-[8.5rem] sm:shrink-0">
+          <div className="mt-1.5 flex items-center gap-2">
+            <span className="text-lg font-medium text-white/50">$</span>
             <input
               id="mv-upside-deposit"
-              type="number"
-              min={0}
-              step="100"
-              value={Number.isFinite(depositUsd) ? depositUsd : 0}
+              type="text"
+              inputMode="numeric"
+              value={formatUpsideDepositInput(depositUsd)}
               onChange={(e) =>
-                onDepositChange(parseInputNumber(e.target.value, depositUsd))
+                onDepositChange(
+                  parseUpsideDepositInput(e.target.value, depositUsd),
+                )
               }
-              className={`w-full rounded-xl border border-white/10 bg-[#0a1929]/40 py-1.5 pl-3 pr-10 text-center font-mono text-xs font-semibold tabular-nums text-white/95 outline-none transition focus:ring-1 ${MV_UPSIDE_DEPOSIT_INPUT_FOCUS}`}
+              className={`w-[6.25rem] min-w-0 border-0 bg-transparent p-0 font-mono text-2xl font-semibold tabular-nums text-white outline-none sm:w-[7rem] sm:text-[1.65rem] ${MV_UPSIDE_DEPOSIT_INPUT_FOCUS}`}
             />
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-white/45">
+            <span className="shrink-0 rounded-lg border border-white/12 bg-white/[0.06] px-2 py-1 text-[11px] font-medium text-white/55">
               USD
             </span>
           </div>
         </div>
 
-        <div className="mt-2.5">
-          <p className={`mb-1.5 ${MV_SECTION_LABEL}`}>
-            {MAIDEN_VOYAGE_UPSIDE_COPY.tryDepositLabel}
-          </p>
-          <div className="-mx-0.5 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {MAIDEN_VOYAGE_UPSIDE_COPY.depositPresets.map((preset) => {
-              const isActive = depositUsd === preset;
-              const isDisabled = preset > maxDeposit;
-              return (
-                <button
-                  key={preset}
-                  type="button"
-                  disabled={isDisabled}
-                  onClick={() => onDepositChange(preset)}
-                  className={`${MV_UPSIDE_DEPOSIT_CHIP} ${
-                    isActive ? MV_UPSIDE_DEPOSIT_CHIP_ACTIVE : ""
-                  } disabled:cursor-not-allowed disabled:opacity-35`}
-                  aria-pressed={isActive}
-                >
-                  {formatPresetLabel(preset)}
-                </button>
-              );
-            })}
+        <div className="col-start-2 row-start-1 row-span-2 flex min-w-0 flex-col justify-end">
+          <div className="w-full" style={trackShellStyle}>
+            <div className="relative pb-0.5">
+              {trackPresets.map((preset) => {
+                const markStyle = upsideSliderMarkStyle(
+                  preset,
+                  sliderMin,
+                  sliderMax,
+                  sliderPivot,
+                );
+                return (
+                  <span
+                    key={`tick-${preset}`}
+                    className="pointer-events-none absolute top-1/2 z-0 h-2 w-px bg-white/25"
+                    style={{
+                      left: markStyle.left,
+                      transform: `${markStyle.transform} translateY(-50%)`,
+                    }}
+                    aria-hidden
+                  />
+                );
+              })}
+              <input
+                type="range"
+                min={0}
+                max={sliderSteps}
+                step={1}
+                value={sliderPosition}
+                onChange={(e) =>
+                  onDepositChange(
+                    upsideSliderPositionToDeposit(
+                      Number(e.target.value),
+                      sliderMin,
+                      sliderMax,
+                      sliderPivot,
+                    ),
+                  )
+                }
+                className="mv-upside-slider relative z-10 block w-full"
+                style={{ background: sliderBackground }}
+                aria-label="Adjust deposit amount"
+                aria-valuemin={sliderMin}
+                aria-valuemax={sliderMax}
+                aria-valuenow={depositUsd}
+              />
+            </div>
+
+            <div className="relative mt-2.5 h-5">
+              {trackPresets.map((preset) => {
+                const isActive = isNearUpsidePreset(depositUsd, preset);
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => onDepositChange(preset)}
+                    className={`absolute top-0 whitespace-nowrap font-mono text-[10px] font-medium tabular-nums transition-colors sm:text-[11px] ${
+                      isActive
+                        ? "text-[#B8EBD5]"
+                        : "text-white/40 hover:text-white/70"
+                    }`}
+                    style={upsideSliderMarkStyle(
+                      preset,
+                      sliderMin,
+                      sliderMax,
+                      sliderPivot,
+                    )}
+                  >
+                    {formatUpsidePresetLabel(preset)}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="flex justify-center" aria-hidden>
-        <ChevronDownIcon className="h-4 w-4 text-white/30" />
-      </div>
-
-      <div
-        className={`${MV_UPSIDE_OWNERSHIP_PANEL} ${MV_UPSIDE_OWNERSHIP_GLOW} px-3 py-4 text-center transition-shadow duration-300 sm:py-5 ${
-          ownershipFlash ? MV_UPSIDE_OWNERSHIP_FLASH : ""
-        }`}
-      >
         <div
-          className="pointer-events-none absolute left-1/2 top-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#FF8A7A]/[0.05] blur-2xl"
-          aria-hidden
-        />
-        <div className="relative">
-          {revenueSharePct != null && revenueSharePct > 0 ? (
-            <p
-              className={`font-mono text-3xl font-bold tabular-nums sm:text-4xl ${MV_UPSIDE_OWNERSHIP_TEXT}`}
-            >
-              <GenesisUpsideAnimatedNumber
-                value={revenueSharePct}
-                format={formatYieldShare}
-              />
-            </p>
-          ) : (
-            <p
-              className={`font-mono text-3xl font-bold tabular-nums sm:text-4xl ${MV_UPSIDE_OWNERSHIP_TEXT}`}
-            >
-              {formatMaidenVoyageYieldSharePct(revenueSharePct)}
-            </p>
-          )}
-          <p className="mt-1 text-sm font-semibold text-white/90">
+          className="col-start-3 row-start-1 self-end shrink-0 border-l border-white/10 pl-3 text-right sm:pl-4"
+          title={MAIDEN_VOYAGE_UPSIDE_COPY.revenueShareCaption}
+        >
+          <p className={`${MV_SECTION_LABEL} whitespace-nowrap`}>
             {MAIDEN_VOYAGE_UPSIDE_COPY.revenueShareTitle}
           </p>
-          <p className={`mt-1 ${MV_CAPTION_TEXT}`}>
-            {MAIDEN_VOYAGE_UPSIDE_COPY.revenueShareCaption}
+          <p
+            className={`mt-1.5 font-mono text-xl font-bold tabular-nums sm:text-2xl ${MV_UPSIDE_OWNERSHIP_TEXT}`}
+            aria-label={`${MAIDEN_VOYAGE_UPSIDE_COPY.revenueShareCaption}: ${formatMaidenVoyageYieldSharePct(revenueSharePct)}`}
+          >
+            {revenueShareDisplay}
           </p>
         </div>
       </div>

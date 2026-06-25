@@ -15,7 +15,6 @@ import {
   GenesisMaidenVoyageFaq,
   GenesisMaidenVoyageFeaturedSection,
   GenesisMaidenVoyageLifecycle,
-  GenesisMaidenVoyagePageHeader,
   GenesisMaidenVoyageStatsBar,
   GenesisRevenueShareSection,
   GenesisVoyageFooterNotice,
@@ -53,6 +52,7 @@ import {
 import { formatGenesisMarketDisplayName } from "@/utils/genesisDisplay";
 import { readContractRowResult } from "@/components/genesis/readContractRow";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
+import { HarborPageShell } from "@/components/shared/HarborPageShell";
 
 const SHOW_MAIDEN_VOYAGE_COMING_SOON =
   process.env.NEXT_PUBLIC_SHOW_MAIDEN_VOYAGE_COMING_SOON === "true";
@@ -483,10 +483,8 @@ export default function GenesisIndexPage() {
   }
 
   return (
-    <div className="relative mx-auto flex min-h-0 w-full max-w-[1300px] flex-1 flex-col font-sans text-white">
-      <main className="container mx-auto px-4 pb-6 pt-2 sm:px-10 sm:pt-4">
-        <GenesisMaidenVoyagePageHeader />
-
+    <>
+    <HarborPageShell>
         {combinedHasIndexerErrors ? (
           <GenesisErrorBanner
             tone="warning"
@@ -628,7 +626,7 @@ export default function GenesisIndexPage() {
           </details>
         </section>
         ) : null}
-      </main>
+    </HarborPageShell>
 
       {manageModal ? (
         <GenesisManageModal
@@ -660,6 +658,6 @@ export default function GenesisIndexPage() {
             : undefined
         }
       />
-    </div>
+    </>
   );
 }

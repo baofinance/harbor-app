@@ -74,3 +74,10 @@ export function deriveFounderWalletMetric(
   };
 }
 
+/** Hide revenue-share rows that would display as 0% pool share (incl. float dust). */
+export function founderMetricRowHasRevenueShare(row: {
+  yieldSharePct: number;
+}): boolean {
+  return Number(row.yieldSharePct.toFixed(2)) > 0;
+}
+
