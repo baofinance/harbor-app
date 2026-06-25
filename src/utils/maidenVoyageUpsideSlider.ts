@@ -99,9 +99,20 @@ export function upsideSliderPositionToDeposit(
   );
 }
 
+/** Build start / pivot / cap labels for the deposit track. */
+export function buildUpsideSliderTrackPresets(
+  minUsd: number,
+  pivotUsd: number,
+  maxUsd: number,
+): number[] {
+  if (maxUsd <= minUsd) return [minUsd];
+  if (pivotUsd <= minUsd || pivotUsd >= maxUsd) return [minUsd, maxUsd];
+  return [minUsd, pivotUsd, maxUsd];
+}
+
 /**
- * Align ticks/labels with native range thumb center.
- * Assumes the track spans the full width of the relative parent (no extra px-* inset).
+ * Align ticks/labels with the range input inside a padded track shell.
+ * Parent must apply horizontal padding of UPSIDE_SLIDER_THUMB_PX / 2.
  */
 export function upsideSliderMarkStyle(
   valueUsd: number,
@@ -110,13 +121,12 @@ export function upsideSliderMarkStyle(
   pivotUsd: number,
 ): { left: string; transform: string } {
   const ratio = upsideDepositToTrackRatio(valueUsd, minUsd, maxUsd, pivotUsd);
-  const half = UPSIDE_SLIDER_THUMB_PX / 2;
   let transform = "translateX(-50%)";
   if (ratio <= 0.001) transform = "translateX(0)";
   else if (ratio >= 0.999) transform = "translateX(-100%)";
 
   return {
-    left: `calc(${half}px + ${ratio} * (100% - ${UPSIDE_SLIDER_THUMB_PX}px))`,
+    left: `${ratio * 100}%`,
     transform,
   };
 }
@@ -137,10 +147,7 @@ export function upsideSliderFillBackground(
   maxUsd: number,
   pivotUsd: number,
 ): string {
-  const ratio = upsideDepositToTrackRatio(valueUsd, minUsd, maxUsd, pivotUsd);
-  const half = UPSIDE_SLIDER_THUMB_PX / 2;
-  const pct =
-    ((half + ratio * (100 - UPSIDE_SLIDER_THUMB_PX)) / 100) * 100;
+  const pct = upsideDepositToTrackRatio(valueUsd, minUsd, maxUsd, pivotUsd) * 100;
   const fill = "#B8EBD5";
   const track = "rgba(255, 255, 255, 0.12)";
   return `linear-gradient(to right, ${fill} 0%, ${fill} ${pct}%, ${track} ${pct}%, ${track} 100%)`;
@@ -167,5 +174,6 @@ export function parseUpsideDepositInput(value: string, fallback: number): number
 }
 
 export function isNearUpsidePreset(depositUsd: number, presetUsd: number): boolean {
-  return Math.abs(depositUsd - presetUsd) < 50;
+  const tolerance = Math.max(50, Math.abs(presetUsd) * 0.01);
+  return Math.abs(depositUsd - presetUsd) <= tolerance;
 }

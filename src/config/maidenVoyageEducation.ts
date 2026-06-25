@@ -66,8 +66,8 @@ export const MAIDEN_VOYAGE_UPSIDE_COPY = {
   explainerToggleHide: "Hide details",
   sliderMinUsd: 0,
   sliderPivotUsd: 5_000,
-  sliderMaxUsd: 10_000,
-  depositPresets: [0, 5_000, 10_000] as const,
+  /** Fallback when voyage cap is unknown. */
+  sliderFallbackMaxUsd: 10_000,
   growthStages: [
     { id: "launch", label: "Launch", tvlUsd: 100_000 },
     { id: "growth", label: "Growth", tvlUsd: 1_000_000 },
