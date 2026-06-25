@@ -58,7 +58,7 @@ function BenchmarkCard({
 
   return (
     <div
-      className={`${MV_UPSIDE_BENCHMARK_TILE} ${theme.hover} ${theme.accentBar} min-w-0 px-2.5 py-2.5 sm:px-3 sm:py-3 ${
+      className={`${MV_UPSIDE_BENCHMARK_TILE} min-w-0 px-2.5 py-2.5 sm:px-3 sm:py-3 ${
         isUpdated ? MV_UPSIDE_BENCHMARK_TILE_UPDATED : ""
       }`}
     >

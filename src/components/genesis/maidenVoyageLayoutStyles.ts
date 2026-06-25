@@ -45,8 +45,11 @@ export const MV_STATS_BAND =
   "border-y border-white/[0.08] bg-[#0a1929]/40 backdrop-blur-lg";
 
 /** Active voyage card stage strip — darker inset at card bottom. */
+export const MV_FOOTER_PANEL_SURFACE =
+  "border-white/[0.08] bg-[#0a1929]/55 backdrop-blur-md";
+
 export const MV_FOOTER_PANEL =
-  "border-t border-white/[0.08] bg-[#0a1929]/55 backdrop-blur-md";
+  `border-t ${MV_FOOTER_PANEL_SURFACE}`;
 
 export const MV_MUTED_TEXT = "text-white/75";
 
@@ -244,11 +247,11 @@ export const MV_UPSIDE_DEPOSIT_CHIP_ACTIVE =
 export const MV_UPSIDE_OWNERSHIP_FLASH =
   "ring-1 ring-[#FF8A7A]/40 shadow-[0_0_48px_-10px_rgba(255,138,122,0.45)]";
 
-/** Benchmark outcome tile — hover + update feedback. */
-export const MV_UPSIDE_BENCHMARK_TILE = `${MV_STAT_TILE} transition-all duration-200 hover:-translate-y-px`;
+/** Benchmark outcome tile — matches active voyage stage strip panel. */
+export const MV_UPSIDE_BENCHMARK_TILE = `rounded-xl border ${MV_FOOTER_PANEL_SURFACE} transition-all duration-200 hover:-translate-y-px hover:bg-[#0a1929]/65`;
 
 export const MV_UPSIDE_BENCHMARK_TILE_UPDATED =
-  "border-[#B8EBD5]/25 bg-[#B8EBD5]/[0.05]";
+  "border-white/[0.12] bg-[#0a1929]/70";
 
 /** Final growth-stage benchmark tile accent. */
 export const MV_UPSIDE_BENCHMARK_TILE_DESTINATION =
