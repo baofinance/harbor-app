@@ -5,7 +5,7 @@ import {
   upsideSliderPositionToDeposit,
 } from "./maidenVoyageUpsideSlider";
 
-const MIN = 500;
+const MIN = 0;
 const PIVOT = 5_000;
 const MAX = 10_000;
 
@@ -19,15 +19,13 @@ describe("maidenVoyageUpsideSlider", () => {
     expect(upsideDepositToTrackRatio(MAX, MIN, MAX, PIVOT)).toBeCloseTo(1, 5);
   });
 
-  it("places $1K between min and pivot on the first half of the track", () => {
-    const ratio = upsideDepositToTrackRatio(1_000, MIN, MAX, PIVOT);
-    expect(ratio).toBeCloseTo(0.5 * (1_000 - MIN) / (PIVOT - MIN), 5);
-    expect(ratio).toBeGreaterThan(0.05);
-    expect(ratio).toBeLessThan(0.1);
+  it("places $2.5K at 25% on the first half of the track", () => {
+    const ratio = upsideDepositToTrackRatio(2_500, MIN, MAX, PIVOT);
+    expect(ratio).toBeCloseTo(0.25, 5);
   });
 
   it("round-trips preset values through slider positions", () => {
-    for (const preset of [MIN, 1_000, PIVOT, MAX]) {
+    for (const preset of [MIN, PIVOT, MAX]) {
       const position = upsideDepositToSliderPosition(preset, MIN, MAX, PIVOT);
       const restored = upsideSliderPositionToDeposit(position, MIN, MAX, PIVOT);
       expect(restored).toBe(preset);

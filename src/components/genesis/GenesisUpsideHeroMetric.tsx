@@ -117,8 +117,8 @@ export function GenesisUpsideHeroMetric({
         ownershipFlash ? MV_UPSIDE_OWNERSHIP_FLASH : ""
       }`}
     >
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-x-3 sm:gap-x-5 lg:gap-x-6">
-        <div className="shrink-0">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 sm:gap-x-5 lg:gap-x-6">
+        <div className="col-start-1 row-start-1 self-end shrink-0">
           <label htmlFor="mv-upside-deposit" className={MV_SECTION_LABEL}>
             {MAIDEN_VOYAGE_UPSIDE_COPY.depositLabel}
           </label>
@@ -142,7 +142,7 @@ export function GenesisUpsideHeroMetric({
           </div>
         </div>
 
-        <div className="min-w-0 pb-0.5">
+        <div className="col-start-2 row-start-1 min-w-0 self-end pb-0.5">
           <div className="relative">
             {visiblePresets.map((preset) => {
               const markStyle = upsideSliderMarkStyle(
@@ -179,7 +179,7 @@ export function GenesisUpsideHeroMetric({
                   ),
                 )
               }
-              className="mv-upside-slider relative z-10"
+              className="mv-upside-slider relative z-10 block w-full"
               style={{ background: sliderBackground }}
               aria-label="Adjust deposit amount"
               aria-valuemin={sliderMin}
@@ -190,7 +190,7 @@ export function GenesisUpsideHeroMetric({
         </div>
 
         <div
-          className="shrink-0 border-l border-white/10 pl-3 text-right sm:pl-4"
+          className="col-start-3 row-start-1 shrink-0 self-end border-l border-white/10 pl-3 text-right sm:pl-4"
           title={MAIDEN_VOYAGE_UPSIDE_COPY.revenueShareCaption}
         >
           <p className={`${MV_SECTION_LABEL} whitespace-nowrap`}>
@@ -203,36 +203,34 @@ export function GenesisUpsideHeroMetric({
             {revenueShareDisplay}
           </p>
         </div>
-      </div>
 
-      <div className="mt-2.5 grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 sm:gap-x-5 lg:gap-x-6">
-        <div aria-hidden />
-        <div className="relative h-5">
-          {visiblePresets.map((preset) => {
-            const isActive = isNearUpsidePreset(depositUsd, preset);
-            return (
-              <button
-                key={preset}
-                type="button"
-                onClick={() => onDepositChange(preset)}
-                className={`absolute top-0 min-w-[2.25rem] whitespace-nowrap font-mono text-[10px] font-medium tabular-nums transition-colors sm:min-w-[2.5rem] sm:text-[11px] ${
-                  isActive
-                    ? "text-[#B8EBD5]"
-                    : "text-white/40 hover:text-white/70"
-                }`}
-                style={upsideSliderMarkStyle(
-                  preset,
-                  sliderMin,
-                  sliderMax,
-                  sliderPivot,
-                )}
-              >
-                {formatUpsidePresetLabel(preset)}
-              </button>
-            );
-          })}
+        <div className="col-start-2 row-start-2 mt-2.5 min-w-0">
+          <div className="relative h-5">
+            {visiblePresets.map((preset) => {
+              const isActive = isNearUpsidePreset(depositUsd, preset);
+              return (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => onDepositChange(preset)}
+                  className={`absolute top-0 min-w-[2.25rem] whitespace-nowrap font-mono text-[10px] font-medium tabular-nums transition-colors sm:min-w-[2.5rem] sm:text-[11px] ${
+                    isActive
+                      ? "text-[#B8EBD5]"
+                      : "text-white/40 hover:text-white/70"
+                  }`}
+                  style={upsideSliderMarkStyle(
+                    preset,
+                    sliderMin,
+                    sliderMax,
+                    sliderPivot,
+                  )}
+                >
+                  {formatUpsidePresetLabel(preset)}
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <div aria-hidden />
       </div>
     </div>
   );

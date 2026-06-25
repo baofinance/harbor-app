@@ -146,8 +146,9 @@ export function upsideSliderFillBackground(
   return `linear-gradient(to right, ${fill} 0%, ${fill} ${pct}%, ${track} ${pct}%, ${track} 100%)`;
 }
 
-/** Preset labels under the slider — consistent compact style ($500, $1K, …). */
+/** Preset labels under the slider — consistent compact style (0, $5K, …). */
 export function formatUpsidePresetLabel(amountUsd: number): string {
+  if (amountUsd === 0) return "0";
   if (amountUsd >= 1_000) {
     const k = amountUsd / 1_000;
     return Number.isInteger(k) ? `$${k}K` : `$${k.toFixed(1)}K`;

@@ -64,10 +64,10 @@ export const MAIDEN_VOYAGE_UPSIDE_COPY = {
     "See the assumptions and formulas behind these projections.",
   explainerToggleShow: "Show details",
   explainerToggleHide: "Hide details",
-  sliderMinUsd: 500,
+  sliderMinUsd: 0,
   sliderPivotUsd: 5_000,
   sliderMaxUsd: 10_000,
-  depositPresets: [500, 1_000, 5_000, 10_000] as const,
+  depositPresets: [0, 5_000, 10_000] as const,
   growthStages: [
     { id: "launch", label: "Launch", tvlUsd: 100_000 },
     { id: "growth", label: "Growth", tvlUsd: 1_000_000 },
