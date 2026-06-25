@@ -247,11 +247,15 @@ export const MV_UPSIDE_DEPOSIT_CHIP_ACTIVE =
 export const MV_UPSIDE_OWNERSHIP_FLASH =
   "ring-1 ring-[#FF8A7A]/40 shadow-[0_0_48px_-10px_rgba(255,138,122,0.45)]";
 
-/** Benchmark outcome tile — matches active voyage stage strip panel. */
-export const MV_UPSIDE_BENCHMARK_TILE = `rounded-xl border ${MV_FOOTER_PANEL_SURFACE} transition-all duration-200 hover:-translate-y-px hover:bg-[#0a1929]/65`;
+/** Benchmark tile glass — lighter than stage strip, darker than frosted card shell. */
+export const MV_UPSIDE_BENCHMARK_TILE_SURFACE =
+  "border-white/[0.08] bg-[#11243d]/48 backdrop-blur-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]";
+
+/** Benchmark outcome tile — mid-tone inset panel. */
+export const MV_UPSIDE_BENCHMARK_TILE = `rounded-xl border ${MV_UPSIDE_BENCHMARK_TILE_SURFACE} transition-all duration-200 hover:-translate-y-px hover:bg-[#11243d]/56`;
 
 export const MV_UPSIDE_BENCHMARK_TILE_UPDATED =
-  "border-white/[0.12] bg-[#0a1929]/70";
+  "border-white/[0.12] bg-[#11243d]/58";
 
 /** Final growth-stage benchmark tile accent. */
 export const MV_UPSIDE_BENCHMARK_TILE_DESTINATION =
