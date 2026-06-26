@@ -7,6 +7,7 @@ import {
   formatSailMarketDirectionTitle,
   getSailMarketTokenSymbol,
 } from "@/utils/sailMarketDirectionLabels";
+import { SAIL_ADVANCED_FROSTED_LIGHT_PANEL } from "@/components/sail/advanced/sailAdvancedStyles";
 
 const PriceChart = dynamic(() => import("@/components/PriceChart"), {
   ssr: false,
@@ -59,7 +60,7 @@ export function SailMarketPriceChart({
 
   return (
     <div
-      className={`flex flex-col rounded-md bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm p-3 ${className}`}
+      className={`flex flex-col rounded-xl p-3 ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL} ${className}`}
     >
       {showPriceHeader ? (
         <div className="mb-2 flex shrink-0 items-end justify-between gap-3 border-b border-[#1E4775]/10 pb-2">
