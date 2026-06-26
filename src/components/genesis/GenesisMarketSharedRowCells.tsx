@@ -21,8 +21,9 @@ export function GenesisMarketChainCell({
   );
 }
 
-const FEATURED_CHAIN_PILL_CLASS =
-  "inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-white pl-2 pr-3.5 text-[#1E4775] shadow-sm ring-1 ring-white/25";
+import { GENESIS_VOYAGE_ROW_PILL_CLASS } from "./genesisActiveTableStyles";
+
+const FEATURED_CHAIN_PILL_CLASS = GENESIS_VOYAGE_ROW_PILL_CLASS;
 
 /**
  * Featured voyage header (dark glass): icon + chain name in a white pill (Ethereum & MegaETH).

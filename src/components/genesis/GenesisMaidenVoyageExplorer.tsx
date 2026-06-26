@@ -62,6 +62,7 @@ import {
   GenesisVoyageArchivedBadge,
   GenesisVoyageCompletedBadge,
 } from "./GenesisVoyageLifecycleBadge";
+import { GENESIS_TABLE_FROSTED_SURFACE } from "./genesisActiveTableStyles";
 import { MV_UPCOMING_BADGE } from "./maidenVoyageLayoutStyles";
 
 const EXPLORER_NETWORK_ICON_PX = 20;
@@ -308,7 +309,7 @@ export function GenesisMaidenVoyageExplorer({
           <GenesisMaidenVoyageTableHeader />
 
           {!hasRows && !(hasArchivedMarkets && archivedExpanded) ? (
-            <div className="rounded-md border border-[#1E4775]/15 bg-white px-4 py-6 text-center text-sm text-[#1E4775]/60 shadow-sm">
+            <div className={`rounded-lg px-4 py-6 text-center text-sm text-[#1E4775]/60 ${GENESIS_TABLE_FROSTED_SURFACE}`}>
               No voyages in this view yet.
             </div>
           ) : null}

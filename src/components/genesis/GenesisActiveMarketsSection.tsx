@@ -53,6 +53,9 @@ import {
   GENESIS_ACTIVE_MD_ROW_COLS_ENDED,
   GENESIS_TABLE_HEADER_CELL_CLASSNAME,
   GENESIS_TABLE_HEADER_SHELL_CLASS,
+  GENESIS_TABLE_ROW_INTERACTIVE_EXPANDED_CLASS,
+  GENESIS_TABLE_ROW_INTERACTIVE_IDLE_CLASS,
+  GENESIS_VOYAGE_EXPANDED_PANEL_SHELL_CLASS,
 } from "./genesisActiveTableStyles";
 import { readContractRowResult } from "./readContractRow";
 
@@ -483,8 +486,8 @@ export function GenesisActiveMarketsSection(
             genesisGreyRow ? "opacity-90 saturate-[0.78]" : ""
           } ${isExpanded ? "rounded-t-lg" : "rounded-lg"} ${
             isExpanded
-              ? "bg-[rgb(var(--surface-selected-rgb))]"
-              : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
+              ? GENESIS_TABLE_ROW_INTERACTIVE_EXPANDED_CLASS
+              : GENESIS_TABLE_ROW_INTERACTIVE_IDLE_CLASS
           }`}
           onClick={() =>
             setExpandedMarkets((prev) =>
@@ -1702,7 +1705,7 @@ export function GenesisActiveMarketsSection(
 
         {/* Expanded View */}
         {isExpanded && (
-          <div className="overflow-hidden rounded-b-lg border-t border-[#1E4775]/12 bg-white px-5 py-4">
+          <div className={`rounded-b-lg ${GENESIS_VOYAGE_EXPANDED_PANEL_SHELL_CLASS}`}>
             <GenesisMarketExpandedView
               marketId={id}
               market={mkt}
