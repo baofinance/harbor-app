@@ -149,26 +149,64 @@ function resolveSideUsd(
 function buildResampledByAsset(
   timestamps: number[],
   chainlinkHistories: Partial<Record<PegAssetKey, ChainlinkPricePoint[]>>,
-  liveFallback?: LiveSideUsdPrices
+  liveFallback?: LiveSideUsdPrices,
+  config?: SailMarketChartConfig
 ): Partial<Record<PegAssetKey, number[]>> {
   const result: Partial<Record<PegAssetKey, number[]>> = {};
-  const assets: PegAssetKey[] = ["ETH", "BTC", "EUR", "XAU", "XAG"];
+  const assetsToResolve = new Set<PegAssetKey>(["ETH", "BTC", "EUR", "XAU", "XAG"]);
 
-  for (const asset of assets) {
+  if (config) {
+    if (config.longPegAsset !== "USD") assetsToResolve.add(config.longPegAsset);
+    if (config.shortPegAsset !== "USD") assetsToResolve.add(config.shortPegAsset);
+  }
+
+  for (const asset of assetsToResolve) {
+    if (asset === "USD") continue;
+
     const history = chainlinkHistories[asset];
-    if (!history?.length) continue;
+    let resampled = history?.length
+      ? resamplePriceSeries(timestamps, history)
+      : timestamps.map(() => NaN);
 
-    let resampled = resamplePriceSeries(timestamps, history);
     if (resampled.every((v) => !Number.isFinite(v)) && liveFallback) {
       const spot = pegAssetUsdFromLive(asset, liveFallback);
       if (spot != null && spot > 0) {
         resampled = timestamps.map(() => spot);
       }
     }
-    result[asset] = resampled;
+
+    if (resampled.some((v) => Number.isFinite(v))) {
+      result[asset] = resampled;
+    }
   }
 
   return result;
+}
+
+/** Build unified timeline from subgraph, Chainlink rounds, or a recent daily grid. */
+export function buildChartTimestamps(
+  mergedSubgraph: MergedChartPoint[],
+  chainlinkHistories: Partial<Record<PegAssetKey, ChainlinkPricePoint[]>>
+): number[] {
+  if (mergedSubgraph.length > 0) {
+    return mergedSubgraph.map((p) => p.timestamp);
+  }
+
+  const tsSet = new Set<number>();
+  for (const history of Object.values(chainlinkHistories)) {
+    if (!history?.length) continue;
+    for (const point of history) {
+      if (point.timestamp > 0) tsSet.add(point.timestamp);
+    }
+  }
+
+  if (tsSet.size > 0) {
+    return Array.from(tsSet).sort((a, b) => a - b);
+  }
+
+  // Last resort when subgraph is empty and Chainlink hasn't loaded yet.
+  const now = Math.floor(Date.now() / 1000);
+  return Array.from({ length: 30 }, (_, i) => now - (29 - i) * 24 * 60 * 60);
 }
 
 export function buildSailMarketChartPoints(
@@ -177,16 +215,26 @@ export function buildSailMarketChartPoints(
   chainlinkHistories: Partial<Record<PegAssetKey, ChainlinkPricePoint[]>>,
   liveFallback?: LiveSideUsdPrices
 ): SailMarketChartPoint[] {
-  if (mergedSubgraph.length === 0) return [];
+  const timestamps = buildChartTimestamps(mergedSubgraph, chainlinkHistories);
+  if (timestamps.length === 0) return [];
 
-  const timestamps = mergedSubgraph.map((p) => p.timestamp);
-  const collateralPrices = mergedSubgraph.map((p) => p.collateralPriceUSD);
-  const hsPrices = mergedSubgraph.map((p) => p.priceUSD);
+  const collateralByTimestamp = new Map(
+    mergedSubgraph.map((p) => [p.timestamp, p.collateralPriceUSD])
+  );
+  const hsByTimestamp = new Map(
+    mergedSubgraph.map((p) => [p.timestamp, p.priceUSD])
+  );
+
+  const collateralPrices = timestamps.map(
+    (ts) => collateralByTimestamp.get(ts) ?? NaN
+  );
+  const hsPrices = timestamps.map((ts) => hsByTimestamp.get(ts) ?? NaN);
 
   const resampledByAsset = buildResampledByAsset(
     timestamps,
     chainlinkHistories,
-    liveFallback
+    liveFallback,
+    config
   );
 
   const longPrefersCollateral = config.collateralIsLong;
@@ -257,7 +305,7 @@ export function formatSailChartUsdValue(value: number | null | undefined): strin
   })}`;
 }
 
-/** Forward-fill Chainlink prices onto subgraph timestamps. */
+/** Forward-fill Chainlink prices onto chart timestamps. */
 export function resamplePriceSeries(
   masterTimestamps: number[],
   chainlinkSeries: ChainlinkPricePoint[]
@@ -267,24 +315,27 @@ export function resamplePriceSeries(
     return masterTimestamps.map(() => NaN);
   }
 
+  const sorted = [...chainlinkSeries].sort((a, b) => a.timestamp - b.timestamp);
   const result: number[] = [];
   let chainIdx = 0;
-  let lastPrice = NaN;
 
   for (const ts of masterTimestamps) {
     while (
-      chainIdx + 1 < chainlinkSeries.length &&
-      chainlinkSeries[chainIdx + 1].timestamp <= ts
+      chainIdx + 1 < sorted.length &&
+      sorted[chainIdx + 1].timestamp <= ts
     ) {
       chainIdx++;
-      lastPrice = chainlinkSeries[chainIdx].priceUsd;
     }
 
-    if (chainlinkSeries[chainIdx].timestamp <= ts) {
-      lastPrice = chainlinkSeries[chainIdx].priceUsd;
+    let price = NaN;
+    if (sorted[chainIdx].timestamp <= ts) {
+      price = sorted[chainIdx].priceUsd;
+    } else if (sorted[0].timestamp > ts) {
+      // Subgraph/oracle grid starts before our Chainlink window — use earliest round.
+      price = sorted[0].priceUsd;
     }
 
-    result.push(lastPrice);
+    result.push(Number.isFinite(price) && price > 0 ? price : NaN);
   }
 
   return result;

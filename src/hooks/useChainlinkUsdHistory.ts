@@ -26,7 +26,7 @@ export function useChainlinkUsdHistory(
 ): { priceHistory: ChainlinkPricePoint[]; isLoading: boolean } {
   const [priceHistory, setPriceHistory] = useState<ChainlinkPricePoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const publicClient = usePublicClient();
+  const publicClient = usePublicClient({ chainId: 1 });
 
   useEffect(() => {
     if (!enabled || !asset || asset === "USD" || !publicClient) {
