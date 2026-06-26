@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { HARBOR_FROSTED_MODAL_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 
 interface GenesisShareModalProps {
  isOpen: boolean;
@@ -38,7 +39,7 @@ https://www.harborfinance.io/`;
  />
 
  {/* Modal */}
-        <div className="relative bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/20 shadow-2xl shadow-black/10 w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 overflow-hidden rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className={`relative ${HARBOR_FROSTED_MODAL_SHELL} w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 overflow-hidden rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-y-auto`}>
  {/* Decorative header wave */}
  <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-br from-[#1E4775] via-[#2A5A8C] to-[#17395F]">
  <div className="absolute bottom-0 left-0 right-0">

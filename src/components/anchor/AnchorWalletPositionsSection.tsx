@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { HARBOR_FROSTED_INDEX_SURFACE } from "@/components/shared/harborFrostedSurfaceStyles";
 import Image from "next/image";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
@@ -222,7 +223,7 @@ if (!isConnected || !address) return null;
                     return (
                       <div
                         key={position.tokenAddress}
-                        className={`bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-harbor-blue/15 shadow-sm ring-1 ring-[#1E4775]/6 p-3 ${HARBOR_DATA_ROW_HOVER_CLASS}`}
+                        className={`${HARBOR_FROSTED_INDEX_SURFACE} p-3 ${HARBOR_DATA_ROW_HOVER_CLASS}`}
                       >
                         {/* Desktop layout (>= lg) - same tracks as AnchorMarketsTableHeader */}
                         <div className={ANCHOR_MARKETS_WALLET_ROW_LG_CLASSNAME}>

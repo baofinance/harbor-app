@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { HARBOR_FROSTED_MODAL_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 import { TransactionStep } from "./TransactionProgressModal";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 
@@ -106,7 +107,7 @@ export const CompoundConfirmationModal = ({
  className="absolute inset-0 bg-black/40 backdrop-blur-sm"
  onClick={onClose}
  />
-        <div className="relative bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/20 shadow-2xl shadow-black/10 w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto rounded-none">
+        <div className={`relative ${HARBOR_FROSTED_MODAL_SHELL} w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto rounded-none`}>
  <div className="flex items-center justify-between p-3 border-b border-[#1E4775]/20">
  <h2 className="text-base font-bold text-[#1E4775]">Compound Rewards</h2>
  <button

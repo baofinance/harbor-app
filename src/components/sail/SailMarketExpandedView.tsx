@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
+import { HARBOR_FROSTED_LIGHT_CARD_ROUNDED } from "@/components/shared/harborFrostedSurfaceStyles";
 import { getLongSide, getShortSide } from "@/utils/marketSideLabels";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
@@ -148,7 +149,7 @@ export function SailMarketExpandedView({
     <div className="bg-[rgb(var(--surface-selected-rgb))] p-3 sm:p-4 border-t border-[#1E4775]/15 mt-0 rounded-b-md">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         <div className="space-y-2 flex flex-col min-w-0">
-          <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-4">
+          <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-4`}>
             <p className="text-xs text-[#1E4775]/80 leading-relaxed">
               Composable short {pegTarget} against {underlyingToken} with
               variable, rebalancing leverage and no funding fees.
@@ -167,7 +168,7 @@ export function SailMarketExpandedView({
           </div>
 
           {hasPosition && pnlData && (
-            <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-4 flex-1">
+            <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-4 flex-1`}>
               <h3 className="text-[#1E4775] font-semibold mb-3 text-xs">
                 Position Details
               </h3>
@@ -243,7 +244,7 @@ export function SailMarketExpandedView({
           )}
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3 h-full flex flex-col items-center text-center">
+            <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-3 h-full flex flex-col items-center text-center`}>
               <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">TVL</h3>
               <p className="text-sm font-bold text-[#1E4775]">
                 {tvlCollateralDisplay}
@@ -255,7 +256,7 @@ export function SailMarketExpandedView({
               )}
             </div>
 
-            <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3 h-full flex flex-col items-center text-center">
+            <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-3 h-full flex flex-col items-center text-center`}>
               <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
                 {market.leveragedToken?.symbol || "Token"} Price
               </h3>
@@ -266,7 +267,7 @@ export function SailMarketExpandedView({
               </p>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3 h-full flex flex-col items-center text-center">
+            <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-3 h-full flex flex-col items-center text-center`}>
               <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
                 Collateral Ratio
               </h3>
@@ -275,7 +276,7 @@ export function SailMarketExpandedView({
               </p>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3 h-full flex flex-col items-center text-center">
+            <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-3 h-full flex flex-col items-center text-center`}>
               <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
                 Leverage Ratio
               </h3>

@@ -1869,11 +1869,11 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
    closeDisabled={isProcessing}
   panelClassName={
     embedded
-      ? "min-h-0"
+      ? "flex h-full min-h-0 flex-1 flex-col"
       : "max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col"
   }
   contentClassName={
-    embedded ? "min-h-0 space-y-4" : "min-h-0 flex-1 overflow-y-auto p-3 sm:p-4"
+    embedded ? "flex min-h-0 flex-1 flex-col space-y-4" : "min-h-0 flex-1 overflow-y-auto p-3 sm:p-4"
   }
  >
  {step ==="success" ? (

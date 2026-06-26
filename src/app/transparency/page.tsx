@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
+import { HARBOR_FROSTED_INDEX_SURFACE, HARBOR_FROSTED_LIGHT_CARD_ROUNDED, HARBOR_FROSTED_SURFACE, HARBOR_FROSTED_SURFACE_HOVER, HARBOR_FROSTED_SURFACE_SELECTED } from "@/components/shared/harborFrostedSurfaceStyles";
 
 import {
  useTransparencyData,
@@ -454,13 +455,13 @@ function MarketCard({
     const barChartMaxPercent = Math.max(...barchartPercentData.map((d) => d.value));
 
     return (
-        <div className="rounded-md overflow-hidden bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-harbor-blue/15 shadow-sm ring-1 ring-[#1E4775]/6">
+        <div className={`rounded-md overflow-hidden ${HARBOR_FROSTED_INDEX_SURFACE}`}>
             {/* Market Bar */}
             <div
                 className={`cursor-pointer transition-colors ${
                     isExpanded
-                        ? "bg-white/90 backdrop-blur-md backdrop-saturate-150"
-                        : "bg-white/80 backdrop-blur-md backdrop-saturate-150 hover:bg-white/88 transition-colors"
+                        ? `${HARBOR_FROSTED_SURFACE_SELECTED}`
+                        : `${HARBOR_FROSTED_SURFACE} ${HARBOR_FROSTED_SURFACE_HOVER}`
                 }`}
                 onClick={() => setIsExpanded((v) => !v)}
             >
@@ -682,7 +683,7 @@ function MarketCard({
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                         {/* Token Prices & Supply */}
-                        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-2.5 space-y-2 lg:row-span-2">
+                        <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-2.5 space-y-2 lg:row-span-2`}>
                             <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
                                 Prices & Supply
                             </h4>
@@ -797,7 +798,7 @@ function MarketCard({
                         </div>
 
                         {/* Stability Pools */}
-                        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-2.5 space-y-2 lg:col-span-2">
+                        <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-2.5 space-y-2 lg:col-span-2`}>
                             <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
                                 Stability Pools
                             </h4>
@@ -902,7 +903,7 @@ function MarketCard({
                         </div>
 
                         {/* Yield (Anchor Supply) */}
-                        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-2.5 space-y-2 lg:col-span-2">
+                        <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-2.5 space-y-2 lg:col-span-2`}>
                             <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
                                 Anchor Supply
                             </h4>
@@ -1146,7 +1147,7 @@ function MarketCard({
                     </div>
 
                     {/* Contract Addresses */}
-                    <div className="mt-3 bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3">
+                    <div className={`mt-3 ${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-3`}>
                         <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
                             Contract Addresses
                         </h4>
@@ -1237,7 +1238,7 @@ function BandTable({
     currentCR: bigint;
 }) {
     return (
-        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3">
+        <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-3`}>
             <h5 className="text-[#1E4775] font-semibold text-[10px] uppercase tracking-wider mb-1.5">
                 {title}
             </h5>
@@ -1310,7 +1311,7 @@ function FeeTransparencyBands({
     }, [configData]);
 
     return (
-        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3">
+        <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-3`}>
             <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
                 Fees & Incentives
             </h4>
@@ -1772,7 +1773,7 @@ export default function TransparencyPage() {
                                     )}
                                 {activeDisplayedMarkets.length > 0 && (
                                     <div
-                                        className={`hidden lg:block bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-harbor-blue/15 shadow-sm ring-1 ring-[#1E4775]/6 py-1.5 px-2 mb-0 overflow-x-auto rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
+                                        className={`hidden lg:block ${HARBOR_FROSTED_INDEX_SURFACE} py-1.5 px-2 mb-0 overflow-x-auto rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
                                     >
                                         <div className="grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
                                             <div className="text-center">Market</div>

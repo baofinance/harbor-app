@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { HARBOR_FROSTED_MODAL_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 import { parseEther, formatEther } from "viem";
 import {
  useAccount,
@@ -195,7 +196,7 @@ export const AnchorWithdrawModal = ({
  onClick={handleClose}
  />
 
- <div className="relative bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/20 shadow-2xl shadow-black/10 w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200">
+ <div className={`relative ${HARBOR_FROSTED_MODAL_SHELL} w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200`}>
  <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20">
  <h2 className="text-2xl font-bold text-[#1E4775]">Withdraw</h2>
  <button

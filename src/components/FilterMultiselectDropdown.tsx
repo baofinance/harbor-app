@@ -17,6 +17,7 @@ import {
   ArrowTrendingDownIcon,
 } from "@heroicons/react/24/outline";
 import Image from "next/image";
+import { HARBOR_FROSTED_DROPDOWN_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 import NetworkIconClient from "@/components/NetworkIconClient";
 
 export type FilterOption = {
@@ -117,7 +118,7 @@ export function FilterMultiselectDropdown({
         <ListboxOptions
           modal={false}
           anchor={{ to: "bottom start", gap: 2 }}
-          className={`z-50 w-full ${minWidthClass} min-w-0 bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/12 shadow-xl ring-1 ring-black/5 border border-[#1E4775]/20 rounded-md shadow-lg overflow-hidden overflow-y-auto outline-none [width:var(--button-width)] ${maxHeightClass}`}
+          className={`z-50 w-full ${minWidthClass} min-w-0 ${HARBOR_FROSTED_DROPDOWN_SHELL} border border-[#1E4775]/20 rounded-md shadow-lg overflow-hidden overflow-y-auto outline-none [width:var(--button-width)] ${maxHeightClass}`}
         >
           {groupLabel && (
             <div className="px-4 py-2 bg-[#1E4775]/5 text-xs font-semibold text-[#1E4775]/70 uppercase tracking-wider">

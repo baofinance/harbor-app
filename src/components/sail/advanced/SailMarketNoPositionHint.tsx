@@ -1,6 +1,9 @@
 "use client";
 
-import { SAIL_ADVANCED_CAPTION, SAIL_ADVANCED_FROSTED_CARD } from "./sailAdvancedStyles";
+import {
+  SAIL_ADVANCED_FROSTED_CARD,
+  SAIL_ADVANCED_LIGHT_BODY,
+} from "./sailAdvancedStyles";
 
 type SailMarketNoPositionHintProps = {
   isConnected: boolean;
@@ -12,7 +15,7 @@ export function SailMarketNoPositionHint({
 }: SailMarketNoPositionHintProps) {
   return (
     <p
-      className={`${SAIL_ADVANCED_FROSTED_CARD} px-3 py-2 text-center ${SAIL_ADVANCED_CAPTION} text-white/65`}
+      className={`${SAIL_ADVANCED_FROSTED_CARD} px-3 py-2 text-center ${SAIL_ADVANCED_LIGHT_BODY}`}
       role="status"
     >
       {isConnected

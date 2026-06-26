@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { HARBOR_FROSTED_MODAL_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 import { isMarketInMaintenance, markets as marketsConfig } from "@/config/markets";
 import { MaintenanceClaimOnlyTags } from "@/components/MarketMaintenanceTag";
 
@@ -118,7 +119,7 @@ export const AnchorClaimAllModal = ({
  onClick={onClose}
  />
 
-        <div className="relative isolate bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/20 shadow-2xl shadow-black/10 w-full max-w-4xl mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 flex flex-col max-h-[95vh] sm:max-h-[90vh] overflow-hidden rounded-xl border border-[#1E4775]/10">
+        <div className={`relative isolate ${HARBOR_FROSTED_MODAL_SHELL} w-full max-w-4xl mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 flex flex-col max-h-[95vh] sm:max-h-[90vh] overflow-hidden rounded-xl border border-[#1E4775]/10`}>
           <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 border-b border-[#1E4775]/20 shrink-0">
  <h2 className="text-2xl font-bold text-[#1E4775]">Claim Rewards</h2>
  <button

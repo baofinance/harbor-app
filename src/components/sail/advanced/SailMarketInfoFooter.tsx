@@ -5,9 +5,9 @@ import {
   StarIcon,
 } from "@heroicons/react/24/outline";
 import {
-  SAIL_ADVANCED_BODY,
-  SAIL_ADVANCED_LABEL,
-  SAIL_ADVANCED_PANEL,
+  SAIL_ADVANCED_FROSTED_CARD,
+  SAIL_ADVANCED_LIGHT_BODY,
+  SAIL_ADVANCED_LIGHT_SECTION_TITLE,
   SAIL_ADVANCED_SHELL,
 } from "./sailAdvancedStyles";
 
@@ -21,12 +21,12 @@ function FooterColumn({
   body: string;
 }) {
   return (
-    <div className={`${SAIL_ADVANCED_PANEL} p-4`}>
+    <div className={`${SAIL_ADVANCED_FROSTED_CARD} p-4`}>
       <div className="mb-2 flex items-center gap-2">
-        <Icon className="h-5 w-5 text-white/75" aria-hidden />
-        <h3 className={`${SAIL_ADVANCED_LABEL} text-white/85`}>{title}</h3>
+        <Icon className="h-5 w-5 text-[#1E4775]/70" aria-hidden />
+        <h3 className={SAIL_ADVANCED_LIGHT_SECTION_TITLE}>{title}</h3>
       </div>
-      <p className={SAIL_ADVANCED_BODY}>{body}</p>
+      <p className={SAIL_ADVANCED_LIGHT_BODY}>{body}</p>
     </div>
   );
 }

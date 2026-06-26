@@ -1,8 +1,11 @@
 "use client";
 
-import { HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS } from "@/components/shared/harborStatTileStyles";
 import { formatUSD } from "@/utils/formatters";
-import { SAIL_ADVANCED_FROSTED_CARD } from "./sailAdvancedStyles";
+import {
+  SAIL_ADVANCED_FROSTED_CARD,
+  SAIL_ADVANCED_LIGHT_LABEL,
+  SAIL_ADVANCED_LIGHT_VALUE,
+} from "./sailAdvancedStyles";
 
 export type SailWalletStatsStripProps = {
   isConnected: boolean;
@@ -21,15 +24,14 @@ export type SailWalletStatsStripProps = {
   className?: string;
 };
 
-const SAIL_WALLET_STATS_SHELL = `flex shrink-0 items-stretch overflow-x-auto ${SAIL_ADVANCED_FROSTED_CARD}`;
+const SAIL_WALLET_STATS_SHELL = `grid w-full divide-[#1E4775]/10 ${SAIL_ADVANCED_FROSTED_CARD}`;
 
-const SAIL_WALLET_STATS_CELL = `${HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS} px-2.5 py-1.5 sm:px-3`;
+const SAIL_WALLET_STATS_CELL =
+  "flex min-w-0 flex-col items-center justify-center px-2 py-2 text-center sm:px-4 sm:py-2.5";
 
-const SAIL_WALLET_STATS_LABEL =
-  "whitespace-nowrap text-[10px] font-medium uppercase tracking-wide text-white/55";
+const SAIL_WALLET_STATS_LABEL = SAIL_ADVANCED_LIGHT_LABEL;
 
-const SAIL_WALLET_STATS_VALUE =
-  "mt-0.5 truncate font-mono text-xs font-semibold tabular-nums text-white/90";
+const SAIL_WALLET_STATS_VALUE = `mt-0.5 truncate ${SAIL_ADVANCED_LIGHT_VALUE} text-xs sm:text-sm`;
 
 function formatSailMarks(value: number): string {
   if (value <= 0) return "0";
@@ -80,25 +82,19 @@ function StatCell({
   label,
   value,
   valueClassName = SAIL_WALLET_STATS_VALUE,
-  minWidthClass = "min-w-[4.25rem]",
 }: {
   label: string;
   value: string;
   valueClassName?: string;
-  minWidthClass?: string;
 }) {
   return (
-    <div className={`${SAIL_WALLET_STATS_CELL} ${minWidthClass}`}>
+    <div className={SAIL_WALLET_STATS_CELL}>
       <span className={SAIL_WALLET_STATS_LABEL}>{label}</span>
       <span className={valueClassName} title={value}>
         {value}
       </span>
     </div>
   );
-}
-
-function StatDivider() {
-  return <div aria-hidden className="my-1.5 w-px shrink-0 bg-white/10" />;
 }
 
 /** Compact header wallet stats — single frosted row beside the market dropdown. */
@@ -115,10 +111,13 @@ export function SailWalletStatsStrip({
   const dash = "—";
   const pnl = formatPnL(pnlFromMarkets, pnlSummaryLoading, isConnected);
   const marksValue = isLoadingSailMarks ? "…" : formatSailMarks(totalSailMarks);
+  const gridClass = showSailMarks
+    ? "grid-cols-2 sm:grid-cols-4"
+    : "grid-cols-3";
 
   return (
     <div
-      className={`${SAIL_WALLET_STATS_SHELL} [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`.trim()}
+      className={`${SAIL_WALLET_STATS_SHELL} ${gridClass} divide-x ${className}`.trim()}
       aria-label="Your Sail wallet"
     >
       <StatCell
@@ -129,34 +128,23 @@ export function SailWalletStatsStrip({
             : dash
         }
       />
-      <StatDivider />
       <StatCell
         label="Positions"
         value={isConnected ? String(sailUserStats.positionsCount) : dash}
-        minWidthClass="min-w-[3.75rem]"
       />
-      <StatDivider />
       <StatCell
         label="PnL"
         value={pnl.text}
         valueClassName={pnl.valueClassName}
-        minWidthClass="min-w-[5.5rem] sm:min-w-[6.25rem]"
       />
       {showSailMarks ? (
-        <>
-          <StatDivider />
-          <StatCell
-            label="Sail marks"
-            value={marksValue}
-            minWidthClass="min-w-[4.5rem]"
-          />
-        </>
+        <StatCell label="Sail marks" value={marksValue} />
       ) : null}
     </div>
   );
 }
 
-/** Standalone Sail marks chip for the header trailing cluster. */
+/** @deprecated Use `SailWalletStatsStrip` with default `showSailMarks`. */
 export function SailWalletMarksChip({
   isLoadingSailMarks,
   totalSailMarks,
@@ -166,10 +154,11 @@ export function SailWalletMarksChip({
 
   return (
     <div
-      className={`${SAIL_WALLET_STATS_SHELL} shrink-0 ${className}`.trim()}
+      className={`${SAIL_WALLET_STATS_SHELL} ${className}`.trim()}
+      style={{ gridTemplateColumns: "minmax(0, 1fr)" }}
       aria-label="Sail marks"
     >
-      <StatCell label="Sail marks" value={marksValue} minWidthClass="min-w-[4.5rem]" />
+      <StatCell label="Sail marks" value={marksValue} />
     </div>
   );
 }

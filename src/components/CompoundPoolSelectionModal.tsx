@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { HARBOR_FROSTED_MODAL_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 
 // Format USD values compactly
 function formatCompactUSD(value: number): string {
@@ -126,7 +127,7 @@ export const CompoundPoolSelectionModal = ({
  className="absolute inset-0 bg-black/40 backdrop-blur-sm"
  onClick={onClose}
  />
-        <div className="relative bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/20 shadow-2xl shadow-black/10 w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className={`relative ${HARBOR_FROSTED_MODAL_SHELL} w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-y-auto`}>
  <div className="flex items-center justify-between p-4 border-b border-[#1E4775]/20">
  <h2 className="text-xl font-bold text-[#1E4775]">Select Pools to Compound To</h2>
  <button

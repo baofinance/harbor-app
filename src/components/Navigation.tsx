@@ -1,6 +1,6 @@
 "use client";
 import { Suspense, useState } from "react";
-import { HARBOR_FROSTED_ACTIVE_PILL, HARBOR_FROSTED_DROPDOWN_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
+import { HARBOR_FROSTED_ACTIVE_PILL, HARBOR_FROSTED_NAV_DROPDOWN_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 import {
   Disclosure,
   DisclosureButton,
@@ -142,7 +142,7 @@ export default function Example() {
               <PopoverPanel
                 transition
                 anchor={{ to: "bottom end", gap: 8 }}
-                className={`z-[100] w-56 origin-top-right rounded-lg py-1 outline-none transition data-closed:scale-95 data-closed:opacity-0 ${HARBOR_FROSTED_DROPDOWN_SHELL}`}
+                className={`z-[100] w-56 origin-top-right overflow-hidden rounded-lg py-1 outline-none transition data-closed:scale-95 data-closed:opacity-0 ${HARBOR_FROSTED_NAV_DROPDOWN_SHELL}`}
               >
                 {MORE_NAV.map(({ href, label }) => (
                   <Link
@@ -151,7 +151,7 @@ export default function Example() {
                     className={`block px-4 py-2.5 text-sm font-medium ${
                       isActive(href)
                         ? "bg-[#1E4775]/10 text-[#1E4775]"
-                        : "text-[#1E4775] hover:bg-gray-100"
+                        : "bg-white text-[#1E4775] hover:bg-gray-100"
                     }`}
                     aria-current={isActive(href) ? "page" : undefined}
                   >
@@ -167,7 +167,7 @@ export default function Example() {
                       className={`block w-full px-4 py-2.5 text-left text-sm font-medium ${
                         isImpersonating
                           ? "bg-[#FF8A7A]/10 text-[#1E4775]"
-                          : "text-[#1E4775] hover:bg-gray-100"
+                          : "bg-white text-[#1E4775] hover:bg-gray-100"
                       }`}
                     >
                       Impersonate

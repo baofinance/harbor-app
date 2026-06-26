@@ -36,6 +36,8 @@ export type SailMarketPriceChartProps = {
   showPriceHeader?: boolean;
   tokenPriceUSD?: number;
   size?: SailMarketPriceChartSize;
+  /** Grow chart to fill column height (UI+ desktop grid). */
+  fillHeight?: boolean;
 };
 
 /**
@@ -49,10 +51,13 @@ export function SailMarketPriceChart({
   showPriceHeader = false,
   tokenPriceUSD,
   size = "default",
+  fillHeight = false,
 }: SailMarketPriceChartProps) {
   const symbol = getSailMarketTokenSymbol(market);
   const chartTitle = formatSailMarketDirectionTitle(market);
-  const chartHeightClass = SAIL_CHART_HEIGHT_CLASS[size];
+  const chartHeightClass = fillHeight
+    ? "flex min-h-96 flex-col sm:min-h-[26rem] lg:min-h-0 lg:flex-1"
+    : SAIL_CHART_HEIGHT_CLASS[size];
   const priceDisplay =
     tokenPriceUSD !== undefined && Number.isFinite(tokenPriceUSD)
       ? formatUSD(tokenPriceUSD)
@@ -60,7 +65,9 @@ export function SailMarketPriceChart({
 
   return (
     <div
-      className={`flex flex-col rounded-xl p-3 ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL} ${className}`}
+      className={`flex flex-col rounded-xl p-3 ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL} ${
+        fillHeight ? "lg:h-full lg:min-h-0 lg:flex-1" : ""
+      } ${className}`}
     >
       {showPriceHeader ? (
         <div className="mb-2 flex shrink-0 items-end justify-between gap-3 border-b border-[#1E4775]/10 pb-2">
@@ -81,7 +88,7 @@ export function SailMarketPriceChart({
           {chartTitle} price
         </h3>
       ) : null}
-      <div className={`${chartHeightClass} w-full shrink-0`}>
+      <div className={`${chartHeightClass} flex flex-col`}>
         <PriceChart
           tokenType="STEAMED"
           selectedToken={symbol}

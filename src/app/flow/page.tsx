@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { HARBOR_FROSTED_LIGHT_CARD_ROUNDED } from "@/components/shared/harborFrostedSurfaceStyles";
 import Head from "next/head";
 import { usePublicClient, useAccount } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
@@ -184,7 +185,7 @@ export default function FlowPage() {
           {/* Filters, Total Feeds, and Votes Box - All on one line */}
           <div className="grid grid-cols-1 md:grid-cols-[4fr_1fr_1fr] gap-2 mb-2">
             {/* Filters Section */}
-            <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md py-2.5 px-2.5 border border-[#1E4775]/10">
+            <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} py-2.5 px-2.5 border border-[#1E4775]/10`}>
               <div className="grid grid-cols-1 md:grid-cols-5 gap-1.5 mb-2">
                 {/* Chain Dropdown */}
                 <div>
@@ -303,7 +304,7 @@ export default function FlowPage() {
             </div>
 
             {/* Votes Box */}
-            <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md py-3 px-3 flex flex-col items-center justify-center">
+            <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} py-3 px-3 flex flex-col items-center justify-center`}>
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-medium text-[#1E4775] text-sm uppercase tracking-wider text-center">
                   Your Votes

@@ -17,9 +17,10 @@ import {
   type SailMarketsToolbarProps,
 } from "@/components/sail/SailMarketsToolbar";
 import {
-  SAIL_ADVANCED_CAPTION,
+  SAIL_ADVANCED_FROSTED_CARD,
   SAIL_ADVANCED_LABEL,
-  SAIL_ADVANCED_PANEL,
+  SAIL_ADVANCED_LIGHT_CAPTION,
+  SAIL_ADVANCED_LIGHT_VALUE,
   SAIL_ADVANCED_SHELL,
 } from "./sailAdvancedStyles";
 
@@ -115,23 +116,23 @@ export function SailOtherMarketsStrip({
               key={marketId}
               type="button"
               onClick={() => onSelectMarket(marketId)}
-              className={`min-w-[220px] max-w-[260px] shrink-0 snap-start rounded-xl border p-3 text-left transition ${
+              className={`min-w-[220px] max-w-[260px] shrink-0 snap-start p-3 text-left transition ${
                 active
-                  ? "border-white/30 bg-white/[0.14] ring-1 ring-white/20"
-                  : "border-white/[0.08] bg-white/[0.06] hover:bg-white/[0.1]"
+                  ? `${SAIL_ADVANCED_FROSTED_CARD} ring-2 ring-[#4A9784]/40`
+                  : `${SAIL_ADVANCED_FROSTED_CARD} hover:brightness-[1.02]`
               }`}
             >
-              <div className="text-sm font-semibold text-white">{marketTitle}</div>
-              <div className={`mt-0.5 font-mono ${SAIL_ADVANCED_CAPTION}`}>
+              <div className="text-sm font-semibold text-[#1E4775]">{marketTitle}</div>
+              <div className={`mt-0.5 font-mono ${SAIL_ADVANCED_LIGHT_CAPTION}`}>
                 {tokenSymbol}
               </div>
               <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
-                <span className={SAIL_ADVANCED_CAPTION}>Leverage</span>
-                <span className="text-right font-mono text-white">
+                <span className={SAIL_ADVANCED_LIGHT_CAPTION}>Leverage</span>
+                <span className={`text-right ${SAIL_ADVANCED_LIGHT_VALUE}`}>
                   {formatLeverage(model.leverageRatio)}
                 </span>
-                <span className={SAIL_ADVANCED_CAPTION}>TVL</span>
-                <span className="text-right font-mono text-white">
+                <span className={SAIL_ADVANCED_LIGHT_CAPTION}>TVL</span>
+                <span className={`text-right ${SAIL_ADVANCED_LIGHT_VALUE}`}>
                   {tvlUSD !== undefined ? formatUSD(tvlUSD) : "—"}
                 </span>
               </div>

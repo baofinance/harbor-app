@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { HARBOR_FROSTED_SURFACE, HARBOR_FROSTED_SURFACE_HOVER, HARBOR_FROSTED_SURFACE_SELECTED } from "@/components/shared/harborFrostedSurfaceStyles";
 import TokenIcon from "@/components/TokenIcon";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { ChevronIcon } from "./Icons";
@@ -47,8 +48,8 @@ export function FeedGroupSection({
     <div
       className={`p-2 sm:p-3 overflow-x-auto overflow-y-visible transition ${
         sectionExpanded
-          ? "bg-white/90 backdrop-blur-md backdrop-saturate-150"
-          : "bg-white/80 backdrop-blur-md backdrop-saturate-150 hover:bg-white/88 transition-colors"
+          ? `${HARBOR_FROSTED_SURFACE_SELECTED}`
+          : `${HARBOR_FROSTED_SURFACE} ${HARBOR_FROSTED_SURFACE_HOVER}`
       }`}
     >
       <div

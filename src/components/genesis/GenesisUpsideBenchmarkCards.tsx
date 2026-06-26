@@ -78,7 +78,7 @@ function BenchmarkCard({
               </span>
             </p>
           ) : null}
-          <p className="text-[11px] font-medium uppercase tracking-wide text-white/70 sm:text-xs">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-[#1E4775]/65 sm:text-xs">
             {MAIDEN_VOYAGE_UPSIDE_COPY.youEarn}
           </p>
           <p className="mt-1 font-mono leading-tight tabular-nums">
@@ -91,7 +91,7 @@ function BenchmarkCard({
               {MAIDEN_VOYAGE_UPSIDE_COPY.earningsSuffix}
             </span>
           </p>
-          <p className="mt-2 max-w-full font-mono text-[11px] leading-snug tabular-nums text-white/60 sm:text-xs">
+          <p className="mt-2 max-w-full font-mono text-[11px] leading-snug tabular-nums text-[#1E4775]/55 sm:text-xs">
             {formatAssumptionLine(row)}
           </p>
         </div>
@@ -129,7 +129,7 @@ export function GenesisUpsideBenchmarkCards({
                 className="flex items-center justify-center px-0.5 sm:px-1"
                 aria-hidden
               >
-                <ChevronRightIcon className="h-3.5 w-3.5 shrink-0 text-white/35 sm:h-4 sm:w-4" />
+                <ChevronRightIcon className="h-3.5 w-3.5 shrink-0 text-[#1E4775]/25 sm:h-4 sm:w-4" />
               </div>
             ) : null}
           </div>

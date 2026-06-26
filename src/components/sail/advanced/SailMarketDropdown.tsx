@@ -11,9 +11,12 @@ import {
 } from "@/utils/sailMarketDirectionLabels";
 import { getShortSide } from "@/utils/marketSideLabels";
 import { getSailSideLogoPath } from "@/utils/sailAssetLogos";
+import { SAIL_ADVANCED_FROSTED_LIGHT_PANEL } from "./sailAdvancedStyles";
 
 const SAIL_DROPDOWN_MENU_CLASS =
-  "absolute left-0 right-0 top-[calc(100%+0.35rem)] z-50 max-h-72 overflow-y-auto rounded-xl bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/12 shadow-xl ring-1 ring-black/5 p-1";
+  `absolute left-0 right-0 top-[calc(100%+0.35rem)] z-50 max-h-72 overflow-y-auto rounded-xl shadow-xl ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL} p-1`;
+
+const SAIL_DROPDOWN_TRIGGER_CLASS = `flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-2 text-left transition hover:brightness-[1.02] ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`;
 
 const SAIL_DROPDOWN_OPTION_ACTIVE_CLASS = "bg-[#1E4775]/10";
 const SAIL_DROPDOWN_OPTION_HOVER_CLASS = "hover:bg-[#1E4775]/[0.06]";
@@ -69,24 +72,24 @@ export function SailMarketDropdown({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full min-w-0 items-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.06] px-3 py-2 text-left transition hover:bg-white/[0.1]"
+        className={SAIL_DROPDOWN_TRIGGER_CLASS}
         aria-expanded={open}
         aria-haspopup="listbox"
       >
         <div className="min-w-0 flex-1">
-          <div className="truncate text-base font-semibold text-white sm:text-lg">
+          <div className="truncate text-base font-semibold text-[#1E4775] sm:text-lg">
             {marketTitle}
           </div>
         </div>
         {selected.positionLabel ? (
           <div className="hidden shrink-0 text-right sm:block">
-            <div className="truncate text-xs font-medium text-harbor-mint">
+            <div className="truncate text-xs font-medium text-[#4A9784]">
               {selected.positionLabel}
             </div>
           </div>
         ) : null}
         <ChevronDownIcon
-          className={`h-5 w-5 shrink-0 text-white/70 transition ${open ? "rotate-180" : ""}`}
+          className={`h-5 w-5 shrink-0 text-[#1E4775]/55 transition ${open ? "rotate-180" : ""}`}
         />
       </button>
 

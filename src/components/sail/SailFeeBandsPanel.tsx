@@ -1,4 +1,5 @@
 import type { FeeBand } from "@/utils/sailFeeBands";
+import { HARBOR_FROSTED_LIGHT_CARD_ROUNDED } from "@/components/shared/harborFrostedSurfaceStyles";
 import { formatRatio } from "@/utils/sailDisplayFormat";
 import {
   HARBOR_FEE_BAND_RANGE_TEXT_CLASS,
@@ -24,7 +25,7 @@ export function SailFeeBandsPanel({
 }: SailFeeBandsPanelProps) {
   if (!bands || bands.length === 0) {
     return (
-      <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-2">
+      <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-2`}>
         <h5 className="font-semibold text-[10px] uppercase tracking-wider mb-1.5 text-[#1E4775]">
           {title}
         </h5>
@@ -34,7 +35,7 @@ export function SailFeeBandsPanel({
   }
 
   return (
-    <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-2">
+    <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-2`}>
       <h5 className="font-semibold text-[10px] uppercase tracking-wider mb-1.5 text-[#1E4775]">
         {title}
       </h5>

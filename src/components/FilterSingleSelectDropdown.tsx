@@ -7,6 +7,7 @@ import {
   ListboxOptions,
 } from "@headlessui/react";
 import { ChevronDownIcon, CheckIcon } from "@heroicons/react/24/outline";
+import { HARBOR_FROSTED_DROPDOWN_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 
 export type FilterSingleSelectOption = {
   id: string;
@@ -67,7 +68,7 @@ export function FilterSingleSelectDropdown({
         <ListboxOptions
           modal={false}
           anchor={{ to: "bottom start", gap: 2 }}
-          className={`z-50 w-full ${minWidthClass} min-w-0 bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/12 shadow-xl ring-1 ring-black/5 border border-[#1E4775]/20 rounded-md shadow-lg overflow-hidden overflow-y-auto outline-none [width:var(--button-width)] max-h-60`}
+          className={`z-50 w-full ${minWidthClass} min-w-0 ${HARBOR_FROSTED_DROPDOWN_SHELL} border border-[#1E4775]/20 rounded-md shadow-lg overflow-hidden overflow-y-auto outline-none [width:var(--button-width)] max-h-60`}
         >
           {groupLabel && (
             <div className="px-4 py-2 bg-[#1E4775]/5 text-xs font-semibold text-[#1E4775]/70 uppercase tracking-wider">

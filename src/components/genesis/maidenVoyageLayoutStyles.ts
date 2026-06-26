@@ -2,6 +2,7 @@ import {
   BASIC_MARKET_DIRECTION_LONG_CHIP_CLASS,
   BASIC_MARKET_DIRECTION_SHORT_CHIP_CLASS,
 } from "@/components/market-cards/harborBasicMarketTokens";
+import { HARBOR_FROSTED_LIGHT_CARD } from "@/components/shared/harborFrostedSurfaceStyles";
 
 /** Shared Maiden Voyage 2.0 landing layout tokens (dark campaign theme). */
 
@@ -189,38 +190,44 @@ export const MV_UPSIDE_OWNERSHIP_PANEL =
 /** Ownership bar sparkle icon tile. */
 export const MV_UPSIDE_OWNERSHIP_ICON = MV_ICON_BADGE_LG;
 
-/** Deposit row shell. */
-export const MV_UPSIDE_DEPOSIT_PANEL = `${MV_STAT_TILE} px-3 py-3 sm:px-4 sm:py-4`;
+/** Deposit row shell — white frosted glass (Explore the Upside). */
+export const MV_UPSIDE_LIGHT_CARD_SHELL = `rounded-xl ${HARBOR_FROSTED_LIGHT_CARD} ring-1 ring-[#1E4775]/10`;
 
-/** Growth-stage benchmark themes (Launch / Growth / Scale). */
+export const MV_UPSIDE_DEPOSIT_PANEL = `${MV_UPSIDE_LIGHT_CARD_SHELL} px-3 py-3 sm:px-4 sm:py-4`;
+
+/** Labels on white upside cards. */
+export const MV_UPSIDE_LIGHT_LABEL =
+  "text-xs font-medium tracking-wide text-[#1E4775]/65";
+
+/** Growth-stage benchmark themes (Launch / Growth / Scale) — light card variants. */
 export const MV_UPSIDE_STAGE_LAUNCH = {
   badge:
-    "border-[#4A9784]/45 bg-[#4A9784]/10 text-white",
-  earnings: "text-white",
-  icon: "border-[#4A9784]/25 bg-[#0a1929]/55 text-[#4A9784]",
-  iconBenchmark: "border-[#4A9784]/25 bg-[#0a1929]/55 text-[#4A9784]",
-  hover: "hover:border-[#4A9784]/30 hover:bg-[#4A9784]/[0.04]",
+    "border-[#4A9784]/40 bg-[#4A9784]/12 text-[#2d6b5c]",
+  earnings: "text-[#2d6b5c]",
+  icon: "border-[#4A9784]/25 bg-[#4A9784]/10 text-[#4A9784]",
+  iconBenchmark: "border-[#4A9784]/25 bg-[#4A9784]/10 text-[#4A9784]",
+  hover: "hover:border-[#4A9784]/30",
   accentBar: "border-l-[3px] border-l-[#4A9784]",
 } as const;
 
 export const MV_UPSIDE_STAGE_GROWTH = {
   badge:
-    "border-[#C4B5FD]/45 bg-[#C4B5FD]/10 text-white",
-  earnings: "text-white",
-  icon: "border-[#C4B5FD]/25 bg-[#0a1929]/55 text-[#C4B5FD]",
-  iconBenchmark: "border-[#C4B5FD]/25 bg-[#0a1929]/55 text-[#C4B5FD]",
-  hover: "hover:border-[#C4B5FD]/30 hover:bg-[#C4B5FD]/[0.04]",
-  accentBar: "border-l-[3px] border-l-[#C4B5FD]",
+    "border-[#7C3AED]/35 bg-[#7C3AED]/10 text-[#5b21b6]",
+  earnings: "text-[#5b21b6]",
+  icon: "border-[#7C3AED]/25 bg-[#7C3AED]/10 text-[#7C3AED]",
+  iconBenchmark: "border-[#7C3AED]/25 bg-[#7C3AED]/10 text-[#7C3AED]",
+  hover: "hover:border-[#7C3AED]/30",
+  accentBar: "border-l-[3px] border-l-[#7C3AED]",
 } as const;
 
 export const MV_UPSIDE_STAGE_SCALE = {
   badge:
-    "border-[#5B8FD4]/45 bg-[#5B8FD4]/15 text-white",
-  earnings: "text-white",
-  icon: "border-[#5B8FD4]/25 bg-[#0a1929]/55 text-[#9EC5F5]",
-  iconBenchmark: "border-[#5B8FD4]/25 bg-[#0a1929]/55 text-[#9EC5F5]",
-  hover: "hover:border-[#5B8FD4]/30 hover:bg-[#5B8FD4]/[0.04]",
-  accentBar: "border-l-[3px] border-l-[#9EC5F5]",
+    "border-[#1E4775]/30 bg-[#1E4775]/8 text-[#1E4775]",
+  earnings: "text-[#1E4775]",
+  icon: "border-[#5B8FD4]/25 bg-[#5B8FD4]/10 text-[#1E4775]",
+  iconBenchmark: "border-[#5B8FD4]/25 bg-[#5B8FD4]/10 text-[#1E4775]",
+  hover: "hover:border-[#5B8FD4]/30",
+  accentBar: "border-l-[3px] border-l-[#5B8FD4]",
 } as const;
 
 export type UpsideGrowthStageId = "launch" | "growth" | "scale";
@@ -262,10 +269,8 @@ export const MV_UPSIDE_DEPOSIT_CHIP_ACTIVE =
 export const MV_UPSIDE_OWNERSHIP_FLASH =
   "ring-1 ring-[#FF8A7A]/40 shadow-[0_0_48px_-10px_rgba(255,138,122,0.45)]";
 
-/** Benchmark outcome tiles — dark inset glass (matches Your deposit row). */
-export const MV_UPSIDE_BENCHMARK_TILE_SURFACE = MV_GLASS_INSET_DARK;
-
-export const MV_UPSIDE_BENCHMARK_TILE = `rounded-xl ${MV_UPSIDE_BENCHMARK_TILE_SURFACE} transition-all duration-200 hover:-translate-y-px hover:bg-white/[0.08]`;
+/** Benchmark outcome tiles — white frosted glass (matches Your deposit row). */
+export const MV_UPSIDE_BENCHMARK_TILE = `${MV_UPSIDE_LIGHT_CARD_SHELL} transition-all duration-200 hover:-translate-y-px hover:shadow-md`;
 
 export const MV_UPSIDE_BENCHMARK_TILE_UPDATED =
   "ring-1 ring-harbor-mint/30 shadow-[0_0_24px_-12px_rgba(74,151,132,0.45)]";

@@ -150,16 +150,16 @@ export function SailAdvancedLayout({
       />
 
       <div className={`relative z-0 ${SAIL_ADVANCED_GRID_CLASS}`}>
-        <div className="order-4 lg:order-none lg:col-start-1 lg:row-start-1 lg:row-span-2">
+        <div className="order-4 flex h-full min-h-0 flex-col lg:order-none">
           <SailMarketMetricsColumn
             market={selectedMarket}
             metrics={selectedMetrics}
           />
         </div>
 
-        <div className="order-1 lg:order-none lg:col-start-2 lg:row-start-1">
+        <div className="order-1 flex h-full min-h-0 flex-col gap-3 lg:order-none">
           {hasMarketPosition ? (
-            <div>
+            <div className="shrink-0">
               <p className={SAIL_ADVANCED_SECTION_LABEL}>This market</p>
               <SailMarketPositionBar
                 market={selectedMarket}
@@ -170,13 +170,22 @@ export function SailAdvancedLayout({
               />
             </div>
           ) : (
-            <SailMarketNoPositionHint isConnected={isConnected} />
+            <div className="shrink-0">
+              <SailMarketNoPositionHint isConnected={isConnected} />
+            </div>
           )}
+          <div className="flex min-h-0 flex-1 flex-col">
+            <SailMarketChartColumn
+              marketId={selectedMarketId}
+              market={selectedMarket}
+              tokenPriceUSD={selectedMetrics?.tokenPriceUSD}
+            />
+          </div>
         </div>
 
         <div
           id={SAIL_TRADE_PANEL_ID}
-          className="order-2 scroll-mt-20 lg:order-none lg:col-start-3 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-4"
+          className="order-2 flex h-full min-h-0 flex-col scroll-mt-20 lg:order-none"
         >
           <SailMarketActionPanel
             marketId={selectedMarketId}
@@ -187,14 +196,6 @@ export function SailAdvancedLayout({
             ethPrice={ethPrice}
             wstETHPrice={wstETHPrice}
             fxSAVEPrice={fxSAVEPrice}
-          />
-        </div>
-
-        <div className="order-3 lg:order-none lg:col-start-2 lg:row-start-2">
-          <SailMarketChartColumn
-            marketId={selectedMarketId}
-            market={selectedMarket}
-            tokenPriceUSD={selectedMetrics?.tokenPriceUSD}
           />
         </div>
       </div>

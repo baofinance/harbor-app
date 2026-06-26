@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import React from "react";
+import { HARBOR_FROSTED_LIGHT_CARD } from "@/components/shared/harborFrostedSurfaceStyles";
 
 /**
  * Full-page placeholder when Maiden Voyage is gated behind a “coming soon” flag.
@@ -12,7 +13,7 @@ export function GenesisMaidenVoyageComingSoon() {
     <div className="relative mx-auto flex min-h-0 w-full max-w-[1300px] flex-1 flex-col font-sans text-white">
       <main className="container mx-auto px-4 pb-6 pt-2 sm:px-10 sm:pt-4">
         <section className="flex min-h-[calc(100vh-7rem)] items-center justify-center">
-          <div className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-white/88 backdrop-blur-lg backdrop-saturate-150 shadow-[0_24px_80px_-32px_rgba(0,0,0,0.55)]">
+          <div className={`relative w-full max-w-5xl overflow-hidden rounded-3xl ${HARBOR_FROSTED_LIGHT_CARD} shadow-[0_24px_80px_-32px_rgba(0,0,0,0.55)]`}>
             <Image
               src="/MV2.png"
               alt="Deposit once, own a share, earn forever. Coming soon."

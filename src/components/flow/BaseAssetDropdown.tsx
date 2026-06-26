@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { HARBOR_FROSTED_DROPDOWN_SHELL, HARBOR_FROSTED_INPUT_FILL } from "@/components/shared/harborFrostedSurfaceStyles";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import TokenIcon from "@/components/TokenIcon";
 import { getLogoPath } from "@/lib/logos";
@@ -22,7 +23,7 @@ export function BaseAssetDropdown({
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-2 py-1 bg-white/85 backdrop-blur-sm border border-[#1E4775]/20 text-[#1E4775] hover:bg-[#1E4775]/5 transition-colors text-xs h-[28px]"
+        className={`w-full flex items-center justify-between px-2 py-1 ${HARBOR_FROSTED_INPUT_FILL} border border-[#1E4775]/20 text-[#1E4775] hover:bg-[#1E4775]/5 transition-colors text-xs h-[28px]`}
       >
         <div className="flex items-center gap-2">
           {selectedBaseAsset ? (
@@ -53,7 +54,7 @@ export function BaseAssetDropdown({
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute z-20 mt-1 w-full bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/20 rounded-lg shadow-lg overflow-hidden max-h-60 overflow-y-auto">
+          <div className={`absolute z-20 mt-1 w-full ${HARBOR_FROSTED_DROPDOWN_SHELL} rounded-lg overflow-hidden max-h-60 overflow-y-auto`}>
             <button
               onClick={() => {
                 onSelect(null);

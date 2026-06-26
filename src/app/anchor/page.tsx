@@ -14,6 +14,7 @@ import {
   useSwitchChain,
 } from "wagmi";
 import { useHarborAccount } from "@/hooks/useHarborAccount";
+import { HARBOR_FROSTED_LIGHT_CARD_ROUNDED, HARBOR_FROSTED_MODAL_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 import { formatEther, parseEther } from "viem";
 import {
   isAnchorSoonUi,
@@ -1521,7 +1522,7 @@ export default function AnchorPage() {
         {/* Early withdraw confirmation */}
         {earlyWithdrawModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-            <div className="bg-white/88 backdrop-blur-lg backdrop-saturate-150 shadow-xl max-w-md w-full p-4 rounded-lg border border-[#1E4775]/10">
+            <div className={`${HARBOR_FROSTED_MODAL_SHELL} shadow-xl max-w-md w-full p-4 rounded-lg`}>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-[#1E4775] font-semibold">
                   Withdraw early?
@@ -1587,7 +1588,7 @@ export default function AnchorPage() {
 
         {withdrawAmountModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-            <div className="bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/20 shadow-2xl shadow-black/10 max-w-lg w-full p-6 space-y-4">
+            <div className={`${HARBOR_FROSTED_MODAL_SHELL} max-w-lg w-full p-6 space-y-4`}>
               <div className="flex items-center justify-between">
                 <h3 className="text-[#1E4775] font-semibold text-lg">
                   {withdrawAmountModal.useEarly
@@ -1736,7 +1737,7 @@ export default function AnchorPage() {
             onClick={() => setContractAddressesModal(null)}
           >
             <div
-              className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-6 max-w-md w-full mx-4 rounded-lg border border-[#1E4775]/10 shadow-xl"
+              className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-6 max-w-md w-full mx-4 rounded-lg border border-[#1E4775]/10 shadow-xl`}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
+import { HARBOR_FROSTED_SURFACE, HARBOR_FROSTED_SURFACE_HOVER, HARBOR_FROSTED_SURFACE_SELECTED } from "@/components/shared/harborFrostedSurfaceStyles";
 import { useContractRead } from "wagmi";
 import Image from "next/image";
 import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
@@ -215,8 +216,8 @@ export const SailMarketRow = React.memo(function SailMarketRow({
       <div
         className={`py-2 px-2 overflow-visible transition cursor-pointer relative group ${
           isExpanded
-            ? "bg-white/80 backdrop-blur-md backdrop-saturate-150 md:bg-white/90"
-            : "bg-white/80 backdrop-blur-md backdrop-saturate-150 md:hover:bg-white/88 transition-colors"
+            ? `${HARBOR_FROSTED_SURFACE_SELECTED}`
+            : `${HARBOR_FROSTED_SURFACE} ${HARBOR_FROSTED_SURFACE_HOVER}`
         }`}
         onClick={() => !isComingSoon && onToggleExpand(id)}
       >

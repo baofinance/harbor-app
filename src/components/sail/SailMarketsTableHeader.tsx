@@ -1,9 +1,10 @@
+import { HARBOR_FROSTED_INDEX_SURFACE } from "@/components/shared/harborFrostedSurfaceStyles";
 /**
  * Desktop column header for the Sail leverage markets table (hidden on small screens).
  */
 export function SailMarketsTableHeader() {
   return (
-    <div className="hidden md:block bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-harbor-blue/15 shadow-sm ring-1 ring-[#1E4775]/6 py-1.5 px-2 overflow-x-auto mb-2 rounded-md">
+    <div className={`hidden md:block ${HARBOR_FROSTED_INDEX_SURFACE} py-1.5 px-2 overflow-x-auto mb-2 rounded-md`}>
       <div className="grid grid-cols-[32px_2.2fr_0.92fr_0.82fr_0.92fr_0.92fr_0.96fr_0.72fr] gap-3 lg:gap-3.5 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
         <div className="min-w-0" aria-label="Network" />
         <div className="min-w-0 text-center">Long / Short</div>

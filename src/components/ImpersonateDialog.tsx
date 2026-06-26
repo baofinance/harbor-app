@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { HARBOR_FROSTED_MODAL_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 import { isAddress } from "viem";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 
@@ -51,7 +52,7 @@ export function ImpersonateDialog({ isOpen, onClose }: ImpersonateDialogProps) {
         onClick={onClose}
       />
       <div
-        className="relative w-full max-w-md rounded-xl border border-[#1E4775]/20 bg-white/88 backdrop-blur-lg backdrop-saturate-150 p-5 shadow-2xl"
+        className={`relative w-full max-w-md rounded-xl p-5 ${HARBOR_FROSTED_MODAL_SHELL}`}
         role="dialog"
         aria-labelledby="impersonate-title"
       >

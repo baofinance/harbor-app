@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { HARBOR_FROSTED_DROPDOWN_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { NETWORKS, type Network } from "@/config/networks";
 import NetworkIconClient from "@/components/NetworkIconClient";
@@ -67,7 +68,7 @@ export function ChainDropdown({
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute z-20 mt-1 w-full bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/20 shadow-lg overflow-hidden">
+          <div className={`absolute z-20 mt-1 w-full ${HARBOR_FROSTED_DROPDOWN_SHELL} overflow-hidden`}>
             <button
               onClick={() => {
                 onSelect(null);

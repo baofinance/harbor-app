@@ -5,6 +5,8 @@ import {
   TIDE_FLYWHEEL_FOOTER_PANEL,
   TIDE_FLYWHEEL_META,
   TIDE_FLYWHEEL_REVENUE_PILL,
+  TIDE_FLYWHEEL_STAT_LABEL,
+  TIDE_FLYWHEEL_STAT_VALUE,
 } from "./tideFlywheelStyles";
 
 export type TideFlywheelHeaderProps = {
@@ -31,10 +33,8 @@ export function TideFlywheelHeader({
         <p className={`mt-1 max-w-xl ${TIDE_FLYWHEEL_META}`}>{subtitle}</p>
       </div>
       <div className={TIDE_FLYWHEEL_REVENUE_PILL}>
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-white/50">
-          {revenueLabel}
-        </span>
-        <span className="font-mono text-base font-bold tabular-nums text-white sm:text-lg">
+        <span className={TIDE_FLYWHEEL_STAT_LABEL}>{revenueLabel}</span>
+        <span className={TIDE_FLYWHEEL_STAT_VALUE}>
           {revenueLoading ? "…" : revenueValue}
         </span>
       </div>

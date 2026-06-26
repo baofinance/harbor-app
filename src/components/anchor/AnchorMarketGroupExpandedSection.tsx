@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { HARBOR_FROSTED_LIGHT_CARD_ROUNDED } from "@/components/shared/harborFrostedSurfaceStyles";
 import { ArrowRightIcon } from "@heroicons/react/24/outline";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { formatTimeRemaining, formatToken } from "@/utils/formatters";
@@ -167,7 +168,7 @@ export function AnchorMarketGroupExpandedSection({
       <div className="mb-4">
         {/* Withdrawal requests for the group */}
         {groupWithdrawalRequests.length > 0 && (
-          <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3 space-y-2 mb-3 rounded-md">
+          <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-3 space-y-2 mb-3 rounded-md`}>
             <div className="text-[10px] text-[#1E4775]/70 font-semibold uppercase tracking-wide">
               Withdrawal Requests
             </div>
@@ -381,7 +382,7 @@ export function AnchorMarketGroupExpandedSection({
 
         {/* Your Positions - consolidated (only stability pool deposits) */}
         {hasGroupPositions && (
-          <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3 space-y-2 rounded-md">
+          <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-3 space-y-2 rounded-md`}>
             <div className="text-[10px] text-[#1E4775]/70 font-semibold uppercase tracking-wide">
               Your Positions
             </div>
@@ -698,7 +699,7 @@ export function AnchorMarketGroupExpandedSection({
 
     return (
       <React.Fragment key={marketData.marketId}>
-            <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-2 mb-2 border border-[#1E4775]/10 rounded-md">
+            <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-2 mb-2 border border-[#1E4775]/10 rounded-md`}>
         <div className="flex items-center justify-end mb-2">
           <button
             onClick={() =>

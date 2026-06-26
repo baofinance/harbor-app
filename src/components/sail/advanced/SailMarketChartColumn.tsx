@@ -21,7 +21,8 @@ export function SailMarketChartColumn({
       size="large"
       showPriceHeader
       tokenPriceUSD={tokenPriceUSD}
-      className="h-full"
+      fillHeight
+      className="lg:h-full lg:min-h-0 lg:flex-1"
     />
   );
 }

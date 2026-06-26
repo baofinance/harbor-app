@@ -120,7 +120,7 @@ export function TideFlywheelStepCard({
       </div>
 
       {footer || pendingFootnote ? (
-        <p className={`mt-3 ${TIDE_FLYWHEEL_CAPTION} text-white/45`}>
+        <p className={`mt-3 ${TIDE_FLYWHEEL_CAPTION}`}>
           {pendingFootnote ?? footer}
         </p>
       ) : null}

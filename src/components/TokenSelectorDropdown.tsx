@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { HARBOR_FROSTED_DROPDOWN_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import TokenIconClient from "@/components/TokenIconClient";
 
@@ -125,7 +126,7 @@ export function TokenSelectorDropdown({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-2 w-full bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/12 shadow-xl ring-1 ring-black/5 border border-[#1E4775]/20 rounded-md shadow-lg overflow-hidden max-h-60 overflow-y-auto">
+        <div className={`absolute z-50 mt-2 w-full ${HARBOR_FROSTED_DROPDOWN_SHELL} border border-[#1E4775]/20 rounded-md shadow-lg overflow-hidden max-h-60 overflow-y-auto`}>
           {groups.map((group, groupIdx) => (
             <div key={groupIdx}>
               {groups.length > 1 && (

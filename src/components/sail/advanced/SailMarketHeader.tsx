@@ -10,7 +10,6 @@ import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarke
 import NetworkIconCell from "@/components/NetworkIconCell";
 import { SailMarketDropdown } from "./SailMarketDropdown";
 import {
-  SailWalletMarksChip,
   SailWalletStatsStrip,
   type SailWalletStatsStripProps,
 } from "./SailWalletStatsStrip";
@@ -46,7 +45,7 @@ export function SailMarketHeader({
   return (
     <div className="relative z-40 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
       <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 flex-nowrap items-end gap-3 lg:gap-4">
+        <div className="flex min-w-0 flex-nowrap items-stretch gap-3 lg:gap-4">
           <div className="min-w-0 w-full max-w-lg shrink-0">
             <p className={SAIL_ADVANCED_SECTION_LABEL}>Market</p>
             <SailMarketDropdown
@@ -59,7 +58,6 @@ export function SailMarketHeader({
             <p className={SAIL_ADVANCED_SECTION_LABEL}>Your wallet</p>
             <SailWalletStatsStrip
               {...walletStats}
-              showSailMarks={false}
               className="min-w-0 w-full"
             />
           </div>
@@ -72,10 +70,6 @@ export function SailMarketHeader({
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2 self-center px-1 sm:items-start sm:gap-3 sm:self-start sm:pt-2">
-        <SailWalletMarksChip
-          isLoadingSailMarks={walletStats.isLoadingSailMarks}
-          totalSailMarks={walletStats.totalSailMarks}
-        />
         <NetworkIconCell
           chainName={harborMarketChainKey(selectedMarket)}
           chainLogo={selectedMarket.chain?.logo}

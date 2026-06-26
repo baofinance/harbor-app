@@ -11,8 +11,10 @@ import { SailFeeRatioCell } from "@/components/sail/SailFeeRatioCell";
 import type { DefinedMarket } from "@/config/markets";
 import { getSailMarketTokenSymbol } from "@/utils/sailMarketDirectionLabels";
 import {
-  SAIL_ADVANCED_CAPTION,
   SAIL_ADVANCED_FROSTED_CARD,
+  SAIL_ADVANCED_LIGHT_CAPTION,
+  SAIL_ADVANCED_LIGHT_SECTION_TITLE,
+  SAIL_ADVANCED_LIGHT_VALUE,
   SAIL_ADVANCED_SECTION_LABEL,
 } from "./sailAdvancedStyles";
 
@@ -29,9 +31,9 @@ function MetricRow({ label, value }: { label: string; value: ReactNode }) {
   if (isEmptyMetric(value)) return null;
 
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-white/[0.06] py-2 last:border-b-0">
-      <span className={SAIL_ADVANCED_CAPTION}>{label}</span>
-      <span className="text-right text-sm font-mono font-semibold text-white">{value}</span>
+    <div className="flex items-start justify-between gap-3 border-b border-[#1E4775]/10 py-2 last:border-b-0">
+      <span className={SAIL_ADVANCED_LIGHT_CAPTION}>{label}</span>
+      <span className={`text-right ${SAIL_ADVANCED_LIGHT_VALUE}`}>{value}</span>
     </div>
   );
 }
@@ -39,16 +41,18 @@ function MetricRow({ label, value }: { label: string; value: ReactNode }) {
 function MetricSectionCard({
   title,
   rows,
+  className = "",
 }: {
   title: string;
   rows: Array<{ label: string; value: ReactNode }>;
+  className?: string;
 }) {
   const visibleRows = rows.filter((row) => !isEmptyMetric(row.value));
   if (visibleRows.length === 0) return null;
 
   return (
-    <div className={`${SAIL_ADVANCED_FROSTED_CARD} p-3 sm:p-3.5`}>
-      <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+    <div className={`${SAIL_ADVANCED_FROSTED_CARD} p-3 sm:p-3.5 ${className}`}>
+      <h3 className={`mb-2 ${SAIL_ADVANCED_LIGHT_SECTION_TITLE}`}>
         {title}
       </h3>
       <div>
@@ -78,9 +82,10 @@ export function SailMarketMetricsColumn({
   const collateral = metrics?.collateralSymbol;
 
   return (
-    <aside className="flex flex-col gap-3">
+    <aside className="flex h-full min-h-0 flex-col gap-3">
       <p className={SAIL_ADVANCED_SECTION_LABEL}>Market metrics</p>
 
+      <div className="flex min-h-0 flex-1 flex-col gap-3">
       <MetricSectionCard
         title="Market"
         rows={[
@@ -103,6 +108,7 @@ export function SailMarketMetricsColumn({
       />
 
       <MetricSectionCard
+        className="flex min-h-0 flex-1 flex-col"
         title="Fees"
         rows={[
           {
@@ -127,6 +133,7 @@ export function SailMarketMetricsColumn({
           },
         ]}
       />
+      </div>
     </aside>
   );
 }

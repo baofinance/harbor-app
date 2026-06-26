@@ -2,36 +2,48 @@ import {
   MV_BODY_TEXT,
   MV_CAPTION_TEXT,
   MV_CARD_SHELL,
-  MV_GLASS_CARD_SHADOW,
-  MV_GLASS_INSET_DARK,
   MV_HEADLINE,
   MV_META_TEXT,
   MV_SECTION_LABEL,
 } from "@/components/genesis/maidenVoyageLayoutStyles";
-import {
-  HARBOR_FROSTED_EDGE,
-} from "@/components/shared/harborFrostedSurfaceStyles";
+import { HARBOR_FROSTED_LIGHT_CARD } from "@/components/shared/harborFrostedSurfaceStyles";
 
 export const SAIL_ADVANCED_GRID_CLASS =
-  "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.6fr)_minmax(320px,1fr)] lg:items-start";
+  "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.6fr)_minmax(320px,1fr)] lg:items-stretch";
 
-/** Brighter frosted glass on dark Sail UI+ — metrics, wallet stats, position chips. */
-export const SAIL_ADVANCED_FROSTED_CARD = `rounded-xl bg-white/[0.15] backdrop-blur-md backdrop-saturate-150 ring-1 ring-white/12 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] ${MV_GLASS_CARD_SHADOW}`;
+/** Standard white frosted card on Sail UI+ dark chrome. */
+export const SAIL_ADVANCED_FROSTED_CARD = `rounded-xl ${HARBOR_FROSTED_LIGHT_CARD}`;
 
-/** Whitest frosted panels — chart and trade form (opaque white read, keeps blur + glass edge). */
-export const SAIL_ADVANCED_FROSTED_LIGHT_PANEL =
-  "bg-white/90 backdrop-blur-lg backdrop-saturate-150 " + HARBOR_FROSTED_EDGE;
+/** Whitest frosted panels — chart, trade form, dropdown. */
+export const SAIL_ADVANCED_FROSTED_LIGHT_PANEL = HARBOR_FROSTED_LIGHT_CARD;
 
-export const SAIL_ADVANCED_PANEL = `rounded-xl ${MV_GLASS_INSET_DARK}`;
+/** @deprecated Use SAIL_ADVANCED_FROSTED_CARD */
+export const SAIL_ADVANCED_PANEL = SAIL_ADVANCED_FROSTED_CARD;
+
 export const SAIL_ADVANCED_SHELL = MV_CARD_SHELL;
 export const SAIL_ADVANCED_LABEL = MV_SECTION_LABEL;
-/** Small zone label above header stat groups (Your wallet, This market, etc.). */
+/** Small zone label above header stat groups (Market, Your wallet, etc.). */
 export const SAIL_ADVANCED_SECTION_LABEL =
   "mb-1 text-[10px] font-semibold uppercase tracking-wider text-white/45";
+
+/** Typography on white frosted cards. */
+export const SAIL_ADVANCED_LIGHT_LABEL =
+  "text-[10px] font-medium uppercase tracking-wide text-[#1E4775]/55";
+
+export const SAIL_ADVANCED_LIGHT_SECTION_TITLE =
+  "text-[10px] font-semibold uppercase tracking-wider text-[#1E4775]/50";
+
+export const SAIL_ADVANCED_LIGHT_CAPTION = "text-xs text-[#1E4775]/65";
+
+export const SAIL_ADVANCED_LIGHT_BODY = "text-xs leading-relaxed text-[#1E4775]/70";
+
+export const SAIL_ADVANCED_LIGHT_VALUE =
+  "font-mono text-sm font-semibold tabular-nums text-[#1E4775]";
+
 export const SAIL_ADVANCED_BODY = MV_BODY_TEXT;
 export const SAIL_ADVANCED_CAPTION = MV_CAPTION_TEXT;
 export const SAIL_ADVANCED_META = MV_META_TEXT;
 export const SAIL_ADVANCED_HEADLINE = MV_HEADLINE;
 
-/** Embedded manage panel — light frosted chrome on dark glass. */
+/** Embedded mint / redeem form — single white frosted shell. */
 export const SAIL_EMBEDDED_FORM_PANEL = `rounded-xl p-3 sm:p-4 text-[#1E4775] ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`;

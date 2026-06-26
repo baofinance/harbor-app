@@ -1,10 +1,13 @@
 "use client";
 
-import { HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS } from "@/components/shared/harborStatTileStyles";
 import type { DefinedMarket } from "@/config/markets";
 import { useSailPositionPnL } from "@/hooks/useSailPositionPnL";
 import { formatPnL, formatUSD } from "@/utils/sailDisplayFormat";
-import { SAIL_ADVANCED_FROSTED_CARD } from "./sailAdvancedStyles";
+import {
+  SAIL_ADVANCED_FROSTED_CARD,
+  SAIL_ADVANCED_LIGHT_LABEL,
+  SAIL_ADVANCED_LIGHT_VALUE,
+} from "./sailAdvancedStyles";
 
 export type SailMarketPositionBarProps = {
   market: DefinedMarket;
@@ -14,13 +17,7 @@ export type SailMarketPositionBarProps = {
   isConnected: boolean;
 };
 
-const SAIL_POSITION_STAT_LABEL =
-  "whitespace-nowrap text-[10px] font-medium uppercase tracking-wide text-white/55";
-
-const SAIL_POSITION_STAT_VALUE =
-  "mt-0.5 truncate font-mono text-xs font-semibold tabular-nums text-white/90";
-
-const SAIL_POSITION_STAT_CARD = `${SAIL_ADVANCED_FROSTED_CARD} ${HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS} min-w-0 flex-1 px-2.5 py-1.5 sm:px-3`;
+const SAIL_POSITION_STAT_VALUE = `mt-0.5 truncate ${SAIL_ADVANCED_LIGHT_VALUE} text-xs`;
 
 function formatPositionPnL(
   unrealizedPnL: number,
@@ -95,15 +92,15 @@ export function SailMarketPositionBar({
 
   return (
     <div
-      className="grid grid-cols-2 gap-2 sm:gap-3"
+      className={`${SAIL_ADVANCED_FROSTED_CARD} grid grid-cols-2 divide-x divide-[#1E4775]/10`}
       aria-label="Your position in this market"
     >
-      <div className={SAIL_POSITION_STAT_CARD}>
-        <span className={SAIL_POSITION_STAT_LABEL}>Your position</span>
+      <div className="flex min-w-0 flex-col items-center justify-center px-3 py-2 text-center sm:py-2.5">
+        <span className={SAIL_ADVANCED_LIGHT_LABEL}>Your position</span>
         <span className={SAIL_POSITION_STAT_VALUE}>{positionValue}</span>
       </div>
-      <div className={SAIL_POSITION_STAT_CARD}>
-        <span className={SAIL_POSITION_STAT_LABEL}>PnL</span>
+      <div className="flex min-w-0 flex-col items-center justify-center px-3 py-2 text-center sm:py-2.5">
+        <span className={SAIL_ADVANCED_LIGHT_LABEL}>PnL</span>
         <span className={pnl.valueClassName}>{pnl.text}</span>
       </div>
     </div>
