@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  SAIL_ADVANCED_FROSTED_CARD,
+  SAIL_ADVANCED_FROSTED_LIGHT_PANEL,
   SAIL_ADVANCED_LIGHT_BODY,
 } from "./sailAdvancedStyles";
 
@@ -14,13 +14,13 @@ export function SailMarketNoPositionHint({
   isConnected,
 }: SailMarketNoPositionHintProps) {
   return (
-    <p
-      className={`${SAIL_ADVANCED_FROSTED_CARD} px-3 py-2 text-center ${SAIL_ADVANCED_LIGHT_BODY}`}
+    <div
+      className={`overflow-hidden rounded-xl px-3 py-2.5 text-center ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL} ${SAIL_ADVANCED_LIGHT_BODY}`}
       role="status"
     >
       {isConnected
-        ? "No position in this market. Use Trade to mint and open a position."
+        ? "No position in this market. Use Trade to buy and open a position."
         : "Connect your wallet to view your position in this market."}
-    </p>
+    </div>
   );
 }

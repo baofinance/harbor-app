@@ -30,8 +30,9 @@ export type SailMarketPriceChartSize = "default" | "large";
 
 const SAIL_CHART_HEIGHT_CLASS: Record<SailMarketPriceChartSize, string> = {
   default: "h-72 min-h-72",
-  /** UI+ center column — taller chart for the single-market dashboard. */
-  large: "min-h-96 h-96 sm:min-h-[26rem] sm:h-[26rem] lg:min-h-[30rem] lg:h-[30rem]",
+  /** UI+ chart column — tall on mobile; fills parent on desktop. */
+  large:
+    "min-h-[22rem] h-[22rem] sm:min-h-[26rem] sm:h-[26rem] lg:min-h-0 lg:h-full lg:flex-1",
 };
 
 export type SailMarketPriceChartProps = {
@@ -63,7 +64,7 @@ export function SailMarketPriceChart({
 }: SailMarketPriceChartProps) {
   const chartTitle = formatSailMarketDirectionTitle(market);
   const chartHeightClass = fillHeight
-    ? "flex min-h-96 flex-col sm:min-h-[26rem] lg:min-h-0 lg:flex-1"
+    ? "flex min-h-[22rem] flex-col sm:min-h-[26rem] lg:min-h-0 lg:h-full lg:flex-1"
     : SAIL_CHART_HEIGHT_CLASS[size];
 
   const [chartConfig, setChartConfig] = useState<SailMarketChartConfig | null>(null);

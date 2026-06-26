@@ -4,12 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import type { DefinedMarket } from "@/config/markets";
-import { formatUSD } from "@/utils/sailDisplayFormat";
+import { formatLeverage } from "@/utils/sailDisplayFormat";
 import {
-  formatSailMarketDirectionTitle,
-  getSailMarketTokenSymbol,
+  formatSailMarketDropdownTitle,
+  getSailDirectionChipLabels,
 } from "@/utils/sailMarketDirectionLabels";
-import { getShortSide } from "@/utils/marketSideLabels";
 import { getSailSideLogoPath } from "@/utils/sailAssetLogos";
 import { SAIL_ADVANCED_FROSTED_LIGHT_PANEL } from "./sailAdvancedStyles";
 
@@ -22,19 +21,17 @@ const SAIL_DROPDOWN_OPTION_ACTIVE_CLASS = "bg-[#1E4775]/10";
 const SAIL_DROPDOWN_OPTION_HOVER_CLASS = "hover:bg-[#1E4775]/[0.06]";
 
 const SAIL_DROPDOWN_TITLE_CLASS = "truncate text-sm font-semibold text-[#1E4775]";
-const SAIL_DROPDOWN_META_CLASS =
-  "truncate font-mono text-xs text-[#1E4775]/55";
-const SAIL_DROPDOWN_SIDE_LABEL_CLASS =
-  "text-[10px] font-medium uppercase tracking-wide text-[#1E4775]/45";
-const SAIL_DROPDOWN_POSITION_CLASS =
-  "text-xs font-medium tabular-nums text-[#4A9784]";
-const SAIL_DROPDOWN_TVL_CLASS =
+const SAIL_DROPDOWN_TITLE_SECONDARY_CLASS =
+  "truncate text-xs font-medium text-[#1E4775]/55";
+const SAIL_DROPDOWN_LEVERAGE_CLASS =
   "font-mono text-xs font-semibold tabular-nums text-[#1E4775]/80";
+const SAIL_DROPDOWN_POSITION_CLASS =
+  "mt-0.5 text-xs font-medium tabular-nums text-[#4A9784]";
 
 export type SailMarketDropdownOption = {
   marketId: string;
   market: DefinedMarket;
-  tvlUSD?: number;
+  leverageRatio?: bigint;
   hasPosition?: boolean;
   positionLabel?: string;
 };
@@ -65,7 +62,9 @@ export function SailMarketDropdown({
 
   if (!selected) return null;
 
-  const marketTitle = formatSailMarketDirectionTitle(selected.market);
+  const { primary: marketTitlePrimary, secondary: marketTitleSecondary } =
+    formatSailMarketDropdownTitle(selected.market);
+  const selectedLeverage = formatLeverage(selected.leverageRatio);
 
   return (
     <div ref={rootRef} className={`relative min-w-0 ${open ? "z-50" : ""}`}>
@@ -78,16 +77,18 @@ export function SailMarketDropdown({
       >
         <div className="min-w-0 flex-1">
           <div className="truncate text-base font-semibold text-[#1E4775] sm:text-lg">
-            {marketTitle}
+            {marketTitlePrimary}{" "}
+            <span className="font-medium text-[#1E4775]/55">{marketTitleSecondary}</span>
           </div>
         </div>
-        {selected.positionLabel ? (
-          <div className="hidden shrink-0 text-right sm:block">
+        <div className="hidden shrink-0 text-right sm:block">
+          {selected.positionLabel ? (
             <div className="truncate text-xs font-medium text-[#4A9784]">
-              {selected.positionLabel}
+              {selected.positionLabel.replace(/^Your position ·\s*/, "")}
             </div>
-          </div>
-        ) : null}
+          ) : null}
+          <div className={SAIL_DROPDOWN_LEVERAGE_CLASS}>{selectedLeverage}</div>
+        </div>
         <ChevronDownIcon
           className={`h-5 w-5 shrink-0 text-[#1E4775]/55 transition ${open ? "rotate-180" : ""}`}
         />
@@ -95,10 +96,10 @@ export function SailMarketDropdown({
 
       {open ? (
         <ul role="listbox" className={SAIL_DROPDOWN_MENU_CLASS}>
-          {options.map(({ marketId, market, tvlUSD, positionLabel }) => {
+          {options.map(({ marketId, market, leverageRatio, positionLabel }) => {
             const active = marketId === selectedMarketId;
-            const optionTitle = formatSailMarketDirectionTitle(market);
-            const tokenSymbol = getSailMarketTokenSymbol(market);
+            const { primary, secondary } = formatSailMarketDropdownTitle(market);
+            const { longLabel } = getSailDirectionChipLabels(market, "", "");
             return (
               <li key={marketId}>
                 <button
@@ -116,34 +117,29 @@ export function SailMarketDropdown({
                   }`}
                 >
                   <Image
-                    src={getSailSideLogoPath(getShortSide(market))}
+                    src={getSailSideLogoPath(longLabel)}
                     alt=""
                     width={20}
                     height={20}
                     className="rounded-full"
                   />
                   <div className="min-w-0 flex-1">
-                    <div className={SAIL_DROPDOWN_TITLE_CLASS}>{optionTitle}</div>
-                    <div className={SAIL_DROPDOWN_META_CLASS}>{tokenSymbol}</div>
+                    <div className={SAIL_DROPDOWN_TITLE_CLASS}>
+                      {primary}{" "}
+                      <span className={SAIL_DROPDOWN_TITLE_SECONDARY_CLASS}>
+                        {secondary}
+                      </span>
+                    </div>
                   </div>
-                  <div className="min-w-[5.5rem] shrink-0 text-right">
+                  <div className="min-w-[4.5rem] shrink-0 text-right">
+                    <div className={SAIL_DROPDOWN_LEVERAGE_CLASS}>
+                      {formatLeverage(leverageRatio)}
+                    </div>
                     {positionLabel ? (
-                      <>
-                        <div className={SAIL_DROPDOWN_POSITION_CLASS}>
-                          {positionLabel.replace(/^Your position ·\s*/, "")}
-                        </div>
-                        <div className={SAIL_DROPDOWN_SIDE_LABEL_CLASS}>
-                          Your position
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className={SAIL_DROPDOWN_TVL_CLASS}>
-                          {tvlUSD !== undefined ? formatUSD(tvlUSD) : "—"}
-                        </div>
-                        <div className={SAIL_DROPDOWN_SIDE_LABEL_CLASS}>TVL</div>
-                      </>
-                    )}
+                      <div className={SAIL_DROPDOWN_POSITION_CLASS}>
+                        {positionLabel.replace(/^Your position ·\s*/, "")}
+                      </div>
+                    ) : null}
                   </div>
                 </button>
               </li>

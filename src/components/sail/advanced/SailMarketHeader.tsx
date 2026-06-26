@@ -1,11 +1,6 @@
 "use client";
 
 import type { DefinedMarket } from "@/config/markets";
-import {
-  formatSailMarketDescription,
-  formatSailMarketDescriptionShort,
-  type SailMarketDetailMetrics,
-} from "@/utils/sailMarketMetrics";
 import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
 import NetworkIconCell from "@/components/NetworkIconCell";
 import { SailMarketDropdown } from "./SailMarketDropdown";
@@ -13,16 +8,22 @@ import {
   SailWalletStatsStrip,
   type SailWalletStatsStripProps,
 } from "./SailWalletStatsStrip";
-import { SAIL_ADVANCED_BODY, SAIL_ADVANCED_META, SAIL_ADVANCED_SECTION_LABEL } from "./sailAdvancedStyles";
+import {
+  SAIL_ADVANCED_FROSTED_LIGHT_PANEL,
+  SAIL_ADVANCED_LIGHT_SECTION_TITLE,
+  SAIL_ADVANCED_META,
+  SAIL_ADVANCED_SECTION_LABEL,
+} from "./sailAdvancedStyles";
 
 type SailMarketHeaderProps = {
   selectedMarketId: string | null;
   selectedMarket: DefinedMarket | null;
-  metrics: SailMarketDetailMetrics | undefined;
   dropdownOptions: Array<{
     marketId: string;
     market: DefinedMarket;
-    tvlUSD?: number;
+    leverageRatio?: bigint;
+    hasPosition?: boolean;
+    positionLabel?: string;
   }>;
   onSelectMarket: (marketId: string) => void;
   walletStats: SailWalletStatsStripProps;
@@ -32,15 +33,11 @@ type SailMarketHeaderProps = {
 export function SailMarketHeader({
   selectedMarketId,
   selectedMarket,
-  metrics,
   dropdownOptions,
   onSelectMarket,
   walletStats,
 }: SailMarketHeaderProps) {
   if (!selectedMarket) return null;
-
-  const marketDescription = formatSailMarketDescriptionShort(selectedMarket, metrics);
-  const marketDescriptionFull = formatSailMarketDescription(selectedMarket, metrics);
 
   return (
     <div className="relative z-40 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
@@ -55,19 +52,22 @@ export function SailMarketHeader({
             />
           </div>
           <div className="min-w-0 flex-1">
-            <p className={SAIL_ADVANCED_SECTION_LABEL}>Your wallet</p>
-            <SailWalletStatsStrip
-              {...walletStats}
-              className="min-w-0 w-full"
-            />
+            <div
+              className={`overflow-hidden rounded-xl ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`}
+            >
+              <p
+                className={`border-b border-[#1E4775]/10 px-3 py-1.5 ${SAIL_ADVANCED_LIGHT_SECTION_TITLE}`}
+              >
+                Your wallet
+              </p>
+              <SailWalletStatsStrip
+                {...walletStats}
+                embedded
+                className="min-w-0 w-full"
+              />
+            </div>
           </div>
         </div>
-        <p
-          className={`mt-1.5 ${SAIL_ADVANCED_BODY} text-white/70`}
-          title={marketDescriptionFull}
-        >
-          {marketDescription}
-        </p>
       </div>
       <div className="flex shrink-0 items-center gap-2 self-center px-1 sm:items-start sm:gap-3 sm:self-start sm:pt-2">
         <NetworkIconCell

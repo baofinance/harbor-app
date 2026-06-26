@@ -10,13 +10,13 @@ import { SailMarketActionPanel } from "./SailMarketActionPanel";
 import { SailMarketChartColumn } from "./SailMarketChartColumn";
 import { SailMarketHeader } from "./SailMarketHeader";
 import { SailMarketInfoFooter } from "./SailMarketInfoFooter";
-import { SailMarketMetricsColumn } from "./SailMarketMetricsColumn";
+import { SailMarketMetricsCollapsible } from "./SailMarketMetricsCollapsible";
 import { SailMarketNoPositionHint } from "./SailMarketNoPositionHint";
 import { SailMarketPositionBar } from "./SailMarketPositionBar";
 import { SailMobileTradeBar } from "./SailMobileTradeBar";
 import { SailOtherMarketsStrip } from "./SailOtherMarketsStrip";
 import type { SailWalletStatsStripProps } from "./SailWalletStatsStrip";
-import { SAIL_ADVANCED_GRID_CLASS, SAIL_ADVANCED_SECTION_LABEL } from "./sailAdvancedStyles";
+import { SAIL_ADVANCED_MAIN_GRID_CLASS, SAIL_ADVANCED_SECTION_LABEL } from "./sailAdvancedStyles";
 
 const SAIL_TRADE_PANEL_ID = "sail-trade-panel";
 
@@ -98,6 +98,12 @@ export function SailAdvancedLayout({
     () =>
       dropdownMarkets.map(([marketId, market]) => {
         const globalIndex = sailMarketIdToIndex.get(marketId);
+        const baseOffset =
+          globalIndex !== undefined ? marketOffsets.get(globalIndex) : undefined;
+        const leverageRatio =
+          baseOffset !== undefined
+            ? (reads?.[baseOffset]?.result as bigint | undefined)
+            : undefined;
         const userDepositForMarket =
           isConnected && globalIndex !== undefined
             ? userDepositMap.get(globalIndex)
@@ -113,14 +119,15 @@ export function SailAdvancedLayout({
         return {
           marketId,
           market,
-          tvlUSD: tvlByMarketId.get(marketId),
+          leverageRatio,
           hasPosition: position.hasPosition,
-          positionLabel: position.label,
+          positionLabel: position.hasPosition ? position.label : undefined,
         };
       }),
     [
       dropdownMarkets,
-      tvlByMarketId,
+      reads,
+      marketOffsets,
       isConnected,
       sailMarketIdToIndex,
       userDepositMap,
@@ -143,61 +150,70 @@ export function SailAdvancedLayout({
       <SailMarketHeader
         selectedMarketId={selectedMarketId}
         selectedMarket={selectedMarket}
-        metrics={selectedMetrics}
         dropdownOptions={dropdownOptions}
         onSelectMarket={onSelectMarket}
         walletStats={walletStats}
       />
 
-      <div className={`relative z-0 ${SAIL_ADVANCED_GRID_CLASS}`}>
-        <div className="order-4 flex h-full min-h-0 flex-col lg:order-none">
-          <SailMarketMetricsColumn
-            market={selectedMarket}
-            metrics={selectedMetrics}
-          />
-        </div>
-
-        <div className="order-1 flex h-full min-h-0 flex-col gap-3 lg:order-none">
-          {hasMarketPosition ? (
-            <div className="shrink-0">
-              <p className={SAIL_ADVANCED_SECTION_LABEL}>This market</p>
-              <SailMarketPositionBar
+      <div className="space-y-4">
+        <div className={`relative z-0 ${SAIL_ADVANCED_MAIN_GRID_CLASS}`}>
+          <div className="order-1 flex min-h-0 flex-col gap-3 lg:order-none lg:h-full">
+            {hasMarketPosition ? (
+              <div className="shrink-0">
+                <p className={SAIL_ADVANCED_SECTION_LABEL}>This market</p>
+                <SailMarketPositionBar
+                  market={selectedMarket}
+                  userDeposit={userDeposit}
+                  currentValueUSD={currentValueUSD}
+                  leveragedTokenPriceUSD={leveragedTokenPriceUSD}
+                  isConnected={isConnected}
+                />
+              </div>
+            ) : (
+              <div className="shrink-0">
+                <SailMarketNoPositionHint isConnected={isConnected} />
+              </div>
+            )}
+            <div className="flex min-h-[22rem] flex-1 flex-col sm:min-h-[26rem] lg:min-h-0">
+              <SailMarketChartColumn
+                marketId={selectedMarketId}
                 market={selectedMarket}
-                userDeposit={userDeposit}
-                currentValueUSD={currentValueUSD}
-                leveragedTokenPriceUSD={leveragedTokenPriceUSD}
-                isConnected={isConnected}
+                tokenPriceUSD={selectedMetrics?.tokenPriceUSD}
               />
             </div>
-          ) : (
-            <div className="shrink-0">
-              <SailMarketNoPositionHint isConnected={isConnected} />
-            </div>
-          )}
-          <div className="flex min-h-0 flex-1 flex-col">
-            <SailMarketChartColumn
+          </div>
+
+          <div
+            id={SAIL_TRADE_PANEL_ID}
+            className="order-2 flex min-h-0 flex-col scroll-mt-20 lg:order-none lg:h-full"
+          >
+            <SailMarketActionPanel
               marketId={selectedMarketId}
               market={selectedMarket}
-              tokenPriceUSD={selectedMetrics?.tokenPriceUSD}
+              initialTab={tradeTab}
+              onSuccess={onManageSuccess}
+              leveragedTokenPriceUSD={leveragedTokenPriceUSD}
+              ethPrice={ethPrice}
+              wstETHPrice={wstETHPrice}
+              fxSAVEPrice={fxSAVEPrice}
+              marketFees={
+                selectedMetrics
+                  ? {
+                      buyFeeRatio: selectedMetrics.mintFeeRatio,
+                      sellFeeRatio: selectedMetrics.redeemFeeRatio,
+                      activeBuyBand: selectedMetrics.activeMintBand,
+                      activeSellBand: selectedMetrics.activeRedeemBand,
+                    }
+                  : undefined
+              }
             />
           </div>
         </div>
 
-        <div
-          id={SAIL_TRADE_PANEL_ID}
-          className="order-2 flex h-full min-h-0 flex-col scroll-mt-20 lg:order-none"
-        >
-          <SailMarketActionPanel
-            marketId={selectedMarketId}
-            market={selectedMarket}
-            initialTab={tradeTab}
-            onSuccess={onManageSuccess}
-            leveragedTokenPriceUSD={leveragedTokenPriceUSD}
-            ethPrice={ethPrice}
-            wstETHPrice={wstETHPrice}
-            fxSAVEPrice={fxSAVEPrice}
-          />
-        </div>
+        <SailMarketMetricsCollapsible
+          market={selectedMarket}
+          metrics={selectedMetrics}
+        />
       </div>
 
       <SailMobileTradeBar

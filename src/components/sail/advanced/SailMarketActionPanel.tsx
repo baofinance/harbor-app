@@ -2,6 +2,7 @@
 
 import { SailManageModal } from "@/components/SailManageModal";
 import type { DefinedMarket } from "@/config/markets";
+import type { SailTradeMarketFees } from "@/components/sail/SailTradeFeeFooter";
 import {
   SAIL_ADVANCED_LABEL,
   SAIL_ADVANCED_META,
@@ -17,9 +18,10 @@ export type SailMarketActionPanelProps = {
   ethPrice?: number | null;
   wstETHPrice?: number | null;
   fxSAVEPrice?: number | null;
+  marketFees?: SailTradeMarketFees;
 };
 
-/** Embedded Mint | Redeem panel — wraps `SailManageModal` in inline mode. */
+/** Embedded Buy | Sell panel — wraps `SailManageModal` in inline mode. */
 export function SailMarketActionPanel({
   marketId,
   market,
@@ -29,13 +31,14 @@ export function SailMarketActionPanel({
   ethPrice,
   wstETHPrice,
   fxSAVEPrice,
+  marketFees,
 }: SailMarketActionPanelProps) {
   return (
     <aside className="flex h-full min-h-0 flex-col">
       <div className="mb-3 shrink-0">
         <h2 className={SAIL_ADVANCED_LABEL}>Trade</h2>
         <p className={`mt-0.5 ${SAIL_ADVANCED_META}`}>
-          Mint or redeem in this market
+          Buy or sell in this market
         </p>
       </div>
       <div className={`${SAIL_EMBEDDED_FORM_PANEL} flex min-h-0 flex-1 flex-col`}>
@@ -52,6 +55,7 @@ export function SailMarketActionPanel({
           ethPrice={ethPrice}
           wstETHPrice={wstETHPrice}
           fxSAVEPrice={fxSAVEPrice}
+          marketFees={marketFees}
         />
         </div>
       </div>

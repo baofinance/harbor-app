@@ -8,8 +8,11 @@ import {
 } from "@/components/genesis/maidenVoyageLayoutStyles";
 import { HARBOR_FROSTED_LIGHT_CARD } from "@/components/shared/harborFrostedSurfaceStyles";
 
-export const SAIL_ADVANCED_GRID_CLASS =
-  "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.6fr)_minmax(320px,1fr)] lg:items-stretch";
+export const SAIL_ADVANCED_MAIN_GRID_CLASS =
+  "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-stretch lg:min-h-[36rem]";
+
+/** @deprecated Use SAIL_ADVANCED_MAIN_GRID_CLASS */
+export const SAIL_ADVANCED_GRID_CLASS = SAIL_ADVANCED_MAIN_GRID_CLASS;
 
 /** Standard white frosted card on Sail UI+ dark chrome. */
 export const SAIL_ADVANCED_FROSTED_CARD = `rounded-xl ${HARBOR_FROSTED_LIGHT_CARD}`;

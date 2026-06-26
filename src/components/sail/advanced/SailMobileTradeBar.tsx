@@ -5,7 +5,7 @@ type SailMobileTradeBarProps = {
   onRedeem: () => void;
 };
 
-/** Sticky Mint / Redeem shortcuts — scrolls to the embedded trade panel on small screens. */
+/** Sticky Buy / Sell shortcuts — scrolls to the embedded trade panel on small screens. */
 export function SailMobileTradeBar({ onMint, onRedeem }: SailMobileTradeBarProps) {
   return (
     <div
@@ -18,14 +18,14 @@ export function SailMobileTradeBar({ onMint, onRedeem }: SailMobileTradeBarProps
           onClick={onMint}
           className="flex-1 rounded-lg bg-[#4A9784] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#3d8070] active:scale-[0.98]"
         >
-          Mint
+          Buy
         </button>
         <button
           type="button"
           onClick={onRedeem}
           className="flex-1 rounded-lg bg-[#1E4775] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#163a5f] active:scale-[0.98]"
         >
-          Redeem
+          Sell
         </button>
       </div>
     </div>

@@ -7,7 +7,6 @@ import {
   formatRatio,
   formatUSD,
 } from "@/utils/sailDisplayFormat";
-import { SailFeeRatioCell } from "@/components/sail/SailFeeRatioCell";
 import type { DefinedMarket } from "@/config/markets";
 import { getSailMarketTokenSymbol } from "@/utils/sailMarketDirectionLabels";
 import {
@@ -15,10 +14,9 @@ import {
   SAIL_ADVANCED_LIGHT_CAPTION,
   SAIL_ADVANCED_LIGHT_SECTION_TITLE,
   SAIL_ADVANCED_LIGHT_VALUE,
-  SAIL_ADVANCED_SECTION_LABEL,
 } from "./sailAdvancedStyles";
 
-type SailMarketMetricsColumnProps = {
+type SailMarketMetricsPanelProps = {
   market: DefinedMarket;
   metrics: SailMarketDetailMetrics | undefined;
 };
@@ -41,17 +39,15 @@ function MetricRow({ label, value }: { label: string; value: ReactNode }) {
 function MetricSectionCard({
   title,
   rows,
-  className = "",
 }: {
   title: string;
   rows: Array<{ label: string; value: ReactNode }>;
-  className?: string;
 }) {
   const visibleRows = rows.filter((row) => !isEmptyMetric(row.value));
   if (visibleRows.length === 0) return null;
 
   return (
-    <div className={`${SAIL_ADVANCED_FROSTED_CARD} p-3 sm:p-3.5 ${className}`}>
+    <div className={`${SAIL_ADVANCED_FROSTED_CARD} p-3 sm:p-3.5`}>
       <h3 className={`mb-2 ${SAIL_ADVANCED_LIGHT_SECTION_TITLE}`}>
         {title}
       </h3>
@@ -64,10 +60,10 @@ function MetricSectionCard({
   );
 }
 
-export function SailMarketMetricsColumn({
+export function SailMarketMetricsPanel({
   market,
   metrics,
-}: SailMarketMetricsColumnProps) {
+}: SailMarketMetricsPanelProps) {
   const pegTarget = metrics?.pegTarget || market.pegTarget || "USD";
   const tokenSymbol = getSailMarketTokenSymbol(market);
   const tvlUsd =
@@ -82,10 +78,7 @@ export function SailMarketMetricsColumn({
   const collateral = metrics?.collateralSymbol;
 
   return (
-    <aside className="flex h-full min-h-0 flex-col gap-3">
-      <p className={SAIL_ADVANCED_SECTION_LABEL}>Market metrics</p>
-
-      <div className="flex min-h-0 flex-1 flex-col gap-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <MetricSectionCard
         title="Market"
         rows={[
@@ -106,34 +99,14 @@ export function SailMarketMetricsColumn({
           { label: "Rebalance at", value: rebalanceAt },
         ]}
       />
-
-      <MetricSectionCard
-        className="flex min-h-0 flex-1 flex-col"
-        title="Fees"
-        rows={[
-          {
-            label: "Mint fee",
-            value: (
-              <SailFeeRatioCell
-                ratio={metrics?.mintFeeRatio}
-                isMintSail
-                activeBand={metrics?.activeMintBand}
-              />
-            ),
-          },
-          {
-            label: "Redeem fee",
-            value: (
-              <SailFeeRatioCell
-                ratio={metrics?.redeemFeeRatio}
-                isMintSail={false}
-                activeBand={metrics?.activeRedeemBand}
-              />
-            ),
-          },
-        ]}
-      />
-      </div>
-    </aside>
+    </div>
   );
+}
+
+/** @deprecated Use SailMarketMetricsCollapsible on UI+ layout. */
+export function SailMarketMetricsColumn({
+  market,
+  metrics,
+}: SailMarketMetricsPanelProps) {
+  return <SailMarketMetricsPanel market={market} metrics={metrics} />;
 }

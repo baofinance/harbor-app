@@ -56,6 +56,23 @@ export function formatSailMarketDirectionTitle(
   return `Short ${shortLabel} · Long ${longLabel}`;
 }
 
+/** Dropdown / picker title — e.g. "Long USD vs ETH (Short ETH vs USD)". */
+export function formatSailMarketDropdownTitle(
+  market: DefinedMarket,
+  longSide = "",
+  shortSide = ""
+): { primary: string; secondary: string } {
+  const { longLabel, shortLabel } = getSailDirectionChipLabels(
+    market,
+    longSide,
+    shortSide
+  );
+  return {
+    primary: `Long ${longLabel} vs ${shortLabel}`,
+    secondary: `(Short ${shortLabel} vs ${longLabel})`,
+  };
+}
+
 export function getSailMarketTokenSymbol(market: DefinedMarket): string {
   return market.leveragedToken?.symbol?.trim() || "—";
 }

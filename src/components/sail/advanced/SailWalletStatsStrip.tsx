@@ -2,7 +2,7 @@
 
 import { formatUSD } from "@/utils/formatters";
 import {
-  SAIL_ADVANCED_FROSTED_CARD,
+  SAIL_ADVANCED_FROSTED_LIGHT_PANEL,
   SAIL_ADVANCED_LIGHT_LABEL,
   SAIL_ADVANCED_LIGHT_VALUE,
 } from "./sailAdvancedStyles";
@@ -21,10 +21,17 @@ export type SailWalletStatsStripProps = {
   isLoadingSailMarks: boolean;
   totalSailMarks: number;
   showSailMarks?: boolean;
+  /** When true, stats grid sits inside a parent frosted shell (no outer card). */
+  embedded?: boolean;
   className?: string;
 };
 
-const SAIL_WALLET_STATS_SHELL = `grid w-full divide-[#1E4775]/10 ${SAIL_ADVANCED_FROSTED_CARD}`;
+const SAIL_WALLET_STATS_GRID =
+  "grid w-full divide-x divide-[#1E4775]/10";
+
+const SAIL_WALLET_STATS_SHELL = `overflow-hidden rounded-xl ${SAIL_WALLET_STATS_GRID} ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`;
+
+const SAIL_WALLET_STATS_EMBEDDED_SHELL = SAIL_WALLET_STATS_GRID;
 
 const SAIL_WALLET_STATS_CELL =
   "flex min-w-0 flex-col items-center justify-center px-2 py-2 text-center sm:px-4 sm:py-2.5";
@@ -106,6 +113,7 @@ export function SailWalletStatsStrip({
   isLoadingSailMarks,
   totalSailMarks,
   showSailMarks = true,
+  embedded = false,
   className = "",
 }: SailWalletStatsStripProps) {
   const dash = "—";
@@ -114,14 +122,15 @@ export function SailWalletStatsStrip({
   const gridClass = showSailMarks
     ? "grid-cols-2 sm:grid-cols-4"
     : "grid-cols-3";
+  const shellClass = embedded ? SAIL_WALLET_STATS_EMBEDDED_SHELL : SAIL_WALLET_STATS_SHELL;
 
   return (
     <div
-      className={`${SAIL_WALLET_STATS_SHELL} ${gridClass} divide-x ${className}`.trim()}
+      className={`${shellClass} ${gridClass} ${className}`.trim()}
       aria-label="Your Sail wallet"
     >
       <StatCell
-        label="Sail value"
+        label="Total Leverage positions"
         value={
           isConnected
             ? formatUSD(sailUserStats.totalPositionsUSD, { compact: false })
