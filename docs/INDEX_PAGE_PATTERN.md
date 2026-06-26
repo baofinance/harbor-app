@@ -75,15 +75,13 @@ Featured market IDs live in [`src/config/maidenVoyageFeatured.ts`](../src/config
 
 | Component | Role |
 |-----------|------|
-| `SailPageTitleSection` | Title + subtitle (Basic & Extended) |
-| `SailHeroIntroCards` | Five hero cards (Extended) |
-| `SailExtendedHero` | Boost strip + intro cards |
-| `SailUserStatsCards` | Connected wallet stats row (Extended) |
-| `SailMarksSubgraphErrorBanner` | Marks subgraph error (Extended) |
-| `SailLedgerMarksBar` | Sail Marks summary strip (Extended) |
-| `SailMarketsToolbar` | Network / Long / Short filters + clear + Ledger Marks badge |
-| `SailMarketsTableHeader` | Desktop column header for the leverage table |
-| `SailMarketsSections` | `toolbar` + children (rows), same role as `GenesisMarketsSections` |
+| `SailUserStatsCards` | Connected wallet stats row (UI+) |
+| `SailMarksSubgraphErrorBanner` | Marks subgraph error (UI+) |
+| **`SailAdvancedLayout`** | UI+ single-market dashboard (header, metrics \| chart \| actions, strip, footer) — [`advanced/`](../../src/components/sail/advanced/) |
+| `SailBasicMarketCardsGrid` | UI− card grid + modal |
+| `SailMarketsToolbar` | Network / Long / Short filters (strip on UI+) |
+| `SailMarketsSections` | Toolbar + children wrapper (UI−) |
+| `SailMarketRow` / table header | Legacy table pieces (not used on UI+ `/sail`) |
 | Barrel | [`src/components/sail/index.ts`](../src/components/sail/index.ts) |
 
 ### 3.3 Genesis-specific UI (`src/components/genesis/`)

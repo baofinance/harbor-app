@@ -51,9 +51,9 @@ export function TideFlywheelStepCard({
   pendingFootnote,
 }: TideFlywheelStepCardProps) {
   const showProgress =
-    progressPct != null && progressTargetPct != null && progressTargetPct > 0;
+    progressTargetPct != null && progressTargetPct > 0;
   const clampedPct = showProgress
-    ? Math.min(100, Math.max(0, progressPct))
+    ? Math.min(100, Math.max(0, progressPct ?? 0))
     : 0;
   const targetReached =
     showProgress && clampedPct >= progressTargetPct;

@@ -38,6 +38,8 @@ export interface DepositModalShellProps {
   /** @deprecated Use `tabs`. */
   header?: React.ReactNode;
   headerClassName?: string;
+  /** Inline panel (no overlay) for embedded manage UI on index pages. */
+  variant?: "modal" | "inline";
 }
 
 /**
@@ -57,10 +59,22 @@ export function DepositModalShell({
   banner,
   header,
   headerClassName = "",
+  variant = "modal",
 }: DepositModalShellProps) {
   if (!isOpen) return null;
 
   const legacyLayout = banner != null || header != null;
+
+  if (variant === "inline") {
+    return (
+      <div className={cn("flex min-h-0 flex-col", panelClassName)}>
+        <div className="mb-3 shrink-0">{tabs}</div>
+        <div className={cn("min-h-0 flex-1 overflow-y-auto", contentClassName)}>
+          {children}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center px-2 pt-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:items-center sm:px-4 sm:py-4">

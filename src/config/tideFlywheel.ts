@@ -43,13 +43,6 @@ export const TIDE_FLYWHEEL_CONFIG = {
     revenueDisclaimer:
       "Estimated from maiden-voyage yield pool data (5% owner share gross-up).",
     steps: {
-      protocolRevenue: {
-        title: "Protocol Revenue",
-        description:
-          "Revenue is generated from collateral yield, trading fees and protocol fees.",
-        statLabel: "Lifetime Revenue",
-        footer: "Updated in real time",
-      },
       buybacks: {
         title: "TIDE Buybacks",
         description: "25% of revenue buys back TIDE from the market.",

@@ -62,6 +62,8 @@ interface SailManageModalProps {
  market: DefinedMarket;
  initialTab?:"mint" |"redeem";
  onSuccess?: () => void;
+ /** Inline panel on UI+ advanced layout (no modal overlay). */
+ embedded?: boolean;
  /** USD price of leveraged token (e.g. hsSTETH-EUR). Used for value-based output estimation when swap+dry-run yields wrong results. */
  leveragedTokenPriceUSD?: number;
  /** Pre-loaded prices from parent (Sail page). Avoids $0.00 when modal mounts before CoinGecko responds. */
@@ -100,6 +102,7 @@ export const SailManageModal = ({
  market,
  initialTab ="mint",
  onSuccess,
+ embedded = false,
  leveragedTokenPriceUSD,
  ethPrice: ethPriceProp,
  wstETHPrice: wstETHPriceProp,
@@ -140,7 +143,7 @@ export const SailManageModal = ({
     permitEnabled,
     setPermitEnabled,
   } = usePermitFlow({
-    enabled: isOpen && !!address,
+    enabled: (isOpen || embedded) && !!address,
     depositAssetSymbol:
       activeTab === "redeem"
         ? market?.leveragedToken?.symbol
@@ -1719,6 +1722,10 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
  return;
  }
  }
+ if (embedded) {
+   resetSailMintFormKeepToken();
+   return;
+ }
  onClose();
  };
 
@@ -1728,7 +1735,7 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
  setError(null);
  };
 
- if (!isOpen) return null;
+ if (!isOpen && !embedded) return null;
 
  const isProcessing =
  step ==="approving" || step ==="minting" || step ==="redeeming";
@@ -1790,9 +1797,10 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
      errorMessage={progress.steps.find((s) => s.status === "error")?.error}
    />
  )}
- {!progress.isOpen && isOpen && (
+ {!progress.isOpen && (isOpen || embedded) && (
  <DepositModalShell
-   isOpen={isOpen}
+   variant={embedded ? "inline" : "modal"}
+   isOpen={isOpen || embedded}
    onClose={handleClose}
    title={
      <DepositModalTitle
@@ -1859,8 +1867,14 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
      />
    }
    closeDisabled={isProcessing}
-  panelClassName="max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col"
-  contentClassName="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4"
+  panelClassName={
+    embedded
+      ? "min-h-0"
+      : "max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col"
+  }
+  contentClassName={
+    embedded ? "min-h-0 space-y-4" : "min-h-0 flex-1 overflow-y-auto p-3 sm:p-4"
+  }
  >
  {step ==="success" ? (
  <TransactionSuccessMessage

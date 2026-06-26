@@ -5,7 +5,6 @@ import {
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import {
-  CircleStackIcon,
   FireIcon,
   ShieldCheckIcon,
 } from "@heroicons/react/24/solid";
@@ -22,13 +21,14 @@ import {
   TIDE_FLYWHEEL_SECTION_CLASS,
 } from "./tideFlywheelStyles";
 
-function formatPct(value: number | null): string {
-  if (value == null || !Number.isFinite(value)) return "—";
-  return `${value.toFixed(2)}%`;
+function formatPct(value: number | null | undefined): string {
+  const n = value ?? 0;
+  if (!Number.isFinite(n)) return "0.00%";
+  return `${n.toFixed(2)}%`;
 }
 
 function formatTideTokens(value: number): string {
-  if (!Number.isFinite(value) || value <= 0) return "—";
+  if (!Number.isFinite(value) || value < 0) return "0 TIDE";
   return `${value.toLocaleString(undefined, { maximumFractionDigits: 0 })} TIDE`;
 }
 
@@ -47,26 +47,13 @@ export function TideValueFlywheel() {
   const metrics = useTideFlywheelMetrics();
   const copy = TIDE_FLYWHEEL_CONFIG.copy;
 
-  const lifetimeRevenueDisplay =
-    metrics.lifetimeRevenueUsd != null && metrics.lifetimeRevenueUsd > 0
-      ? formatUSD(metrics.lifetimeRevenueUsd, { compact: false })
-      : metrics.isLoading
-        ? "…"
-        : "—";
+  const lifetimeRevenueDisplay = metrics.isLoading
+    ? "…"
+    : formatUSD(metrics.lifetimeRevenueUsd ?? 0, { compact: false });
 
-  const treasuryDisplay = metrics.tideTokenConfigured
-    ? formatPct(metrics.treasury.ownershipPct)
-    : "—";
-
-  const polDisplay = metrics.polLpConfigured
-    ? formatPct(metrics.pol.ownershipPct)
-    : "—";
-
-  const burnDisplay = !metrics.tideTokenConfigured
-    ? "—"
-    : metrics.isLoading
-      ? "…"
-      : formatPct(metrics.burn.supplyBurnedPct ?? 0);
+  const treasuryPct = metrics.treasury.ownershipPct ?? 0;
+  const polPct = metrics.pol.ownershipPct ?? 0;
+  const burnPct = metrics.burn.supplyBurnedPct ?? 0;
 
   return (
     <section className={TIDE_FLYWHEEL_SECTION_CLASS} aria-label="TIDE Value Flywheel">
@@ -82,27 +69,14 @@ export function TideValueFlywheel() {
       <div className={TIDE_FLYWHEEL_SCROLL_ROW}>
         <div className={TIDE_FLYWHEEL_DESKTOP_ROW}>
           <TideFlywheelStepCard
-            icon={<CircleStackIcon className="h-5 w-5" />}
-            title={copy.steps.protocolRevenue.title}
-            description={copy.steps.protocolRevenue.description}
-            statLabel={copy.steps.protocolRevenue.statLabel}
-            statValue={lifetimeRevenueDisplay}
-            footer={copy.steps.protocolRevenue.footer}
-          />
-
-          <StepArrow />
-
-          <TideFlywheelStepCard
             icon={<ArrowPathIcon className="h-5 w-5" strokeWidth={2} />}
             title={copy.steps.buybacks.title}
             description={copy.steps.buybacks.description}
             statLabel={copy.steps.buybacks.statLabel}
-            statValue={formatTideTokens(metrics.buyback.tideTokens)}
-            statSubValue={
-              metrics.buyback.usd > 0
-                ? formatUSD(metrics.buyback.usd, { compact: false })
-                : undefined
+            statValue={
+              metrics.isLoading ? "…" : formatTideTokens(metrics.buyback.tideTokens)
             }
+            statSubValue={formatUSD(metrics.buyback.usd, { compact: false })}
             footer={copy.steps.buybacks.footer}
           />
 
@@ -113,21 +87,10 @@ export function TideValueFlywheel() {
             title={copy.steps.treasury.title}
             description={copy.steps.treasury.description}
             statLabel={copy.steps.treasury.statLabel}
-            statValue={treasuryDisplay}
-            footer={
-              metrics.tideTokenConfigured
-                ? copy.steps.treasury.targetLabel
-                : undefined
-            }
-            pendingFootnote={
-              !metrics.tideTokenConfigured
-                ? copy.steps.treasury.pendingConfig
-                : undefined
-            }
+            statValue={metrics.isLoading ? "…" : formatPct(treasuryPct)}
+            footer={copy.steps.treasury.targetLabel}
             isActive={metrics.activeStage === "treasury"}
-            progressPct={
-              metrics.tideTokenConfigured ? metrics.treasury.ownershipPct : null
-            }
+            progressPct={treasuryPct}
             progressTargetPct={metrics.treasury.targetPct}
             targetReachedLabel={
               metrics.treasury.targetReached
@@ -143,17 +106,10 @@ export function TideValueFlywheel() {
             title={copy.steps.pol.title}
             description={copy.steps.pol.description}
             statLabel={copy.steps.pol.statLabel}
-            statValue={polDisplay}
-            footer={
-              metrics.polLpConfigured ? copy.steps.pol.targetLabel : undefined
-            }
-            pendingFootnote={
-              !metrics.polLpConfigured ? copy.steps.pol.pendingConfig : undefined
-            }
+            statValue={metrics.isLoading ? "…" : formatPct(polPct)}
+            footer={copy.steps.pol.targetLabel}
             isActive={metrics.activeStage === "pol"}
-            progressPct={
-              metrics.polLpConfigured ? metrics.pol.ownershipPct : null
-            }
+            progressPct={polPct}
             progressTargetPct={metrics.pol.targetPct}
           />
 
@@ -164,18 +120,11 @@ export function TideValueFlywheel() {
             title={copy.steps.burn.title}
             description={copy.steps.burn.description}
             statLabel={copy.steps.burn.statLabel}
-            statValue={burnDisplay}
-            footer={
-              metrics.tideTokenConfigured
-                ? copy.steps.burn.footer
-                : undefined
-            }
-            pendingFootnote={
-              !metrics.tideTokenConfigured
-                ? copy.steps.burn.pendingConfig
-                : undefined
-            }
+            statValue={metrics.isLoading ? "…" : formatPct(burnPct)}
+            footer={copy.steps.burn.footer}
             isActive={metrics.activeStage === "burn"}
+            progressPct={burnPct}
+            progressTargetPct={100}
           />
         </div>
       </div>

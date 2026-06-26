@@ -9,9 +9,12 @@ import {
   formatLeverage,
   formatPnL,
   formatRatio,
-  formatToken,
   formatUSD,
 } from "@/utils/sailDisplayFormat";
+import {
+  buildSailMarketDetailMetrics,
+  resolveMinCollateralRatio,
+} from "@/utils/sailMarketMetrics";
 import type { DefinedMarket } from "@/config/markets";
 import type { SailMarketPnLData } from "./sailMarketTypes";
 
@@ -86,155 +89,69 @@ export function SailMarketExpandedView({
     isLoading: isCollateralPriceLoading,
   } = useCollateralPrice(priceOracleAddress);
 
-  const minCollateralRatio = useMemo(() => {
-    if (
-      rebalanceThresholdData !== undefined &&
-      rebalanceThresholdData !== null
-    ) {
-      return rebalanceThresholdData as bigint;
-    }
+  const minCollateralRatio = useMemo(
+    () => resolveMinCollateralRatio(rebalanceThresholdData, minterConfigData),
+    [rebalanceThresholdData, minterConfigData]
+  );
 
-    if (!minterConfigData) return undefined;
-    type MinterConfigBands = {
-      mintPeggedIncentiveConfig?: {
-        collateralRatioBandUpperBounds?: readonly bigint[];
-      };
-      redeemPeggedIncentiveConfig?: {
-        collateralRatioBandUpperBounds?: readonly bigint[];
-      };
-      mintLeveragedIncentiveConfig?: {
-        collateralRatioBandUpperBounds?: readonly bigint[];
-      };
-      redeemLeveragedIncentiveConfig?: {
-        collateralRatioBandUpperBounds?: readonly bigint[];
-      };
-    };
-    const config = minterConfigData as MinterConfigBands;
-    const allFirstBounds: bigint[] = [];
+  const detailMetrics = useMemo(
+    () =>
+      buildSailMarketDetailMetrics({
+        market,
+        marketId,
+        collateralValue,
+        leverageRatio,
+        collateralRatio,
+        minterConfigData,
+        rebalanceThresholdData,
+        tokenPrices: tokenPrices
+          ? {
+              leveragedPriceUSD: tokenPrices.leveragedPriceUSD,
+              pegTargetUSD: tokenPrices.pegTargetUSD,
+            }
+          : undefined,
+        prices: {
+          wrappedRate: wrappedRateFromHook,
+          fxSAVEPrice,
+          fxSAVEPriceInETH,
+          ethPrice,
+          wstETHPrice,
+          collateralPriceUSD: collateralPriceUSDFromHook,
+          pegTargetUSD: tokenPrices?.pegTargetUSD,
+          isCollateralPriceLoading,
+          isCoinGeckoLoading,
+        },
+      }),
+    [
+      market,
+      marketId,
+      collateralValue,
+      leverageRatio,
+      collateralRatio,
+      minterConfigData,
+      rebalanceThresholdData,
+      tokenPrices,
+      wrappedRateFromHook,
+      fxSAVEPrice,
+      fxSAVEPriceInETH,
+      ethPrice,
+      wstETHPrice,
+      collateralPriceUSDFromHook,
+      isCollateralPriceLoading,
+      isCoinGeckoLoading,
+    ]
+  );
 
-    if (
-      config?.mintPeggedIncentiveConfig?.collateralRatioBandUpperBounds?.[0]
-    ) {
-      allFirstBounds.push(
-        config.mintPeggedIncentiveConfig
-          .collateralRatioBandUpperBounds[0] as bigint
-      );
-    }
-    if (
-      config?.redeemPeggedIncentiveConfig?.collateralRatioBandUpperBounds?.[0]
-    ) {
-      allFirstBounds.push(
-        config.redeemPeggedIncentiveConfig
-          .collateralRatioBandUpperBounds[0] as bigint
-      );
-    }
-    if (
-      config?.mintLeveragedIncentiveConfig?.collateralRatioBandUpperBounds?.[0]
-    ) {
-      allFirstBounds.push(
-        config.mintLeveragedIncentiveConfig
-          .collateralRatioBandUpperBounds[0] as bigint
-      );
-    }
-    if (
-      config?.redeemLeveragedIncentiveConfig
-        ?.collateralRatioBandUpperBounds?.[0]
-    ) {
-      allFirstBounds.push(
-        config.redeemLeveragedIncentiveConfig
-          .collateralRatioBandUpperBounds[0] as bigint
-      );
-    }
-
-    if (allFirstBounds.length > 0) {
-      return allFirstBounds.reduce((min, current) =>
-        current < min ? current : min
-      );
-    }
-    return undefined;
-  }, [rebalanceThresholdData, minterConfigData]);
-
-  const pegTarget = market.pegTarget || "USD";
-  const underlyingToken =
-    market.collateral?.underlyingSymbol ||
-    market.collateral?.symbol ||
-    "USD";
-
-  const collateralSymbol = market.collateral?.symbol?.toLowerCase() || "";
-  const isFxUSDMarket =
-    collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
-
-  let tvlUSD: number | undefined;
-  if (collateralValue) {
-    const collateralTokensUnderlyingEq = Number(collateralValue) / 1e18;
-    const wrappedRateNum =
-      wrappedRateFromHook !== undefined
-        ? Number(wrappedRateFromHook) / 1e18
-        : 1.0;
-
-    const collateralTokensWrapped =
-      wrappedRateNum > 0
-        ? collateralTokensUnderlyingEq / wrappedRateNum
-        : collateralTokensUnderlyingEq;
-
-    if (isFxUSDMarket && collateralTokensUnderlyingEq > 0) {
-      let fxSAVEPriceUSD = 0;
-      if (!isCollateralPriceLoading && !isCoinGeckoLoading) {
-        if (fxSAVEPrice && fxSAVEPrice > 1.0) {
-          fxSAVEPriceUSD = fxSAVEPrice;
-        } else if (fxSAVEPriceInETH && ethPrice) {
-          const fxSAVEPriceInETHNum = Number(fxSAVEPriceInETH) / 1e18;
-          const ethPriceUSD = ethPrice;
-          const calculatedPrice = fxSAVEPriceInETHNum * ethPriceUSD;
-          if (calculatedPrice > 1.0) {
-            fxSAVEPriceUSD = calculatedPrice;
-          } else {
-            fxSAVEPriceUSD = 1.08;
-          }
-        } else {
-          fxSAVEPriceUSD = 1.08;
-        }
-      }
-
-      if (
-        fxSAVEPriceUSD > 0 &&
-        !isCollateralPriceLoading &&
-        !isCoinGeckoLoading
-      ) {
-        tvlUSD = collateralTokensWrapped * fxSAVEPriceUSD;
-      }
-    } else if (!isFxUSDMarket && collateralTokensUnderlyingEq > 0) {
-      let effectivePrice = 0;
-      if (!isCollateralPriceLoading && !isCoinGeckoLoading) {
-        if (wstETHPrice) {
-          effectivePrice = wstETHPrice;
-        } else if (
-          collateralPriceUSDFromHook > 0 &&
-          tokenPrices?.pegTargetUSD
-        ) {
-          const underlyingPriceUSD =
-            collateralPriceUSDFromHook * tokenPrices.pegTargetUSD;
-          effectivePrice = underlyingPriceUSD * wrappedRateNum;
-        } else {
-          effectivePrice = 3960;
-        }
-      }
-
-      if (
-        effectivePrice > 0 &&
-        !isCollateralPriceLoading &&
-        !isCoinGeckoLoading
-      ) {
-        tvlUSD = collateralTokensWrapped * effectivePrice;
-      }
-    }
-  }
+  const pegTarget = detailMetrics.pegTarget;
+  const underlyingToken = detailMetrics.underlyingToken;
+  const tvlUSD = detailMetrics.tvlUSD;
 
   const hasPosition = userDeposit && userDeposit > 0n;
   const totalPnL = pnlData ? pnlData.realizedPnL + pnlData.unrealizedPnL : 0;
   const totalPnLFormatted = totalPnL !== 0 ? formatPnL(totalPnL) : null;
 
-  const computedTokenPriceUSD = tokenPrices?.leveragedPriceUSD;
+  const computedTokenPriceUSD = detailMetrics.tokenPriceUSD;
+  const tvlCollateralDisplay = detailMetrics.tvlCollateralDisplay;
 
   return (
     <div className="bg-[rgb(var(--surface-selected-rgb))] p-3 sm:p-4 border-t border-[#1E4775]/15 mt-0 rounded-b-md">
@@ -348,23 +265,7 @@ export function SailMarketExpandedView({
             <div className="bg-white p-3 h-full flex flex-col items-center text-center rounded-md border border-[#1E4775]/12 shadow-sm">
               <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">TVL</h3>
               <p className="text-sm font-bold text-[#1E4775]">
-                {(() => {
-                  if (collateralValue) {
-                    const underlyingAmount = Number(collateralValue) / 1e18;
-                    const wrappedRateNum =
-                      wrappedRateFromHook !== undefined
-                        ? Number(wrappedRateFromHook) / 1e18
-                        : 1.0;
-                    const wrappedAmount =
-                      wrappedRateNum > 0
-                        ? underlyingAmount / wrappedRateNum
-                        : underlyingAmount;
-                    return `${formatToken(
-                      BigInt(Math.floor(wrappedAmount * 1e18))
-                    )} ${market.collateral?.symbol || "ETH"}`;
-                  }
-                  return `- ${market.collateral?.symbol || "ETH"}`;
-                })()}
+                {tvlCollateralDisplay}
               </p>
               {tvlUSD !== undefined && (
                 <p className="text-xs text-[#1E4775]/70 mt-0.5">
