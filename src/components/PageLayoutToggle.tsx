@@ -9,6 +9,7 @@ import {
   ListboxOptions,
 } from "@headlessui/react";
 import { CheckIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
+import NetworkIconClient from "@/components/NetworkIconClient";
 import {
   HARBOR_FROSTED_ACTIVE_PILL,
   HARBOR_FROSTED_DROPDOWN_SHELL,
