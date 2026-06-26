@@ -95,8 +95,39 @@ export function SailMarketChart({
     | string
     | undefined;
 
-  const pegChainlinkAsset =
-    config.collateralIsLong ? config.shortPegAsset : config.longPegAsset;
+  const longNeedsChainlink = config.longPegAsset !== "USD";
+  const shortNeedsChainlink = config.shortPegAsset !== "USD";
+
+  const { priceHistory: longChainlinkHistory, isLoading: isLongChainlinkLoading } =
+    useChainlinkUsdHistory(
+      longNeedsChainlink ? config.longPegAsset : null,
+      longNeedsChainlink
+    );
+
+  const { priceHistory: shortChainlinkHistory, isLoading: isShortChainlinkLoading } =
+    useChainlinkUsdHistory(
+      shortNeedsChainlink ? config.shortPegAsset : null,
+      shortNeedsChainlink
+    );
+
+  const chainlinkHistories = useMemo(
+    () => ({
+      ...(longNeedsChainlink
+        ? { [config.longPegAsset]: longChainlinkHistory }
+        : {}),
+      ...(shortNeedsChainlink
+        ? { [config.shortPegAsset]: shortChainlinkHistory }
+        : {}),
+    }),
+    [
+      longNeedsChainlink,
+      shortNeedsChainlink,
+      config.longPegAsset,
+      config.shortPegAsset,
+      longChainlinkHistory,
+      shortChainlinkHistory,
+    ]
+  );
 
   const {
     pricePoints,
@@ -110,12 +141,6 @@ export function SailMarketChart({
     daysBack: 31,
     enabled: !!leveragedTokenAddress,
   });
-
-  const { priceHistory: pegChainlinkHistory, isLoading: isChainlinkLoading } =
-    useChainlinkUsdHistory(
-      pegChainlinkAsset === "USD" ? null : pegChainlinkAsset,
-      pegChainlinkAsset !== "USD"
-    );
 
   const mergedSubgraph = useMemo(
     () => mergeChartData(pricePoints, hourlySnapshots),
@@ -138,10 +163,10 @@ export function SailMarketChart({
       buildSailMarketChartPoints(
         config,
         mergedSubgraph,
-        pegChainlinkHistory,
+        chainlinkHistories,
         livePrices
       ),
-    [config, mergedSubgraph, pegChainlinkHistory, livePrices]
+    [config, mergedSubgraph, chainlinkHistories, livePrices]
   );
 
   const filteredData = useMemo(
@@ -181,7 +206,10 @@ export function SailMarketChart({
     return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
   };
 
-  const isLoading = isSubgraphLoading || (pegChainlinkAsset !== "USD" && isChainlinkLoading);
+  const isLoading =
+    isSubgraphLoading ||
+    (longNeedsChainlink && isLongChainlinkLoading) ||
+    (shortNeedsChainlink && isShortChainlinkLoading);
 
   useEffect(() => {
     onConfigReady?.(config);

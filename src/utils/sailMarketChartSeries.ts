@@ -126,26 +126,55 @@ export function computeLiveDefaultRatio(
   return longUsd / shortUsd;
 }
 
-function sideUsdAtIndex(
+function resolveSideUsd(
   pegAsset: PegAssetKey,
-  isCollateralSide: boolean,
+  preferCollateral: boolean,
+  index: number,
   collateralPrices: number[],
-  pegResampled: number[],
-  index: number
+  resampledByAsset: Partial<Record<PegAssetKey, number[]>>
 ): number {
   if (pegAsset === "USD") return 1;
-  if (isCollateralSide) {
-    const v = collateralPrices[index];
-    return Number.isFinite(v) && v > 0 ? v : NaN;
+
+  if (preferCollateral) {
+    const collateral = collateralPrices[index];
+    if (Number.isFinite(collateral) && collateral > 0) return collateral;
   }
-  const v = pegResampled[index];
-  return Number.isFinite(v) && v > 0 ? v : NaN;
+
+  const oracle = resampledByAsset[pegAsset]?.[index];
+  if (Number.isFinite(oracle) && oracle > 0) return oracle;
+
+  return NaN;
+}
+
+function buildResampledByAsset(
+  timestamps: number[],
+  chainlinkHistories: Partial<Record<PegAssetKey, ChainlinkPricePoint[]>>,
+  liveFallback?: LiveSideUsdPrices
+): Partial<Record<PegAssetKey, number[]>> {
+  const result: Partial<Record<PegAssetKey, number[]>> = {};
+  const assets: PegAssetKey[] = ["ETH", "BTC", "EUR", "XAU", "XAG"];
+
+  for (const asset of assets) {
+    const history = chainlinkHistories[asset];
+    if (!history?.length) continue;
+
+    let resampled = resamplePriceSeries(timestamps, history);
+    if (resampled.every((v) => !Number.isFinite(v)) && liveFallback) {
+      const spot = pegAssetUsdFromLive(asset, liveFallback);
+      if (spot != null && spot > 0) {
+        resampled = timestamps.map(() => spot);
+      }
+    }
+    result[asset] = resampled;
+  }
+
+  return result;
 }
 
 export function buildSailMarketChartPoints(
   config: SailMarketChartConfig,
   mergedSubgraph: MergedChartPoint[],
-  pegChainlinkHistory: ChainlinkPricePoint[],
+  chainlinkHistories: Partial<Record<PegAssetKey, ChainlinkPricePoint[]>>,
   liveFallback?: LiveSideUsdPrices
 ): SailMarketChartPoint[] {
   if (mergedSubgraph.length === 0) return [];
@@ -154,40 +183,29 @@ export function buildSailMarketChartPoints(
   const collateralPrices = mergedSubgraph.map((p) => p.collateralPriceUSD);
   const hsPrices = mergedSubgraph.map((p) => p.priceUSD);
 
-  const pegAsset =
-    config.collateralIsLong ? config.shortPegAsset : config.longPegAsset;
-
-  let pegResampled = resamplePriceSeries(timestamps, pegChainlinkHistory);
-
-  // Flat fallback when Chainlink history is sparse
-  if (
-    pegAsset !== "USD" &&
-    pegResampled.every((v) => !Number.isFinite(v)) &&
+  const resampledByAsset = buildResampledByAsset(
+    timestamps,
+    chainlinkHistories,
     liveFallback
-  ) {
-    const spot = pegAssetUsdFromLive(pegAsset, liveFallback);
-    if (spot != null && spot > 0) {
-      pegResampled = timestamps.map(() => spot);
-    }
-  }
+  );
 
-  const longIsCollateral = config.collateralIsLong;
-  const shortIsCollateral = !config.collateralIsLong;
+  const longPrefersCollateral = config.collateralIsLong;
+  const shortPrefersCollateral = !config.collateralIsLong;
 
   return timestamps.map((timestamp, i) => {
-    const longUsd = sideUsdAtIndex(
+    const longUsd = resolveSideUsd(
       config.longPegAsset,
-      longIsCollateral,
+      longPrefersCollateral,
+      i,
       collateralPrices,
-      pegResampled,
-      i
+      resampledByAsset
     );
-    const shortUsd = sideUsdAtIndex(
+    const shortUsd = resolveSideUsd(
       config.shortPegAsset,
-      shortIsCollateral,
+      shortPrefersCollateral,
+      i,
       collateralPrices,
-      pegResampled,
-      i
+      resampledByAsset
     );
     const hsPriceUsd = hsPrices[i];
     const defaultRatio =
@@ -200,7 +218,7 @@ export function buildSailMarketChartPoints(
       defaultRatio,
       longUsd,
       shortUsd,
-      hsPriceUsd,
+      hsPriceUsd: Number.isFinite(hsPriceUsd) && hsPriceUsd > 0 ? hsPriceUsd : NaN,
     };
   });
 }

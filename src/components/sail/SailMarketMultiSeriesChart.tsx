@@ -2,8 +2,8 @@
 
 import {
   Area,
-  AreaChart,
   CartesianGrid,
+  ComposedChart,
   Legend,
   Line,
   ResponsiveContainer,
@@ -23,12 +23,6 @@ export type SailChartOverlays = {
   hsPriceUsd: boolean;
 };
 
-type ChartRow = SailMarketChartPoint & {
-  longUsdOverlay?: number;
-  shortUsdOverlay?: number;
-  hsPriceUsdOverlay?: number;
-};
-
 interface SailMarketMultiSeriesChartProps {
   data: SailMarketChartPoint[];
   config: SailMarketChartConfig;
@@ -44,19 +38,6 @@ const SERIES_COLORS = {
   hsPriceUsd: "#6B5B95",
 } as const;
 
-function buildChartRows(
-  data: SailMarketChartPoint[],
-  overlays: SailChartOverlays
-): ChartRow[] {
-  return data.map((row) => ({
-    ...row,
-    longUsdOverlay: overlays.longUsd && Number.isFinite(row.longUsd) ? row.longUsd : undefined,
-    shortUsdOverlay: overlays.shortUsd && Number.isFinite(row.shortUsd) ? row.shortUsd : undefined,
-    hsPriceUsdOverlay:
-      overlays.hsPriceUsd && Number.isFinite(row.hsPriceUsd) ? row.hsPriceUsd : undefined,
-  }));
-}
-
 function MultiSeriesTooltip({
   active,
   payload,
@@ -66,7 +47,7 @@ function MultiSeriesTooltip({
   overlays,
 }: {
   active?: boolean;
-  payload?: Array<{ dataKey: string; value: number; color: string }>;
+  payload?: Array<{ payload?: SailMarketChartPoint }>;
   label?: number;
   formatTooltipTimestamp: (timestamp: number) => string;
   config: SailMarketChartConfig;
@@ -74,7 +55,7 @@ function MultiSeriesTooltip({
 }) {
   if (!active || !payload?.length || label == null) return null;
 
-  const row = payload[0]?.payload as ChartRow | undefined;
+  const row = payload[0]?.payload;
   if (!row) return null;
 
   const items: Array<{ label: string; value: string; color: string }> = [
@@ -133,7 +114,6 @@ export function SailMarketMultiSeriesChart({
   formatTimestamp,
   formatTooltipTimestamp,
 }: SailMarketMultiSeriesChartProps) {
-  const chartData = buildChartRows(data, overlays);
   const hasUsdOverlays = overlays.longUsd || overlays.shortUsd || overlays.hsPriceUsd;
 
   const legendPayload = [
@@ -155,7 +135,10 @@ export function SailMarketMultiSeriesChart({
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={chartData} margin={{ top: 5, right: hasUsdOverlays ? 8 : 15, bottom: 30, left: 8 }}>
+      <ComposedChart
+        data={data}
+        margin={{ top: 8, right: hasUsdOverlays ? 56 : 15, bottom: 30, left: 8 }}
+      >
         <defs>
           <linearGradient id="sailDefaultGradient" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor={SERIES_COLORS.defaultRatio} stopOpacity={0.35} />
@@ -235,6 +218,7 @@ export function SailMarketMultiSeriesChart({
           yAxisId="left"
           type="monotone"
           dataKey="defaultRatio"
+          name={config.defaultMetricLabel}
           stroke={SERIES_COLORS.defaultRatio}
           strokeWidth={2}
           fillOpacity={1}
@@ -242,42 +226,46 @@ export function SailMarketMultiSeriesChart({
           dot={false}
           activeDot={{ r: 4, strokeWidth: 2, fill: "#0c0c0c", stroke: SERIES_COLORS.defaultRatio }}
           connectNulls
+          isAnimationActive={false}
         />
-        {overlays.longUsd ? (
-          <Line
-            yAxisId="right"
-            type="monotone"
-            dataKey="longUsdOverlay"
-            stroke={SERIES_COLORS.longUsd}
-            strokeWidth={1.5}
-            dot={false}
-            connectNulls
-          />
-        ) : null}
-        {overlays.shortUsd ? (
-          <Line
-            yAxisId="right"
-            type="monotone"
-            dataKey="shortUsdOverlay"
-            stroke={SERIES_COLORS.shortUsd}
-            strokeWidth={1.5}
-            dot={false}
-            connectNulls
-          />
-        ) : null}
-        {overlays.hsPriceUsd ? (
-          <Line
-            yAxisId="right"
-            type="monotone"
-            dataKey="hsPriceUsdOverlay"
-            stroke={SERIES_COLORS.hsPriceUsd}
-            strokeWidth={1.5}
-            strokeDasharray="4 3"
-            dot={false}
-            connectNulls
-          />
-        ) : null}
-      </AreaChart>
+        <Line
+          yAxisId="right"
+          type="monotone"
+          dataKey="longUsd"
+          name={`Long ${config.longLabel} (USD)`}
+          stroke={SERIES_COLORS.longUsd}
+          strokeWidth={2}
+          dot={false}
+          connectNulls
+          hide={!overlays.longUsd}
+          isAnimationActive={false}
+        />
+        <Line
+          yAxisId="right"
+          type="monotone"
+          dataKey="shortUsd"
+          name={`Short ${config.shortLabel} (USD)`}
+          stroke={SERIES_COLORS.shortUsd}
+          strokeWidth={2}
+          dot={false}
+          connectNulls
+          hide={!overlays.shortUsd}
+          isAnimationActive={false}
+        />
+        <Line
+          yAxisId="right"
+          type="monotone"
+          dataKey="hsPriceUsd"
+          name={`${config.hsSymbol} (USD)`}
+          stroke={SERIES_COLORS.hsPriceUsd}
+          strokeWidth={2}
+          strokeDasharray="4 3"
+          dot={false}
+          connectNulls
+          hide={!overlays.hsPriceUsd}
+          isAnimationActive={false}
+        />
+      </ComposedChart>
     </ResponsiveContainer>
   );
 }
