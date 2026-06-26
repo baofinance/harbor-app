@@ -11,6 +11,7 @@ import { SailMarketChartColumn } from "./SailMarketChartColumn";
 import { SailMarketHeader } from "./SailMarketHeader";
 import { SailMarketInfoFooter } from "./SailMarketInfoFooter";
 import { SailMarketMetricsColumn } from "./SailMarketMetricsColumn";
+import { SailMarketPositionBar } from "./SailMarketPositionBar";
 import { SailOtherMarketsStrip } from "./SailOtherMarketsStrip";
 import type { SailWalletStatsStripProps } from "./SailWalletStatsStrip";
 import { SAIL_ADVANCED_GRID_CLASS } from "./sailAdvancedStyles";
@@ -129,7 +130,14 @@ export function SailAdvancedLayout({
             metrics={selectedMetrics}
           />
         </div>
-        <div className="order-1 lg:order-none">
+        <div className="order-1 flex flex-col gap-3 lg:order-none">
+          <SailMarketPositionBar
+            market={selectedMarket}
+            userDeposit={userDeposit}
+            currentValueUSD={currentValueUSD}
+            leveragedTokenPriceUSD={leveragedTokenPriceUSD}
+            isConnected={isConnected}
+          />
           <SailMarketChartColumn
             marketId={selectedMarketId}
             market={selectedMarket}
@@ -139,8 +147,6 @@ export function SailAdvancedLayout({
           <SailMarketActionPanel
             marketId={selectedMarketId}
             market={selectedMarket}
-            userDeposit={userDeposit}
-            currentValueUSD={currentValueUSD}
             onSuccess={onManageSuccess}
             leveragedTokenPriceUSD={leveragedTokenPriceUSD}
             ethPrice={ethPrice}

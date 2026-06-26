@@ -1,7 +1,8 @@
 "use client";
 
-import { MV_GLASS_INSET_DARK } from "@/components/genesis/maidenVoyageLayoutStyles";
+import { HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS } from "@/components/shared/harborStatTileStyles";
 import { formatUSD } from "@/utils/formatters";
+import { SAIL_ADVANCED_FROSTED_CARD } from "./sailAdvancedStyles";
 
 export type SailWalletStatsStripProps = {
   isConnected: boolean;
@@ -19,10 +20,9 @@ export type SailWalletStatsStripProps = {
   className?: string;
 };
 
-const SAIL_WALLET_STATS_SHELL = `flex shrink-0 items-stretch overflow-x-auto rounded-lg border ${MV_GLASS_INSET_DARK}`;
+const SAIL_WALLET_STATS_SHELL = `flex shrink-0 items-stretch overflow-x-auto ${SAIL_ADVANCED_FROSTED_CARD}`;
 
-const SAIL_WALLET_STATS_CELL =
-  "flex min-w-0 flex-col justify-center px-2.5 py-1.5 text-center sm:px-3";
+const SAIL_WALLET_STATS_CELL = `${HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS} px-2.5 py-1.5 sm:px-3`;
 
 const SAIL_WALLET_STATS_LABEL =
   "whitespace-nowrap text-[10px] font-medium uppercase tracking-wide text-white/55";
