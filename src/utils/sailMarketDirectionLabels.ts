@@ -41,3 +41,21 @@ export function getSailDirectionChipLabels(
     shortLabel: mapped?.short ?? normalizeSailSideLabel(shortSide),
   };
 }
+
+/** Primary Sail market title — e.g. "Short BTC · Long USD". */
+export function formatSailMarketDirectionTitle(
+  market: DefinedMarket,
+  longSide = "",
+  shortSide = ""
+): string {
+  const { longLabel, shortLabel } = getSailDirectionChipLabels(
+    market,
+    longSide,
+    shortSide
+  );
+  return `Short ${shortLabel} · Long ${longLabel}`;
+}
+
+export function getSailMarketTokenSymbol(market: DefinedMarket): string {
+  return market.leveragedToken?.symbol?.trim() || "—";
+}

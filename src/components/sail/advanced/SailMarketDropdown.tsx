@@ -4,8 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import type { DefinedMarket } from "@/config/markets";
-import { getLongSide, getShortSide } from "@/utils/marketSideLabels";
 import { formatUSD } from "@/utils/sailDisplayFormat";
+import {
+  formatSailMarketDirectionTitle,
+  getSailMarketTokenSymbol,
+} from "@/utils/sailMarketDirectionLabels";
+import { getShortSide } from "@/utils/marketSideLabels";
 import { getSailSideLogoPath } from "@/utils/sailAssetLogos";
 import {
   SAIL_ADVANCED_CAPTION,
@@ -17,6 +21,8 @@ export type SailMarketDropdownOption = {
   marketId: string;
   market: DefinedMarket;
   tvlUSD?: number;
+  hasPosition?: boolean;
+  positionLabel?: string;
 };
 
 type SailMarketDropdownProps = {
@@ -45,8 +51,7 @@ export function SailMarketDropdown({
 
   if (!selected) return null;
 
-  const hsSymbol = selected.market.leveragedToken?.symbol || "Sail";
-  const subtitle = `Short ${getShortSide(selected.market)} · Long ${getLongSide(selected.market)}`;
+  const marketTitle = formatSailMarketDirectionTitle(selected.market);
 
   return (
     <div ref={rootRef} className={`relative min-w-0 ${open ? "z-50" : ""}`}>
@@ -58,10 +63,14 @@ export function SailMarketDropdown({
         aria-haspopup="listbox"
       >
         <div className="min-w-0 flex-1">
-          <div className="truncate font-mono text-lg font-bold text-white">
-            {hsSymbol}
+          <div className="truncate text-base font-semibold text-white sm:text-lg">
+            {marketTitle}
           </div>
-          <div className={`truncate ${SAIL_ADVANCED_META}`}>{subtitle}</div>
+          {selected.positionLabel ? (
+            <div className="truncate text-xs font-medium text-harbor-mint">
+              {selected.positionLabel}
+            </div>
+          ) : null}
         </div>
         <ChevronDownIcon
           className={`h-5 w-5 shrink-0 text-white/70 transition ${open ? "rotate-180" : ""}`}
@@ -73,9 +82,10 @@ export function SailMarketDropdown({
           role="listbox"
           className={`absolute left-0 right-0 top-[calc(100%+0.35rem)] z-50 max-h-72 overflow-y-auto ${SAIL_ADVANCED_PANEL} p-1 shadow-xl ring-1 ring-white/10`}
         >
-          {options.map(({ marketId, market, tvlUSD }) => {
-            const symbol = market.leveragedToken?.symbol || marketId;
+          {options.map(({ marketId, market, tvlUSD, positionLabel }) => {
             const active = marketId === selectedMarketId;
+            const optionTitle = formatSailMarketDirectionTitle(market);
+            const tokenSymbol = getSailMarketTokenSymbol(market);
             return (
               <li key={marketId}>
                 <button
@@ -99,14 +109,20 @@ export function SailMarketDropdown({
                   />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-semibold text-white">
-                      {symbol}
+                      {optionTitle}
                     </div>
-                    <div className={SAIL_ADVANCED_META}>
-                      {getLongSide(market)} / {getShortSide(market)}
+                    <div className={`truncate font-mono ${SAIL_ADVANCED_META}`}>
+                      {tokenSymbol}
                     </div>
+                    {positionLabel ? (
+                      <div className="mt-0.5 truncate text-[11px] font-medium text-harbor-mint">
+                        {positionLabel}
+                      </div>
+                    ) : null}
                   </div>
-                  <div className={`shrink-0 ${SAIL_ADVANCED_CAPTION}`}>
-                    {tvlUSD !== undefined ? formatUSD(tvlUSD) : "—"}
+                  <div className={`shrink-0 text-right ${SAIL_ADVANCED_CAPTION}`}>
+                    <div>{tvlUSD !== undefined ? formatUSD(tvlUSD) : "—"}</div>
+                    <div className={SAIL_ADVANCED_META}>TVL</div>
                   </div>
                 </button>
               </li>

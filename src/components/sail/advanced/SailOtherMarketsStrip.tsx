@@ -5,6 +5,10 @@ import type { DefinedMarket } from "@/config/markets";
 import { isSailSoonUi } from "@/config/markets";
 import { buildSailMarketCardModel } from "@/utils/sailMarketCardModel";
 import { formatLeverage, formatUSD } from "@/utils/sailDisplayFormat";
+import {
+  formatSailMarketDirectionTitle,
+  getSailMarketTokenSymbol,
+} from "@/utils/sailMarketDirectionLabels";
 import type { SailContractReads } from "@/types/sail";
 import { isValidContractAddress } from "@/utils/isValidContractAddress";
 import { SailMintRedeemFeeColumn } from "@/components/sail/SailMintRedeemFeeColumn";
@@ -100,7 +104,12 @@ export function SailOtherMarketsStrip({
       <div className="mt-3 flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory">
         {cards.map(({ marketId, market, model, tvlUSD }) => {
           const active = marketId === selectedMarketId;
-          const symbol = market.leveragedToken?.symbol || marketId;
+          const marketTitle = formatSailMarketDirectionTitle(
+            market,
+            model.longSide,
+            model.shortSide
+          );
+          const tokenSymbol = getSailMarketTokenSymbol(market);
           return (
             <button
               key={marketId}
@@ -112,9 +121,9 @@ export function SailOtherMarketsStrip({
                   : "border-white/[0.08] bg-white/[0.06] hover:bg-white/[0.1]"
               }`}
             >
-              <div className="font-mono text-sm font-bold text-white">{symbol}</div>
-              <div className={`mt-0.5 ${SAIL_ADVANCED_CAPTION}`}>
-                {model.longSide} / {model.shortSide}
+              <div className="text-sm font-semibold text-white">{marketTitle}</div>
+              <div className={`mt-0.5 font-mono ${SAIL_ADVANCED_CAPTION}`}>
+                {tokenSymbol}
               </div>
               <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
                 <span className={SAIL_ADVANCED_CAPTION}>Leverage</span>

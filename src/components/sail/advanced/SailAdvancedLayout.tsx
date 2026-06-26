@@ -4,8 +4,7 @@ import { useMemo } from "react";
 import type { DefinedMarket } from "@/config/markets";
 import type { SailContractReads } from "@/types/sail";
 import type { SailMarketDetailMetrics } from "@/utils/sailMarketMetrics";
-import { buildSailMarketCardModel } from "@/utils/sailMarketCardModel";
-import { isValidContractAddress } from "@/utils/isValidContractAddress";
+import { buildSailUserPositionLabel } from "@/utils/sailUserPositionLabel";
 import type { SailMarketsToolbarProps } from "@/components/sail/SailMarketsToolbar";
 import { SailMarketActionPanel } from "./SailMarketActionPanel";
 import { SailMarketChartColumn } from "./SailMarketChartColumn";
@@ -13,6 +12,7 @@ import { SailMarketHeader } from "./SailMarketHeader";
 import { SailMarketInfoFooter } from "./SailMarketInfoFooter";
 import { SailMarketMetricsColumn } from "./SailMarketMetricsColumn";
 import { SailOtherMarketsStrip } from "./SailOtherMarketsStrip";
+import type { SailWalletStatsStripProps } from "./SailWalletStatsStrip";
 import { SAIL_ADVANCED_GRID_CLASS } from "./sailAdvancedStyles";
 
 export type SailAdvancedLayoutProps = {
@@ -28,6 +28,12 @@ export type SailAdvancedLayoutProps = {
   marketOffsets: Map<number, number>;
   minterConfigByMarketId: Map<string, unknown>;
   toolbarProps: SailMarketsToolbarProps;
+  isConnected: boolean;
+  userDepositMap: Map<number, bigint | undefined>;
+  tokenPricesByMarket: Record<
+    string,
+    { leveragedPriceUSD?: number } | undefined
+  >;
   userDeposit?: bigint;
   currentValueUSD?: number;
   sailMarksForMarket?: number;
@@ -36,6 +42,7 @@ export type SailAdvancedLayoutProps = {
   ethPrice?: number | null;
   wstETHPrice?: number | null;
   fxSAVEPrice?: number | null;
+  walletStats: SailWalletStatsStripProps;
 };
 
 export function SailAdvancedLayout({
@@ -51,6 +58,9 @@ export function SailAdvancedLayout({
   marketOffsets,
   minterConfigByMarketId,
   toolbarProps,
+  isConnected,
+  userDepositMap,
+  tokenPricesByMarket,
   userDeposit,
   currentValueUSD,
   sailMarksForMarket,
@@ -59,44 +69,41 @@ export function SailAdvancedLayout({
   ethPrice,
   wstETHPrice,
   fxSAVEPrice,
+  walletStats,
 }: SailAdvancedLayoutProps) {
   const dropdownOptions = useMemo(
     () =>
-      dropdownMarkets.map(([marketId, market]) => ({
-        marketId,
-        market,
-        tvlUSD: tvlByMarketId.get(marketId),
-      })),
-    [dropdownMarkets, tvlByMarketId]
-  );
+      dropdownMarkets.map(([marketId, market]) => {
+        const globalIndex = sailMarketIdToIndex.get(marketId);
+        const userDepositForMarket =
+          isConnected && globalIndex !== undefined
+            ? userDepositMap.get(globalIndex)
+            : undefined;
+        const position = isConnected
+          ? buildSailUserPositionLabel(
+              market,
+              userDepositForMarket,
+              tokenPricesByMarket[marketId]?.leveragedPriceUSD,
+            )
+          : { hasPosition: false as const };
 
-  const selectedCardModel = useMemo(() => {
-    if (!selectedMarketId || !selectedMarket || !reads) return null;
-    const globalIndex = sailMarketIdToIndex.get(selectedMarketId);
-    if (globalIndex === undefined) return null;
-    const baseOffset = marketOffsets.get(globalIndex) ?? 0;
-    const priceOracle = selectedMarket.addresses?.collateralPrice as
-      | `0x${string}`
-      | undefined;
-    const leveragedTokenAddress = selectedMarket.addresses?.leveragedToken as
-      | `0x${string}`
-      | undefined;
-    return buildSailMarketCardModel(
-      selectedMarket,
-      reads,
-      baseOffset,
-      isValidContractAddress(priceOracle),
-      isValidContractAddress(leveragedTokenAddress),
-      minterConfigByMarketId.get(selectedMarketId)
-    );
-  }, [
-    selectedMarketId,
-    selectedMarket,
-    reads,
-    sailMarketIdToIndex,
-    marketOffsets,
-    minterConfigByMarketId,
-  ]);
+        return {
+          marketId,
+          market,
+          tvlUSD: tvlByMarketId.get(marketId),
+          hasPosition: position.hasPosition,
+          positionLabel: position.label,
+        };
+      }),
+    [
+      dropdownMarkets,
+      tvlByMarketId,
+      isConnected,
+      sailMarketIdToIndex,
+      userDepositMap,
+      tokenPricesByMarket,
+    ],
+  );
 
   if (!selectedMarketId || !selectedMarket) {
     return (
@@ -111,10 +118,9 @@ export function SailAdvancedLayout({
       <SailMarketHeader
         selectedMarketId={selectedMarketId}
         selectedMarket={selectedMarket}
-        longSide={selectedCardModel?.longSide}
-        shortSide={selectedCardModel?.shortSide}
         dropdownOptions={dropdownOptions}
         onSelectMarket={onSelectMarket}
+        walletStats={walletStats}
       />
 
       <div className={`relative z-0 ${SAIL_ADVANCED_GRID_CLASS}`}>

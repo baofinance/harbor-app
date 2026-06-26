@@ -57,6 +57,9 @@ export default function SailPage() {
     setChainFilterSelected,
     clearFilters,
     sailMarksError,
+    sailPnLSummary,
+    totalSailMarks,
+    isLoadingSailMarks,
     sailMarketIdToIndex,
     sailChainOptions,
     uniqueLongSides,
@@ -73,6 +76,8 @@ export default function SailPage() {
     tokenPricesByMarket,
     userDepositMap,
     refetchUserDeposits,
+    sailUserStats,
+    pnlFromMarkets,
     activeSailBoostEndTimestamp,
     activeMarkets,
     displayedArchivedSailMarkets,
@@ -237,6 +242,9 @@ export default function SailPage() {
             marketOffsets={marketOffsets}
             minterConfigByMarketId={minterConfigByMarketId}
             toolbarProps={toolbarProps}
+            isConnected={isConnected}
+            userDepositMap={userDepositMap}
+            tokenPricesByMarket={tokenPricesByMarket}
             userDeposit={selectedUserDeposit}
             currentValueUSD={selectedCurrentValueUSD}
             onManageSuccess={refetchAfterManage}
@@ -248,6 +256,14 @@ export default function SailPage() {
             ethPrice={sailPageEthPrice}
             wstETHPrice={sailPageWstETHPrice}
             fxSAVEPrice={sailPageFxSAVEPrice}
+            walletStats={{
+              isConnected,
+              sailUserStats,
+              pnlFromMarkets,
+              pnlSummaryLoading: sailPnLSummary.isLoading,
+              isLoadingSailMarks,
+              totalSailMarks,
+            }}
           />
         )}
 

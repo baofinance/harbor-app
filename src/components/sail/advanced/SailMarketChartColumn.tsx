@@ -13,6 +13,12 @@ export function SailMarketChartColumn({
   market,
 }: SailMarketChartColumnProps) {
   return (
-    <SailMarketPriceChart marketId={marketId} market={market} className="h-full" />
+    <SailMarketPriceChart
+      marketId={marketId}
+      market={market}
+      size="large"
+      hideTitle
+      className="h-full"
+    />
   );
 }

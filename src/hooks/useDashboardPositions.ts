@@ -14,6 +14,7 @@ import {
   isMarketArchived,
   isGenesisHiddenFromIndex,
 } from "@/config/markets";
+import { buildSailMarketPageHref } from "@/utils/sailPageRoutes";
 import {
   chainFromMarketId,
   genesisStatusFromEnded,
@@ -51,7 +52,7 @@ export type DashboardPositionRow = {
   /** Sail leveraged positions — unrealized PnL when cost basis is available. */
   unrealizedPnLUsd?: number;
   unrealizedPnLPercent?: number;
-  href: "/genesis" | "/earn" | "/sail";
+  href: string;
 };
 
 const SAIL_POSITIONS_QUERY = `
@@ -673,7 +674,7 @@ export function useDashboardPositions() {
           statusLabel: "Position",
           usd,
           ...sailUnrealizedPnL(usd, p.totalCostBasisUSD),
-          href: "/sail",
+          href: buildSailMarketPageHref(meta?.marketId),
         })
       );
       tokensFromSailSubgraphRow.add(tok);
@@ -715,7 +716,7 @@ export function useDashboardPositions() {
           statusLabel: "Marks",
           usd,
           usdUnpriced,
-          href: "/sail",
+          href: buildSailMarketPageHref(meta?.marketId),
         })
       );
     }

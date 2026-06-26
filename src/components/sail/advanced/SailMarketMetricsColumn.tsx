@@ -8,8 +8,8 @@ import {
   formatUSD,
 } from "@/utils/sailDisplayFormat";
 import { SailFeeRatioCell } from "@/components/sail/SailFeeRatioCell";
-import { getLongSide, getShortSide } from "@/utils/marketSideLabels";
 import type { DefinedMarket } from "@/config/markets";
+import { getSailMarketTokenSymbol } from "@/utils/sailMarketDirectionLabels";
 import {
   SAIL_ADVANCED_BODY,
   SAIL_ADVANCED_CAPTION,
@@ -43,6 +43,7 @@ export function SailMarketMetricsColumn({
       <h2 className={`mb-2 ${SAIL_ADVANCED_LABEL}`}>Market metrics</h2>
 
       <div className="mb-3">
+        <MetricRow label="Sail token" value={getSailMarketTokenSymbol(market)} />
         <MetricRow label="TVL (USD)" value={metrics?.tvlUSD !== undefined ? formatUSD(metrics.tvlUSD) : "—"} />
         <MetricRow label="TVL" value={metrics?.tvlCollateralDisplay ?? "—"} />
         <MetricRow label="24h Volume" value="—" />
@@ -92,9 +93,6 @@ export function SailMarketMetricsColumn({
         ) : null}
       </div>
 
-      <p className={`mt-3 ${SAIL_ADVANCED_CAPTION}`}>
-        Short {getShortSide(market)} · Long {getLongSide(market)}
-      </p>
     </aside>
   );
 }
