@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DefinedMarket } from "@/config/markets";
 import type { SailContractReads } from "@/types/sail";
 import type { SailMarketDetailMetrics } from "@/utils/sailMarketMetrics";
@@ -13,9 +13,12 @@ import { SailMarketInfoFooter } from "./SailMarketInfoFooter";
 import { SailMarketMetricsColumn } from "./SailMarketMetricsColumn";
 import { SailMarketNoPositionHint } from "./SailMarketNoPositionHint";
 import { SailMarketPositionBar } from "./SailMarketPositionBar";
+import { SailMobileTradeBar } from "./SailMobileTradeBar";
 import { SailOtherMarketsStrip } from "./SailOtherMarketsStrip";
 import type { SailWalletStatsStripProps } from "./SailWalletStatsStrip";
 import { SAIL_ADVANCED_GRID_CLASS, SAIL_ADVANCED_SECTION_LABEL } from "./sailAdvancedStyles";
+
+const SAIL_TRADE_PANEL_ID = "sail-trade-panel";
 
 export type SailAdvancedLayoutProps = {
   selectedMarketId: string | null;
@@ -114,9 +117,28 @@ export function SailAdvancedLayout({
   }
 
   const hasMarketPosition = userDeposit !== undefined && userDeposit > 0n;
+  const [tradeTab, setTradeTab] = useState<"mint" | "redeem">("mint");
+
+  useEffect(() => {
+    setTradeTab("mint");
+  }, [selectedMarketId]);
+
+  const scrollToTradePanel = useCallback(() => {
+    document
+      .getElementById(SAIL_TRADE_PANEL_ID)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const openTradeTab = useCallback(
+    (tab: "mint" | "redeem") => {
+      setTradeTab(tab);
+      requestAnimationFrame(() => scrollToTradePanel());
+    },
+    [scrollToTradePanel],
+  );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-[calc(4.25rem+env(safe-area-inset-bottom))] lg:pb-0">
       <SailMarketHeader
         selectedMarketId={selectedMarketId}
         selectedMarket={selectedMarket}
@@ -127,13 +149,14 @@ export function SailAdvancedLayout({
       />
 
       <div className={`relative z-0 ${SAIL_ADVANCED_GRID_CLASS}`}>
-        <div className="order-3 lg:order-none">
+        <div className="order-4 lg:order-none lg:col-start-1 lg:row-start-1 lg:row-span-2">
           <SailMarketMetricsColumn
             market={selectedMarket}
             metrics={selectedMetrics}
           />
         </div>
-        <div className="order-1 flex flex-col gap-3 lg:order-none">
+
+        <div className="order-1 lg:order-none lg:col-start-2 lg:row-start-1">
           {hasMarketPosition ? (
             <div>
               <p className={SAIL_ADVANCED_SECTION_LABEL}>This market</p>
@@ -148,16 +171,16 @@ export function SailAdvancedLayout({
           ) : (
             <SailMarketNoPositionHint isConnected={isConnected} />
           )}
-          <SailMarketChartColumn
-            marketId={selectedMarketId}
-            market={selectedMarket}
-            tokenPriceUSD={selectedMetrics?.tokenPriceUSD}
-          />
         </div>
-        <div className="order-2 lg:order-none">
+
+        <div
+          id={SAIL_TRADE_PANEL_ID}
+          className="order-2 scroll-mt-20 lg:order-none lg:col-start-3 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-4"
+        >
           <SailMarketActionPanel
             marketId={selectedMarketId}
             market={selectedMarket}
+            initialTab={tradeTab}
             onSuccess={onManageSuccess}
             leveragedTokenPriceUSD={leveragedTokenPriceUSD}
             ethPrice={ethPrice}
@@ -165,7 +188,20 @@ export function SailAdvancedLayout({
             fxSAVEPrice={fxSAVEPrice}
           />
         </div>
+
+        <div className="order-3 lg:order-none lg:col-start-2 lg:row-start-2">
+          <SailMarketChartColumn
+            marketId={selectedMarketId}
+            market={selectedMarket}
+            tokenPriceUSD={selectedMetrics?.tokenPriceUSD}
+          />
+        </div>
       </div>
+
+      <SailMobileTradeBar
+        onMint={() => openTradeTab("mint")}
+        onRedeem={() => openTradeTab("redeem")}
+      />
 
       <SailOtherMarketsStrip
         markets={stripMarkets}
