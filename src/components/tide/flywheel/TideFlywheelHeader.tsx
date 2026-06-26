@@ -1,8 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
-import SimpleTooltip from "@/components/SimpleTooltip";
-import { TIDE_FLYWHEEL_META, TIDE_FLYWHEEL_REVENUE_PILL } from "./tideFlywheelStyles";
+import {
+  TIDE_FLYWHEEL_FOOTER_PANEL,
+  TIDE_FLYWHEEL_META,
+  TIDE_FLYWHEEL_REVENUE_PILL,
+} from "./tideFlywheelStyles";
 
 export type TideFlywheelHeaderProps = {
   title: string;
@@ -10,7 +13,6 @@ export type TideFlywheelHeaderProps = {
   revenueLabel: string;
   revenueValue: string;
   revenueLoading?: boolean;
-  revenueDisclaimer?: string;
 };
 
 export function TideFlywheelHeader({
@@ -19,26 +21,13 @@ export function TideFlywheelHeader({
   revenueLabel,
   revenueValue,
   revenueLoading = false,
-  revenueDisclaimer,
 }: TideFlywheelHeaderProps) {
   return (
     <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-            {title}
-          </h2>
-          {revenueDisclaimer ? (
-            <SimpleTooltip label={revenueDisclaimer}>
-              <span
-                className="inline-flex h-5 w-5 cursor-help items-center justify-center rounded-full border border-white/15 text-[11px] font-semibold text-white/50"
-                aria-label="Revenue estimate details"
-              >
-                i
-              </span>
-            </SimpleTooltip>
-          ) : null}
-        </div>
+        <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+          {title}
+        </h2>
         <p className={`mt-1 max-w-xl ${TIDE_FLYWHEEL_META}`}>{subtitle}</p>
       </div>
       <div className={TIDE_FLYWHEEL_REVENUE_PILL}>
@@ -69,7 +58,9 @@ export function TideFlywheelFooter({
   icon,
 }: TideFlywheelFooterProps) {
   return (
-    <div className="mt-5 grid grid-cols-1 gap-4 rounded-xl border border-white/[0.08] bg-[#0a1929]/55 p-4 backdrop-blur-md sm:grid-cols-2 sm:gap-6 sm:p-5">
+    <footer
+      className={`${TIDE_FLYWHEEL_FOOTER_PANEL} grid grid-cols-1 gap-4 px-3 py-4 sm:grid-cols-2 sm:gap-6 sm:px-4 sm:py-5`}
+    >
       <div className="min-w-0">
         <div className="flex items-start gap-2.5">
           {icon ? (
@@ -91,6 +82,6 @@ export function TideFlywheelFooter({
           {takeawayBody}
         </p>
       </div>
-    </div>
+    </footer>
   );
 }

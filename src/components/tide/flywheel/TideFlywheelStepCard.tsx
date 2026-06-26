@@ -60,15 +60,15 @@ export function TideFlywheelStepCard({
 
   return (
     <article
-      className={`${TIDE_FLYWHEEL_CARD_BASE} ${
+      className={`${TIDE_FLYWHEEL_CARD_BASE} text-center ${
         isActive ? TIDE_FLYWHEEL_CARD_ACTIVE : TIDE_FLYWHEEL_CARD_INACTIVE
       }`}
     >
-      <div className="flex items-start gap-2.5">
+      <div className="flex flex-col items-center gap-2.5">
         <span className={TIDE_FLYWHEEL_ICON_BADGE} aria-hidden>
           {icon}
         </span>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0">
           <h3 className={TIDE_FLYWHEEL_CARD_TITLE}>{title}</h3>
           <p className={TIDE_FLYWHEEL_CARD_DESC}>{description}</p>
         </div>
@@ -86,7 +86,7 @@ export function TideFlywheelStepCard({
         ) : null}
 
         {inactiveBadge ? (
-          <div className="mt-3">
+          <div className="mt-3 flex justify-center">
             <span className={TIDE_FLYWHEEL_INACTIVE_BADGE}>{inactiveBadge}</span>
           </div>
         ) : null}

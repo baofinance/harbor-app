@@ -16,6 +16,7 @@ import { TideFlywheelFooter, TideFlywheelHeader } from "./TideFlywheelHeader";
 import { TideFlywheelStepCard } from "./TideFlywheelStepCard";
 import {
   TIDE_FLYWHEEL_ARROW,
+  TIDE_FLYWHEEL_CONTENT_CLASS,
   TIDE_FLYWHEEL_DESKTOP_ROW,
   TIDE_FLYWHEEL_SCROLL_ROW,
   TIDE_FLYWHEEL_SECTION_CLASS,
@@ -57,17 +58,17 @@ export function TideValueFlywheel() {
 
   return (
     <section className={TIDE_FLYWHEEL_SECTION_CLASS} aria-label="TIDE Value Flywheel">
-      <TideFlywheelHeader
-        title={copy.title}
-        subtitle={copy.subtitle}
-        revenueLabel={copy.revenuePillLabel}
-        revenueValue={lifetimeRevenueDisplay}
-        revenueLoading={metrics.isLoading}
-        revenueDisclaimer={copy.revenueDisclaimer}
-      />
+      <div className={TIDE_FLYWHEEL_CONTENT_CLASS}>
+        <TideFlywheelHeader
+          title={copy.title}
+          subtitle={copy.subtitle}
+          revenueLabel={copy.revenuePillLabel}
+          revenueValue={lifetimeRevenueDisplay}
+          revenueLoading={metrics.isLoading}
+        />
 
-      <div className={TIDE_FLYWHEEL_SCROLL_ROW}>
-        <div className={TIDE_FLYWHEEL_DESKTOP_ROW}>
+        <div className={TIDE_FLYWHEEL_SCROLL_ROW}>
+          <div className={TIDE_FLYWHEEL_DESKTOP_ROW}>
           <TideFlywheelStepCard
             icon={<ArrowPathIcon className="h-5 w-5" strokeWidth={2} />}
             title={copy.steps.buybacks.title}
@@ -127,6 +128,7 @@ export function TideValueFlywheel() {
             progressTargetPct={100}
           />
         </div>
+      </div>
       </div>
 
       <TideFlywheelFooter

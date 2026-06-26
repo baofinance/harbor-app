@@ -41,8 +41,6 @@ export const TIDE_FLYWHEEL_CONFIG = {
     subtitle:
       "Protocol revenue flows back into TIDE, strengthening the ecosystem over time.",
     revenuePillLabel: "Revenue Generated (All Time)",
-    revenueDisclaimer:
-      "Estimated from maiden-voyage yield pool data (5% owner share gross-up).",
     steps: {
       buybacks: {
         title: "TIDE Buybacks",
