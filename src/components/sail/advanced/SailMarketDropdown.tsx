@@ -49,7 +49,7 @@ export function SailMarketDropdown({
   const subtitle = `Short ${getShortSide(selected.market)} · Long ${getLongSide(selected.market)}`;
 
   return (
-    <div ref={rootRef} className="relative min-w-0">
+    <div ref={rootRef} className={`relative min-w-0 ${open ? "z-50" : ""}`}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -71,7 +71,7 @@ export function SailMarketDropdown({
       {open ? (
         <ul
           role="listbox"
-          className={`absolute left-0 right-0 top-[calc(100%+0.35rem)] z-30 max-h-72 overflow-y-auto ${SAIL_ADVANCED_PANEL} p-1 shadow-xl`}
+          className={`absolute left-0 right-0 top-[calc(100%+0.35rem)] z-50 max-h-72 overflow-y-auto ${SAIL_ADVANCED_PANEL} p-1 shadow-xl ring-1 ring-white/10`}
         >
           {options.map(({ marketId, market, tvlUSD }) => {
             const symbol = market.leveragedToken?.symbol || marketId;

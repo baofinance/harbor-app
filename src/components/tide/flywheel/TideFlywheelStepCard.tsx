@@ -92,7 +92,7 @@ export function TideFlywheelStepCard({
         ) : null}
 
         {showProgress ? (
-          <div className="relative mt-3">
+          <div className="relative mt-3 overflow-hidden">
             <div
               className={`h-2.5 ${TIDE_FLYWHEEL_PROGRESS_TRACK}`}
               role="progressbar"

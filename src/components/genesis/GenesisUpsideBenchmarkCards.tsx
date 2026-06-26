@@ -15,6 +15,7 @@ import {
 } from "@/utils/maidenVoyageUpsideBenchmarks";
 import { GenesisUpsideAnimatedUsdRange } from "./GenesisUpsideAnimatedMetrics";
 import {
+  MV_ICON_BADGE_BENCHMARK,
   MV_UPSIDE_BENCHMARK_TILE,
   MV_UPSIDE_BENCHMARK_TILE_UPDATED,
   MV_UPSIDE_STAGE_BY_ID,
@@ -63,10 +64,8 @@ function BenchmarkCard({
       }`}
     >
       <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2 sm:gap-x-2.5">
-        <div
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border sm:h-9 sm:w-9 ${theme.iconBenchmark}`}
-        >
-          <Icon className="h-4 w-4 sm:h-[1.125rem] sm:w-[1.125rem]" aria-hidden />
+        <div className={`${MV_ICON_BADGE_BENCHMARK} ${theme.iconBenchmark}`}>
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={1.75} aria-hidden />
         </div>
 
         <div className="min-w-0 text-center">

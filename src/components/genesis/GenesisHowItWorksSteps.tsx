@@ -49,7 +49,11 @@ function StepColumn({
       }`}
     >
       <span className={compact ? MV_ICON_BADGE : MV_ICON_BADGE_LG}>
-        <Icon className={compact ? "h-4 w-4" : "h-5 w-5"} aria-hidden />
+        <Icon
+          className={compact ? "h-4 w-4" : "h-5 w-5"}
+          strokeWidth={compact ? 1.75 : 2}
+          aria-hidden
+        />
       </span>
       <h2
         className={`mt-2 font-semibold text-white/95 ${

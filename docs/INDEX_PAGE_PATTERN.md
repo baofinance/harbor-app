@@ -75,7 +75,7 @@ Featured market IDs live in [`src/config/maidenVoyageFeatured.ts`](../src/config
 
 | Component | Role |
 |-----------|------|
-| `SailUserStatsCards` | Connected wallet stats row (UI+) |
+| `SailUserStatsCards` | Connected wallet stats row (legacy; not shown on UI+ advanced layout) |
 | `SailMarksSubgraphErrorBanner` | Marks subgraph error (UI+) |
 | **`SailAdvancedLayout`** | UI+ single-market dashboard (header, metrics \| chart \| actions, strip, footer) — [`advanced/`](../../src/components/sail/advanced/) |
 | `SailBasicMarketCardsGrid` | UI− card grid + modal |

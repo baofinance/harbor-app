@@ -132,16 +132,30 @@ export const MV_ARCHIVED_PILL = `${MV_LIFECYCLE_PILL_BASE} ${BASIC_MARKET_DIRECT
 /** Uniform vertical gap between right-rail cards (steps, why join, rewards). */
 export const MV_SIDEBAR_STACK = "flex flex-col gap-4 lg:gap-6";
 
-/** Step icon circles (Deposit, Market Launch, Claim & Earn). */
-export const MV_ICON_BADGE =
-  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[#0a1929]/55 text-[#FF8A7A] backdrop-blur-md";
+/** Icon badge shells — match TIDE feature cards and flywheel (dashboard product tokens). */
+const MV_ICON_BADGE_BASE =
+  "flex shrink-0 items-center justify-center rounded-full border bg-[#0a1929]/55 backdrop-blur-md";
 
-export const MV_ICON_BADGE_LG =
-  "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[#0a1929]/55 text-[#FF8A7A] backdrop-blur-md";
+/** Primary MV coral badge (TIDE `DASHBOARD_PRODUCT_ICON_MV_CLASS`). */
+export const MV_ICON_BADGE = `${MV_ICON_BADGE_BASE} h-8 w-8 border-harbor-coral/25 text-harbor-coral`;
+
+/** Step / header icons — flywheel-sized shell (TIDE `TIDE_FLYWHEEL_ICON_BADGE` dimensions, MV coral). */
+export const MV_ICON_BADGE_LG = `${MV_ICON_BADGE_BASE} h-9 w-9 border-harbor-coral/25 text-harbor-coral`;
 
 /** Compact list-row benefit icons (What you receive). */
-export const MV_ICON_BADGE_SM =
-  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[#0a1929]/55 text-[#FF8A7A] backdrop-blur-md";
+export const MV_ICON_BADGE_SM = `${MV_ICON_BADGE_BASE} h-7 w-7 border-harbor-coral/25 text-harbor-coral`;
+
+/** Earn / checklist badges (TIDE `DASHBOARD_PRODUCT_ICON_EARN_CLASS`). */
+export const MV_ICON_BADGE_EARN = `${MV_ICON_BADGE_BASE} h-8 w-8 border-harbor-mint/25 bg-harbor-mint/8 text-harbor-mint`;
+
+export const MV_ICON_BADGE_EARN_SM = `${MV_ICON_BADGE_BASE} h-7 w-7 border-harbor-mint/25 bg-harbor-mint/8 text-harbor-mint`;
+
+/** Neutral footer / explainer badges (TIDE archived tone). */
+export const MV_ICON_BADGE_NEUTRAL = `${MV_ICON_BADGE_BASE} h-8 w-8 border-white/10 text-white/40`;
+
+/** Benchmark card icon shell — pairs with stage `iconBenchmark` color tokens. */
+export const MV_ICON_BADGE_BENCHMARK =
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border backdrop-blur-md sm:h-9 sm:w-9";
 
 export const MV_DETAILS_PANEL = MV_POSITION_ROW;
 
@@ -173,8 +187,7 @@ export const MV_UPSIDE_OWNERSHIP_PANEL =
   "relative overflow-hidden rounded-xl border border-[#FF8A7A]/25 bg-gradient-to-r from-[#FF8A7A]/[0.06] via-[#122a47]/55 to-[#0a1929]/40 backdrop-blur-md";
 
 /** Ownership bar sparkle icon tile. */
-export const MV_UPSIDE_OWNERSHIP_ICON =
-  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#FF8A7A]/30 bg-[#FF8A7A]/[0.12] text-[#FF8A7A]";
+export const MV_UPSIDE_OWNERSHIP_ICON = MV_ICON_BADGE_LG;
 
 /** Deposit row shell. */
 export const MV_UPSIDE_DEPOSIT_PANEL = `${MV_STAT_TILE} px-3 py-3 sm:px-4 sm:py-4`;
@@ -184,9 +197,8 @@ export const MV_UPSIDE_STAGE_LAUNCH = {
   badge:
     "border-[#4A9784]/45 bg-[#4A9784]/10 text-white",
   earnings: "text-white",
-  icon: "border-[#4A9784]/30 bg-[#4A9784]/10 text-[#4A9784]",
-  iconBenchmark:
-    "border-[#4A9784]/40 bg-[#4A9784]/22 text-[#3d7a68]",
+  icon: "border-[#4A9784]/25 bg-[#0a1929]/55 text-[#4A9784]",
+  iconBenchmark: "border-[#4A9784]/25 bg-[#0a1929]/55 text-[#4A9784]",
   hover: "hover:border-[#4A9784]/30 hover:bg-[#4A9784]/[0.04]",
   accentBar: "border-l-[3px] border-l-[#4A9784]",
 } as const;
@@ -195,9 +207,8 @@ export const MV_UPSIDE_STAGE_GROWTH = {
   badge:
     "border-[#C4B5FD]/45 bg-[#C4B5FD]/10 text-white",
   earnings: "text-white",
-  icon: "border-[#C4B5FD]/30 bg-[#C4B5FD]/10 text-[#C4B5FD]",
-  iconBenchmark:
-    "border-[#C4B5FD]/40 bg-[#C4B5FD]/24 text-[#9b8fd4]",
+  icon: "border-[#C4B5FD]/25 bg-[#0a1929]/55 text-[#C4B5FD]",
+  iconBenchmark: "border-[#C4B5FD]/25 bg-[#0a1929]/55 text-[#C4B5FD]",
   hover: "hover:border-[#C4B5FD]/30 hover:bg-[#C4B5FD]/[0.04]",
   accentBar: "border-l-[3px] border-l-[#C4B5FD]",
 } as const;
@@ -206,9 +217,8 @@ export const MV_UPSIDE_STAGE_SCALE = {
   badge:
     "border-[#5B8FD4]/45 bg-[#5B8FD4]/15 text-white",
   earnings: "text-white",
-  icon: "border-[#5B8FD4]/30 bg-[#5B8FD4]/10 text-[#9EC5F5]",
-  iconBenchmark:
-    "border-[#5B8FD4]/45 bg-[#5B8FD4]/26 text-[#7eb0e8]",
+  icon: "border-[#5B8FD4]/25 bg-[#0a1929]/55 text-[#9EC5F5]",
+  iconBenchmark: "border-[#5B8FD4]/25 bg-[#0a1929]/55 text-[#9EC5F5]",
   hover: "hover:border-[#5B8FD4]/30 hover:bg-[#5B8FD4]/[0.04]",
   accentBar: "border-l-[3px] border-l-[#9EC5F5]",
 } as const;
@@ -225,8 +235,7 @@ export const MV_UPSIDE_STAGE_BY_ID: Record<
 };
 
 /** Explainer footer icon tile. */
-export const MV_UPSIDE_EXPLAINER_ICON =
-  "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.06] text-white/55";
+export const MV_UPSIDE_EXPLAINER_ICON = MV_ICON_BADGE_NEUTRAL;
 
 /** Revenue share % — same accent gradient as hero headlines. */
 export const MV_UPSIDE_OWNERSHIP_TEXT = MV_ACCENT_GRADIENT;

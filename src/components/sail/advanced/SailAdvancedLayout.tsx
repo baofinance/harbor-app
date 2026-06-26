@@ -1,8 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
 import type { DefinedMarket } from "@/config/markets";
 import type { SailContractReads } from "@/types/sail";
 import type { SailMarketDetailMetrics } from "@/utils/sailMarketMetrics";
+import { buildSailMarketCardModel } from "@/utils/sailMarketCardModel";
+import { isValidContractAddress } from "@/utils/isValidContractAddress";
 import type { SailMarketsToolbarProps } from "@/components/sail/SailMarketsToolbar";
 import { SailMarketActionPanel } from "./SailMarketActionPanel";
 import { SailMarketChartColumn } from "./SailMarketChartColumn";
@@ -57,6 +60,44 @@ export function SailAdvancedLayout({
   wstETHPrice,
   fxSAVEPrice,
 }: SailAdvancedLayoutProps) {
+  const dropdownOptions = useMemo(
+    () =>
+      dropdownMarkets.map(([marketId, market]) => ({
+        marketId,
+        market,
+        tvlUSD: tvlByMarketId.get(marketId),
+      })),
+    [dropdownMarkets, tvlByMarketId]
+  );
+
+  const selectedCardModel = useMemo(() => {
+    if (!selectedMarketId || !selectedMarket || !reads) return null;
+    const globalIndex = sailMarketIdToIndex.get(selectedMarketId);
+    if (globalIndex === undefined) return null;
+    const baseOffset = marketOffsets.get(globalIndex) ?? 0;
+    const priceOracle = selectedMarket.addresses?.collateralPrice as
+      | `0x${string}`
+      | undefined;
+    const leveragedTokenAddress = selectedMarket.addresses?.leveragedToken as
+      | `0x${string}`
+      | undefined;
+    return buildSailMarketCardModel(
+      selectedMarket,
+      reads,
+      baseOffset,
+      isValidContractAddress(priceOracle),
+      isValidContractAddress(leveragedTokenAddress),
+      minterConfigByMarketId.get(selectedMarketId)
+    );
+  }, [
+    selectedMarketId,
+    selectedMarket,
+    reads,
+    sailMarketIdToIndex,
+    marketOffsets,
+    minterConfigByMarketId,
+  ]);
+
   if (!selectedMarketId || !selectedMarket) {
     return (
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.06] px-4 py-8 text-center text-sm text-white/70">
@@ -65,23 +106,18 @@ export function SailAdvancedLayout({
     );
   }
 
-  const dropdownOptions = dropdownMarkets.map(([marketId, market]) => ({
-    marketId,
-    market,
-    tvlUSD: tvlByMarketId.get(marketId),
-  }));
-
   return (
     <div className="space-y-4">
       <SailMarketHeader
         selectedMarketId={selectedMarketId}
         selectedMarket={selectedMarket}
-        metrics={selectedMetrics}
+        longSide={selectedCardModel?.longSide}
+        shortSide={selectedCardModel?.shortSide}
         dropdownOptions={dropdownOptions}
         onSelectMarket={onSelectMarket}
       />
 
-      <div className={SAIL_ADVANCED_GRID_CLASS}>
+      <div className={`relative z-0 ${SAIL_ADVANCED_GRID_CLASS}`}>
         <div className="order-3 lg:order-none">
           <SailMarketMetricsColumn
             market={selectedMarket}

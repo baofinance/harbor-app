@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useMemo } from "react";
-import dynamic from "next/dynamic";
 import { getLongSide, getShortSide } from "@/utils/marketSideLabels";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
@@ -17,15 +16,7 @@ import {
 } from "@/utils/sailMarketMetrics";
 import type { DefinedMarket } from "@/config/markets";
 import type { SailMarketPnLData } from "./sailMarketTypes";
-
-const PriceChart = dynamic(() => import("@/components/PriceChart"), {
-  ssr: false,
-  loading: () => (
-    <div className="min-h-72 flex items-center justify-center text-[#1E4775]/60 text-sm">
-      Loading chart…
-    </div>
-  ),
-});
+import { SailMarketPriceChart } from "./SailMarketPriceChart";
 
 type SailMarketExpandedViewProps = {
   marketId: string;
@@ -171,18 +162,8 @@ export function SailMarketExpandedView({
             </p>
           </div>
 
-          <div className="bg-white p-3 flex flex-col md:hidden rounded-md border border-[#1E4775]/12 shadow-sm">
-            <h3 className="text-[#1E4775] font-semibold mb-3 text-sm">
-              {market.leveragedToken?.symbol || "Token"} (short{" "}
-              {getShortSide(market)} against {getLongSide(market)})
-            </h3>
-            <div className="flex-1 min-h-72">
-              <PriceChart
-                tokenType="STEAMED"
-                selectedToken={market.leveragedToken?.symbol || ""}
-                marketId={marketId}
-              />
-            </div>
+          <div className="md:hidden">
+            <SailMarketPriceChart marketId={marketId} market={market} />
           </div>
 
           {hasPosition && pnlData && (
@@ -305,18 +286,8 @@ export function SailMarketExpandedView({
           </div>
         </div>
 
-        <div className="bg-white p-3 flex flex-col hidden md:flex rounded-md border border-[#1E4775]/12 shadow-sm">
-          <h3 className="text-[#1E4775] font-semibold mb-3 text-sm">
-            {market.leveragedToken?.symbol || "Token"} (short{" "}
-            {getShortSide(market)} against {getLongSide(market)})
-          </h3>
-          <div className="flex-1 min-h-72">
-            <PriceChart
-              tokenType="STEAMED"
-              selectedToken={market.leveragedToken?.symbol || ""}
-              marketId={marketId}
-            />
-          </div>
+        <div className="hidden md:block">
+          <SailMarketPriceChart marketId={marketId} market={market} />
         </div>
       </div>
     </div>

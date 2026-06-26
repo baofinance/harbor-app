@@ -1,9 +1,11 @@
 "use client";
 
+import { CheckIcon } from "@heroicons/react/24/outline";
 import {
   MAIDEN_VOYAGE_DOCS_LINKS,
   MAIDEN_VOYAGE_REVENUE_SHARE_BULLETS,
 } from "@/config/maidenVoyageEducation";
+import { MV_ICON_BADGE_EARN_SM } from "./maidenVoyageLayoutStyles";
 
 export function GenesisRevenueShareSection() {
   return (
@@ -18,9 +20,11 @@ export function GenesisRevenueShareSection() {
         {MAIDEN_VOYAGE_REVENUE_SHARE_BULLETS.map((bullet) => (
           <li
             key={bullet}
-            className="flex gap-2 text-xs leading-relaxed text-white/65"
+            className="flex items-start gap-2.5 text-xs leading-relaxed text-white/65"
           >
-            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#FF8A7A]/70" />
+            <span className={`mt-0.5 ${MV_ICON_BADGE_EARN_SM}`} aria-hidden>
+              <CheckIcon className="h-3.5 w-3.5" strokeWidth={1.75} />
+            </span>
             {bullet}
           </li>
         ))}

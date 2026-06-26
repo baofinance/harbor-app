@@ -3,16 +3,15 @@
 import Link from "next/link";
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { MAIDEN_VOYAGE_DOCS_URL } from "@/config/maidenVoyageFeatured";
-import { MV_CARD_SHELL } from "./maidenVoyageLayoutStyles";
+import { MV_CARD_SHELL, MV_ICON_BADGE_NEUTRAL } from "./maidenVoyageLayoutStyles";
 
 export function GenesisVoyageFooterNotice() {
   return (
     <footer className="mt-8">
       <div className={`${MV_CARD_SHELL} flex gap-3 px-4 py-4 sm:px-5 sm:py-5`}>
-        <LockClosedIcon
-          className="mt-0.5 h-5 w-5 shrink-0 text-white/45"
-          aria-hidden
-        />
+        <span className={`mt-0.5 ${MV_ICON_BADGE_NEUTRAL}`} aria-hidden>
+          <LockClosedIcon className="h-4 w-4" strokeWidth={1.75} />
+        </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm leading-relaxed text-white/65">
             Once a voyage is completed, deposits are locked and cannot be

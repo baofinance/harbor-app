@@ -11,9 +11,9 @@ import {
 } from "@/components/genesis/maidenVoyageLayoutStyles";
 import { TIDE_META_TEXT } from "@/components/tide/tideCardStyles";
 
-export const TIDE_FLYWHEEL_SECTION_CLASS = `mt-8 ${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} p-3 sm:p-4 lg:p-5`;
+export const TIDE_FLYWHEEL_SECTION_CLASS = `mt-8 min-w-0 overflow-hidden ${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} p-3 sm:p-4 lg:p-5`;
 
-export const TIDE_FLYWHEEL_CARD_BASE = `${MV_STAT_TILE} flex min-w-[220px] max-w-[280px] shrink-0 snap-center flex-col p-3 sm:min-w-[240px] sm:p-4`;
+export const TIDE_FLYWHEEL_CARD_BASE = `${MV_STAT_TILE} flex min-w-[220px] max-w-[280px] shrink-0 snap-center flex-col p-3 sm:min-w-[240px] sm:p-4 lg:min-h-0 lg:min-w-0 lg:max-w-none lg:w-full lg:shrink`;
 
 export const TIDE_FLYWHEEL_CARD_ACTIVE =
   "ring-1 ring-[#4A9784]/50 shadow-[0_0_24px_-8px_rgba(74,151,132,0.55)]";
@@ -38,18 +38,19 @@ export const TIDE_FLYWHEEL_STAT_SUB =
   "font-mono text-xs tabular-nums text-white/60";
 
 export const TIDE_FLYWHEEL_ARROW =
-  "hidden shrink-0 self-center text-white/25 lg:block";
+  "hidden shrink-0 self-center text-white/25 lg:block lg:px-0.5";
 
+/** Mobile: horizontal scroll. lg+: equal-width grid so cards stay inside the shell. */
 export const TIDE_FLYWHEEL_SCROLL_ROW =
-  "flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory lg:gap-0 lg:overflow-visible lg:pb-0";
+  "min-w-0 flex overflow-x-auto pb-1 snap-x snap-mandatory lg:block lg:w-full lg:overflow-hidden lg:pb-0";
 
 export const TIDE_FLYWHEEL_DESKTOP_ROW =
-  "lg:flex lg:w-full lg:items-stretch lg:justify-between lg:gap-1";
+  "flex w-max min-w-full items-stretch gap-2 lg:grid lg:w-full lg:min-w-0 lg:max-w-full lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-x-0.5";
 
 export const TIDE_FLYWHEEL_REVENUE_PILL = `${MV_STAT_TILE} inline-flex flex-col items-end px-3 py-2 text-right sm:px-4`;
 
 export const TIDE_FLYWHEEL_TARGET_BADGE =
-  "absolute -right-1 top-1/2 -translate-y-1/2 rounded-md bg-[#4A9784] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#0B2A2F]";
+  "absolute right-0 top-1/2 max-w-[calc(100%-0.5rem)] -translate-y-1/2 truncate rounded-md bg-[#4A9784] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#0B2A2F]";
 
 export const TIDE_FLYWHEEL_INACTIVE_BADGE =
   "rounded-md border border-white/15 bg-white/[0.06] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/45";

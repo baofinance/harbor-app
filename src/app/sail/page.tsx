@@ -11,7 +11,6 @@ import { MarksBoostBadge } from "@/components/MarksBoostBadge";
 import {
   SailMarksSubgraphErrorBanner,
   SailMarketsSections,
-  SailUserStatsCards,
   SailBasicMarketCardsGrid,
 } from "@/components/sail";
 import { SailAdvancedLayout } from "@/components/sail/advanced/SailAdvancedLayout";
@@ -57,10 +56,6 @@ export default function SailPage() {
     chainFilterSelected,
     setChainFilterSelected,
     clearFilters,
-    sailPnLSummary,
-    totalSailMarks,
-    sailMarksPerDay,
-    isLoadingSailMarks,
     sailMarksError,
     sailMarketIdToIndex,
     sailChainOptions,
@@ -78,8 +73,6 @@ export default function SailPage() {
     tokenPricesByMarket,
     userDepositMap,
     refetchUserDeposits,
-    sailUserStats,
-    pnlFromMarkets,
     activeSailBoostEndTimestamp,
     activeMarkets,
     displayedArchivedSailMarkets,
@@ -210,23 +203,9 @@ export default function SailPage() {
           </div>
         ) : null}
 
-        {!sailViewBasic && (
-          <>
-            {sailMarksError && (
-              <SailMarksSubgraphErrorBanner error={sailMarksError} />
-            )}
-
-            <SailUserStatsCards
-              isConnected={isConnected}
-              sailUserStats={sailUserStats}
-              pnlFromMarkets={pnlFromMarkets}
-              pnlSummaryLoading={sailPnLSummary.isLoading}
-              isLoadingSailMarks={isLoadingSailMarks}
-              totalSailMarks={totalSailMarks}
-              sailMarksPerDay={sailMarksPerDay}
-            />
-          </>
-        )}
+        {!sailViewBasic && sailMarksError ? (
+          <SailMarksSubgraphErrorBanner error={sailMarksError} />
+        ) : null}
 
         {isLoadingReads ? null : isReadsError ? (
           <IndexMarketsLoadError onRetry={() => refetchReads()} />
