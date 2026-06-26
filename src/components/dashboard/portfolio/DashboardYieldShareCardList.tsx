@@ -16,12 +16,14 @@ export type DashboardYieldShareCardListProps = {
   rows: FounderMetricRow[];
   isLoading: boolean;
   error: string | null;
+  hideEmptyState?: boolean;
 };
 
 export function DashboardYieldShareCardList({
   rows,
   isLoading,
   error,
+  hideEmptyState = false,
 }: DashboardYieldShareCardListProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -40,6 +42,7 @@ export function DashboardYieldShareCardList({
   const eligibleRows = rows.filter(founderMetricRowHasRevenueShare);
 
   if (eligibleRows.length === 0) {
+    if (hideEmptyState) return null;
     return (
       <DashboardEmptyState
         title="Your revenue share starts here"

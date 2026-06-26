@@ -1,22 +1,30 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useCallback, useState } from "react";
 import type { DefinedMarket } from "@/config/markets";
 import { formatUSD } from "@/utils/sailDisplayFormat";
 import {
   formatSailMarketDirectionTitle,
-  getSailMarketTokenSymbol,
 } from "@/utils/sailMarketDirectionLabels";
+import {
+  formatSailChartDefaultValue,
+  type SailMarketChartConfig,
+} from "@/utils/sailMarketChartSeries";
 import { SAIL_ADVANCED_FROSTED_LIGHT_PANEL } from "@/components/sail/advanced/sailAdvancedStyles";
 
-const PriceChart = dynamic(() => import("@/components/PriceChart"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-full min-h-72 items-center justify-center text-sm text-[#1E4775]/60">
-      Loading chart…
-    </div>
-  ),
-});
+const SailMarketChart = dynamic(
+  () =>
+    import("@/components/sail/SailMarketChart").then((m) => m.SailMarketChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full min-h-72 items-center justify-center text-sm text-[#1E4775]/60">
+        Loading chart…
+      </div>
+    ),
+  }
+);
 
 export type SailMarketPriceChartSize = "default" | "large";
 
@@ -41,7 +49,7 @@ export type SailMarketPriceChartProps = {
 };
 
 /**
- * Sail leveraged-token price chart — explicit height so Recharts gets a non-zero box.
+ * Sail market chart — default view shows long priced in short units with optional USD overlays.
  */
 export function SailMarketPriceChart({
   marketId,
@@ -53,15 +61,31 @@ export function SailMarketPriceChart({
   size = "default",
   fillHeight = false,
 }: SailMarketPriceChartProps) {
-  const symbol = getSailMarketTokenSymbol(market);
   const chartTitle = formatSailMarketDirectionTitle(market);
   const chartHeightClass = fillHeight
     ? "flex min-h-96 flex-col sm:min-h-[26rem] lg:min-h-0 lg:flex-1"
     : SAIL_CHART_HEIGHT_CLASS[size];
-  const priceDisplay =
+
+  const [chartConfig, setChartConfig] = useState<SailMarketChartConfig | null>(null);
+  const [liveDefaultRatio, setLiveDefaultRatio] = useState<number | null>(null);
+
+  const handleConfigReady = useCallback((config: SailMarketChartConfig) => {
+    setChartConfig(config);
+  }, []);
+
+  const handleLiveDefaultRatioChange = useCallback((value: number | null) => {
+    setLiveDefaultRatio(value);
+  }, []);
+
+  const primaryDisplay =
+    chartConfig != null
+      ? formatSailChartDefaultValue(liveDefaultRatio, chartConfig)
+      : "—";
+
+  const hsPriceDisplay =
     tokenPriceUSD !== undefined && Number.isFinite(tokenPriceUSD)
       ? formatUSD(tokenPriceUSD)
-      : "—";
+      : null;
 
   return (
     <div
@@ -73,11 +97,16 @@ export function SailMarketPriceChart({
         <div className="mb-2 flex shrink-0 items-end justify-between gap-3 border-b border-[#1E4775]/10 pb-2">
           <div className="min-w-0">
             <p className="truncate text-xs font-medium uppercase tracking-wide text-[#1E4775]/55">
-              {symbol} price
+              {chartConfig?.defaultMetricLabel ?? "Market rate"}
             </p>
             <p className="font-mono text-xl font-bold tabular-nums text-[#1E4775] sm:text-2xl">
-              {priceDisplay}
+              {primaryDisplay}
             </p>
+            {hsPriceDisplay ? (
+              <p className="mt-0.5 text-[11px] text-[#1E4775]/50">
+                {chartConfig?.hsSymbol ?? "hs"} spot {hsPriceDisplay}
+              </p>
+            ) : null}
           </div>
           <p className="hidden shrink-0 text-right text-[11px] text-[#1E4775]/50 sm:block">
             {chartTitle}
@@ -85,14 +114,15 @@ export function SailMarketPriceChart({
         </div>
       ) : !hideTitle ? (
         <h3 className="mb-3 text-sm font-semibold text-[#1E4775]">
-          {chartTitle} price
+          {chartConfig?.defaultMetricLabel ?? chartTitle}
         </h3>
       ) : null}
       <div className={`${chartHeightClass} flex flex-col`}>
-        <PriceChart
-          tokenType="STEAMED"
-          selectedToken={symbol}
+        <SailMarketChart
           marketId={marketId}
+          market={market}
+          onConfigReady={handleConfigReady}
+          onLiveDefaultRatioChange={handleLiveDefaultRatioChange}
         />
       </div>
     </div>

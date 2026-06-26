@@ -50,6 +50,7 @@ const PRICE_HISTORY_QUERY = `
 export interface PricePoint {
   timestamp: number;
   priceUSD: number;
+  collateralPriceUSD: number;
   eventType: string;
   impliedPrice?: number;
 }
@@ -57,10 +58,18 @@ export interface PricePoint {
 export interface HourlySnapshot {
   timestamp: number;
   priceUSD: number;
+  collateralPriceUSD: number;
   totalSupply: string;
   collateralBalance: string;
   leverageRatio: number;
   collateralRatio: number;
+}
+
+export interface MergedChartPoint {
+  timestamp: number;
+  priceUSD: number;
+  collateralPriceUSD: number;
+  source: "event" | "hourly";
 }
 
 interface PriceHistoryData {
@@ -136,6 +145,7 @@ export function useSailPriceHistory({
         (p: any) => ({
           timestamp: parseInt(p.timestamp),
           priceUSD: parseFloat(p.tokenPriceUSD),
+          collateralPriceUSD: parseFloat(p.collateralPriceUSD),
           eventType: p.eventType,
           impliedPrice: p.impliedTokenPrice ? parseFloat(p.impliedTokenPrice) : undefined,
         })
@@ -145,6 +155,7 @@ export function useSailPriceHistory({
         (s: any) => ({
           timestamp: parseInt(s.hourTimestamp),
           priceUSD: parseFloat(s.tokenPriceUSD),
+          collateralPriceUSD: parseFloat(s.collateralPriceUSD),
           totalSupply: s.totalSupply,
           collateralBalance: s.collateralBalance,
           leverageRatio: parseFloat(s.leverageRatio) / 1e18,
@@ -208,14 +219,15 @@ export function useSailPriceHistory({
 export function mergeChartData(
   pricePoints: PricePoint[],
   hourlySnapshots: HourlySnapshot[]
-): Array<{ timestamp: number; priceUSD: number; source: "event" | "hourly" }> {
-  const merged: Array<{ timestamp: number; priceUSD: number; source: "event" | "hourly" }> = [];
+): MergedChartPoint[] {
+  const merged: MergedChartPoint[] = [];
 
   // Add all price points
   for (const pp of pricePoints) {
     merged.push({
       timestamp: pp.timestamp,
       priceUSD: pp.priceUSD,
+      collateralPriceUSD: pp.collateralPriceUSD,
       source: "event",
     });
   }
@@ -224,16 +236,17 @@ export function mergeChartData(
   for (const hs of hourlySnapshots) {
     const hourStart = hs.timestamp;
     const hourEnd = hourStart + 3600;
-    
+
     // Check if any event exists in this hour
     const hasEventInHour = pricePoints.some(
-      pp => pp.timestamp >= hourStart && pp.timestamp < hourEnd
+      (pp) => pp.timestamp >= hourStart && pp.timestamp < hourEnd
     );
 
     if (!hasEventInHour) {
       merged.push({
         timestamp: hs.timestamp,
         priceUSD: hs.priceUSD,
+        collateralPriceUSD: hs.collateralPriceUSD,
         source: "hourly",
       });
     }

@@ -1,10 +1,8 @@
 "use client";
 
 import React from "react";
-import { HARBOR_FROSTED_INDEX_SURFACE } from "@/components/shared/harborFrostedSurfaceStyles";
 import Image from "next/image";
 import SimpleTooltip from "@/components/SimpleTooltip";
-import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
 import {
   ANCHOR_MARKETS_WALLET_ROW_LG_CLASSNAME,
   ANCHOR_MARKETS_WALLET_ROW_MD_CLASSNAME,
@@ -12,9 +10,9 @@ import {
 import { INDEX_MANAGE_BUTTON_CLASS_DESKTOP } from "@/utils/indexPageManageButton";
 import { formatCompactUSD } from "@/utils/anchor";
 import { formatToken } from "@/utils/formatters";
-import { TokenLogo, getLogoPath } from "@/components/shared";
+import { getLogoPath } from "@/components/shared";
 import { HarborStatusPill } from "@/components/shared/HarborStatusPill";
-import { HARBOR_DATA_ROW_HOVER_CLASS } from "@/components/shared/harborDataRowStyles";
+import { HARBOR_DATA_ROW_SHELL_CLASS } from "@/components/shared/harborDataRowStyles";
 import NetworkIconCell from "@/components/NetworkIconCell";
 import type { DefinedMarket } from "@/config/markets";
 import { DEBUG_ANCHOR } from "@/config/debug";
@@ -223,7 +221,7 @@ if (!isConnected || !address) return null;
                     return (
                       <div
                         key={position.tokenAddress}
-                        className={`${HARBOR_FROSTED_INDEX_SURFACE} p-3 ${HARBOR_DATA_ROW_HOVER_CLASS}`}
+                        className={`${HARBOR_DATA_ROW_SHELL_CLASS} p-3`}
                       >
                         {/* Desktop layout (>= lg) - same tracks as AnchorMarketsTableHeader */}
                         <div className={ANCHOR_MARKETS_WALLET_ROW_LG_CLASSNAME}>
