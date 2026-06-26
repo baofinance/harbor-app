@@ -13,7 +13,7 @@ import { getShortSide } from "@/utils/marketSideLabels";
 import { getSailSideLogoPath } from "@/utils/sailAssetLogos";
 
 const SAIL_DROPDOWN_MENU_CLASS =
-  "absolute left-0 right-0 top-[calc(100%+0.35rem)] z-50 max-h-72 overflow-y-auto rounded-xl border border-[#1E4775]/12 bg-white p-1 shadow-xl";
+  "absolute left-0 right-0 top-[calc(100%+0.35rem)] z-50 max-h-72 overflow-y-auto rounded-xl bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/12 shadow-xl ring-1 ring-black/5 p-1";
 
 const SAIL_DROPDOWN_OPTION_ACTIVE_CLASS = "bg-[#1E4775]/10";
 const SAIL_DROPDOWN_OPTION_HOVER_CLASS = "hover:bg-[#1E4775]/[0.06]";

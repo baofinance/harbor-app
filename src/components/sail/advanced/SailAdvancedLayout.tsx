@@ -11,10 +11,11 @@ import { SailMarketChartColumn } from "./SailMarketChartColumn";
 import { SailMarketHeader } from "./SailMarketHeader";
 import { SailMarketInfoFooter } from "./SailMarketInfoFooter";
 import { SailMarketMetricsColumn } from "./SailMarketMetricsColumn";
+import { SailMarketNoPositionHint } from "./SailMarketNoPositionHint";
 import { SailMarketPositionBar } from "./SailMarketPositionBar";
 import { SailOtherMarketsStrip } from "./SailOtherMarketsStrip";
 import type { SailWalletStatsStripProps } from "./SailWalletStatsStrip";
-import { SAIL_ADVANCED_GRID_CLASS } from "./sailAdvancedStyles";
+import { SAIL_ADVANCED_GRID_CLASS, SAIL_ADVANCED_SECTION_LABEL } from "./sailAdvancedStyles";
 
 export type SailAdvancedLayoutProps = {
   selectedMarketId: string | null;
@@ -112,6 +113,8 @@ export function SailAdvancedLayout({
     );
   }
 
+  const hasMarketPosition = userDeposit !== undefined && userDeposit > 0n;
+
   return (
     <div className="space-y-4">
       <SailMarketHeader
@@ -131,15 +134,20 @@ export function SailAdvancedLayout({
           />
         </div>
         <div className="order-1 flex flex-col gap-3 lg:order-none">
-          {userDeposit !== undefined && userDeposit > 0n ? (
-            <SailMarketPositionBar
-              market={selectedMarket}
-              userDeposit={userDeposit}
-              currentValueUSD={currentValueUSD}
-              leveragedTokenPriceUSD={leveragedTokenPriceUSD}
-              isConnected={isConnected}
-            />
-          ) : null}
+          {hasMarketPosition ? (
+            <div>
+              <p className={SAIL_ADVANCED_SECTION_LABEL}>This market</p>
+              <SailMarketPositionBar
+                market={selectedMarket}
+                userDeposit={userDeposit}
+                currentValueUSD={currentValueUSD}
+                leveragedTokenPriceUSD={leveragedTokenPriceUSD}
+                isConnected={isConnected}
+              />
+            </div>
+          ) : (
+            <SailMarketNoPositionHint isConnected={isConnected} />
+          )}
           <SailMarketChartColumn
             marketId={selectedMarketId}
             market={selectedMarket}

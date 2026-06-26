@@ -148,8 +148,8 @@ function AnchorMarketGroupCollapsedRowInner(
     isComingSoonRow ? "opacity-90 saturate-[0.78]" : ""
   } ${
     isExpanded
-      ? "bg-[rgb(var(--surface-selected-rgb))]"
-      : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
+      ? "bg-white/90 backdrop-blur-md backdrop-saturate-150"
+      : "bg-white/80 backdrop-blur-md backdrop-saturate-150 hover:bg-white/88 transition-colors"
   }`}
   onClick={(e) => {
     const target = e.target as HTMLElement;

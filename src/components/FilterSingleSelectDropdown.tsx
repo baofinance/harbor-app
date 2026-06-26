@@ -55,7 +55,7 @@ export function FilterSingleSelectDropdown({
         disabled={disabled}
       >
         <ListboxButton
-          className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-white text-[#1E4775] border border-[#1E4775]/20 rounded-md focus:border-[#1E4775]/40 focus:ring-1 focus:ring-[#1E4775]/20 focus:outline-none text-sm cursor-pointer data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
+          className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-white/85 backdrop-blur-sm text-[#1E4775] border border-[#1E4775]/20 rounded-md focus:border-[#1E4775]/40 focus:ring-1 focus:ring-[#1E4775]/20 focus:outline-none text-sm cursor-pointer data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
         >
           <span className="text-[#1E4775]/70 text-xs shrink-0">{label}:</span>
           <span className="font-medium truncate text-left min-w-0 flex-1">
@@ -67,7 +67,7 @@ export function FilterSingleSelectDropdown({
         <ListboxOptions
           modal={false}
           anchor={{ to: "bottom start", gap: 2 }}
-          className={`z-50 w-full ${minWidthClass} min-w-0 bg-white border border-[#1E4775]/20 rounded-md shadow-lg overflow-hidden overflow-y-auto outline-none [width:var(--button-width)] max-h-60`}
+          className={`z-50 w-full ${minWidthClass} min-w-0 bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/12 shadow-xl ring-1 ring-black/5 border border-[#1E4775]/20 rounded-md shadow-lg overflow-hidden overflow-y-auto outline-none [width:var(--button-width)] max-h-60`}
         >
           {groupLabel && (
             <div className="px-4 py-2 bg-[#1E4775]/5 text-xs font-semibold text-[#1E4775]/70 uppercase tracking-wider">

@@ -478,7 +478,7 @@ export function AnchorEarningsSection(props: AnchorEarningsSectionProps) {
                                   }
                                 }}
                                 disabled={isClaimingAll || marketTotalUSD === 0}
-                                className="px-3 py-1 text-xs font-medium bg-white text-[#1E4775] border border-white hover:bg-white/90 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors rounded-full"
+                                className="px-3 py-1 text-xs font-medium bg-white/85 backdrop-blur-sm text-[#1E4775] border border-white/40 hover:bg-white/90 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors rounded-full"
                               >
                                 Claim
                               </button>

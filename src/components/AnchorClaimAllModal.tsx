@@ -118,7 +118,7 @@ export const AnchorClaimAllModal = ({
  onClick={onClose}
  />
 
-        <div className="relative isolate bg-white shadow-2xl w-full max-w-4xl mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 flex flex-col max-h-[95vh] sm:max-h-[90vh] overflow-hidden rounded-xl border border-[#1E4775]/10">
+        <div className="relative isolate bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/20 shadow-2xl shadow-black/10 w-full max-w-4xl mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 flex flex-col max-h-[95vh] sm:max-h-[90vh] overflow-hidden rounded-xl border border-[#1E4775]/10">
           <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 border-b border-[#1E4775]/20 shrink-0">
  <h2 className="text-2xl font-bold text-[#1E4775]">Claim Rewards</h2>
  <button
@@ -275,7 +275,7 @@ export const AnchorClaimAllModal = ({
  onClose();
  }}
  disabled={isLoading || selectedPoolsArray.length === 0}
- className="w-full p-4 text-left rounded-md bg-white border-2 border-[#1E4775] hover:bg-[#1E4775]/5 transition-colors flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed"
+ className="w-full p-4 text-left rounded-md bg-white/85 backdrop-blur-sm border-2 border-[#1E4775] hover:bg-[#1E4775]/5 transition-colors flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed"
  >
  <div className="flex items-center gap-3">
  <div>
@@ -313,7 +313,7 @@ export const AnchorClaimAllModal = ({
  selectedPoolsArray.length === 0 ||
  compoundDisabledByMaintenance
  }
- className="w-full p-4 text-left rounded-md bg-white border-2 border-[#1E4775] hover:bg-[#1E4775]/5 transition-colors flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed"
+ className="w-full p-4 text-left rounded-md bg-white/85 backdrop-blur-sm border-2 border-[#1E4775] hover:bg-[#1E4775]/5 transition-colors flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed"
  title={
  compoundDisabledByMaintenance
    ? "Deselect pools marked Maintenance / Claim only to use Compound, or use Basic Claim"
@@ -357,7 +357,7 @@ export const AnchorClaimAllModal = ({
  onClose();
  }}
  disabled={true}
- className="w-full p-4 text-left rounded-md bg-white border-2 border-gray-300 transition-colors flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed"
+ className="w-full p-4 text-left rounded-md bg-white/85 backdrop-blur-sm border-2 border-gray-300 transition-colors flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed"
  >
  <div className="flex items-center gap-3">
  <div>

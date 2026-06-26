@@ -38,7 +38,7 @@ https://www.harborfinance.io/`;
  />
 
  {/* Modal */}
-        <div className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 overflow-hidden rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="relative bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/20 shadow-2xl shadow-black/10 w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 overflow-hidden rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
  {/* Decorative header wave */}
  <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-br from-[#1E4775] via-[#2A5A8C] to-[#17395F]">
  <div className="absolute bottom-0 left-0 right-0">
@@ -57,7 +57,7 @@ https://www.harborfinance.io/`;
 
  {/* Anchor Icon */}
  <div className="relative pt-8 pb-2 flex justify-center">
- <div className="w-20 h-20 bg-white rounded-full shadow-lg flex items-center justify-center border-4 border-[rgb(var(--surface-selected-border-rgb))]">
+ <div className="w-20 h-20 bg-white/90 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center border-4 border-[rgb(var(--surface-selected-border-rgb))]">
  <span className="text-4xl">⚓️</span>
  </div>
  </div>

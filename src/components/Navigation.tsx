@@ -1,5 +1,6 @@
 "use client";
 import { Suspense, useState } from "react";
+import { HARBOR_FROSTED_ACTIVE_PILL, HARBOR_FROSTED_DROPDOWN_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 import {
   Disclosure,
   DisclosureButton,
@@ -43,7 +44,7 @@ export default function Example() {
   const linkClass = (href: string) =>
     `shrink-0 whitespace-nowrap rounded-md px-2 sm:px-2.5 py-2 text-sm font-medium ${
       isActive(href)
-        ? "text-[#1E4775] bg-white"
+        ? HARBOR_FROSTED_ACTIVE_PILL
         : "text-white hover:bg-white/20 hover:text-white"
     }`;
 
@@ -141,7 +142,7 @@ export default function Example() {
               <PopoverPanel
                 transition
                 anchor={{ to: "bottom end", gap: 8 }}
-                className="z-[100] w-56 origin-top-right rounded-lg bg-white py-1 shadow-lg ring-1 ring-black/5 outline-none transition data-closed:scale-95 data-closed:opacity-0"
+                className={`z-[100] w-56 origin-top-right rounded-lg py-1 outline-none transition data-closed:scale-95 data-closed:opacity-0 ${HARBOR_FROSTED_DROPDOWN_SHELL}`}
               >
                 {MORE_NAV.map(({ href, label }) => (
                   <Link
@@ -222,7 +223,7 @@ export default function Example() {
               href="/genesis"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/genesis")
-                  ? "text-[#1E4775] bg-white"
+                  ? HARBOR_FROSTED_ACTIVE_PILL
                   : "text-white bg-white/10 hover:bg-white/20"
               }`}
               aria-current={isActive("/genesis") ? "page" : undefined}
@@ -245,7 +246,7 @@ export default function Example() {
               href="/anchor"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/anchor")
-                  ? "text-[#1E4775] bg-white"
+                  ? HARBOR_FROSTED_ACTIVE_PILL
                   : "text-white bg-white/10 hover:bg-white/20"
               }`}
               aria-current={isActive("/anchor") ? "page" : undefined}
@@ -257,7 +258,7 @@ export default function Example() {
               href="/sail"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/sail")
-                  ? "text-[#1E4775] bg-white"
+                  ? HARBOR_FROSTED_ACTIVE_PILL
                   : "text-white bg-white/10 hover:bg-white/20"
               }`}
               aria-current={isActive("/sail") ? "page" : undefined}
@@ -269,7 +270,7 @@ export default function Example() {
               href="/hytoken"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/hytoken")
-                  ? "text-[#1E4775] bg-white"
+                  ? HARBOR_FROSTED_ACTIVE_PILL
                   : "text-white bg-white/10 hover:bg-white/20"
               }`}
               aria-current={isActive("/hytoken") ? "page" : undefined}
@@ -281,7 +282,7 @@ export default function Example() {
               href="/transparency"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/transparency")
-                  ? "text-[#1E4775] bg-white"
+                  ? HARBOR_FROSTED_ACTIVE_PILL
                   : "text-white bg-white/10 hover:bg-white/20"
               }`}
               aria-current={isActive("/transparency") ? "page" : undefined}
@@ -300,7 +301,7 @@ export default function Example() {
                     href={href}
                     className={`block w-full px-6 py-3.5 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                       isActive(href)
-                        ? "text-[#1E4775] bg-white"
+                        ? HARBOR_FROSTED_ACTIVE_PILL
                         : "text-white bg-white/10 hover:bg-white/20"
                     }`}
                     aria-current={isActive(href) ? "page" : undefined}

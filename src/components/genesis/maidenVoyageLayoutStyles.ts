@@ -170,7 +170,7 @@ export const MV_EXPLORER_TABS =
   "inline-flex rounded-full border border-white/12 bg-white/[0.08] p-0.5 backdrop-blur-md";
 
 export const MV_EXPLORER_TAB_ACTIVE =
-  "rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#1E4775]";
+  "rounded-full bg-white/90 backdrop-blur-sm px-3 py-1.5 text-xs font-semibold text-[#1E4775] shadow-sm";
 
 export const MV_EXPLORER_TAB_INACTIVE =
   "rounded-full px-3 py-1.5 text-xs font-semibold text-white/55 transition hover:text-white/80";

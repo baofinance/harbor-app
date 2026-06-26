@@ -51,7 +51,7 @@ export function ImpersonateDialog({ isOpen, onClose }: ImpersonateDialogProps) {
         onClick={onClose}
       />
       <div
-        className="relative w-full max-w-md rounded-xl border border-[#1E4775]/20 bg-white p-5 shadow-2xl"
+        className="relative w-full max-w-md rounded-xl border border-[#1E4775]/20 bg-white/88 backdrop-blur-lg backdrop-saturate-150 p-5 shadow-2xl"
         role="dialog"
         aria-labelledby="impersonate-title"
       >

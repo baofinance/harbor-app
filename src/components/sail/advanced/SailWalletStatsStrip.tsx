@@ -56,7 +56,10 @@ function formatPnL(
     return { text: "$0.00", valueClassName: SAIL_WALLET_STATS_VALUE };
   }
 
-  const dollar = `$${totalPnL >= 0 ? "+" : ""}${totalPnL.toFixed(2)}`;
+  const dollar =
+    totalPnL >= 0
+      ? `+$${totalPnL.toFixed(2)}`
+      : `-$${Math.abs(totalPnL).toFixed(2)}`;
   const pctText =
     pnlPercent === null || !Number.isFinite(pnlPercent)
       ? ""

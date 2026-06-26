@@ -9,7 +9,11 @@ import {
   ListboxOptions,
 } from "@headlessui/react";
 import { CheckIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
-import NetworkIconClient from "@/components/NetworkIconClient";
+import {
+  HARBOR_FROSTED_ACTIVE_PILL,
+  HARBOR_FROSTED_DROPDOWN_SHELL,
+  HARBOR_FROSTED_INPUT_FILL,
+} from "@/components/shared/harborFrostedSurfaceStyles";
 
 export type PageLayoutToggleProps = {
   /** Accessible name for the control. */
@@ -37,7 +41,7 @@ export function PageLayoutToggle({
   const segment = (active: boolean) =>
     `min-w-[2.75rem] rounded px-2 py-2 text-sm font-medium tabular-nums tracking-tight transition-colors ${
       active
-        ? "bg-white text-[#1E4775] shadow-sm"
+        ? HARBOR_FROSTED_ACTIVE_PILL
         : "text-white hover:bg-white/20"
     }`;
   return (
@@ -50,7 +54,7 @@ export function PageLayoutToggle({
           by={(a, b) => a.id === b.id}
           onChange={(next) => setBackgroundMode(next.id)}
         >
-          <ListboxButton className="h-9 w-full flex items-center justify-between gap-1 rounded bg-white px-1.5 py-0 text-sm font-medium text-[#1E4775] focus:ring-1 focus:ring-[#1E4775]/20 focus:outline-none cursor-pointer">
+          <ListboxButton className={`h-9 w-full flex items-center justify-between gap-1 rounded px-1.5 py-0 text-sm font-medium text-[#1E4775] focus:ring-1 focus:ring-[#1E4775]/20 focus:outline-none cursor-pointer ${HARBOR_FROSTED_INPUT_FILL}`}>
             <span className="inline-flex items-center gap-1 min-w-0">
               <NetworkIconClient
                 name={selectedBackground.icon}
@@ -65,7 +69,7 @@ export function PageLayoutToggle({
           </ListboxButton>
           <ListboxOptions
             modal={false}
-            className="absolute right-0 top-[calc(100%+4px)] z-50 w-full bg-white border border-[#1E4775]/20 rounded-md shadow-lg overflow-hidden outline-none"
+            className={`absolute right-0 top-[calc(100%+4px)] z-50 w-full rounded-md overflow-hidden outline-none ${HARBOR_FROSTED_DROPDOWN_SHELL}`}
           >
             {backgroundOptions.map((option) => (
               <ListboxOption

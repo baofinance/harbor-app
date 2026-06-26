@@ -195,7 +195,7 @@ export const AnchorWithdrawModal = ({
  onClick={handleClose}
  />
 
- <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200">
+ <div className="relative bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/20 shadow-2xl shadow-black/10 w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200">
  <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20">
  <h2 className="text-2xl font-bold text-[#1E4775]">Withdraw</h2>
  <button
@@ -237,7 +237,7 @@ export const AnchorWithdrawModal = ({
  value={amount}
  onChange={handleAmountChange}
  placeholder="0.0"
- className={`w-full h-12 px-4 pr-20 bg-white text-[#1E4775] border ${
+ className={`w-full h-12 px-4 pr-20 bg-white/85 backdrop-blur-sm text-[#1E4775] border ${
  error ?"border-red-500" :"border-[#1E4775]/30"
  } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`}
  disabled={step ==="withdrawing"}

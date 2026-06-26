@@ -92,7 +92,7 @@ export function TideTransactionModal({
             <button
               type="button"
               onClick={onClose}
-              className="mt-5 w-full rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-[#1a1a1a] hover:bg-white/90"
+              className="mt-5 w-full rounded-lg bg-white/90 backdrop-blur-sm px-4 py-2.5 text-sm font-semibold text-[#1a1a1a] hover:bg-white/90"
             >
               Close
             </button>

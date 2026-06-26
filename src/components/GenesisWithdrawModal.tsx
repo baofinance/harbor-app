@@ -462,7 +462,7 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
           <button
             type="button"
             onClick={handleClose}
-            className="flex-1 rounded-md py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
+            className="flex-1 rounded-md py-3 px-4 bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
           >
             Cancel
           </button>

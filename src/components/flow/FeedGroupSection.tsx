@@ -47,8 +47,8 @@ export function FeedGroupSection({
     <div
       className={`p-2 sm:p-3 overflow-x-auto overflow-y-visible transition ${
         sectionExpanded
-          ? "bg-[rgb(var(--surface-selected-rgb))]"
-          : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
+          ? "bg-white/90 backdrop-blur-md backdrop-saturate-150"
+          : "bg-white/80 backdrop-blur-md backdrop-saturate-150 hover:bg-white/88 transition-colors"
       }`}
     >
       <div

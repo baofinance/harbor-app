@@ -2,6 +2,10 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
+import {
+  HARBOR_FROSTED_MODAL_SHELL,
+  HARBOR_FROSTED_PANEL_FILL,
+} from "@/components/shared/harborFrostedSurfaceStyles";
 import { DepositModalExpandedNotifications } from "@/components/DepositModalExpandedNotifications";
 import { DepositModalNotificationBell } from "@/components/DepositModalNotificationBell";
 import {
@@ -86,7 +90,8 @@ export function DepositModalShell({
 
       <div
         className={cn(
-          "relative isolate flex w-full max-w-md flex-col border-x border-b border-[#1E4775]/20 bg-white shadow-2xl shadow-black/10 animate-in fade-in-0 scale-in-95 duration-200 dark:shadow-black/35 md:max-w-lg",
+          "relative isolate flex w-full max-w-md flex-col animate-in fade-in-0 scale-in-95 duration-200 md:max-w-lg",
+          HARBOR_FROSTED_MODAL_SHELL,
           "max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] overflow-hidden rounded-xl",
           panelClassName
         )}
@@ -94,14 +99,14 @@ export function DepositModalShell({
         {legacyLayout ? (
           <>
             {banner ? (
-              <div className="relative z-10 shrink-0 overflow-hidden rounded-t-xl border-b border-[#1E4775]/15 bg-white">
+              <div className={cn("relative z-10 shrink-0 overflow-hidden rounded-t-xl border-b border-[#1E4775]/15", HARBOR_FROSTED_PANEL_FILL)}>
                 {banner}
               </div>
             ) : null}
             <div
               className={cn(
                 "relative z-20 flex w-full items-center justify-between border-b border-[#1E4775]/20",
-                banner && "bg-white",
+                banner && HARBOR_FROSTED_PANEL_FILL,
                 headerClassName ||
                   (banner
                     ? "pt-1.5 sm:pt-2 pb-0 pl-[5px] pr-2 sm:pr-3"
@@ -118,7 +123,7 @@ export function DepositModalShell({
           </>
         ) : (
           <>
-            <div className="relative z-20 flex shrink-0 items-center justify-between gap-2 border-b border-[#1E4775]/15 bg-white px-3 py-2.5 sm:px-4">
+            <div className={cn("relative z-20 flex shrink-0 items-center justify-between gap-2 border-b border-[#1E4775]/15 px-3 py-2.5 sm:px-4", HARBOR_FROSTED_PANEL_FILL)}>
               <h2 className="flex min-w-0 flex-1 items-center truncate text-sm font-bold leading-snug tracking-tight text-[#1E4775] sm:text-base">
                 {title}
               </h2>
@@ -147,7 +152,7 @@ export function DepositModalShell({
               </DepositModalExpandedNotifications>
             ) : null}
 
-            <div className="relative z-20 shrink-0 border-b border-[#1E4775]/20 bg-white px-2 pb-2 pt-1.5 sm:px-3">
+            <div className={cn("relative z-20 shrink-0 border-b border-[#1E4775]/20 px-2 pb-2 pt-1.5 sm:px-3", HARBOR_FROSTED_PANEL_FILL)}>
               {tabs}
             </div>
           </>

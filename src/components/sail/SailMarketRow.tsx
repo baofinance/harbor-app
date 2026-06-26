@@ -215,8 +215,8 @@ export const SailMarketRow = React.memo(function SailMarketRow({
       <div
         className={`py-2 px-2 overflow-visible transition cursor-pointer relative group ${
           isExpanded
-            ? "bg-white md:bg-[rgb(var(--surface-selected-rgb))]"
-            : "bg-white md:hover:bg-[rgb(var(--surface-selected-rgb))]"
+            ? "bg-white/80 backdrop-blur-md backdrop-saturate-150 md:bg-white/90"
+            : "bg-white/80 backdrop-blur-md backdrop-saturate-150 md:hover:bg-white/88 transition-colors"
         }`}
         onClick={() => !isComingSoon && onToggleExpand(id)}
       >
@@ -296,7 +296,7 @@ export const SailMarketRow = React.memo(function SailMarketRow({
             </div>
           </div>
           <div className="pt-0 space-y-0 text-xs">
-            <div className="bg-white text-[#1E4775] rounded-md px-3 py-3 text-[13px] -mx-2 -mb-2 border-t-2 border-[#1E4775]/40">
+            <div className="bg-white/85 backdrop-blur-sm text-[#1E4775] rounded-md px-3 py-3 text-[13px] -mx-2 -mb-2 border-t-2 border-[#1E4775]/40">
               <div className="flex items-center gap-2">
                 <span className="text-[#1E4775]/70 whitespace-nowrap font-semibold text-[15px]">
                   Your Position:
@@ -337,7 +337,7 @@ export const SailMarketRow = React.memo(function SailMarketRow({
                     e.stopPropagation();
                     onToggleExpand(id);
                   }}
-                  className="px-4 py-1.5 text-sm font-semibold text-[#1E4775] bg-white border-2 border-[#1E4775] rounded-md inline-flex items-center gap-1 whitespace-nowrap min-w-[160px] justify-center"
+                  className="px-4 py-1.5 text-sm font-semibold text-[#1E4775] bg-white/85 backdrop-blur-sm border-2 border-[#1E4775] rounded-md inline-flex items-center gap-1 whitespace-nowrap min-w-[160px] justify-center"
                 >
                   More details
                   {isExpanded ? (

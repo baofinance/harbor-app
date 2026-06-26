@@ -46,7 +46,7 @@ export const TIDE_THEME = {
     inset: MV_STAT_TILE,
     valueAccent: "text-white",
     button:
-      "bg-white text-[#1E4775] enabled:hover:bg-white/90 disabled:opacity-40",
+      "bg-white/90 backdrop-blur-sm text-[#1E4775] enabled:hover:bg-white/90 disabled:opacity-40",
     maxButton: "text-[#8CB8DC]",
   },
 } as const;
@@ -76,7 +76,7 @@ export const TIDE_AMOUNT_SM_CLASS =
 export const TIDE_INSET_LABEL_CLASS = `${MV_SECTION_LABEL} text-[10px] uppercase tracking-wide`;
 
 export const TIDE_PRIMARY_BUTTON_CLASS =
-  "w-full rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-[#1E4775] shadow-sm transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40";
+  "w-full rounded-lg bg-white/90 backdrop-blur-sm px-4 py-2.5 text-sm font-semibold text-[#1E4775] shadow-sm transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40";
 
 export const TIDE_INPUT_SHELL_CLASS = `${MV_STAT_TILE} flex items-center gap-2 px-3 py-2`;
 

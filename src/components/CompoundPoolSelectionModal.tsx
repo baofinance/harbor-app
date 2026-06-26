@@ -126,7 +126,7 @@ export const CompoundPoolSelectionModal = ({
  className="absolute inset-0 bg-black/40 backdrop-blur-sm"
  onClick={onClose}
  />
-        <div className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="relative bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/20 shadow-2xl shadow-black/10 w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
  <div className="flex items-center justify-between p-4 border-b border-[#1E4775]/20">
  <h2 className="text-xl font-bold text-[#1E4775]">Select Pools to Compound To</h2>
  <button
@@ -217,7 +217,7 @@ export const CompoundPoolSelectionModal = ({
  <div className="flex gap-2 pt-2">
  <button
  onClick={onClose}
- className="flex-1 px-4 py-2 text-sm font-medium bg-white text-[#1E4775] border border-[#1E4775] hover:bg-[#1E4775]/5 transition-colors rounded-full"
+ className="flex-1 px-4 py-2 text-sm font-medium bg-white/85 backdrop-blur-sm text-[#1E4775] border border-[#1E4775] hover:bg-[#1E4775]/5 transition-colors rounded-full"
  >
  Cancel
  </button>

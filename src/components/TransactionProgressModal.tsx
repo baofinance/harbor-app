@@ -243,7 +243,7 @@ export const TransactionProgressModal = ({
           className="absolute inset-0 bg-black/40 backdrop-blur-sm"
           onClick={onCancel || onClose}
         />
-        <div className="relative isolate mx-4 flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl border border-[#1E4775]/10 bg-white shadow-2xl animate-in fade-in-0 scale-in-95 duration-200">
+        <div className="relative isolate mx-4 flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/20 shadow-2xl shadow-black/10 animate-in fade-in-0 scale-in-95 duration-200">
           <div className="flex shrink-0 items-center justify-between border-b border-[#1E4775]/20 p-6">
             <h2 className="text-2xl font-bold text-[#1E4775]">{title}</h2>
             <button
@@ -395,7 +395,7 @@ export const TransactionProgressModal = ({
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative isolate mx-4 flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl border border-[#1E4775]/10 bg-white shadow-2xl animate-in fade-in-0 scale-in-95 duration-200">
+      <div className="relative isolate mx-4 flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/20 shadow-2xl shadow-black/10 animate-in fade-in-0 scale-in-95 duration-200">
         <div className="flex shrink-0 items-start justify-between gap-2 border-b border-[#1E4775]/20 p-6">
           <div className="min-w-0 flex-1">
             <h2 className="text-2xl font-bold text-[#1E4775]">{title}</h2>

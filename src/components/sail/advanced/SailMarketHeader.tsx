@@ -14,7 +14,7 @@ import {
   SailWalletStatsStrip,
   type SailWalletStatsStripProps,
 } from "./SailWalletStatsStrip";
-import { SAIL_ADVANCED_BODY, SAIL_ADVANCED_META } from "./sailAdvancedStyles";
+import { SAIL_ADVANCED_BODY, SAIL_ADVANCED_META, SAIL_ADVANCED_SECTION_LABEL } from "./sailAdvancedStyles";
 
 type SailMarketHeaderProps = {
   selectedMarketId: string | null;
@@ -46,19 +46,23 @@ export function SailMarketHeader({
   return (
     <div className="relative z-40 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
       <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 flex-nowrap items-center gap-3 lg:gap-4">
+        <div className="flex min-w-0 flex-nowrap items-end gap-3 lg:gap-4">
           <div className="min-w-0 w-full max-w-lg shrink-0">
+            <p className={SAIL_ADVANCED_SECTION_LABEL}>Market</p>
             <SailMarketDropdown
               selectedMarketId={selectedMarketId}
               options={dropdownOptions}
               onSelect={onSelectMarket}
             />
           </div>
-          <SailWalletStatsStrip
-            {...walletStats}
-            showSailMarks={false}
-            className="min-w-0 flex-1"
-          />
+          <div className="min-w-0 flex-1">
+            <p className={SAIL_ADVANCED_SECTION_LABEL}>Your wallet</p>
+            <SailWalletStatsStrip
+              {...walletStats}
+              showSailMarks={false}
+              className="min-w-0 w-full"
+            />
+          </div>
         </div>
         <p
           className={`mt-1.5 ${SAIL_ADVANCED_BODY} text-white/70`}

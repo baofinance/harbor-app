@@ -1230,7 +1230,7 @@ export function FeedDetails({
 
   if (compact) {
   return (
-      <div className={compactOuterClassName ?? "bg-white border border-[#1E4775]/10 p-3"}>
+      <div className={compactOuterClassName ?? "bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/10 p-3 rounded-md shadow-sm"}>
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <div className="text-[#1E4775] font-semibold text-sm truncate">
@@ -1286,7 +1286,7 @@ export function FeedDetails({
         </div>
 
         {/* Feed Details Table (compact) */}
-        <div className="mt-2 bg-white border border-[#1E4775]/10 overflow-x-auto">
+        <div className="mt-2 bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md border border-[#1E4775]/10 overflow-x-auto">
           <table className="min-w-full text-left text-sm table-fixed">
             <thead>
               <tr className="border-b border-[#1E4775]/20 uppercase tracking-wider text-[10px] text-[#1E4775]/60">
@@ -1377,7 +1377,7 @@ export function FeedDetails({
     );
   }
 
-  const boxBg = embedded ? "bg-[#1E4775]/5" : "bg-white";
+  const boxBg = embedded ? "bg-[#1E4775]/5" : "bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md";
 
   return (
     <section

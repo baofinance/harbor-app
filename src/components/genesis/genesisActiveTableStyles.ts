@@ -47,37 +47,44 @@ export const GENESIS_COMPLETED_HEADER_INNER_GRID_CLASS = `grid ${GENESIS_COMPLET
 
 export const GENESIS_COMPLETED_DESKTOP_ROW_GRID_CLASS = `hidden md:grid ${GENESIS_COMPLETED_GRID_COLS_LG} ${GENESIS_COMPLETED_GRID_COLS_MD} gap-4 items-center`;
 
-/** Frosted white fill — light rows on dark Maiden Voyage chrome (still reads white). */
-export const GENESIS_TABLE_FROSTED_FILL =
-  "bg-white/80 backdrop-blur-md backdrop-saturate-150";
+/** Frosted white fill — re-exported from shared Harbor glass tokens. */
+export {
+  HARBOR_FROSTED_FILL as GENESIS_TABLE_FROSTED_FILL,
+  HARBOR_FROSTED_EDGE as GENESIS_TABLE_FROSTED_EDGE,
+  HARBOR_FROSTED_SURFACE as GENESIS_TABLE_FROSTED_SURFACE,
+  HARBOR_FROSTED_SURFACE_HOVER,
+  HARBOR_FROSTED_SURFACE_SELECTED,
+} from "@/components/shared/harborFrostedSurfaceStyles";
 
-/** Frosted edge + lift on dark backgrounds. */
-export const GENESIS_TABLE_FROSTED_EDGE =
-  "border border-white/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.72),0_10px_28px_-18px_rgba(0,0,0,0.32)] ring-1 ring-[#1E4775]/8";
-
-export const GENESIS_TABLE_FROSTED_SURFACE = `${GENESIS_TABLE_FROSTED_FILL} ${GENESIS_TABLE_FROSTED_EDGE}`;
+import {
+  HARBOR_FROSTED_FILL,
+  HARBOR_FROSTED_PILL,
+  HARBOR_FROSTED_SURFACE,
+  HARBOR_FROSTED_SURFACE_HOVER,
+  HARBOR_FROSTED_SURFACE_SELECTED,
+} from "@/components/shared/harborFrostedSurfaceStyles";
 
 /** Shared table row shell — matches active Ongoing row height and radius. */
-export const GENESIS_TABLE_ROW_SHELL_CLASS = `${GENESIS_TABLE_FROSTED_SURFACE} py-2.5 px-2 rounded-lg min-h-[52px]`;
+export const GENESIS_TABLE_ROW_SHELL_CLASS = `${HARBOR_FROSTED_SURFACE} py-2.5 px-2 rounded-lg min-h-[52px]`;
 
 /** Header label cell — matches Maiden Voyage explorer Lifecycle column. */
 export const GENESIS_TABLE_HEADER_CELL_CLASSNAME =
   "flex min-w-0 items-center justify-center text-center truncate";
 
 /** Frosted header strip above archived/completed/active rows. */
-export const GENESIS_TABLE_HEADER_SHELL_CLASS = `hidden md:block ${GENESIS_TABLE_FROSTED_SURFACE} py-1.5 px-2 overflow-x-auto mb-0 rounded-md`;
+export const GENESIS_TABLE_HEADER_SHELL_CLASS = `hidden md:block ${HARBOR_FROSTED_SURFACE} py-1.5 px-2 overflow-x-auto mb-0 rounded-md`;
 
 /** Interactive voyage row (expandable active markets). */
-export const GENESIS_TABLE_ROW_INTERACTIVE_IDLE_CLASS = `${GENESIS_TABLE_FROSTED_SURFACE} transition-colors hover:bg-white/88`;
+export const GENESIS_TABLE_ROW_INTERACTIVE_IDLE_CLASS = `${HARBOR_FROSTED_SURFACE} ${HARBOR_FROSTED_SURFACE_HOVER}`;
 
 export const GENESIS_TABLE_ROW_INTERACTIVE_EXPANDED_CLASS =
-  "bg-white/90 backdrop-blur-md backdrop-saturate-150 border border-white/35 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.78),0_10px_28px_-18px_rgba(0,0,0,0.32)] ring-1 ring-[#1E4775]/10";
+  HARBOR_FROSTED_SURFACE_SELECTED;
 
 /** Compact voyage card + expanded panel shells. */
-export const GENESIS_VOYAGE_COMPACT_CARD_SHELL_CLASS = `overflow-hidden rounded-xl ${GENESIS_TABLE_FROSTED_SURFACE} text-[#1E4775]`;
+export const GENESIS_VOYAGE_COMPACT_CARD_SHELL_CLASS = `overflow-hidden rounded-xl ${HARBOR_FROSTED_SURFACE} text-[#1E4775]`;
 
-export const GENESIS_VOYAGE_EXPANDED_PANEL_SHELL_CLASS = `overflow-hidden border-t border-[#1E4775]/12 ${GENESIS_TABLE_FROSTED_FILL} backdrop-blur-md px-5 py-4`;
+export const GENESIS_VOYAGE_EXPANDED_PANEL_SHELL_CLASS = `overflow-hidden border-t border-[#1E4775]/12 ${HARBOR_FROSTED_FILL} backdrop-blur-md px-5 py-4`;
 
 /** Inline market title pill on voyage rows. */
 export const GENESIS_VOYAGE_ROW_PILL_CLASS =
-  "inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-white/85 pl-2 pr-3.5 text-[#1E4775] shadow-sm ring-1 ring-white/35 backdrop-blur-sm";
+  `inline-flex h-9 shrink-0 items-center gap-2 rounded-md pl-2 pr-3.5 text-[#1E4775] ${HARBOR_FROSTED_PILL}`;

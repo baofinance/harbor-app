@@ -189,7 +189,7 @@ const YIELD_SEGMENT_TRACK_CLASS =
   "flex w-full max-w-[280px] rounded-lg bg-[#e2e8f0] p-0.5";
 /** Single backing collateral: one rail label only (no toggle). */
 const YIELD_SINGLE_RAIL_CLASS =
-  "w-full rounded-md bg-white py-1 text-center text-xs font-semibold text-[#1E4775] shadow-sm";
+  "w-full rounded-md bg-white/90 backdrop-blur-sm py-1 text-center text-xs font-semibold text-[#1E4775] shadow-sm";
 
 /** Coming-soon haUSD: single ETH rail (no fake second segment). */
 function YieldRailSingleEthStatic() {
@@ -357,7 +357,7 @@ function AnchorBasicMarketCard({
                 aria-selected={active}
                 className={`flex-1 rounded-md py-1 text-center text-xs font-semibold transition ${
                   active
-                    ? "bg-white text-[#1E4775] shadow-sm"
+                    ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
                     : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
                 }`}
                 onClick={() => setSelectedMarketId(m.marketId)}

@@ -184,7 +184,7 @@ export default function FlowPage() {
           {/* Filters, Total Feeds, and Votes Box - All on one line */}
           <div className="grid grid-cols-1 md:grid-cols-[4fr_1fr_1fr] gap-2 mb-2">
             {/* Filters Section */}
-            <div className="bg-white py-2.5 px-2.5 border border-[#1E4775]/10">
+            <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md py-2.5 px-2.5 border border-[#1E4775]/10">
               <div className="grid grid-cols-1 md:grid-cols-5 gap-1.5 mb-2">
                 {/* Chain Dropdown */}
                 <div>
@@ -234,7 +234,7 @@ export default function FlowPage() {
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "available")}
-                    className="w-full px-2.5 py-1 text-xs border border-[#1E4775]/20 text-[#1E4775] bg-white focus:outline-none focus:ring-1 focus:ring-[#1E4775]/20"
+                    className="w-full px-2.5 py-1 text-xs border border-[#1E4775]/20 text-[#1E4775] bg-white/85 backdrop-blur-sm focus:outline-none focus:ring-1 focus:ring-[#1E4775]/20"
                   >
                     <option value="all">All</option>
                     <option value="active">Active</option>
@@ -303,7 +303,7 @@ export default function FlowPage() {
             </div>
 
             {/* Votes Box */}
-            <div className="bg-white border border-[#1E4775]/10 py-3 px-3 flex flex-col items-center justify-center">
+            <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md py-3 px-3 flex flex-col items-center justify-center">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-medium text-[#1E4775] text-sm uppercase tracking-wider text-center">
                   Your Votes

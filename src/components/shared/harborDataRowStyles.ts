@@ -1,20 +1,23 @@
 /**
  * Shared white data-table chrome for index pages (Earn, Sail, Genesis explorer, Dashboard).
  *
- * Use `/15` borders + shadow-sm for table rows and column headers.
+ * Use frosted surfaces on dark page backgrounds.
  * Use `/10` only for inner dividers inside expanded row panels.
  */
 
-/** Interactive row hover — matches Anchor / Genesis explorer. */
-export const HARBOR_DATA_ROW_HOVER_CLASS =
-  "transition-colors md:hover:bg-[rgb(var(--surface-selected-rgb))]";
+import {
+  HARBOR_FROSTED_INDEX_SURFACE,
+  HARBOR_FROSTED_SURFACE_HOVER,
+} from "@/components/shared/harborFrostedSurfaceStyles";
 
-/** White table row shell on dark page backgrounds. */
-export const HARBOR_DATA_ROW_SHELL_CLASS = `rounded-md border border-harbor-blue/15 bg-white shadow-sm overflow-hidden ${HARBOR_DATA_ROW_HOVER_CLASS}`;
+/** Interactive row hover — frosted lift on dark index pages. */
+export const HARBOR_DATA_ROW_HOVER_CLASS = HARBOR_FROSTED_SURFACE_HOVER;
+
+/** Frosted table row shell on dark page backgrounds. */
+export const HARBOR_DATA_ROW_SHELL_CLASS = `rounded-md overflow-hidden ${HARBOR_FROSTED_INDEX_SURFACE} ${HARBOR_DATA_ROW_HOVER_CLASS}`;
 
 /** Column header band above index-style tables. */
-export const HARBOR_TABLE_HEADER_WRAP_CLASS =
-  "bg-white py-1.5 px-2 overflow-x-auto mb-0 rounded-md border border-harbor-blue/15 shadow-sm";
+export const HARBOR_TABLE_HEADER_WRAP_CLASS = `${HARBOR_FROSTED_INDEX_SURFACE} py-1.5 px-2 overflow-x-auto mb-0 rounded-md`;
 
 /** Column label typography in table headers. */
 export const HARBOR_TABLE_HEADER_LABEL_CLASS =

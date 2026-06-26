@@ -2180,11 +2180,11 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
 
  {/* Action Buttons - no line above; Anchor-style mt-4 spacing */}
  {!isProcessing && (
- <div className="flex gap-3 mt-4">
- {(step ==="error" || step ==="input") && (
+ <div className={embedded ? "mt-4" : "flex gap-3 mt-4"}>
+ {(step ==="error" || step ==="input") && !embedded && (
  <button
  onClick={step ==="error" ? handleCancel : handleClose}
- className="flex-1 py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
+ className="flex-1 py-3 px-4 bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
  >
  Cancel
  </button>
@@ -2204,7 +2204,15 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
          parsedAmount &&
          parsedAmount > currentBalance)
  )}
- className="flex-1 py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+ className={
+   embedded
+     ? `w-full rounded-lg py-3 px-4 font-semibold transition-colors disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 ${
+         activeTab === "mint"
+           ? "bg-[#4A9784] text-white hover:bg-[#3f8576]"
+           : "bg-[#1E4775] text-white hover:bg-[#17395F]"
+       }`
+     : "flex-1 py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+ }
  >
  {step ==="error" ? "Try Again" : activeTab ==="mint" ? "Mint" : "Redeem"}
  </button>

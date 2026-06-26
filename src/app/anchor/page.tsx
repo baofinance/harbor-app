@@ -1521,7 +1521,7 @@ export default function AnchorPage() {
         {/* Early withdraw confirmation */}
         {earlyWithdrawModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-            <div className="bg-white shadow-xl max-w-md w-full p-4 rounded-lg border border-[#1E4775]/10">
+            <div className="bg-white/88 backdrop-blur-lg backdrop-saturate-150 shadow-xl max-w-md w-full p-4 rounded-lg border border-[#1E4775]/10">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-[#1E4775] font-semibold">
                   Withdraw early?
@@ -1587,7 +1587,7 @@ export default function AnchorPage() {
 
         {withdrawAmountModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-            <div className="bg-white shadow-2xl max-w-lg w-full p-6 space-y-4">
+            <div className="bg-white/88 backdrop-blur-lg backdrop-saturate-150 border border-[#1E4775]/20 shadow-2xl shadow-black/10 max-w-lg w-full p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-[#1E4775] font-semibold text-lg">
                   {withdrawAmountModal.useEarly
@@ -1627,7 +1627,7 @@ export default function AnchorPage() {
                     }}
                     type="text"
                     placeholder="0.0"
-                    className={`w-full h-14 px-4 pr-24 bg-white text-[#1E4775] border-2 ${
+                    className={`w-full h-14 px-4 pr-24 bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 ${
                       withdrawAmountError
                         ? "border-red-500"
                         : "border-[#1E4775]/30"
@@ -1736,7 +1736,7 @@ export default function AnchorPage() {
             onClick={() => setContractAddressesModal(null)}
           >
             <div
-              className="bg-white p-6 max-w-md w-full mx-4 rounded-lg border border-[#1E4775]/10 shadow-xl"
+              className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-6 max-w-md w-full mx-4 rounded-lg border border-[#1E4775]/10 shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">

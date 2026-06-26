@@ -94,7 +94,7 @@ export function GenesisMaidenVoyageStageStrip({
               <span
                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold tabular-nums sm:h-6 sm:w-6 sm:text-[11px] ${
                   isActive
-                    ? "bg-white text-[#0a1628]"
+                    ? "bg-white/90 backdrop-blur-sm text-[#0a1628] shadow-sm"
                     : "bg-black text-white/75 ring-1 ring-white/15"
                 }`}
               >

@@ -18,6 +18,9 @@ export const SAIL_ADVANCED_FROSTED_CARD = `rounded-xl ${MV_GLASS_INSET_LIGHT}`;
 export const SAIL_ADVANCED_PANEL = `rounded-xl ${MV_GLASS_INSET_DARK}`;
 export const SAIL_ADVANCED_SHELL = MV_CARD_SHELL;
 export const SAIL_ADVANCED_LABEL = MV_SECTION_LABEL;
+/** Small zone label above header stat groups (Your wallet, This market, etc.). */
+export const SAIL_ADVANCED_SECTION_LABEL =
+  "mb-1 text-[10px] font-semibold uppercase tracking-wider text-white/45";
 export const SAIL_ADVANCED_BODY = MV_BODY_TEXT;
 export const SAIL_ADVANCED_CAPTION = MV_CAPTION_TEXT;
 export const SAIL_ADVANCED_META = MV_META_TEXT;

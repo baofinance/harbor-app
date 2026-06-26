@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { HARBOR_FROSTED_PANEL_FILL } from "@/components/shared/harborFrostedSurfaceStyles";
 import { getLogoPath } from "@/lib/logos";
 
 export interface ProtocolBannerProps {
@@ -58,7 +59,7 @@ export function ProtocolBanner({
     secondaryTokenIcon ?? getLogoPath(secondaryTokenSymbol ?? "");
 
   return (
-    <div className="flex w-full items-center justify-between gap-2 bg-white px-3 py-2 text-[#1E4775] sm:px-3.5 sm:py-2.5 sm:gap-2">
+    <div className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-[#1E4775] sm:px-3.5 sm:py-2.5 sm:gap-2 ${HARBOR_FROSTED_PANEL_FILL}`}>
       <div className="shrink-0 text-base font-bold leading-snug tracking-tight text-[#153B63] sm:text-lg">
         {protocolName}
       </div>

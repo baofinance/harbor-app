@@ -454,13 +454,13 @@ function MarketCard({
     const barChartMaxPercent = Math.max(...barchartPercentData.map((d) => d.value));
 
     return (
-        <div className="rounded-md border border-[#1E4775]/15 bg-white shadow-sm overflow-hidden">
+        <div className="rounded-md overflow-hidden bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-harbor-blue/15 shadow-sm ring-1 ring-[#1E4775]/6">
             {/* Market Bar */}
             <div
                 className={`cursor-pointer transition-colors ${
                     isExpanded
-                        ? "bg-[rgb(var(--surface-selected-rgb))]"
-                        : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
+                        ? "bg-white/90 backdrop-blur-md backdrop-saturate-150"
+                        : "bg-white/80 backdrop-blur-md backdrop-saturate-150 hover:bg-white/88 transition-colors"
                 }`}
                 onClick={() => setIsExpanded((v) => !v)}
             >
@@ -682,7 +682,7 @@ function MarketCard({
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                         {/* Token Prices & Supply */}
-                        <div className="bg-white p-2.5 space-y-2 lg:row-span-2 rounded-xl border border-[#1E4775]/10">
+                        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-2.5 space-y-2 lg:row-span-2">
                             <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
                                 Prices & Supply
                             </h4>
@@ -797,7 +797,7 @@ function MarketCard({
                         </div>
 
                         {/* Stability Pools */}
-                        <div className="bg-white p-2.5 space-y-2 lg:col-span-2 rounded-xl border border-[#1E4775]/10">
+                        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-2.5 space-y-2 lg:col-span-2">
                             <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
                                 Stability Pools
                             </h4>
@@ -902,7 +902,7 @@ function MarketCard({
                         </div>
 
                         {/* Yield (Anchor Supply) */}
-                        <div className="bg-white p-2.5 space-y-2 lg:col-span-2 rounded-xl border border-[#1E4775]/10">
+                        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-2.5 space-y-2 lg:col-span-2">
                             <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
                                 Anchor Supply
                             </h4>
@@ -1146,7 +1146,7 @@ function MarketCard({
                     </div>
 
                     {/* Contract Addresses */}
-                    <div className="mt-3 bg-white p-3 rounded-xl border border-[#1E4775]/10">
+                    <div className="mt-3 bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3">
                         <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
                             Contract Addresses
                         </h4>
@@ -1237,7 +1237,7 @@ function BandTable({
     currentCR: bigint;
 }) {
     return (
-        <div className="bg-white p-3 rounded-xl border border-[#1E4775]/10">
+        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3">
             <h5 className="text-[#1E4775] font-semibold text-[10px] uppercase tracking-wider mb-1.5">
                 {title}
             </h5>
@@ -1310,7 +1310,7 @@ function FeeTransparencyBands({
     }, [configData]);
 
     return (
-        <div className="bg-white p-3 rounded-xl border border-[#1E4775]/10">
+        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3">
             <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
                 Fees & Incentives
             </h4>
@@ -1772,7 +1772,7 @@ export default function TransparencyPage() {
                                     )}
                                 {activeDisplayedMarkets.length > 0 && (
                                     <div
-                                        className={`hidden lg:block bg-white py-1.5 px-2 mb-0 overflow-x-auto rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
+                                        className={`hidden lg:block bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-harbor-blue/15 shadow-sm ring-1 ring-[#1E4775]/6 py-1.5 px-2 mb-0 overflow-x-auto rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
                                     >
                                         <div className="grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
                                             <div className="text-center">Market</div>

@@ -285,7 +285,7 @@ export function AnchorMarketExpandedView({
     <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20">
       {/* Market Health Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
-        <div className="bg-white p-3 h-full flex flex-col">
+        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3 h-full flex flex-col">
           <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
             Collateral Ratio
           </h3>
@@ -294,7 +294,7 @@ export function AnchorMarketExpandedView({
           </p>
         </div>
 
-        <div className="bg-white p-3 h-full flex flex-col">
+        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3 h-full flex flex-col">
           <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
             Min Collateral Ratio
           </h3>
@@ -306,7 +306,7 @@ export function AnchorMarketExpandedView({
           </p>
         </div>
 
-        <div className="bg-white p-3 h-full flex flex-col">
+        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3 h-full flex flex-col">
           <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
             Total Debt
           </h3>
@@ -316,7 +316,7 @@ export function AnchorMarketExpandedView({
           </p>
         </div>
 
-        <div className="bg-white p-3 h-full flex flex-col">
+        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3 h-full flex flex-col">
           <h3 className="text-[#1E4775] font-semibold mb-2 text-xs flex items-center gap-1">
             Volatility Protection
             <SimpleTooltip
@@ -359,7 +359,7 @@ export function AnchorMarketExpandedView({
 
       {/* Token Price & Supply */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
-        <div className="bg-white p-3 h-full flex flex-col">
+        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3 h-full flex flex-col">
           <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
             Pegged Token Price
           </h3>
@@ -371,7 +371,7 @@ export function AnchorMarketExpandedView({
           </p>
         </div>
 
-        <div className="bg-white p-3 h-full flex flex-col">
+        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3 h-full flex flex-col">
           <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
             Total Supply
           </h3>
@@ -381,7 +381,7 @@ export function AnchorMarketExpandedView({
           </p>
         </div>
 
-        <div className="bg-white p-3 h-full flex flex-col">
+        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3 h-full flex flex-col">
           <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
             Collateral Value
           </h3>
@@ -396,7 +396,7 @@ export function AnchorMarketExpandedView({
 
       {/* Market Value Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
-        <div className="bg-white p-3 h-full flex flex-col">
+        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3 h-full flex flex-col">
           <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
             Collateral Value (USD)
           </h3>
@@ -415,7 +415,7 @@ export function AnchorMarketExpandedView({
           </p>
         </div>
 
-        <div className="bg-white p-3 h-full flex flex-col">
+        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3 h-full flex flex-col">
           <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
             Pegged Tokens Value (USD)
           </h3>
@@ -438,7 +438,7 @@ export function AnchorMarketExpandedView({
       {/* Projected APR Information */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
         {market.addresses?.stabilityPoolCollateral && (
-          <div className="bg-white p-3">
+          <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3">
             <h3 className="text-[#1E4775] font-semibold mb-2 text-xs flex items-center gap-1">
               Collateral Pool APR
               <SimpleTooltip
@@ -478,7 +478,7 @@ export function AnchorMarketExpandedView({
         )}
 
         {market.addresses?.stabilityPoolLeveraged && (
-          <div className="bg-white p-3">
+          <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3">
             <h3 className="text-[#1E4775] font-semibold mb-2 text-xs flex items-center gap-1">
               Sail Pool APR
               <SimpleTooltip
@@ -518,7 +518,7 @@ export function AnchorMarketExpandedView({
 
       {/* Your Yield Estimates */}
       {totalDepositUSD > 0 && (
-        <div className="bg-white p-3 mb-2">
+        <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3 mb-2">
           <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
             Your Estimated Yield
           </h3>
@@ -555,7 +555,7 @@ export function AnchorMarketExpandedView({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
         {/* Collateral Pool Rewards */}
         {market.addresses?.stabilityPoolCollateral && (
-          <div className="bg-white p-3">
+          <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3">
             <h3 className="text-[#1E4775] font-semibold mb-2 text-sm">
               Collateral Pool Rewards
             </h3>
@@ -609,7 +609,7 @@ export function AnchorMarketExpandedView({
                         isClaiming ||
                         isCompounding
                       }
-                      className="flex-1 px-4 py-2 text-sm font-medium bg-white text-[#1E4775] border border-[#1E4775] hover:bg-[#1E4775]/5 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors rounded-full"
+                      className="flex-1 px-4 py-2 text-sm font-medium bg-white/85 backdrop-blur-sm text-[#1E4775] border border-[#1E4775] hover:bg-[#1E4775]/5 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors rounded-full"
                     >
                       Claim
                     </button>
@@ -671,7 +671,7 @@ export function AnchorMarketExpandedView({
 
         {/* Sail Pool Rewards */}
         {market.addresses?.stabilityPoolLeveraged && (
-          <div className="bg-white p-3">
+          <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3">
             <h3 className="text-[#1E4775] font-semibold mb-2 text-sm">
               Sail Pool Rewards
             </h3>
@@ -725,7 +725,7 @@ export function AnchorMarketExpandedView({
                         isClaiming ||
                         isCompounding
                       }
-                      className="flex-1 px-4 py-2 text-sm font-medium bg-white text-[#1E4775] border border-[#1E4775] hover:bg-[#1E4775]/5 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors rounded-full"
+                      className="flex-1 px-4 py-2 text-sm font-medium bg-white/85 backdrop-blur-sm text-[#1E4775] border border-[#1E4775] hover:bg-[#1E4775]/5 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors rounded-full"
                     >
                       Claim
                     </button>
@@ -782,7 +782,7 @@ export function AnchorMarketExpandedView({
       </div>
 
       {/* Your Position Section */}
-      <div className="bg-white p-3 mt-0">
+      <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3 mt-0">
         <h3 className="text-[#1E4775] font-semibold mb-2 text-sm">
           Your Position
         </h3>
@@ -841,7 +841,7 @@ export function AnchorMarketExpandedView({
       </div>
 
       {/* Contract Information */}
-      <div className="bg-white p-3 mt-0">
+      <div className="bg-white/80 backdrop-blur-md backdrop-saturate-150 border border-[#1E4775]/12 shadow-sm rounded-md p-3 mt-0">
         <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
           Contract Addresses
         </h3>

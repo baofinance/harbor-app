@@ -2400,7 +2400,7 @@ const successFmt = formatTokenAmount(
         <button
           onClick={handleClose}
           disabled={step === "approving" || step === "depositing"}
-          className="flex-1 rounded-md py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 rounded-md py-3 px-4 bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancel
         </button>
