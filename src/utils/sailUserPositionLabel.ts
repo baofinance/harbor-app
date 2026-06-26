@@ -1,12 +1,16 @@
 import type { DefinedMarket } from "@/config/markets";
 import { formatCompactUSD } from "@/utils/anchor";
-import { formatToken } from "@/utils/formatters";
+import { formatEtherNumber } from "@/utils/formatters";
 
 export type SailUserPositionInfo = {
   hasPosition: boolean;
   valueUsd?: number;
   label?: string;
 };
+
+function isDisplayableUsd(value: number | undefined): value is number {
+  return value !== undefined && Number.isFinite(value) && value > 0;
+}
 
 export function buildSailUserPositionLabel(
   market: DefinedMarket,
@@ -18,16 +22,25 @@ export function buildSailUserPositionLabel(
   }
 
   const sym = market.leveragedToken?.symbol ?? "Sail";
-  const amount = Number(formatToken(userDeposit, 18, 4));
+  const amount = formatEtherNumber(userDeposit);
   const valueUsd =
-    leveragedPriceUSD && leveragedPriceUSD > 0
+    leveragedPriceUSD != null &&
+    Number.isFinite(leveragedPriceUSD) &&
+    leveragedPriceUSD > 0
       ? amount * leveragedPriceUSD
       : undefined;
 
-  const label =
-    valueUsd != null && valueUsd > 0
-      ? `Your position · ${formatCompactUSD(valueUsd)}`
-      : `Your position · ${amount} ${sym}`;
+  const label = isDisplayableUsd(valueUsd)
+    ? `Your position · ${formatCompactUSD(valueUsd)}`
+    : Number.isFinite(amount) && amount > 0
+      ? `Your position · ${amount.toLocaleString(undefined, {
+          maximumFractionDigits: 4,
+        })} ${sym}`
+      : "Your position";
 
-  return { hasPosition: true, valueUsd, label };
+  return {
+    hasPosition: true,
+    valueUsd: isDisplayableUsd(valueUsd) ? valueUsd : undefined,
+    label,
+  };
 }

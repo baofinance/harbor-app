@@ -1,4 +1,5 @@
 import type { DefinedMarket } from "@/config/markets";
+import { formatSailMarketDirectionTitle } from "@/utils/sailMarketDirectionLabels";
 import {
   bandsFromConfig,
   getCurrentFee,
@@ -257,6 +258,21 @@ export function formatSailMarketDescription(
   const base = `Composable short ${pegTarget} against ${underlying} with variable, rebalancing leverage and no funding fees.`;
   const rebalanceLabel = metrics?.rebalanceThresholdLabel;
   return rebalanceLabel ? `${base} Rebalances at ${rebalanceLabel}.` : base;
+}
+
+/** Compact header line — full copy via `formatSailMarketDescription`. */
+export function formatSailMarketDescriptionShort(
+  market: DefinedMarket,
+  metrics: SailMarketDetailMetrics | undefined,
+): string {
+  const title = formatSailMarketDirectionTitle(market);
+  const rebalanceLabel = metrics?.rebalanceThresholdLabel;
+  const parts = [
+    title,
+    rebalanceLabel ? `Rebalances at ${rebalanceLabel}` : null,
+    "No funding fees",
+  ].filter((part): part is string => Boolean(part));
+  return parts.join(" · ");
 }
 
 /** Pick highest-TVL market; tie-break by stable sort on marketId. */

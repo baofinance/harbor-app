@@ -6,18 +6,21 @@ import { SailMarketPriceChart } from "@/components/sail/SailMarketPriceChart";
 type SailMarketChartColumnProps = {
   marketId: string;
   market: DefinedMarket;
+  tokenPriceUSD?: number;
 };
 
 export function SailMarketChartColumn({
   marketId,
   market,
+  tokenPriceUSD,
 }: SailMarketChartColumnProps) {
   return (
     <SailMarketPriceChart
       marketId={marketId}
       market={market}
       size="large"
-      hideTitle
+      showPriceHeader
+      tokenPriceUSD={tokenPriceUSD}
       className="h-full"
     />
   );

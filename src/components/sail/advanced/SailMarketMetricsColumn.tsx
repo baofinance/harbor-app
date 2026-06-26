@@ -21,11 +21,41 @@ type SailMarketMetricsColumnProps = {
   metrics: SailMarketDetailMetrics | undefined;
 };
 
+function isEmptyMetric(value: ReactNode): boolean {
+  return value === "—" || value === "-" || value == null || value === "";
+}
+
 function MetricRow({ label, value }: { label: string; value: ReactNode }) {
+  if (isEmptyMetric(value)) return null;
+
   return (
     <div className="flex items-start justify-between gap-3 border-b border-white/[0.06] py-2 last:border-b-0">
       <span className={SAIL_ADVANCED_CAPTION}>{label}</span>
       <span className="text-right text-sm font-mono font-semibold text-white">{value}</span>
+    </div>
+  );
+}
+
+function MetricSection({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: Array<{ label: string; value: ReactNode }>;
+}) {
+  const visibleRows = rows.filter((row) => !isEmptyMetric(row.value));
+  if (visibleRows.length === 0) return null;
+
+  return (
+    <div className="mb-3 last:mb-0">
+      <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+        {title}
+      </h3>
+      <div>
+        {visibleRows.map((row) => (
+          <MetricRow key={row.label} label={row.label} value={row.value} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -35,53 +65,68 @@ export function SailMarketMetricsColumn({
   metrics,
 }: SailMarketMetricsColumnProps) {
   const pegTarget = metrics?.pegTarget || market.pegTarget || "USD";
+  const tokenSymbol = getSailMarketTokenSymbol(market);
+  const tvlUsd =
+    metrics?.tvlUSD !== undefined ? formatUSD(metrics.tvlUSD) : undefined;
+  const tokenPrice =
+    metrics?.tokenPriceUSD !== undefined
+      ? formatUSD(metrics.tokenPriceUSD)
+      : undefined;
+  const leverage = formatLeverage(metrics?.leverageRatio);
+  const collateralRatio = formatRatio(metrics?.collateralRatio);
+  const rebalanceAt = metrics?.rebalanceThresholdLabel;
+  const collateral = metrics?.collateralSymbol;
 
   return (
     <aside className={`${SAIL_ADVANCED_FROSTED_CARD} p-3 sm:p-4`}>
-      <h2 className={`mb-2 ${SAIL_ADVANCED_LABEL}`}>Market metrics</h2>
+      <h2 className={`mb-3 ${SAIL_ADVANCED_LABEL}`}>Market metrics</h2>
 
-      <div>
-        <MetricRow label="Sail token" value={getSailMarketTokenSymbol(market)} />
-        <MetricRow label="TVL (USD)" value={metrics?.tvlUSD !== undefined ? formatUSD(metrics.tvlUSD) : "—"} />
-        <MetricRow label="TVL" value={metrics?.tvlCollateralDisplay ?? "—"} />
-        <MetricRow label="24h Volume" value="—" />
-        <MetricRow label="Leverage" value={formatLeverage(metrics?.leverageRatio)} />
-        <MetricRow label="Collateral ratio" value={formatRatio(metrics?.collateralRatio)} />
-        <MetricRow
-          label="Token price"
-          value={
-            metrics?.tokenPriceUSD !== undefined
-              ? formatUSD(metrics.tokenPriceUSD)
-              : "—"
-          }
-        />
-        <MetricRow
-          label="Mint fee"
-          value={
-            <SailFeeRatioCell
-              ratio={metrics?.mintFeeRatio}
-              isMintSail
-              activeBand={metrics?.activeMintBand}
-            />
-          }
-        />
-        <MetricRow
-          label="Redeem fee"
-          value={
-            <SailFeeRatioCell
-              ratio={metrics?.redeemFeeRatio}
-              isMintSail={false}
-              activeBand={metrics?.activeRedeemBand}
-            />
-          }
-        />
-        <MetricRow
-          label="Rebalance at"
-          value={metrics?.rebalanceThresholdLabel ?? "—"}
-        />
-        <MetricRow label="Collateral" value={metrics?.collateralSymbol ?? "—"} />
-        <MetricRow label="Peg target" value={pegTarget} />
-      </div>
+      <MetricSection
+        title="Market"
+        rows={[
+          { label: "Sail token", value: tokenSymbol },
+          { label: "TVL (USD)", value: tvlUsd },
+          { label: "TVL", value: metrics?.tvlCollateralDisplay },
+          { label: "Token price", value: tokenPrice },
+          { label: "Collateral", value: collateral },
+          { label: "Peg target", value: pegTarget },
+        ]}
+      />
+
+      <MetricSection
+        title="Risk"
+        rows={[
+          { label: "Leverage", value: leverage },
+          { label: "Collateral ratio", value: collateralRatio },
+          { label: "Rebalance at", value: rebalanceAt },
+        ]}
+      />
+
+      <MetricSection
+        title="Fees"
+        rows={[
+          {
+            label: "Mint fee",
+            value: (
+              <SailFeeRatioCell
+                ratio={metrics?.mintFeeRatio}
+                isMintSail
+                activeBand={metrics?.activeMintBand}
+              />
+            ),
+          },
+          {
+            label: "Redeem fee",
+            value: (
+              <SailFeeRatioCell
+                ratio={metrics?.redeemFeeRatio}
+                isMintSail={false}
+                activeBand={metrics?.activeRedeemBand}
+              />
+            ),
+          },
+        ]}
+      />
     </aside>
   );
 }

@@ -58,6 +58,7 @@ export function formatAPR(apr: number | undefined, hasRewardsNoTVL?: boolean): s
  * Format USD values compactly (e.g., $1.2k, $3.5m, $1.2b)
  */
 export function formatCompactUSD(value: number): string {
+  if (!Number.isFinite(value)) return "—";
   if (value === 0) return "$0";
   if (value < 0) return `-${formatCompactUSD(-value)}`;
 

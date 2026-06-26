@@ -3,6 +3,7 @@
 import type { DefinedMarket } from "@/config/markets";
 import {
   formatSailMarketDescription,
+  formatSailMarketDescriptionShort,
   type SailMarketDetailMetrics,
 } from "@/utils/sailMarketMetrics";
 import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
@@ -39,7 +40,8 @@ export function SailMarketHeader({
 }: SailMarketHeaderProps) {
   if (!selectedMarket) return null;
 
-  const marketDescription = formatSailMarketDescription(selectedMarket, metrics);
+  const marketDescription = formatSailMarketDescriptionShort(selectedMarket, metrics);
+  const marketDescriptionFull = formatSailMarketDescription(selectedMarket, metrics);
 
   return (
     <div className="relative z-40 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
@@ -58,7 +60,10 @@ export function SailMarketHeader({
             className="min-w-0 flex-1"
           />
         </div>
-        <p className={`mt-1.5 ${SAIL_ADVANCED_BODY} text-white/70`}>
+        <p
+          className={`mt-1.5 ${SAIL_ADVANCED_BODY} text-white/70`}
+          title={marketDescriptionFull}
+        >
           {marketDescription}
         </p>
       </div>

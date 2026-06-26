@@ -131,16 +131,19 @@ export function SailAdvancedLayout({
           />
         </div>
         <div className="order-1 flex flex-col gap-3 lg:order-none">
-          <SailMarketPositionBar
-            market={selectedMarket}
-            userDeposit={userDeposit}
-            currentValueUSD={currentValueUSD}
-            leveragedTokenPriceUSD={leveragedTokenPriceUSD}
-            isConnected={isConnected}
-          />
+          {userDeposit !== undefined && userDeposit > 0n ? (
+            <SailMarketPositionBar
+              market={selectedMarket}
+              userDeposit={userDeposit}
+              currentValueUSD={currentValueUSD}
+              leveragedTokenPriceUSD={leveragedTokenPriceUSD}
+              isConnected={isConnected}
+            />
+          ) : null}
           <SailMarketChartColumn
             marketId={selectedMarketId}
             market={selectedMarket}
+            tokenPriceUSD={selectedMetrics?.tokenPriceUSD}
           />
         </div>
         <div className="order-2 lg:order-none">
