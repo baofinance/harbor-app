@@ -13,7 +13,7 @@ import { getSailMarketTokenSymbol } from "@/utils/sailMarketDirectionLabels";
 import {
   SAIL_ADVANCED_CAPTION,
   SAIL_ADVANCED_FROSTED_CARD,
-  SAIL_ADVANCED_LABEL,
+  SAIL_ADVANCED_SECTION_LABEL,
 } from "./sailAdvancedStyles";
 
 type SailMarketMetricsColumnProps = {
@@ -36,7 +36,7 @@ function MetricRow({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-function MetricSection({
+function MetricSectionCard({
   title,
   rows,
 }: {
@@ -47,8 +47,8 @@ function MetricSection({
   if (visibleRows.length === 0) return null;
 
   return (
-    <div className="mb-3 last:mb-0">
-      <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+    <div className={`${SAIL_ADVANCED_FROSTED_CARD} p-3 sm:p-3.5`}>
+      <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
         {title}
       </h3>
       <div>
@@ -78,10 +78,10 @@ export function SailMarketMetricsColumn({
   const collateral = metrics?.collateralSymbol;
 
   return (
-    <aside className={`${SAIL_ADVANCED_FROSTED_CARD} p-3 sm:p-4`}>
-      <h2 className={`mb-3 ${SAIL_ADVANCED_LABEL}`}>Market metrics</h2>
+    <aside className="flex flex-col gap-3">
+      <p className={SAIL_ADVANCED_SECTION_LABEL}>Market metrics</p>
 
-      <MetricSection
+      <MetricSectionCard
         title="Market"
         rows={[
           { label: "Sail token", value: tokenSymbol },
@@ -93,7 +93,7 @@ export function SailMarketMetricsColumn({
         ]}
       />
 
-      <MetricSection
+      <MetricSectionCard
         title="Risk"
         rows={[
           { label: "Leverage", value: leverage },
@@ -102,7 +102,7 @@ export function SailMarketMetricsColumn({
         ]}
       />
 
-      <MetricSection
+      <MetricSectionCard
         title="Fees"
         rows={[
           {

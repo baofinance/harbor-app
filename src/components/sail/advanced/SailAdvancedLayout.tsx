@@ -74,6 +74,26 @@ export function SailAdvancedLayout({
   fxSAVEPrice,
   walletStats,
 }: SailAdvancedLayoutProps) {
+  const [tradeTab, setTradeTab] = useState<"mint" | "redeem">("mint");
+
+  useEffect(() => {
+    setTradeTab("mint");
+  }, [selectedMarketId]);
+
+  const scrollToTradePanel = useCallback(() => {
+    document
+      .getElementById(SAIL_TRADE_PANEL_ID)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const openTradeTab = useCallback(
+    (tab: "mint" | "redeem") => {
+      setTradeTab(tab);
+      requestAnimationFrame(() => scrollToTradePanel());
+    },
+    [scrollToTradePanel],
+  );
+
   const dropdownOptions = useMemo(
     () =>
       dropdownMarkets.map(([marketId, market]) => {
@@ -117,25 +137,6 @@ export function SailAdvancedLayout({
   }
 
   const hasMarketPosition = userDeposit !== undefined && userDeposit > 0n;
-  const [tradeTab, setTradeTab] = useState<"mint" | "redeem">("mint");
-
-  useEffect(() => {
-    setTradeTab("mint");
-  }, [selectedMarketId]);
-
-  const scrollToTradePanel = useCallback(() => {
-    document
-      .getElementById(SAIL_TRADE_PANEL_ID)
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
-
-  const openTradeTab = useCallback(
-    (tab: "mint" | "redeem") => {
-      setTradeTab(tab);
-      requestAnimationFrame(() => scrollToTradePanel());
-    },
-    [scrollToTradePanel],
-  );
 
   return (
     <div className="space-y-4 pb-[calc(4.25rem+env(safe-area-inset-bottom))] lg:pb-0">
