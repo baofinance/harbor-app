@@ -1,7 +1,6 @@
 "use client";
 
-import { DashboardMetricChip } from "@/components/dashboard/DashboardMetricChip";
-import { DashboardMetricStrip } from "@/components/dashboard/DashboardSummaryStrip";
+import { MV_GLASS_INSET_DARK } from "@/components/genesis/maidenVoyageLayoutStyles";
 import { formatUSD } from "@/utils/formatters";
 
 export type SailWalletStatsStripProps = {
@@ -20,6 +19,17 @@ export type SailWalletStatsStripProps = {
   className?: string;
 };
 
+const SAIL_WALLET_STATS_SHELL = `flex shrink-0 items-stretch overflow-x-auto rounded-lg border ${MV_GLASS_INSET_DARK}`;
+
+const SAIL_WALLET_STATS_CELL =
+  "flex min-w-0 flex-col justify-center px-2.5 py-1.5 text-center sm:px-3";
+
+const SAIL_WALLET_STATS_LABEL =
+  "whitespace-nowrap text-[10px] font-medium uppercase tracking-wide text-white/55";
+
+const SAIL_WALLET_STATS_VALUE =
+  "mt-0.5 truncate font-mono text-xs font-semibold tabular-nums text-white/90";
+
 function formatSailMarks(value: number): string {
   if (value <= 0) return "0";
   return value.toLocaleString(undefined, {
@@ -32,12 +42,18 @@ function formatPnL(
   pnlFromMarkets: SailWalletStatsStripProps["pnlFromMarkets"],
   loading: boolean,
   isConnected: boolean,
-): { text: string; valueClassName?: string } {
-  if (!isConnected) return { text: "—" };
-  if (loading) return { text: "…" };
+): { text: string; valueClassName: string } {
+  if (!isConnected) {
+    return { text: "—", valueClassName: SAIL_WALLET_STATS_VALUE };
+  }
+  if (loading) {
+    return { text: "…", valueClassName: SAIL_WALLET_STATS_VALUE };
+  }
 
   const { totalPnL, pnlPercent } = pnlFromMarkets;
-  if (!totalPnL) return { text: "$0.00" };
+  if (!totalPnL) {
+    return { text: "$0.00", valueClassName: SAIL_WALLET_STATS_VALUE };
+  }
 
   const dollar = `$${totalPnL >= 0 ? "+" : ""}${totalPnL.toFixed(2)}`;
   const pctText =
@@ -49,14 +65,39 @@ function formatPnL(
     text: `${dollar}${pctText}`,
     valueClassName:
       totalPnL > 0
-        ? "font-mono text-sm tabular-nums font-semibold text-harbor-mint sm:text-base"
+        ? `${SAIL_WALLET_STATS_VALUE} text-harbor-mint`
         : totalPnL < 0
-          ? "font-mono text-sm tabular-nums font-semibold text-harbor-coral sm:text-base"
-          : undefined,
+          ? `${SAIL_WALLET_STATS_VALUE} text-harbor-coral`
+          : SAIL_WALLET_STATS_VALUE,
   };
 }
 
-/** Frosted wallet summary chips — matches dashboard stat strips. */
+function StatCell({
+  label,
+  value,
+  valueClassName = SAIL_WALLET_STATS_VALUE,
+  minWidthClass = "min-w-[4.25rem]",
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+  minWidthClass?: string;
+}) {
+  return (
+    <div className={`${SAIL_WALLET_STATS_CELL} ${minWidthClass}`}>
+      <span className={SAIL_WALLET_STATS_LABEL}>{label}</span>
+      <span className={valueClassName} title={value}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function StatDivider() {
+  return <div aria-hidden className="my-1.5 w-px shrink-0 bg-white/10" />;
+}
+
+/** Compact header wallet stats — single frosted row beside the market dropdown. */
 export function SailWalletStatsStrip({
   isConnected,
   sailUserStats,
@@ -72,38 +113,36 @@ export function SailWalletStatsStrip({
 
   return (
     <div
-      className={`flex min-w-0 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`.trim()}
+      className={`${SAIL_WALLET_STATS_SHELL} [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`.trim()}
       aria-label="Your Sail wallet"
     >
-      <DashboardMetricStrip inline>
-        <DashboardMetricChip
-          label="Sail value"
-          value={
-            isConnected
-              ? formatUSD(sailUserStats.totalPositionsUSD, { compact: false })
-              : dash
-          }
-          inline
-        />
-        <DashboardMetricChip
-          label="Positions"
-          value={
-            isConnected ? String(sailUserStats.positionsCount) : dash
-          }
-          inline
-        />
-        <DashboardMetricChip
-          label="PnL"
-          value={pnl.text}
-          valueClassName={pnl.valueClassName}
-          inline
-        />
-        <DashboardMetricChip
-          label="Sail marks"
-          value={marksValue}
-          inline
-        />
-      </DashboardMetricStrip>
+      <StatCell
+        label="Sail value"
+        value={
+          isConnected
+            ? formatUSD(sailUserStats.totalPositionsUSD, { compact: false })
+            : dash
+        }
+      />
+      <StatDivider />
+      <StatCell
+        label="Positions"
+        value={isConnected ? String(sailUserStats.positionsCount) : dash}
+        minWidthClass="min-w-[3.75rem]"
+      />
+      <StatDivider />
+      <StatCell
+        label="PnL"
+        value={pnl.text}
+        valueClassName={pnl.valueClassName}
+        minWidthClass="min-w-[5.5rem] sm:min-w-[6.25rem]"
+      />
+      <StatDivider />
+      <StatCell
+        label="Sail marks"
+        value={marksValue}
+        minWidthClass="min-w-[4.5rem]"
+      />
     </div>
   );
 }

@@ -36,7 +36,6 @@ export type SailAdvancedLayoutProps = {
   >;
   userDeposit?: bigint;
   currentValueUSD?: number;
-  sailMarksForMarket?: number;
   onManageSuccess?: () => void;
   leveragedTokenPriceUSD?: number;
   ethPrice?: number | null;
@@ -63,7 +62,6 @@ export function SailAdvancedLayout({
   tokenPricesByMarket,
   userDeposit,
   currentValueUSD,
-  sailMarksForMarket,
   onManageSuccess,
   leveragedTokenPriceUSD,
   ethPrice,
@@ -118,6 +116,7 @@ export function SailAdvancedLayout({
       <SailMarketHeader
         selectedMarketId={selectedMarketId}
         selectedMarket={selectedMarket}
+        metrics={selectedMetrics}
         dropdownOptions={dropdownOptions}
         onSelectMarket={onSelectMarket}
         walletStats={walletStats}
@@ -140,10 +139,8 @@ export function SailAdvancedLayout({
           <SailMarketActionPanel
             marketId={selectedMarketId}
             market={selectedMarket}
-            metrics={selectedMetrics}
             userDeposit={userDeposit}
             currentValueUSD={currentValueUSD}
-            sailMarksForMarket={sailMarksForMarket}
             onSuccess={onManageSuccess}
             leveragedTokenPriceUSD={leveragedTokenPriceUSD}
             ethPrice={ethPrice}

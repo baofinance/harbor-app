@@ -11,11 +11,22 @@ import {
 } from "@/utils/sailMarketDirectionLabels";
 import { getShortSide } from "@/utils/marketSideLabels";
 import { getSailSideLogoPath } from "@/utils/sailAssetLogos";
-import {
-  SAIL_ADVANCED_CAPTION,
-  SAIL_ADVANCED_META,
-  SAIL_ADVANCED_PANEL,
-} from "./sailAdvancedStyles";
+
+const SAIL_DROPDOWN_MENU_CLASS =
+  "absolute left-0 right-0 top-[calc(100%+0.35rem)] z-50 max-h-72 overflow-y-auto rounded-xl border border-[#1E4775]/12 bg-white p-1 shadow-xl";
+
+const SAIL_DROPDOWN_OPTION_ACTIVE_CLASS = "bg-[#1E4775]/10";
+const SAIL_DROPDOWN_OPTION_HOVER_CLASS = "hover:bg-[#1E4775]/[0.06]";
+
+const SAIL_DROPDOWN_TITLE_CLASS = "truncate text-sm font-semibold text-[#1E4775]";
+const SAIL_DROPDOWN_META_CLASS =
+  "truncate font-mono text-xs text-[#1E4775]/55";
+const SAIL_DROPDOWN_SIDE_LABEL_CLASS =
+  "text-[10px] font-medium uppercase tracking-wide text-[#1E4775]/45";
+const SAIL_DROPDOWN_POSITION_CLASS =
+  "text-xs font-medium tabular-nums text-[#4A9784]";
+const SAIL_DROPDOWN_TVL_CLASS =
+  "font-mono text-xs font-semibold tabular-nums text-[#1E4775]/80";
 
 export type SailMarketDropdownOption = {
   marketId: string;
@@ -66,22 +77,21 @@ export function SailMarketDropdown({
           <div className="truncate text-base font-semibold text-white sm:text-lg">
             {marketTitle}
           </div>
-          {selected.positionLabel ? (
+        </div>
+        {selected.positionLabel ? (
+          <div className="hidden shrink-0 text-right sm:block">
             <div className="truncate text-xs font-medium text-harbor-mint">
               {selected.positionLabel}
             </div>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
         <ChevronDownIcon
           className={`h-5 w-5 shrink-0 text-white/70 transition ${open ? "rotate-180" : ""}`}
         />
       </button>
 
       {open ? (
-        <ul
-          role="listbox"
-          className={`absolute left-0 right-0 top-[calc(100%+0.35rem)] z-50 max-h-72 overflow-y-auto ${SAIL_ADVANCED_PANEL} p-1 shadow-xl ring-1 ring-white/10`}
-        >
+        <ul role="listbox" className={SAIL_DROPDOWN_MENU_CLASS}>
           {options.map(({ marketId, market, tvlUSD, positionLabel }) => {
             const active = marketId === selectedMarketId;
             const optionTitle = formatSailMarketDirectionTitle(market);
@@ -97,7 +107,9 @@ export function SailMarketDropdown({
                     setOpen(false);
                   }}
                   className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition ${
-                    active ? "bg-white/[0.12]" : "hover:bg-white/[0.08]"
+                    active
+                      ? SAIL_DROPDOWN_OPTION_ACTIVE_CLASS
+                      : SAIL_DROPDOWN_OPTION_HOVER_CLASS
                   }`}
                 >
                   <Image
@@ -108,21 +120,27 @@ export function SailMarketDropdown({
                     className="rounded-full"
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-white">
-                      {optionTitle}
-                    </div>
-                    <div className={`truncate font-mono ${SAIL_ADVANCED_META}`}>
-                      {tokenSymbol}
-                    </div>
-                    {positionLabel ? (
-                      <div className="mt-0.5 truncate text-[11px] font-medium text-harbor-mint">
-                        {positionLabel}
-                      </div>
-                    ) : null}
+                    <div className={SAIL_DROPDOWN_TITLE_CLASS}>{optionTitle}</div>
+                    <div className={SAIL_DROPDOWN_META_CLASS}>{tokenSymbol}</div>
                   </div>
-                  <div className={`shrink-0 text-right ${SAIL_ADVANCED_CAPTION}`}>
-                    <div>{tvlUSD !== undefined ? formatUSD(tvlUSD) : "—"}</div>
-                    <div className={SAIL_ADVANCED_META}>TVL</div>
+                  <div className="min-w-[5.5rem] shrink-0 text-right">
+                    {positionLabel ? (
+                      <>
+                        <div className={SAIL_DROPDOWN_POSITION_CLASS}>
+                          {positionLabel.replace(/^Your position ·\s*/, "")}
+                        </div>
+                        <div className={SAIL_DROPDOWN_SIDE_LABEL_CLASS}>
+                          Your position
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className={SAIL_DROPDOWN_TVL_CLASS}>
+                          {tvlUSD !== undefined ? formatUSD(tvlUSD) : "—"}
+                        </div>
+                        <div className={SAIL_DROPDOWN_SIDE_LABEL_CLASS}>TVL</div>
+                      </>
+                    )}
                   </div>
                 </button>
               </li>

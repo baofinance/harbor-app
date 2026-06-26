@@ -247,6 +247,18 @@ export function buildSailMarketDetailMetrics(input: {
   };
 }
 
+/** One-line market explainer for Sail UI+ header. */
+export function formatSailMarketDescription(
+  market: DefinedMarket,
+  metrics: SailMarketDetailMetrics | undefined,
+): string {
+  const pegTarget = metrics?.pegTarget || market.pegTarget || "USD";
+  const underlying = metrics?.underlyingToken || "USD";
+  const base = `Composable short ${pegTarget} against ${underlying} with variable, rebalancing leverage and no funding fees.`;
+  const rebalanceLabel = metrics?.rebalanceThresholdLabel;
+  return rebalanceLabel ? `${base} Rebalances at ${rebalanceLabel}.` : base;
+}
+
 /** Pick highest-TVL market; tie-break by stable sort on marketId. */
 export function pickDefaultSailMarketId(
   markets: readonly [string, DefinedMarket][],

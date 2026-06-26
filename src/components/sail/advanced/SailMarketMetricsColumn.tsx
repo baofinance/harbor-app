@@ -11,7 +11,6 @@ import { SailFeeRatioCell } from "@/components/sail/SailFeeRatioCell";
 import type { DefinedMarket } from "@/config/markets";
 import { getSailMarketTokenSymbol } from "@/utils/sailMarketDirectionLabels";
 import {
-  SAIL_ADVANCED_BODY,
   SAIL_ADVANCED_CAPTION,
   SAIL_ADVANCED_LABEL,
   SAIL_ADVANCED_PANEL,
@@ -36,7 +35,6 @@ export function SailMarketMetricsColumn({
   metrics,
 }: SailMarketMetricsColumnProps) {
   const pegTarget = metrics?.pegTarget || market.pegTarget || "USD";
-  const underlying = metrics?.underlyingToken || "USD";
 
   return (
     <aside className={`${SAIL_ADVANCED_PANEL} p-3 sm:p-4`}>
@@ -84,15 +82,6 @@ export function SailMarketMetricsColumn({
         <MetricRow label="Collateral" value={metrics?.collateralSymbol ?? "—"} />
         <MetricRow label="Peg target" value={pegTarget} />
       </div>
-
-      <div className={`rounded-lg border border-white/[0.08] bg-white/[0.04] p-3 ${SAIL_ADVANCED_BODY}`}>
-        Composable short {pegTarget} against {underlying} with variable,
-        rebalancing leverage and no funding fees.
-        {metrics?.rebalanceThresholdLabel ? (
-          <> Rebalances at {metrics.rebalanceThresholdLabel}.</>
-        ) : null}
-      </div>
-
     </aside>
   );
 }

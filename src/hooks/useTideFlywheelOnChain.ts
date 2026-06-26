@@ -29,6 +29,7 @@ export function useTideFlywheelOnChain(): TideFlywheelOnChainMetrics {
   const polLp = TIDE_FLYWHEEL_CONFIG.polLpAddress;
   const treasury = TIDE_FLYWHEEL_CONFIG.treasuryAddress;
   const burnAddress = TIDE_FLYWHEEL_CONFIG.burnAddress;
+  const chainId = TIDE_FLYWHEEL_CONFIG.chainId;
 
   const tideTokenConfigured = tideToken != null;
   const polLpConfigured = polLp != null && tideTokenConfigured;
@@ -49,13 +50,13 @@ export function useTideFlywheelOnChain(): TideFlywheelOnChainMetrics {
         abi: ERC20_ABI,
         functionName: "balanceOf",
         args: [treasury],
-        chainId: 1,
+        chainId,
       },
       {
         address: tideToken,
         abi: ERC20_ABI,
         functionName: "totalSupply",
-        chainId: 1,
+        chainId,
       },
     ];
 
@@ -65,7 +66,7 @@ export function useTideFlywheelOnChain(): TideFlywheelOnChainMetrics {
         abi: ERC20_ABI,
         functionName: "balanceOf",
         args: [burnAddress],
-        chainId: 1,
+        chainId,
       });
     }
 
@@ -76,31 +77,31 @@ export function useTideFlywheelOnChain(): TideFlywheelOnChainMetrics {
           abi: UNISWAP_V2_PAIR_ABI,
           functionName: "balanceOf",
           args: [treasury],
-          chainId: 1,
+          chainId,
         },
         {
           address: polLp,
           abi: UNISWAP_V2_PAIR_ABI,
           functionName: "totalSupply",
-          chainId: 1,
+          chainId,
         },
         {
           address: polLp,
           abi: UNISWAP_V2_PAIR_ABI,
           functionName: "getReserves",
-          chainId: 1,
+          chainId,
         },
         {
           address: polLp,
           abi: UNISWAP_V2_PAIR_ABI,
           functionName: "token0",
-          chainId: 1,
+          chainId,
         },
         {
           address: polLp,
           abi: UNISWAP_V2_PAIR_ABI,
           functionName: "token1",
-          chainId: 1,
+          chainId,
         },
       );
     }
@@ -114,6 +115,7 @@ export function useTideFlywheelOnChain(): TideFlywheelOnChainMetrics {
     tideToken,
     tideTokenConfigured,
     treasury,
+    chainId,
   ]);
 
   const { data, isLoading, isError } = useReadContracts({

@@ -1,15 +1,16 @@
+import { TIDE_CONFIG } from "@/config/tide";
 import { TREASURY_SAFE_ADDRESS } from "@/config/treasury";
 
 /** Default maiden-voyage owner share (bps) used to gross-up pool revenue. */
 export const MAIDEN_VOYAGE_YIELD_OWNER_SHARE_BPS = 500;
 
 export const TIDE_FLYWHEEL_CONFIG = {
-  /** Set when production TIDE is live; null = show placeholder in UI. */
-  tideTokenAddress: null as `0x${string}` | null,
+  tideTokenAddress: TIDE_CONFIG.tideTokenAddress,
   /** Set when treasury POL LP is known; null = POL card shows placeholder. */
   polLpAddress: null as `0x${string}` | null,
   treasuryAddress: TREASURY_SAFE_ADDRESS,
-  tideDecimals: 18,
+  tideDecimals: TIDE_CONFIG.tideDecimals,
+  chainId: TIDE_CONFIG.chainId,
   targets: {
     treasuryOwnershipPct: 30,
     polOwnershipPct: 15,
@@ -56,7 +57,6 @@ export const TIDE_FLYWHEEL_CONFIG = {
         statLabel: "Current Ownership",
         targetLabel: "Target: 30%",
         targetReached: "Target Reached",
-        pendingConfig: "Pending TIDE token configuration",
       },
       pol: {
         title: "Protocol Owned Liquidity (POL)",
@@ -71,7 +71,6 @@ export const TIDE_FLYWHEEL_CONFIG = {
         description: "Once POL reaches 15%, excess TIDE is burned forever.",
         statLabel: "Supply Burned",
         footer: "Share of total TIDE supply permanently removed",
-        pendingConfig: "Pending TIDE token configuration",
       },
     },
     footer: {
