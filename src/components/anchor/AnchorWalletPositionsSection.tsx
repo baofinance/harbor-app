@@ -40,7 +40,7 @@ export type AnchorWalletPositionsSectionProps = {
 };
 
 function WalletPositionInactiveTag() {
-  return <HarborStatusPill label="Inactive" variant="ended" />;
+  return <HarborStatusPill label="Inactive" variant="coral" />;
 }
 
 export function AnchorWalletPositionsSection(props: AnchorWalletPositionsSectionProps) {
@@ -245,6 +245,9 @@ if (!isConnected || !address) return null;
                               >
                                 {position.symbol}
                               </span>
+                              <span className="shrink-0">
+                                <WalletPositionInactiveTag />
+                              </span>
                             </div>
                           </div>
 
@@ -265,8 +268,7 @@ if (!isConnected || !address) return null;
                           <div></div>
 
                           {/* Position */}
-                          <div className="flex min-w-0 flex-col items-center justify-center gap-1 text-center">
-                            <WalletPositionInactiveTag />
+                          <div className="flex min-w-0 flex-col items-center justify-center text-center">
                             <span className="text-[#1E4775] font-medium text-xs font-mono">
                                 {formatToken(position.balance)}{" "}
                                 {position.symbol} (
@@ -336,6 +338,9 @@ if (!isConnected || !address) return null;
                               >
                                 {position.symbol}
                               </span>
+                              <span className="shrink-0">
+                                <WalletPositionInactiveTag />
+                              </span>
                             </div>
                           </div>
 
@@ -347,8 +352,7 @@ if (!isConnected || !address) return null;
                           </div>
 
                           {/* Position */}
-                          <div className="flex min-w-0 flex-col items-center justify-center gap-1 text-center">
-                            <WalletPositionInactiveTag />
+                          <div className="flex min-w-0 flex-col items-center justify-center text-center">
                             <span className="text-[#1E4775] font-medium text-xs font-mono">
                                 {formatToken(position.balance)}{" "}
                                 {position.symbol} (
@@ -408,8 +412,11 @@ if (!isConnected || !address) return null;
                                   className="flex-shrink-0 cursor-help"
                                 />
                               </SimpleTooltip>
-                              <span className="text-[#1E4775] font-medium text-sm truncate">
+                              <span className="text-[#1E4775] font-medium text-sm truncate min-w-0">
                                 {position.symbol}
+                              </span>
+                              <span className="shrink-0">
+                                <WalletPositionInactiveTag />
                               </span>
                               <span className="text-xs text-[#1E4775]/60 hidden sm:inline ml-2 whitespace-nowrap">
                                 Deposit in a stability pool to earn yield
@@ -453,7 +460,6 @@ if (!isConnected || !address) return null;
                             </div>
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <WalletPositionInactiveTag />
                             <span className="text-xs text-[#1E4775]/60 font-mono">
                               {formatToken(position.balance)} {position.symbol}{" "}
                               ({formatCompactUSD(position.balanceUSD)})

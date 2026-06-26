@@ -254,9 +254,6 @@ export const SailMarketRow = React.memo(function SailMarketRow({
                             : ""
                         }`}
                       />
-                      <span className="text-[#1E4775] font-semibold text-base">
-                        {longSide}
-                      </span>
                     </div>
                   </div>
                 </div>
@@ -277,9 +274,6 @@ export const SailMarketRow = React.memo(function SailMarketRow({
                             : ""
                         }`}
                       />
-                      <span className="text-[#1E4775] font-semibold text-base">
-                        {shortSide}
-                      </span>
                     </div>
                   </div>
                   <div
@@ -353,7 +347,7 @@ export const SailMarketRow = React.memo(function SailMarketRow({
                   )}
                 </button>
               </div>
-              <div className="flex items-center justify-center pr-2">
+              <div className="flex items-center justify-center pl-2 pr-2">
                 {showMaintenance ? (
                   <div className="flex min-w-[160px] justify-center">
                     <MarketMaintenanceTag />
@@ -408,9 +402,6 @@ export const SailMarketRow = React.memo(function SailMarketRow({
                           : ""
                       }`}
                     />
-                    <span className="text-[#1E4775] font-medium text-sm lg:text-base">
-                      {longSide}
-                    </span>
                   </div>
                 </div>
                 <div className="relative flex items-center justify-start min-w-0 px-2 sm:px-3 py-[9px] text-[#0B2A2F] w-1/2 bg-[linear-gradient(90deg,#FFC0B5_0%,#FFC0B5_67%,#FFFFFF_100%)] overflow-hidden">
@@ -426,9 +417,6 @@ export const SailMarketRow = React.memo(function SailMarketRow({
                           : ""
                       }`}
                     />
-                    <span className="text-[#1E4775] font-medium text-sm lg:text-base min-w-0">
-                      {shortSide}
-                    </span>
                   </div>
                   <div className="ml-1 shrink-0 text-[#1E4775] z-10">
                     {isExpanded ? (
@@ -511,7 +499,7 @@ export const SailMarketRow = React.memo(function SailMarketRow({
             />
           </div>
           <div
-            className="text-center min-w-0 flex items-center justify-center"
+            className="text-center min-w-0 flex items-center justify-center pl-3 lg:pl-4"
             onClick={(e) => e.stopPropagation()}
           >
             {showMaintenance ? (

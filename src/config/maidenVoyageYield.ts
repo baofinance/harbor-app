@@ -11,6 +11,8 @@
  * Maiden **deposit cap (USD)** for ownership share lives in `maidenVoyageCap.ts`
  * (`MAIDEN_VOYAGE_CAP_USD_BY_GENESIS_HEX` ↔ `getMaidenVoyageCapUSD` in the subgraph).
  */
+export { MAIDEN_VOYAGE_YIELD_OWNER_SHARE_BPS } from "@/config/tideFlywheel";
+
 export const MAIDEN_VOYAGE_YIELD_OWNER_SHARE_BPS_BY_GENESIS_HEX: Record<
   string,
   number
