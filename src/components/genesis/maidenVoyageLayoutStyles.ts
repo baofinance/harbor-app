@@ -154,9 +154,8 @@ export const MV_ICON_BADGE_EARN_SM = `${MV_ICON_BADGE_BASE} h-7 w-7 border-harbo
 /** Neutral footer / explainer badges (TIDE archived tone). */
 export const MV_ICON_BADGE_NEUTRAL = `${MV_ICON_BADGE_BASE} h-8 w-8 border-white/10 text-white/40`;
 
-/** Benchmark card icon shell — pairs with stage `iconBenchmark` color tokens. */
-export const MV_ICON_BADGE_BENCHMARK =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border backdrop-blur-md sm:h-9 sm:w-9";
+/** Benchmark card icon shell — same dark glass base as MV / section cards. */
+export const MV_ICON_BADGE_BENCHMARK = `${MV_ICON_BADGE_BASE} h-8 w-8 sm:h-9 sm:w-9`;
 
 export const MV_DETAILS_PANEL = MV_POSITION_ROW;
 
@@ -204,8 +203,8 @@ export const MV_UPSIDE_STAGE_LAUNCH = {
   badge:
     "border-[#4A9784]/40 bg-[#4A9784]/12 text-[#2d6b5c]",
   earnings: "text-[#2d6b5c]",
-  icon: "border-[#4A9784]/25 bg-[#4A9784]/10 text-[#4A9784]",
-  iconBenchmark: "border-[#4A9784]/25 bg-[#4A9784]/10 text-[#4A9784]",
+  icon: "border-[#4A9784]/25 text-[#4A9784]",
+  iconBenchmark: "border-[#4A9784]/25 text-[#4A9784]",
   hover: "hover:border-[#4A9784]/30",
   accentBar: "border-l-[3px] border-l-[#4A9784]",
 } as const;
@@ -214,8 +213,8 @@ export const MV_UPSIDE_STAGE_GROWTH = {
   badge:
     "border-[#7C3AED]/35 bg-[#7C3AED]/10 text-[#5b21b6]",
   earnings: "text-[#5b21b6]",
-  icon: "border-[#7C3AED]/25 bg-[#7C3AED]/10 text-[#7C3AED]",
-  iconBenchmark: "border-[#7C3AED]/25 bg-[#7C3AED]/10 text-[#7C3AED]",
+  icon: "border-harbor-purple/25 text-harbor-purple",
+  iconBenchmark: "border-harbor-purple/25 text-harbor-purple",
   hover: "hover:border-[#7C3AED]/30",
   accentBar: "border-l-[3px] border-l-[#7C3AED]",
 } as const;
@@ -224,8 +223,8 @@ export const MV_UPSIDE_STAGE_SCALE = {
   badge:
     "border-[#1E4775]/30 bg-[#1E4775]/8 text-[#1E4775]",
   earnings: "text-[#1E4775]",
-  icon: "border-[#5B8FD4]/25 bg-[#5B8FD4]/10 text-[#1E4775]",
-  iconBenchmark: "border-[#5B8FD4]/25 bg-[#5B8FD4]/10 text-[#1E4775]",
+  icon: "border-harbor-blue/25 text-harbor-blue",
+  iconBenchmark: "border-harbor-blue/25 text-harbor-blue",
   hover: "hover:border-[#5B8FD4]/30",
   accentBar: "border-l-[3px] border-l-[#5B8FD4]",
 } as const;

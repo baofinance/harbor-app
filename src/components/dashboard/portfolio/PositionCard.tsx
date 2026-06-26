@@ -22,6 +22,7 @@ import { DASHBOARD_INSET_MARKET_ICON_PX } from "../dashboardRowListStyles";
 import {
   DASHBOARD_ARCHIVED_POSITION_ROW_CLASS,
   DASHBOARD_INSET_ROW_SUBGRID_CLASS,
+  DASHBOARD_POSITION_METRIC_CELL_CLASS,
   PORTFOLIO_POSITION_ROW_CLASS,
 } from "./portfolioStyles";
 import { StatusBadge } from "./StatusBadge";
@@ -58,7 +59,7 @@ export function PositionCard({ row, onWithdraw }: PositionCardProps) {
   const valueTitle = [valueContext, row.detail].filter(Boolean).join(" · ");
 
   const marketCell = (
-    <div className="flex min-w-0 items-center gap-2.5">
+    <div className="flex min-w-0 items-center gap-3">
       <TokenLogo
         symbol={row.iconSymbol}
         size={DASHBOARD_INSET_MARKET_ICON_PX}
@@ -70,12 +71,17 @@ export function PositionCard({ row, onWithdraw }: PositionCardProps) {
       >
         {marketName}
       </p>
+    </div>
+  );
+
+  const badgeCell = (
+    <div className="flex min-w-0 justify-start sm:justify-end">
       <StatusBadge label={statusLabel} variant={badgeVariant} />
     </div>
   );
 
   const valueCell = (
-    <div className="min-w-0 text-left sm:text-right">
+    <div className={`${DASHBOARD_POSITION_METRIC_CELL_CLASS} ${onWithdraw ? "sm:pr-2" : ""}`}>
       <span
         className="whitespace-nowrap text-sm"
         title={valueTitle || undefined}
@@ -99,7 +105,7 @@ export function PositionCard({ row, onWithdraw }: PositionCardProps) {
       <div className={`${PORTFOLIO_POSITION_ROW_CLASS} ${DASHBOARD_ARCHIVED_POSITION_ROW_CLASS}`}>
         {marketCell}
         {valueCell}
-        <div className="flex justify-start pl-3 sm:justify-end sm:pl-5">
+        <div className="flex justify-start pl-4 sm:justify-end sm:pl-8">
           <button
             type="button"
             className={`${INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL} !min-w-[5.25rem] px-3 py-1.5 text-[10px] sm:!min-w-[5.75rem] sm:py-2 sm:text-xs`}
@@ -115,9 +121,10 @@ export function PositionCard({ row, onWithdraw }: PositionCardProps) {
   return (
     <Link
       href={row.href}
-      className={`${PORTFOLIO_POSITION_ROW_CLASS} ${DASHBOARD_INSET_ROW_SUBGRID_CLASS} grid grid-cols-1 items-center gap-2 sm:grid-cols-subgrid sm:gap-x-3`}
+      className={`${PORTFOLIO_POSITION_ROW_CLASS} ${DASHBOARD_INSET_ROW_SUBGRID_CLASS} grid grid-cols-1 items-center gap-2 sm:grid-cols-subgrid sm:gap-x-4`}
     >
       {marketCell}
+      {badgeCell}
       {valueCell}
     </Link>
   );

@@ -228,43 +228,46 @@ export function SailMarketMultiSeriesChart({
           connectNulls
           isAnimationActive={false}
         />
-        <Line
-          yAxisId="right"
-          type="monotone"
-          dataKey="longUsd"
-          name={`Long ${config.longLabel} (USD)`}
-          stroke={SERIES_COLORS.longUsd}
-          strokeWidth={2}
-          dot={false}
-          connectNulls
-          hide={!overlays.longUsd}
-          isAnimationActive={false}
-        />
-        <Line
-          yAxisId="right"
-          type="monotone"
-          dataKey="shortUsd"
-          name={`Short ${config.shortLabel} (USD)`}
-          stroke={SERIES_COLORS.shortUsd}
-          strokeWidth={2}
-          dot={false}
-          connectNulls
-          hide={!overlays.shortUsd}
-          isAnimationActive={false}
-        />
-        <Line
-          yAxisId="right"
-          type="monotone"
-          dataKey="hsPriceUsd"
-          name={`${config.hsSymbol} (USD)`}
-          stroke={SERIES_COLORS.hsPriceUsd}
-          strokeWidth={2}
-          strokeDasharray="4 3"
-          dot={false}
-          connectNulls
-          hide={!overlays.hsPriceUsd}
-          isAnimationActive={false}
-        />
+        {overlays.longUsd ? (
+          <Line
+            yAxisId="right"
+            type="monotone"
+            dataKey="longUsd"
+            name={`Long ${config.longLabel} (USD)`}
+            stroke={SERIES_COLORS.longUsd}
+            strokeWidth={2}
+            dot={false}
+            connectNulls
+            isAnimationActive={false}
+          />
+        ) : null}
+        {overlays.shortUsd ? (
+          <Line
+            yAxisId="right"
+            type="monotone"
+            dataKey="shortUsd"
+            name={`Short ${config.shortLabel} (USD)`}
+            stroke={SERIES_COLORS.shortUsd}
+            strokeWidth={2}
+            dot={false}
+            connectNulls
+            isAnimationActive={false}
+          />
+        ) : null}
+        {overlays.hsPriceUsd ? (
+          <Line
+            yAxisId="right"
+            type="monotone"
+            dataKey="hsPriceUsd"
+            name={`${config.hsSymbol} (USD)`}
+            stroke={SERIES_COLORS.hsPriceUsd}
+            strokeWidth={2}
+            strokeDasharray="4 3"
+            dot={false}
+            connectNulls
+            isAnimationActive={false}
+          />
+        ) : null}
       </ComposedChart>
     </ResponsiveContainer>
   );

@@ -18,7 +18,7 @@ export const PORTFOLIO_CARD_SHELL = `rounded-xl ${MV_POSITION_ROW}`;
 export const PORTFOLIO_COMPACT_CARD_CLASS = `${PORTFOLIO_CARD_SHELL} p-2.5 sm:p-3`;
 
 /** Solid white position row — matches Anchor / Genesis index tables. */
-export const PORTFOLIO_POSITION_ROW_CLASS = `${DASHBOARD_INDEX_ROW_SHELL_CLASS} min-h-[52px] p-2 sm:p-2.5`;
+export const PORTFOLIO_POSITION_ROW_CLASS = `${DASHBOARD_INDEX_ROW_SHELL_CLASS} min-h-[52px] py-2 pl-3.5 pr-3 sm:min-h-[52px] sm:py-2.5 sm:pl-4 sm:pr-4`;
 
 export const PORTFOLIO_POSITION_LABEL_CLASS =
   "text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/45";
@@ -34,24 +34,28 @@ export const PORTFOLIO_POSITION_STACK_CLASS = "grid grid-cols-1 gap-1.5";
 /** Seamless inset row stack inside frosted product cards (Phase B). */
 export const DASHBOARD_INSET_ROW_STACK_CLASS = "flex flex-col";
 
+/** Metric cell — labels/values flush right within fixed columns. */
+export const DASHBOARD_POSITION_METRIC_CELL_CLASS =
+  "min-w-0 text-left sm:text-right";
+
 /** Parent grid for yield rows — fixed metric columns align labels across rows. */
 export const DASHBOARD_YIELD_METRICS_STACK_CLASS =
-  "grid grid-cols-1 gap-y-2 sm:grid-cols-[minmax(0,1fr)_7.25rem_8.5rem_7rem_9rem] sm:gap-y-2";
+  "grid grid-cols-1 gap-y-2 sm:grid-cols-[minmax(0,1fr)_7.25rem_8.5rem_7rem_9rem] sm:gap-x-4 sm:gap-y-2";
 
-/** Parent grid for earn/sail/maiden rows — fixed value column. */
+/** Parent grid for earn/sail/maiden rows — badge + trailing value column. */
 export const DASHBOARD_POSITION_METRICS_STACK_CLASS =
-  "grid grid-cols-1 gap-y-2 sm:grid-cols-[minmax(0,1fr)_9rem] sm:gap-y-2";
+  "grid grid-cols-1 gap-y-2 sm:grid-cols-[minmax(0,1fr)_auto_9rem] sm:gap-x-4 sm:gap-y-2";
 
 /** Archived rows — market | deposited value | withdraw action. */
 export const DASHBOARD_ARCHIVED_POSITION_METRICS_STACK_CLASS =
-  "grid grid-cols-1 gap-y-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,auto)_5.75rem] sm:gap-y-2 sm:gap-x-3";
+  "grid grid-cols-1 gap-y-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,auto)_5.75rem] sm:gap-y-2 sm:gap-x-5";
 
 export const DASHBOARD_ARCHIVED_POSITION_ROW_CLASS =
-  "col-span-full grid grid-cols-subgrid items-center gap-x-3";
+  "col-span-full grid grid-cols-subgrid items-center gap-x-5";
 
 /** Row participates in parent metric column grid. */
 export const DASHBOARD_INSET_ROW_SUBGRID_CLASS =
-  "col-span-full grid grid-cols-subgrid items-center gap-x-3";
+  "col-span-full grid grid-cols-subgrid items-center gap-x-4";
 
 /** Dark inset row inside product accordion — no white card shell. */
 export const DASHBOARD_INSET_ROW_SHELL_CLASS =
