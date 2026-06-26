@@ -2,7 +2,6 @@
 
 import type { ReactNode } from "react";
 import type { SailMarketDetailMetrics } from "@/utils/sailMarketMetrics";
-import { formatSailMarketDescription } from "@/utils/sailMarketMetrics";
 import {
   formatLeverage,
   formatRatio,
@@ -12,7 +11,6 @@ import { SailFeeRatioCell } from "@/components/sail/SailFeeRatioCell";
 import type { DefinedMarket } from "@/config/markets";
 import { getSailMarketTokenSymbol } from "@/utils/sailMarketDirectionLabels";
 import {
-  SAIL_ADVANCED_BODY,
   SAIL_ADVANCED_CAPTION,
   SAIL_ADVANCED_FROSTED_CARD,
   SAIL_ADVANCED_LABEL,
@@ -37,13 +35,12 @@ export function SailMarketMetricsColumn({
   metrics,
 }: SailMarketMetricsColumnProps) {
   const pegTarget = metrics?.pegTarget || market.pegTarget || "USD";
-  const marketDescription = formatSailMarketDescription(market, metrics);
 
   return (
     <aside className={`${SAIL_ADVANCED_FROSTED_CARD} p-3 sm:p-4`}>
       <h2 className={`mb-2 ${SAIL_ADVANCED_LABEL}`}>Market metrics</h2>
 
-      <div className="mb-3">
+      <div>
         <MetricRow label="Sail token" value={getSailMarketTokenSymbol(market)} />
         <MetricRow label="TVL (USD)" value={metrics?.tvlUSD !== undefined ? formatUSD(metrics.tvlUSD) : "—"} />
         <MetricRow label="TVL" value={metrics?.tvlCollateralDisplay ?? "—"} />
@@ -85,8 +82,6 @@ export function SailMarketMetricsColumn({
         <MetricRow label="Collateral" value={metrics?.collateralSymbol ?? "—"} />
         <MetricRow label="Peg target" value={pegTarget} />
       </div>
-
-      <p className={`${SAIL_ADVANCED_BODY} text-white/70`}>{marketDescription}</p>
     </aside>
   );
 }

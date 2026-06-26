@@ -1,9 +1,10 @@
 "use client";
 
+import { HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS } from "@/components/shared/harborStatTileStyles";
 import type { DefinedMarket } from "@/config/markets";
 import { useSailPositionPnL } from "@/hooks/useSailPositionPnL";
 import { formatPnL, formatUSD } from "@/utils/sailDisplayFormat";
-import { SAIL_ADVANCED_CAPTION, SAIL_ADVANCED_FROSTED_CARD } from "./sailAdvancedStyles";
+import { SAIL_ADVANCED_FROSTED_CARD } from "./sailAdvancedStyles";
 
 export type SailMarketPositionBarProps = {
   market: DefinedMarket;
@@ -13,10 +14,13 @@ export type SailMarketPositionBarProps = {
   isConnected: boolean;
 };
 
-const SAIL_POSITION_STAT_CARD = `${SAIL_ADVANCED_FROSTED_CARD} flex min-w-0 flex-1 flex-col items-center justify-center px-3 py-2 text-center sm:px-4 sm:py-2.5`;
+const SAIL_POSITION_STAT_LABEL =
+  "whitespace-nowrap text-[10px] font-medium uppercase tracking-wide text-white/55";
 
-const SAIL_POSITION_BAR_VALUE =
-  "mt-0.5 font-mono text-sm font-semibold tabular-nums text-white sm:text-base";
+const SAIL_POSITION_STAT_VALUE =
+  "mt-0.5 truncate font-mono text-xs font-semibold tabular-nums text-white/90";
+
+const SAIL_POSITION_STAT_CARD = `${SAIL_ADVANCED_FROSTED_CARD} ${HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS} min-w-0 flex-1 px-2.5 py-1.5 sm:px-3`;
 
 function formatPositionPnL(
   unrealizedPnL: number,
@@ -26,22 +30,22 @@ function formatPositionPnL(
   isConnected: boolean,
 ): { text: string; valueClassName: string } {
   if (!isConnected || !hasPosition) {
-    return { text: "—", valueClassName: SAIL_POSITION_BAR_VALUE };
+    return { text: "—", valueClassName: SAIL_POSITION_STAT_VALUE };
   }
   if (isLoading) {
-    return { text: "…", valueClassName: SAIL_POSITION_BAR_VALUE };
+    return { text: "…", valueClassName: SAIL_POSITION_STAT_VALUE };
   }
 
   if (unrealizedPnL === 0) {
-    return { text: "—", valueClassName: SAIL_POSITION_BAR_VALUE };
+    return { text: "—", valueClassName: SAIL_POSITION_STAT_VALUE };
   }
 
   const formatted = formatPnL(unrealizedPnL);
-  const pctText = ` (${unrealizedPnLPercent >= 0 ? "+" : ""}${unrealizedPnLPercent.toFixed(1)}%)`;
+  const pctText = ` (${unrealizedPnLPercent >= 0 ? "+" : ""}${unrealizedPnLPercent.toFixed(2)}%)`;
   const colorClass =
     unrealizedPnL > 0
-      ? `${SAIL_POSITION_BAR_VALUE} text-harbor-mint`
-      : `${SAIL_POSITION_BAR_VALUE} text-harbor-coral`;
+      ? `${SAIL_POSITION_STAT_VALUE} text-harbor-mint`
+      : `${SAIL_POSITION_STAT_VALUE} text-harbor-coral`;
 
   return {
     text: `${formatted.text}${pctText}`,
@@ -95,11 +99,11 @@ export function SailMarketPositionBar({
       aria-label="Your position in this market"
     >
       <div className={SAIL_POSITION_STAT_CARD}>
-        <span className={SAIL_ADVANCED_CAPTION}>Your position</span>
-        <span className={SAIL_POSITION_BAR_VALUE}>{positionValue}</span>
+        <span className={SAIL_POSITION_STAT_LABEL}>Your position</span>
+        <span className={SAIL_POSITION_STAT_VALUE}>{positionValue}</span>
       </div>
       <div className={SAIL_POSITION_STAT_CARD}>
-        <span className={SAIL_ADVANCED_CAPTION}>PnL</span>
+        <span className={SAIL_POSITION_STAT_LABEL}>PnL</span>
         <span className={pnl.valueClassName}>{pnl.text}</span>
       </div>
     </div>

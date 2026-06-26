@@ -9,6 +9,7 @@ import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarke
 import NetworkIconCell from "@/components/NetworkIconCell";
 import { SailMarketDropdown } from "./SailMarketDropdown";
 import {
+  SailWalletMarksChip,
   SailWalletStatsStrip,
   type SailWalletStatsStripProps,
 } from "./SailWalletStatsStrip";
@@ -42,23 +43,30 @@ export function SailMarketHeader({
 
   return (
     <div className="relative z-40 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-      <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-3 lg:gap-4">
-        <div className="min-w-0 w-full max-w-lg shrink-0">
-          <SailMarketDropdown
-            selectedMarketId={selectedMarketId}
-            options={dropdownOptions}
-            onSelect={onSelectMarket}
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-nowrap items-center gap-3 lg:gap-4">
+          <div className="min-w-0 w-full max-w-lg shrink-0">
+            <SailMarketDropdown
+              selectedMarketId={selectedMarketId}
+              options={dropdownOptions}
+              onSelect={onSelectMarket}
+            />
+          </div>
+          <SailWalletStatsStrip
+            {...walletStats}
+            showSailMarks={false}
+            className="min-w-0 flex-1"
           />
-          <p className={`mt-1.5 ${SAIL_ADVANCED_BODY} text-white/70`}>
-            {marketDescription}
-          </p>
         </div>
-        <SailWalletStatsStrip
-          {...walletStats}
-          className="min-w-0 flex-1 justify-end"
-        />
+        <p className={`mt-1.5 ${SAIL_ADVANCED_BODY} text-white/70`}>
+          {marketDescription}
+        </p>
       </div>
-      <div className="flex shrink-0 items-center gap-2 self-center px-1 sm:self-start sm:pt-2">
+      <div className="flex shrink-0 items-center gap-2 self-center px-1 sm:items-start sm:gap-3 sm:self-start sm:pt-2">
+        <SailWalletMarksChip
+          isLoadingSailMarks={walletStats.isLoadingSailMarks}
+          totalSailMarks={walletStats.totalSailMarks}
+        />
         <NetworkIconCell
           chainName={harborMarketChainKey(selectedMarket)}
           chainLogo={selectedMarket.chain?.logo}

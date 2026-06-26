@@ -17,6 +17,7 @@ export type SailWalletStatsStripProps = {
   pnlSummaryLoading: boolean;
   isLoadingSailMarks: boolean;
   totalSailMarks: number;
+  showSailMarks?: boolean;
   className?: string;
 };
 
@@ -105,6 +106,7 @@ export function SailWalletStatsStrip({
   pnlSummaryLoading,
   isLoadingSailMarks,
   totalSailMarks,
+  showSailMarks = true,
   className = "",
 }: SailWalletStatsStripProps) {
   const dash = "—";
@@ -137,12 +139,34 @@ export function SailWalletStatsStrip({
         valueClassName={pnl.valueClassName}
         minWidthClass="min-w-[5.5rem] sm:min-w-[6.25rem]"
       />
-      <StatDivider />
-      <StatCell
-        label="Sail marks"
-        value={marksValue}
-        minWidthClass="min-w-[4.5rem]"
-      />
+      {showSailMarks ? (
+        <>
+          <StatDivider />
+          <StatCell
+            label="Sail marks"
+            value={marksValue}
+            minWidthClass="min-w-[4.5rem]"
+          />
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+/** Standalone Sail marks chip for the header trailing cluster. */
+export function SailWalletMarksChip({
+  isLoadingSailMarks,
+  totalSailMarks,
+  className = "",
+}: Pick<SailWalletStatsStripProps, "isLoadingSailMarks" | "totalSailMarks" | "className">) {
+  const marksValue = isLoadingSailMarks ? "…" : formatSailMarks(totalSailMarks);
+
+  return (
+    <div
+      className={`${SAIL_WALLET_STATS_SHELL} shrink-0 ${className}`.trim()}
+      aria-label="Sail marks"
+    >
+      <StatCell label="Sail marks" value={marksValue} minWidthClass="min-w-[4.5rem]" />
     </div>
   );
 }
