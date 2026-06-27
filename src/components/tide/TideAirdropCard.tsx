@@ -3,16 +3,17 @@
 import { Gift } from "lucide-react";
 import {
   TIDE_AIRDROP_BUCKETS,
-  type TideAirdropBucketAmount,
+  TIDE_BOOSTERS,
   type TideAirdropBucketKey,
 } from "@/config/tide";
 import { useTideAirdropEligibility } from "@/hooks/useTideAirdropEligibility";
 import { formatTideAirdropMonthYear } from "@/utils/tideDistributor";
 import { formatTideTokenAmount } from "@/utils/tideSnapshot";
+import { TideAmountPanel } from "./TideAmountPanel";
+import { TideBoostersPendingHint } from "./TideBoostersPendingHint";
 import { TideFeatureCard } from "./TideFeatureCard";
 import {
   TIDE_AMOUNT_CLASS,
-  TIDE_AMOUNT_SM_CLASS,
   TIDE_CARD_CONTENT_STACK,
   TIDE_FOOTER_EXTRA_CORAL_CLASS,
   TIDE_INSET_LABEL_CLASS,
@@ -20,34 +21,9 @@ import {
   TIDE_THEME,
 } from "./tideCardStyles";
 
-function AirdropBucketRow({
-  label,
-  amount,
-  themeInset,
-}: {
-  label: string;
-  amount: TideAirdropBucketAmount;
-  themeInset: string;
-}) {
-  return (
-    <div className={`flex w-full items-center justify-between gap-3 px-4 py-2.5 ${themeInset}`}>
-      <p className={`${TIDE_INSET_LABEL_CLASS} text-white/55`}>{label}</p>
-      <p className={`${TIDE_AMOUNT_SM_CLASS} text-base sm:text-lg`}>
-        {formatTideTokenAmount(amount.amountTokens)}{" "}
-        <span className="text-sm text-white/50">TIDE</span>
-      </p>
-    </div>
-  );
-}
-
 export function TideAirdropCard() {
-  const {
-    isConnected,
-    isLoading,
-    buckets,
-    totalTokens,
-    airdropDate,
-  } = useTideAirdropEligibility();
+  const { isLoading, buckets, totalTokens, airdropDate } =
+    useTideAirdropEligibility();
   const theme = TIDE_THEME.coral;
 
   return (
@@ -67,12 +43,10 @@ export function TideAirdropCard() {
           : undefined
       }
       footerExtraClassName={TIDE_FOOTER_EXTRA_CORAL_CLASS}
-      isConnected={isConnected}
-      disconnectedMessage="Connect wallet to view your snapshot airdrop allocation"
     >
       {isLoading ? (
         <p className={TIDE_META_TEXT}>Loading snapshot…</p>
-      ) : buckets ? (
+      ) : (
         <div className={TIDE_CARD_CONTENT_STACK}>
           <div className="text-center">
             <p className={`mb-1.5 ${TIDE_INSET_LABEL_CLASS} text-white/50`}>
@@ -86,16 +60,21 @@ export function TideAirdropCard() {
 
           <div className="flex w-full flex-col gap-3 sm:gap-3.5">
             {TIDE_AIRDROP_BUCKETS.map(({ key, label }) => (
-              <AirdropBucketRow
+              <TideAmountPanel
                 key={key}
                 label={label}
-                amount={buckets[key as TideAirdropBucketKey]}
-                themeInset={theme.inset}
+                amountTokens={buckets[key as TideAirdropBucketKey].amountTokens}
+                insetClassName={theme.inset}
+                amountAdornment={
+                  key === "boosters" && TIDE_BOOSTERS.pending ? (
+                    <TideBoostersPendingHint />
+                  ) : undefined
+                }
               />
             ))}
           </div>
         </div>
-      ) : null}
+      )}
     </TideFeatureCard>
   );
 }

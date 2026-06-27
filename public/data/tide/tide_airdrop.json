@@ -1,10 +1,10 @@
 {
   "name": "tide_airdrop",
-  "description": "TIDE airdrop eligibility per wallet. Buckets: veBaoSnapshot, boosters, raise, ledgerMarks. Raise: 50M TIDE pro-rata by USDC deposited in raise contract (refunded wallets excluded). Ledger marks: pro-rata from maiden voyage (launch/euro/metals) and anchor-sail leaderboards, 25M TIDE total, min 10 TIDE, 40% per-wallet cap with redistribution.",
+  "description": "TIDE airdrop eligibility per wallet. Buckets: veBaoSnapshot, boosters, raise, ledgerMarks. Boosters: 15M TIDE across 35 ranked boosters (wallet mapping pending — UI shows 0 until addresses are assigned). Raise: 50M TIDE pro-rata by USDC deposited in raise contract (refunded wallets excluded). Ledger marks: pro-rata from maiden voyage (launch/euro/metals) and anchor-sail leaderboards, 25M TIDE total, min 10 TIDE, 40% per-wallet cap with redistribution.",
   "snapshotBlock": 25000000,
   "bucketPools": {
     "veBaoSnapshot": 50000000,
-    "boosters": 0,
+    "boosters": 15000000,
     "raise": 50000000,
     "ledgerMarks": 25000000
   },

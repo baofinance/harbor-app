@@ -64,9 +64,6 @@ export const TIDE_CARD_BODY =
 /** Top-aligned stacked content; card body flex-1 leaves space above footer on lg. */
 export const TIDE_CARD_CONTENT_STACK = "flex w-full flex-col gap-4 sm:gap-5";
 
-export const TIDE_DISCONNECTED_RING =
-  "flex h-20 w-20 items-center justify-center rounded-full border border-dashed border-white/15 bg-[#122a47]/28 backdrop-blur-sm";
-
 export const TIDE_AMOUNT_CLASS =
   "font-mono text-2xl font-bold tabular-nums text-white sm:text-3xl";
 

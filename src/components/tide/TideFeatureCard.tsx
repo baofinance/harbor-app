@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Info, Link2 } from "lucide-react";
+import { Info } from "lucide-react";
 import {
   DASHBOARD_PRODUCT_ACCENT_BAR_CLASS,
   DASHBOARD_PRODUCT_CARD_CLASS,
@@ -10,10 +10,8 @@ import {
 import { StatusBadge } from "@/components/dashboard/portfolio/StatusBadge";
 import type { StatusBadgeVariant } from "@/components/dashboard/portfolio/StatusBadge";
 import {
-  TIDE_CAPTION_CLASS,
   TIDE_CARD_BODY,
   TIDE_CARD_FOOTER,
-  TIDE_DISCONNECTED_RING,
   TIDE_LABEL_CLASS,
 } from "./tideCardStyles";
 
@@ -29,8 +27,6 @@ export type TideFeatureCardProps = {
   footer?: string;
   footerExtra?: ReactNode;
   footerExtraClassName?: string;
-  isConnected: boolean;
-  disconnectedMessage: string;
   children: ReactNode;
 };
 
@@ -46,8 +42,6 @@ export function TideFeatureCard({
   footer,
   footerExtra,
   footerExtraClassName,
-  isConnected,
-  disconnectedMessage,
   children,
 }: TideFeatureCardProps) {
   return (
@@ -82,20 +76,7 @@ export function TideFeatureCard({
         </div>
       </header>
 
-      <div className={TIDE_CARD_BODY}>
-        {isConnected ? (
-          children
-        ) : (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 py-6 text-center lg:justify-center">
-            <div className={TIDE_DISCONNECTED_RING}>
-              <Link2 className="h-7 w-7 text-white/30" strokeWidth={1.5} />
-            </div>
-            <p className={`max-w-[220px] ${TIDE_CAPTION_CLASS} text-white/55`}>
-              {disconnectedMessage}
-            </p>
-          </div>
-        )}
-      </div>
+      <div className={TIDE_CARD_BODY}>{children}</div>
 
       {footer || footerExtra ? (
         <footer
