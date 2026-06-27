@@ -130,7 +130,7 @@ export function SailWalletStatsStrip({
       aria-label="Your Sail wallet"
     >
       <StatCell
-        label="Total Leverage positions"
+        label="Leverage Portfolio"
         value={
           isConnected
             ? formatUSD(sailUserStats.totalPositionsUSD, { compact: false })

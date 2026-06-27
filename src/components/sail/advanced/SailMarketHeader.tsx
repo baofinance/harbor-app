@@ -3,7 +3,7 @@
 import type { DefinedMarket } from "@/config/markets";
 import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
 import NetworkIconCell from "@/components/NetworkIconCell";
-import { formatSailMarketEarnDescription } from "@/utils/sailMarketDirectionLabels";
+import { SailMarketEarnTagline } from "./SailMarketEarnTagline";
 import { SailMarketDropdown } from "./SailMarketDropdown";
 import {
   SailMarketPositionBar,
@@ -14,10 +14,8 @@ import {
   type SailWalletStatsStripProps,
 } from "./SailWalletStatsStrip";
 import {
-  SAIL_ADVANCED_BODY,
   SAIL_ADVANCED_LABEL,
   SAIL_ADVANCED_META,
-  SAIL_ADVANCED_SHELL,
 } from "./sailAdvancedStyles";
 
 type SailMarketHeaderProps = {
@@ -59,9 +57,7 @@ export function SailMarketHeader({
                 onSelect={onSelectMarket}
               />
             </div>
-            <p className={`min-w-0 flex-1 ${SAIL_ADVANCED_BODY}`}>
-              {formatSailMarketEarnDescription(selectedMarket)}
-            </p>
+            <SailMarketEarnTagline market={selectedMarket} />
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2 self-start px-1 sm:pt-6">
@@ -75,22 +71,20 @@ export function SailMarketHeader({
         </div>
       </div>
 
-      <section className={`${SAIL_ADVANCED_SHELL} px-3 py-3 sm:px-4`}>
-        <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-stretch sm:gap-4">
-          <div className="min-w-0 flex-1">
-            <h2 className={`${SAIL_ADVANCED_LABEL} mb-2`}>Your wallet</h2>
-            <SailWalletStatsStrip {...walletStats} className="min-w-0 w-full" />
-          </div>
-          <div className="min-w-0 flex-1 sm:max-w-md lg:max-w-none lg:flex-1">
-            <h2 className={`${SAIL_ADVANCED_LABEL} mb-2`}>This market</h2>
-            <SailMarketPositionBar
-              market={selectedMarket}
-              {...marketPosition}
-              className="min-w-0 w-full"
-            />
-          </div>
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>Your wallet</p>
+          <SailWalletStatsStrip {...walletStats} className="min-w-0 w-full" />
         </div>
-      </section>
+        <div className="min-w-0 flex-1 sm:max-w-md lg:max-w-none lg:flex-1">
+          <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>This market</p>
+          <SailMarketPositionBar
+            market={selectedMarket}
+            {...marketPosition}
+            className="min-w-0 w-full"
+          />
+        </div>
+      </div>
     </div>
   );
 }

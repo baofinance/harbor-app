@@ -234,14 +234,10 @@ export default function SailPage() {
             selectedMarket={selectedMarket?.market ?? null}
             selectedMetrics={selectedMetrics}
             dropdownMarkets={tableMarkets}
-            stripMarkets={tableMarkets}
-            tvlByMarketId={tvlByMarketId}
             onSelectMarket={setSelectedMarketId}
             reads={reads}
             sailMarketIdToIndex={sailMarketIdToIndex}
             marketOffsets={marketOffsets}
-            minterConfigByMarketId={minterConfigByMarketId}
-            toolbarProps={toolbarProps}
             isConnected={isConnected}
             userDepositMap={userDepositMap}
             tokenPricesByMarket={tokenPricesByMarket}

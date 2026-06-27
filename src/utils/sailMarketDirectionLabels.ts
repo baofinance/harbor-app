@@ -79,20 +79,6 @@ export function formatSailMarketDropdownTitle(
   return formatSailMarketPairTitle(market, longSide, shortSide);
 }
 
-/** Header tagline — e.g. "Earn amplified returns if USD outperforms ETH." */
-export function formatSailMarketEarnDescription(
-  market: DefinedMarket,
-  longSide = "",
-  shortSide = ""
-): string {
-  const { longLabel, shortLabel } = getSailDirectionChipLabels(
-    market,
-    longSide,
-    shortSide
-  );
-  return `Earn amplified returns if ${longLabel} outperforms ${shortLabel}.`;
-}
-
 export function getSailMarketTokenSymbol(market: DefinedMarket): string {
   return market.leveragedToken?.symbol?.trim() || "—";
 }

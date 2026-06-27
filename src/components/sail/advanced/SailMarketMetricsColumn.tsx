@@ -47,7 +47,7 @@ function MetricSectionCard({
   if (visibleRows.length === 0) return null;
 
   return (
-    <div className={`${SAIL_ADVANCED_FROSTED_CARD} p-3 sm:p-3.5`}>
+    <div className={`${SAIL_ADVANCED_FROSTED_CARD} p-3`}>
       <h3 className={`mb-2 ${SAIL_ADVANCED_LIGHT_SECTION_TITLE}`}>
         {title}
       </h3>

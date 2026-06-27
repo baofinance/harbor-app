@@ -5,14 +5,12 @@ import type { DefinedMarket } from "@/config/markets";
 import type { SailContractReads } from "@/types/sail";
 import type { SailMarketDetailMetrics } from "@/utils/sailMarketMetrics";
 import { buildSailUserPositionLabel } from "@/utils/sailUserPositionLabel";
-import type { SailMarketsToolbarProps } from "@/components/sail/SailMarketsToolbar";
 import { SailMarketActionPanel } from "./SailMarketActionPanel";
 import { SailMarketChartColumn } from "./SailMarketChartColumn";
 import { SailMarketHeader } from "./SailMarketHeader";
 import { SailMarketInfoFooter } from "./SailMarketInfoFooter";
 import { SailMarketMetricsCollapsible } from "./SailMarketMetricsCollapsible";
 import { SailMobileTradeBar } from "./SailMobileTradeBar";
-import { SailOtherMarketsStrip } from "./SailOtherMarketsStrip";
 import type { SailWalletStatsStripProps } from "./SailWalletStatsStrip";
 import { SAIL_ADVANCED_MAIN_GRID_CLASS } from "./sailAdvancedStyles";
 
@@ -23,14 +21,10 @@ export type SailAdvancedLayoutProps = {
   selectedMarket: DefinedMarket | null;
   selectedMetrics: SailMarketDetailMetrics | undefined;
   dropdownMarkets: readonly [string, DefinedMarket][];
-  stripMarkets: readonly [string, DefinedMarket][];
-  tvlByMarketId: ReadonlyMap<string, number | undefined>;
   onSelectMarket: (marketId: string) => void;
   reads: SailContractReads | undefined;
   sailMarketIdToIndex: Map<string, number>;
   marketOffsets: Map<number, number>;
-  minterConfigByMarketId: Map<string, unknown>;
-  toolbarProps: SailMarketsToolbarProps;
   isConnected: boolean;
   userDepositMap: Map<number, bigint | undefined>;
   tokenPricesByMarket: Record<
@@ -52,14 +46,10 @@ export function SailAdvancedLayout({
   selectedMarket,
   selectedMetrics,
   dropdownMarkets,
-  stripMarkets,
-  tvlByMarketId,
   onSelectMarket,
   reads,
   sailMarketIdToIndex,
   marketOffsets,
-  minterConfigByMarketId,
-  toolbarProps,
   isConnected,
   userDepositMap,
   tokenPricesByMarket,
@@ -206,18 +196,6 @@ export function SailAdvancedLayout({
       <SailMobileTradeBar
         onMint={() => openTradeTab("mint")}
         onRedeem={() => openTradeTab("redeem")}
-      />
-
-      <SailOtherMarketsStrip
-        markets={stripMarkets}
-        selectedMarketId={selectedMarketId}
-        onSelectMarket={onSelectMarket}
-        reads={reads}
-        sailMarketIdToIndex={sailMarketIdToIndex}
-        marketOffsets={marketOffsets}
-        minterConfigByMarketId={minterConfigByMarketId}
-        tvlByMarketId={tvlByMarketId}
-        toolbarProps={toolbarProps}
       />
 
       <SailMarketInfoFooter />

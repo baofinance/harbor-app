@@ -1,15 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import type { DefinedMarket } from "@/config/markets";
+import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
+import NetworkIconCell from "@/components/NetworkIconCell";
 import { formatLeverage } from "@/utils/sailDisplayFormat";
-import {
-  formatSailMarketDropdownTitle,
-  getSailDirectionChipLabels,
-} from "@/utils/sailMarketDirectionLabels";
-import { getSailSideLogoPath } from "@/utils/sailAssetLogos";
+import { formatSailMarketDropdownTitle } from "@/utils/sailMarketDirectionLabels";
 import { SAIL_ADVANCED_FROSTED_LIGHT_PANEL } from "./sailAdvancedStyles";
 
 const SAIL_DROPDOWN_MENU_CLASS =
@@ -76,6 +73,11 @@ export function SailMarketDropdown({
         aria-expanded={open}
         aria-haspopup="listbox"
       >
+        <NetworkIconCell
+          chainName={harborMarketChainKey(selected.market)}
+          chainLogo={selected.market.chain?.logo}
+          size={20}
+        />
         <div className={`min-w-0 flex-1 truncate ${SAIL_DROPDOWN_TRIGGER_TITLE_CLASS}`}>
           {marketTitle}
           <span className={SAIL_DROPDOWN_TITLE_SEPARATOR_CLASS}> · </span>
@@ -96,7 +98,6 @@ export function SailMarketDropdown({
           {options.map(({ marketId, market, leverageRatio, positionLabel }) => {
             const active = marketId === selectedMarketId;
             const title = formatSailMarketDropdownTitle(market);
-            const { longLabel } = getSailDirectionChipLabels(market, "", "");
             return (
               <li key={marketId}>
                 <button
@@ -113,12 +114,10 @@ export function SailMarketDropdown({
                       : SAIL_DROPDOWN_OPTION_HOVER_CLASS
                   }`}
                 >
-                  <Image
-                    src={getSailSideLogoPath(longLabel)}
-                    alt=""
-                    width={20}
-                    height={20}
-                    className="rounded-full"
+                  <NetworkIconCell
+                    chainName={harborMarketChainKey(market)}
+                    chainLogo={market.chain?.logo}
+                    size={20}
                   />
                   <div className={`min-w-0 flex-1 truncate ${SAIL_DROPDOWN_TITLE_CLASS}`}>
                     {title}
