@@ -11,8 +11,8 @@ import {
 } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
 import { SailBasicMarketCard } from "./SailBasicMarketCard";
 import { getLongSide, getShortSide } from "@/utils/marketSideLabels";
+import { buildSailUserPositionLabel } from "@/utils/sailUserPositionLabel";
 import { formatCompactUSD } from "@/utils/anchor";
-import { formatToken } from "@/utils/formatters";
 
 export type SailBasicMarketCardsGridProps = {
   activeMarkets: Array<[string, DefinedMarket]>;
@@ -49,20 +49,12 @@ function buildPositionLabel(
   userDeposit: bigint | undefined,
   leveragedPriceUSD: number | undefined
 ): { hasPosition: boolean; label?: string } {
-  if (!userDeposit || userDeposit === 0n) {
-    return { hasPosition: false };
-  }
-  const sym = market.leveragedToken?.symbol ?? "Sail";
-  const amount = Number(formatToken(userDeposit, 18, 4));
-  const usd =
-    leveragedPriceUSD && leveragedPriceUSD > 0
-      ? amount * leveragedPriceUSD
-      : 0;
-  const label =
-    usd > 0
-      ? `Your position · ${formatCompactUSD(usd)}`
-      : `Your position · ${amount} ${sym}`;
-  return { hasPosition: true, label };
+  const info = buildSailUserPositionLabel(
+    market,
+    userDeposit,
+    leveragedPriceUSD
+  );
+  return { hasPosition: info.hasPosition, label: info.label };
 }
 
 function buildRows(

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { HARBOR_FROSTED_MODAL_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 import { TransactionStep } from "./TransactionProgressModal";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 
@@ -106,7 +107,7 @@ export const CompoundConfirmationModal = ({
  className="absolute inset-0 bg-black/40 backdrop-blur-sm"
  onClick={onClose}
  />
-        <div className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto rounded-none">
+        <div className={`relative ${HARBOR_FROSTED_MODAL_SHELL} w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto rounded-none`}>
  <div className="flex items-center justify-between p-3 border-b border-[#1E4775]/20">
  <h2 className="text-base font-bold text-[#1E4775]">Compound Rewards</h2>
  <button
@@ -136,7 +137,7 @@ export const CompoundConfirmationModal = ({
  onClick={() => hasDetails && toggleStep(step.id)}
  >
  {/* Step Header - Always Visible */}
- <div className="flex items-center gap-2 p-2 bg-white">
+ <div className="flex items-center gap-2 p-2 bg-white/85 backdrop-blur-sm">
  {/* Expand/Collapse Icon */}
  {hasDetails ? (
  <div className="w-4 h-4 flex items-center justify-center text-[#1E4775]/50">
@@ -241,7 +242,7 @@ export const CompoundConfirmationModal = ({
  <div className="flex gap-2 pt-1">
  <button
  onClick={onClose}
- className="flex-1 px-3 py-2 text-xs font-medium bg-white text-[#1E4775] border border-[#1E4775]/30 hover:bg-[#1E4775]/5 transition-colors rounded-full"
+ className="flex-1 px-3 py-2 text-xs font-medium bg-white/85 backdrop-blur-sm text-[#1E4775] border border-[#1E4775]/30 hover:bg-[#1E4775]/5 transition-colors rounded-full"
  >
  Cancel
  </button>

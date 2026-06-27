@@ -6,16 +6,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useChainId, useSwitchChain } from "wagmi";
 import { AnchorDepositWithdrawModal } from "@/components/AnchorDepositWithdrawModal";
 import { GenesisManageModal } from "@/components/GenesisManageModal";
-import { SailManageModal } from "@/components/SailManageModal";
 import {
   isMarketArchived,
   markets,
   type DefinedMarket,
 } from "@/config/markets";
-import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useHarborAccount } from "@/hooks/useHarborAccount";
 import { useOpenMarketManageModal } from "@/hooks/useOpenMarketManageModal";
 import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
+import { buildSailMarketPageHref } from "@/utils/sailPageRoutes";
 import type { GenesisMarketConfig } from "@/types/genesisMarket";
 
 type GenesisModalPayload = {
@@ -32,15 +31,9 @@ type AnchorModalPayload = {
   bestPoolType?: "collateral" | "sail";
 };
 
-type SailModalPayload = {
-  marketId: string;
-  market: DefinedMarket;
-  initialTab: "mint" | "redeem";
-};
-
 /**
- * Opens the existing Genesis / Anchor / Sail manage modals from dashboard rows.
- * Falls back to the product index route when market config is missing.
+ * Opens Genesis / Anchor manage modals from dashboard rows.
+ * Sail positions navigate to `/sail?market=` instead.
  */
 export function useDashboardManageModals() {
   const router = useRouter();
@@ -51,11 +44,6 @@ export function useDashboardManageModals() {
 
   const [genesisModal, setGenesisModal] = useState<GenesisModalPayload | null>(null);
   const [anchorModal, setAnchorModal] = useState<AnchorModalPayload | null>(null);
-  const [sailModal, setSailModal] = useState<SailModalPayload | null>(null);
-
-  const { price: ethPrice } = useCoinGeckoPrice("ethereum", 120000);
-  const { price: wstETHPrice } = useCoinGeckoPrice("wrapped-steth", 120000);
-  const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
 
   const openGenesisModal = useOpenMarketManageModal<GenesisModalPayload>({
     isConnected,
@@ -73,14 +61,6 @@ export function useDashboardManageModals() {
     logLabel: "Dashboard Anchor",
   });
 
-  const openSailModal = useOpenMarketManageModal<SailModalPayload>({
-    isConnected,
-    connectedChainId,
-    switchChain,
-    setManageModal: setSailModal,
-    logLabel: "Dashboard Sail",
-  });
-
   const invalidateDashboardQueries = useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["founderMetrics"] }),
@@ -92,6 +72,11 @@ export function useDashboardManageModals() {
 
   const openPositionManage = useCallback(
     async (row: DashboardPositionRow) => {
+      if (row.category === "leverage") {
+        router.push(buildSailMarketPageHref(row.marketId));
+        return;
+      }
+
       if (!row.marketId) {
         router.push(row.href);
         return;
@@ -122,18 +107,11 @@ export function useDashboardManageModals() {
               : "collateral",
           });
           break;
-        case "leverage":
-          await openSailModal({
-            marketId: row.marketId,
-            market,
-            initialTab: "redeem",
-          });
-          break;
         default:
           router.push(row.href);
       }
     },
-    [openAnchorModal, openGenesisModal, openSailModal, router],
+    [openAnchorModal, openGenesisModal, router],
   );
 
   const modals = (
@@ -162,22 +140,6 @@ export function useDashboardManageModals() {
           bestPoolType={anchorModal.bestPoolType ?? "collateral"}
           onSuccess={async () => {
             setAnchorModal(null);
-            await invalidateDashboardQueries();
-          }}
-        />
-      ) : null}
-      {sailModal ? (
-        <SailManageModal
-          isOpen
-          onClose={() => setSailModal(null)}
-          marketId={sailModal.marketId}
-          market={sailModal.market}
-          initialTab={sailModal.initialTab}
-          ethPrice={ethPrice}
-          wstETHPrice={wstETHPrice}
-          fxSAVEPrice={fxSAVEPrice}
-          onSuccess={async () => {
-            setSailModal(null);
             await invalidateDashboardQueries();
           }}
         />

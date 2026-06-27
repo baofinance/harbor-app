@@ -1057,7 +1057,7 @@ export default function Admin() {
             href={fullHref}
             className={`shrink-0 whitespace-nowrap rounded-md px-2.5 sm:px-3 py-2 text-sm font-medium transition-colors ${
               isActive
-                ? "text-[#1E4775] bg-white"
+                ? "text-[#1E4775] bg-white/90 backdrop-blur-sm shadow-sm"
                 : "text-white hover:bg-white/20 hover:text-white"
             }`}
             aria-current={isActive ? "page" : undefined}

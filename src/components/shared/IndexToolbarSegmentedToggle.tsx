@@ -47,7 +47,7 @@ export default function IndexToolbarSegmentedToggle({
               active
                 ? variant === "inline"
                   ? "bg-[#1E4775] text-white"
-                  : "bg-white text-[#1E4775]"
+                  : "bg-white/90 backdrop-blur-sm text-[#1E4775]"
                 : variant === "inline"
                   ? "text-[#1E4775]/60 hover:text-[#1E4775]"
                   : "text-white/70 hover:text-white"

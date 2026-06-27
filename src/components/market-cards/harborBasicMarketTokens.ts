@@ -9,9 +9,11 @@ export const HARBOR_SEAFOAM_HEX = "#B8EBD5" as const;
 export const HARBOR_CORAL_HEX = "#FF8A7A" as const;
 export const HARBOR_CHARCOAL_HEX = "#10141A" as const;
 
+import { HARBOR_FROSTED_MARKET_CARD_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
+
 /** Card shell: match Sail/Anchor grids (rounded-3xl, shadow-xl family, shared border). Hover lift for optional-polish todo. */
 export const BASIC_MARKET_CARD_SHELL_CLASS =
-  "group flex h-full min-h-0 flex-col rounded-3xl border border-[#1E4775]/12 bg-white p-4 shadow-xl shadow-black/[0.06] ring-1 ring-black/[0.04] transition-all duration-200 hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/[0.08] dark:border-white/10 dark:bg-slate-950 dark:shadow-black/35 sm:p-5";
+  `group flex h-full min-h-0 flex-col p-4 ${HARBOR_FROSTED_MARKET_CARD_SHELL} transition-all duration-200 hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/[0.08] dark:border-white/10 dark:bg-slate-950 dark:shadow-black/35 sm:p-5`;
 
 /** Token strip: align Sail + Anchor (28px glyphs, arrows, stacked wallet/vault). */
 export const BASIC_MARKET_FLOW_LOGO_PX = 28;
@@ -67,7 +69,7 @@ export const BASIC_MARKET_NETWORK_ICON_RING_CLASS =
 export const BASIC_MARKET_NETWORK_FOOTER_ICON_BUTTON_CLASS =
   "inline-flex shrink-0 items-center justify-center rounded-full p-0.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4775]/35";
 export const BASIC_MARKET_NETWORK_FOOTER_ICON_SELECTED_CLASS =
-  "bg-white shadow-sm ring-2 ring-[#1E4775]/25";
+  "bg-white/90 backdrop-blur-sm shadow-sm ring-2 ring-[#1E4775]/25";
 export const BASIC_MARKET_NETWORK_FOOTER_ICON_IDLE_CLASS =
   "opacity-50 ring-1 ring-transparent hover:opacity-85 hover:ring-[#1E4775]/15";
 
@@ -127,7 +129,7 @@ export const BASIC_MARKET_COMING_SOON_CONTENT_DIM_CLASS =
 export const HARBOR_GENESIS_PRIMARY_CTA_CLASS =
   "w-full rounded-xl bg-[#1E4775] px-3.5 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#1E4775]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4775]/30 disabled:cursor-not-allowed disabled:bg-[#1E4775]/35";
 export const HARBOR_GENESIS_SECONDARY_CTA_CLASS =
-  "w-full rounded-xl border border-[#1E4775]/20 bg-white px-3.5 py-2.5 text-xs font-semibold text-[#1E4775] transition hover:bg-[#1E4775]/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4775]/15 disabled:cursor-not-allowed disabled:border-[#CBD5E1] disabled:bg-[#F8FAFC] disabled:text-[#64748b]";
+  "w-full rounded-xl border border-[#1E4775]/20 bg-white/85 backdrop-blur-sm px-3.5 py-2.5 text-xs font-semibold text-[#1E4775] transition hover:bg-[#1E4775]/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4775]/15 disabled:cursor-not-allowed disabled:border-[#CBD5E1] disabled:bg-[#F8FAFC] disabled:text-[#64748b]";
 
 /** Basic market grids: Sail + Anchor aligned rhythm (Grokk suggestion). */
 export const BASIC_MARKET_CARDS_GRID_CLASS =

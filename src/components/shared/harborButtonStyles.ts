@@ -2,6 +2,8 @@
  * Shared button tiers for index pages and dashboard.
  */
 
+import { HARBOR_FROSTED_INPUT_FILL } from "@/components/shared/harborFrostedSurfaceStyles";
+
 const BTN_DISABLED =
   "disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed";
 
@@ -17,12 +19,12 @@ export const HARBOR_BTN_PRIMARY_RESPONSIVE_CLASS = `${HARBOR_BTN_PRIMARY_COMPACT
 /** Coral — Anchor withdrawal actions. */
 export const HARBOR_BTN_CORAL_DESKTOP_CLASS = `${BTN_BASE} min-w-[7rem] px-4 py-2 text-xs font-medium bg-harbor-coral text-white hover:bg-[#FF6B5A]`;
 
-/** White secondary — View all, dashboard links. */
+/** Frosted secondary — View all, dashboard links. */
 export const HARBOR_BTN_SECONDARY_CLASS =
-  "inline-flex shrink-0 items-center gap-1 rounded-md bg-white px-2.5 py-1.5 text-[11px] font-semibold text-harbor-blue shadow-sm transition hover:bg-white/90 sm:px-3 sm:text-xs";
+  `inline-flex shrink-0 items-center gap-1 rounded-md ${HARBOR_FROSTED_INPUT_FILL} px-2.5 py-1.5 text-[11px] font-semibold text-harbor-blue shadow-sm transition hover:bg-white/90 sm:px-3 sm:text-xs`;
 
-/** Outline — modal cancel. */
-export const HARBOR_BTN_OUTLINE_DESKTOP_CLASS = `${BTN_BASE} min-w-[7rem] px-4 py-2 text-xs font-medium bg-white border border-harbor-blue/35 text-harbor-blue hover:bg-harbor-blue/5`;
+/** Frosted outline — modal cancel. */
+export const HARBOR_BTN_OUTLINE_DESKTOP_CLASS = `${BTN_BASE} min-w-[7rem] px-4 py-2 text-xs font-medium ${HARBOR_FROSTED_INPUT_FILL} border border-harbor-blue/35 text-harbor-blue hover:bg-harbor-blue/5`;
 
 /** App hook for manage buttons (analytics / tests). */
 export const HARBOR_BTN_PRIMARY_APP_CLASS = "app-index-manage-btn";

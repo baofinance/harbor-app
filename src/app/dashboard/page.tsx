@@ -1,19 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { DashboardConnectNotice } from "@/components/dashboard/DashboardConnectNotice";
 import { DashboardPortfolioHero } from "@/components/dashboard/DashboardPortfolioHero";
-import {
-  DashboardProductCard,
-  useDashboardProductExpanded,
-} from "@/components/dashboard/DashboardProductCard";
+import { DashboardProductCard, useDashboardProductExpanded } from "@/components/dashboard/DashboardProductCard";
+import { DashboardPositionsList } from "@/components/dashboard/DashboardPositionsList";
 import { DASHBOARD_PRODUCT_META } from "@/components/dashboard/dashboardProductMeta";
 import { DASHBOARD_GAP_CATEGORY } from "@/components/dashboard/dashboardDensity";
 import {
   DASHBOARD_EMPTY_STATES,
   type DashboardPositionGroup,
 } from "@/components/dashboard/dashboardPositionGroup";
-import { DashboardPositionsList } from "@/components/dashboard/DashboardPositionsList";
 import { DashboardActivitySection } from "@/components/dashboard/engagement/DashboardActivitySection";
 import {
   DashboardModuleLayoutControls,
@@ -22,13 +19,11 @@ import {
 import type { DashboardModuleId } from "@/components/dashboard/engagement/dashboardModuleLayout";
 import { useDashboardEngagement } from "@/components/dashboard/engagement/useDashboardEngagement";
 import {
-  aggregateYieldShareSummary,
   buildEarnSummaryMetrics,
   buildPortfolioAllocation,
   buildPositionSummaryMetrics,
-  buildRevenueShareSummaryMetrics,
 } from "@/components/dashboard/portfolio/dashboardPortfolioUtils";
-import { DashboardYieldShareCardList } from "@/components/dashboard/portfolio/DashboardYieldShareCardList";
+import { DashboardMaidenVoyageSection } from "@/components/dashboard/portfolio/DashboardMaidenVoyageSection";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
 import { HarborPageShell } from "@/components/shared/HarborPageShell";
 import { useDashboardActiveVoyage } from "@/hooks/useDashboardActiveVoyage";
@@ -132,6 +127,8 @@ function PositionProductCard({
         loadingSkeletonCount={group.rows.length === 0 ? 1 : 3}
         onManage={onManage}
         showWithdrawNotice={showWithdrawNotice}
+        showPnLColumn={productId === "sail"}
+        showAprColumn={productId === "earn"}
       />
     </DashboardProductCard>
   );
@@ -153,9 +150,6 @@ export default function DashboardPage() {
     useDashboardEarnClaimable();
   const { openPositionManage, modals } = useDashboardManageModals();
   const { order: moduleOrder, setOrder: setModuleOrder } = useDashboardModuleLayout();
-
-  const userToggledYield = useRef(false);
-  const yieldSectionRef = useRef<HTMLDivElement>(null);
 
   const positionTotals = useMemo(() => {
     const maiden = sumRowsUsd(maidenVoyageRows);
@@ -196,18 +190,6 @@ export default function DashboardPage() {
   );
 
   const hasArchived = archivedMaidenVoyageRows.length > 0;
-
-  const maidenGroup = useMemo(
-    (): DashboardPositionGroup => ({
-      id: "maiden",
-      title: "Maiden Voyage",
-      rows: maidenVoyageRows,
-      loading: posLoading.maidenVoyage,
-      error: posErrors.maidenVoyage,
-      emptyState: DASHBOARD_EMPTY_STATES.maiden,
-    }),
-    [maidenVoyageRows, posLoading.maidenVoyage, posErrors.maidenVoyage],
-  );
 
   const positionGroups = useMemo((): DashboardPositionGroup[] => {
     const groups: DashboardPositionGroup[] = [
@@ -250,28 +232,8 @@ export default function DashboardPage() {
     posErrors,
   ]);
 
-  const [yieldExpanded, setYieldExpanded] = useState(false);
-
-  useEffect(() => {
-    if (dashboardViewBasic) {
-      if (!userToggledYield.current) {
-        setYieldExpanded(false);
-      }
-      return;
-    }
-    if (userToggledYield.current) return;
-    if (isConnected && rows.length > 0) {
-      setYieldExpanded(true);
-    }
-  }, [dashboardViewBasic, isConnected, rows.length, setYieldExpanded]);
-
   const totalEarned = useMemo(
     () => rows.reduce((s, r) => s + r.totalEarnedUSD, 0),
-    [rows],
-  );
-
-  const revenueShareSummary = useMemo(
-    () => aggregateYieldShareSummary(rows),
     [rows],
   );
 
@@ -281,11 +243,6 @@ export default function DashboardPage() {
       posLoading.anchor ||
       posLoading.maidenVoyage ||
       posLoading.leverage);
-
-  const toggleYieldShare = () => {
-    userToggledYield.current = true;
-    setYieldExpanded((v) => !v);
-  };
 
   const engagement = useDashboardEngagement({
     yieldRows: rows,
@@ -301,40 +258,6 @@ export default function DashboardPage() {
   const earnGroup = positionGroups.find((g) => g.id === "earn")!;
   const sailGroup = positionGroups.find((g) => g.id === "sail")!;
   const archivedGroup = positionGroups.find((g) => g.id === "archived");
-
-  const revenueShareSummaryMetrics = useMemo(
-    () =>
-      buildRevenueShareSummaryMetrics({
-        isConnected,
-        loading: isConnected && isLoading,
-        marketCount: revenueShareSummary.marketCount,
-        earnedUsd: revenueShareSummary.revenueEarned,
-        pendingDistributionUsd: revenueShareSummary.pendingDistributionUsd,
-      }),
-    [isConnected, isLoading, revenueShareSummary],
-  );
-
-  const yieldShareSection = (
-    <div ref={yieldSectionRef}>
-      <DashboardProductCard
-        meta={DASHBOARD_PRODUCT_META.yield}
-        expanded={yieldExpanded}
-        onToggle={toggleYieldShare}
-        isConnected={isConnected}
-        summaryMetrics={revenueShareSummaryMetrics}
-        loading={isConnected && isLoading}
-      >
-        {error ? (
-          <IndexMarksSubgraphErrorBanner error={new Error(error)} />
-        ) : null}
-        <DashboardYieldShareCardList
-          rows={rows}
-          isLoading={isConnected && isLoading}
-          error={null}
-        />
-      </DashboardProductCard>
-    </div>
-  );
 
   const renderModule = (id: DashboardModuleId) => {
     switch (id) {
@@ -352,15 +275,16 @@ export default function DashboardPage() {
               isEarnLoading={earnClaimableLoading}
             />
             <div className={DASHBOARD_GAP_CATEGORY}>
-              {yieldShareSection}
-              {isConnected ? (
-                <PositionProductCard
-                  group={maidenGroup}
-                  productId="maiden"
-                  compact={dashboardViewBasic}
-                  isConnected={isConnected}
-                />
-              ) : null}
+              <DashboardMaidenVoyageSection
+                compact={dashboardViewBasic}
+                isConnected={isConnected}
+                maidenRows={maidenVoyageRows}
+                maidenLoading={posLoading.maidenVoyage}
+                maidenError={posErrors.maidenVoyage}
+                yieldRows={rows}
+                yieldLoading={isLoading}
+                yieldError={error}
+              />
               <PositionProductCard
                 group={earnGroup}
                 productId="earn"

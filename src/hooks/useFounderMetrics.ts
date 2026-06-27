@@ -19,6 +19,7 @@ export type FounderMetricRow = {
   ownershipSharePct: number;
   /** Maiden Voyage retention multiplier from subgraph; null if no user row. */
   boostMultiplier: number | null;
+  depositCountedUsd: number;
   yieldSharePct: number;
   totalEarnedUSD: number;
   paidUSD: number;
@@ -40,6 +41,7 @@ const FOUNDER_QUERY = `
       user
       finalMaidenVoyageOwnershipShare
       maidenVoyageBoostMultiplier
+      maidenVoyageDepositCountedUSD
     }
   }
 `;

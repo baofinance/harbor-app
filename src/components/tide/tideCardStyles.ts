@@ -1,87 +1,91 @@
 import {
-  DASHBOARD_PRODUCT_ACCENT_EARN_CLASS,
-  DASHBOARD_PRODUCT_ACCENT_MV_CLASS,
-  DASHBOARD_PRODUCT_ICON_EARN_CLASS,
-  DASHBOARD_PRODUCT_ICON_MV_CLASS,
-} from "@/components/dashboard/dashboardStyles";
+  SAIL_ADVANCED_LIGHT_CAPTION,
+  SAIL_ADVANCED_LIGHT_VALUE,
+  SAIL_EMBEDDED_FORM_PANEL,
+} from "@/components/sail/advanced/sailAdvancedStyles";
 import {
-  MV_CAPTION_TEXT,
-  MV_FOOTER_PANEL,
-  MV_META_TEXT,
-  MV_SECTION_LABEL,
-  MV_STAT_TILE,
-} from "@/components/genesis/maidenVoyageLayoutStyles";
+  HARBOR_FROSTED_LIGHT_ICON_BADGE_BASE,
+} from "@/components/shared/harborFrostedSurfaceStyles";
 import type { StatusBadgeVariant } from "@/components/dashboard/portfolio/StatusBadge";
 
-/** Harbor theme accents — aligned with dashboard product cards. */
+/** White frosted card shell — matches Sail embedded buy/sell panel. */
+export const TIDE_FEATURE_CARD_SHELL = `flex min-h-[320px] flex-col lg:h-full ${SAIL_EMBEDDED_FORM_PANEL}`;
+
+export const TIDE_FEATURE_CARD_TITLE =
+  "text-sm font-bold leading-snug tracking-tight text-[#1E4775] sm:text-base";
+
+/** Form field labels — matches Sail `AmountInputBlock`. */
+export const TIDE_FIELD_LABEL_CLASS = "text-sm font-semibold text-[#1E4775]";
+
+/** Bordered amount input — matches Sail buy/sell (same fill as panel, not brighter white). */
+export const TIDE_INPUT_FIELD_CLASS =
+  "w-full rounded-md px-3 py-2 bg-transparent text-[#1E4775] border border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono placeholder:text-[#1E4775]/25";
+
+export const TIDE_INPUT_FIELD_WITH_MAX_CLASS = `${TIDE_INPUT_FIELD_CLASS} pr-20`;
+
+export const TIDE_MAX_BUTTON_CLASS =
+  "absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-3 py-1.5 text-sm bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 font-medium";
+
+/** Summary / receive rows — Sail transaction overview style. */
+export const TIDE_OVERVIEW_PANEL_SHELL =
+  "rounded-md border border-[#1E4775]/10 bg-[#17395F]/5 px-3 py-2.5";
+
+export const TIDE_ROW_DIVIDER =
+  "flex w-full items-center justify-between gap-3 border-b border-[#1E4775]/10 py-2.5 last:border-b-0";
+
+export const TIDE_INSET_LIGHT_LABEL_CLASS = "text-xs font-medium text-[#1E4775]/65";
+
+export const TIDE_INSET_LIGHT_AMOUNT_SM_CLASS = `${SAIL_ADVANCED_LIGHT_VALUE} text-lg sm:text-xl`;
+
+export const TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS = "text-sm text-[#1E4775]/55";
+
+export const TIDE_INSET_LIGHT_META_CLASS = SAIL_ADVANCED_LIGHT_CAPTION;
+
+/** Harbor theme accents on white frosted cards. */
 export const TIDE_THEME = {
   coral: {
-    accentBar: DASHBOARD_PRODUCT_ACCENT_MV_CLASS,
-    iconBadge: DASHBOARD_PRODUCT_ICON_MV_CLASS,
-    subtitle: "text-[#FF8A7A]",
+    iconBadge: `${HARBOR_FROSTED_LIGHT_ICON_BADGE_BASE} h-8 w-8 text-harbor-coral`,
+    subtitle: "text-harbor-coral",
     badgeVariant: "coral" as StatusBadgeVariant,
-    highlight: `${MV_STAT_TILE} border-[#FF8A7A]/25`,
-    highlightText: "text-[#FF8A7A]",
-    inset: MV_STAT_TILE,
-    valueAccent: "text-white",
   },
   mint: {
-    accentBar: DASHBOARD_PRODUCT_ACCENT_EARN_CLASS,
-    iconBadge: DASHBOARD_PRODUCT_ICON_EARN_CLASS,
-    subtitle: "text-[#B8EBD5]",
+    iconBadge: `${HARBOR_FROSTED_LIGHT_ICON_BADGE_BASE} h-8 w-8 text-[#4A9784]`,
+    subtitle: "text-[#4A9784]",
     badgeVariant: "green" as StatusBadgeVariant,
-    highlight: `${MV_STAT_TILE} border-[#B8EBD5]/25`,
-    highlightText: "text-[#B8EBD5]",
-    inset: MV_STAT_TILE,
-    valueAccent: "text-[#B8EBD5]",
   },
   blue: {
-    accentBar: "bg-[#1E4775]",
-    iconBadge:
-      "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#8CB8DC]/25 bg-[#1E4775]/55 text-[#8CB8DC] backdrop-blur-md",
-    subtitle: "text-[#8CB8DC]",
+    iconBadge: `${HARBOR_FROSTED_LIGHT_ICON_BADGE_BASE} h-8 w-8 text-[#1E4775]`,
+    subtitle: "text-[#1E4775]/70",
     badgeVariant: "neutral" as StatusBadgeVariant,
-    highlight: `${MV_STAT_TILE} border-[#1E4775]/40`,
-    highlightText: "text-[#8CB8DC]",
-    inset: MV_STAT_TILE,
-    valueAccent: "text-white",
-    button:
-      "bg-white text-[#1E4775] enabled:hover:bg-white/90 disabled:opacity-40",
-    maxButton: "text-[#8CB8DC]",
   },
 } as const;
 
-export {
-  MV_META_TEXT as TIDE_META_TEXT,
-  MV_SECTION_LABEL as TIDE_LABEL_CLASS,
-  MV_CAPTION_TEXT as TIDE_CAPTION_CLASS,
-  MV_FOOTER_PANEL as TIDE_CARD_FOOTER,
-};
+export const TIDE_META_TEXT = "text-xs leading-snug text-[#1E4775]/65";
+
+export const TIDE_CAPTION_CLASS = "text-sm leading-relaxed text-[#1E4775]/60";
+
+export const TIDE_CARD_FOOTER =
+  "mt-auto border-t border-[#1E4775]/10 px-0 py-2.5 sm:py-3";
 
 export const TIDE_CARD_BODY =
-  "flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3 sm:px-4 sm:pb-4 sm:pt-4 lg:justify-end lg:pt-5";
+  "flex min-h-0 flex-1 flex-col pt-3 sm:pt-4 lg:justify-end";
 
-/** Top-aligned stacked content; card body flex-1 leaves space above footer on lg. */
-export const TIDE_CARD_CONTENT_STACK = "flex w-full flex-col gap-4 sm:gap-5";
+export const TIDE_CARD_CONTENT_STACK = "flex w-full flex-col gap-4";
 
 export const TIDE_AMOUNT_CLASS =
-  "font-mono text-2xl font-bold tabular-nums text-white sm:text-3xl";
+  "font-mono text-2xl font-bold tabular-nums text-[#1E4775] sm:text-3xl";
 
-export const TIDE_AMOUNT_SM_CLASS =
-  "font-mono text-lg font-semibold tabular-nums text-white sm:text-xl";
-
-export const TIDE_INSET_LABEL_CLASS = `${MV_SECTION_LABEL} text-[10px] uppercase tracking-wide`;
-
+/** Primary action — matches Sail embedded buy button. */
 export const TIDE_PRIMARY_BUTTON_CLASS =
-  "w-full rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-[#1E4775] shadow-sm transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40";
+  "w-full rounded-lg py-3 px-4 text-sm font-semibold bg-[#4A9784] text-white transition hover:bg-[#3f8576] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500";
 
-export const TIDE_INPUT_SHELL_CLASS = `${MV_STAT_TILE} flex items-center gap-2 px-3 py-2`;
+export const TIDE_FOOTER_NOTE_CLASS = "text-[11px] leading-snug text-[#1E4775]/55";
 
 export const TIDE_FOOTER_EXTRA_CORAL_CLASS =
-  "text-[10px] font-medium leading-snug text-[#FF8A7A]";
+  "text-[10px] font-medium leading-snug text-harbor-coral";
 
 export const TIDE_FOOTER_EXTRA_MINT_CLASS =
-  "text-[10px] font-medium leading-snug text-[#B8EBD5]";
+  "text-[10px] font-medium leading-snug text-[#4A9784]";
 
 export const TIDE_FOOTER_EXTRA_BLUE_CLASS =
-  "font-mono text-[10px] tabular-nums leading-snug text-[#8CB8DC]";
+  "font-mono text-[10px] tabular-nums leading-snug text-[#1E4775]/65";

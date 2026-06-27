@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { HARBOR_FROSTED_DROPDOWN_SHELL, HARBOR_FROSTED_INDEX_SURFACE, HARBOR_FROSTED_MODAL_SHELL, HARBOR_FROSTED_SURFACE, HARBOR_FROSTED_SURFACE_HOVER, HARBOR_FROSTED_SURFACE_SELECTED } from "@/components/shared/harborFrostedSurfaceStyles";
 import { feeds as feedsConfig } from "@/config/feeds";
 import { parsePair } from "@/lib/utils";
 import { getTokenFullName } from "@/utils/flowUtils";
@@ -152,8 +153,8 @@ function FeedRow({
             <div
               className={`border border-[#1E4775]/10 transition-colors cursor-pointer ${
                 isFeedExpanded
-                  ? "bg-[rgb(var(--surface-selected-rgb))]"
-                  : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
+                  ? `${HARBOR_FROSTED_SURFACE_SELECTED}`
+                  : `${HARBOR_FROSTED_SURFACE} ${HARBOR_FROSTED_SURFACE_HOVER}`
               }`}
               onClick={() =>
                 setExpanded(
@@ -489,7 +490,7 @@ function FeedRow({
 
             {/* Expanded details box */}
             {isFeedExpanded && (
-              <div className="bg-white border border-[#1E4775]/10">
+              <div className={HARBOR_FROSTED_INDEX_SURFACE}>
                 <div className="bg-[rgb(var(--surface-selected-rgb))] p-3">
                   <FeedDetails
                     network={network as any}
@@ -974,7 +975,7 @@ export function FeedTable({
   return (
     <div className="space-y-2">
       {/* Sort menu (mobile) */}
-      <div className="lg:hidden bg-white border border-[#1E4775]/10 py-2 px-3">
+      <div className={`lg:hidden ${HARBOR_FROSTED_INDEX_SURFACE} py-2 px-3`}>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <div className="text-[10px] uppercase tracking-wider font-semibold text-[#1E4775]/70 whitespace-nowrap">
@@ -986,7 +987,7 @@ export function FeedTable({
                 setSortBy(e.target.value as SortColumn);
                 setSortDirection("desc");
               }}
-              className="min-w-0 flex-1 px-2 py-1 text-xs border border-[#1E4775]/20 text-[#1E4775] bg-white focus:outline-none focus:ring-1 focus:ring-[#1E4775]/20"
+              className="min-w-0 flex-1 px-2 py-1 text-xs border border-[#1E4775]/20 text-[#1E4775] bg-white/85 backdrop-blur-sm focus:outline-none focus:ring-1 focus:ring-[#1E4775]/20"
             >
               <option value="votes">Votes</option>
               <option value="feed">Feed</option>
@@ -1010,7 +1011,7 @@ export function FeedTable({
       </div>
 
       {/* Header row (desktop) */}
-      <div className="hidden lg:block bg-white border border-[#1E4775]/10 py-2 px-3">
+      <div className={`hidden lg:block ${HARBOR_FROSTED_INDEX_SURFACE} py-2 px-3`}>
         <div className="grid grid-cols-[1.2fr_0.8fr_0.6fr_1.2fr_0.6fr_0.4fr_0.7fr] gap-3 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-bold">
           <div
             className="text-center cursor-pointer hover:opacity-70 transition-opacity flex items-center justify-center gap-1"
@@ -1135,7 +1136,7 @@ export function FeedTable({
           onClick={() => setVoteModalFeedId(null)}
         >
           <div
-            className="bg-white w-full max-w-sm border border-[#1E4775]/20 p-4"
+            className={`${HARBOR_FROSTED_MODAL_SHELL} w-full max-w-sm p-4`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-2">

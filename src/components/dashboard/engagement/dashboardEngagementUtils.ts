@@ -1,6 +1,7 @@
 import type { FounderMetricRow } from "@/hooks/useFounderMetrics";
 import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
 import type { DashboardActiveVoyageSnapshot } from "@/hooks/useDashboardActiveVoyage";
+import { founderMetricRowHasGenesisDeposit } from "@/utils/founderMetrics";
 import { formatMarketLabel } from "../portfolio/dashboardPortfolioUtils";
 
 export type YieldDistributionEvent = {
@@ -110,6 +111,7 @@ export function buildYieldHubSnapshot(
 ): YieldHubSnapshot {
   const revenueSharePct = input.yieldRows.reduce((s, r) => s + r.yieldSharePct, 0);
   const boostMultiplier = input.yieldRows.reduce((max, r) => {
+    if (!founderMetricRowHasGenesisDeposit(r)) return max;
     const m = r.boostMultiplier ?? 0;
     return m > max ? m : max;
   }, 0);

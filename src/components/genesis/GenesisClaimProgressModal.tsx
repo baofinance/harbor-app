@@ -1,5 +1,7 @@
 "use client";
 
+import { HARBOR_FROSTED_MODAL_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
+
 export type GenesisClaimProgressModalProps = {
   open: boolean;
   status: "pending" | "success" | "error";
@@ -26,7 +28,7 @@ export function GenesisClaimProgressModal({
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={status === "pending" ? undefined : onClose}
       />
-      <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200  overflow-hidden">
+      <div className={`relative ${HARBOR_FROSTED_MODAL_SHELL} w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200  overflow-hidden`}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#1E4775]/10">
           <div>
             <p className="text-xs uppercase tracking-wide text-[#1E4775]/60">

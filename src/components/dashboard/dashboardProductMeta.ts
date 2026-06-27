@@ -1,7 +1,6 @@
 import type { ComponentType } from "react";
 import {
   ArchiveBoxIcon,
-  ChartBarIcon,
   CurrencyDollarIcon,
   SparklesIcon,
   WalletIcon,
@@ -99,12 +98,13 @@ export const DASHBOARD_PRODUCT_META: Record<DashboardProductId, DashboardProduct
     },
     yield: {
       id: "yield",
-      title: "Revenue share",
+      title: "Maiden Voyage",
       titleClass: DASHBOARD_PRODUCT_TITLE_FEATURED_CLASS,
       headerHref: "/genesis",
-      icon: ChartBarIcon,
+      icon: SparklesIcon,
       iconBadgeClass: DASHBOARD_PRODUCT_ICON_YIELD_FEATURED_CLASS,
       accentBarClass: DASHBOARD_PRODUCT_ACCENT_YIELD_FEATURED_CLASS,
+      featured: true,
     },
   };
 

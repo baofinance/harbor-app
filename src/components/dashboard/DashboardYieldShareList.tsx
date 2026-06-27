@@ -2,7 +2,10 @@
 
 import type { ReactNode } from "react";
 import type { FounderMetricRow } from "@/hooks/useFounderMetrics";
-import { founderMetricRowHasRevenueShare } from "@/utils/founderMetrics";
+import {
+  founderMetricRowHasGenesisDeposit,
+  founderMetricRowHasRevenueShare,
+} from "@/utils/founderMetrics";
 import { GenesisMarketChainCell } from "@/components/genesis/GenesisMarketSharedRowCells";
 import { chainFromMarketId } from "@/components/dashboard/dashboardRowPresentation";
 import { formatPercent, formatUSD } from "@/utils/formatters";
@@ -102,9 +105,11 @@ function YieldMobileMetric({
   );
 }
 
+const NO_DEPOSIT_VALUE_CLASS = `${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} text-[#1E4775]/40`;
+
 function DashboardYieldRowView({ row }: { row: FounderMetricRow }) {
   const { chainName, chainLogo } = chainFromMarketId(row.marketId);
-  const showBoost = row.ownershipSharePct > 0;
+  const hasDeposit = founderMetricRowHasGenesisDeposit(row);
 
   return (
     <DashboardContentRow variant="index">
@@ -125,32 +130,49 @@ function DashboardYieldRowView({ row }: { row: FounderMetricRow }) {
         <div className={DASHBOARD_INDEX_ROW_MOBILE_METRICS_GRID_CLASS}>
           <YieldMobileMetric
             label="MV ownership"
-            value={formatPercent(row.ownershipSharePct, { decimals: 2 })}
+            value={
+              hasDeposit
+                ? formatPercent(row.ownershipSharePct, { decimals: 2 })
+                : "—"
+            }
+            valueClassName={hasDeposit ? "" : "text-[#1E4775]/40"}
           />
           <div className="min-w-0">
             <p className={DASHBOARD_INDEX_ROW_MOBILE_METRIC_LABEL_CLASS}>Boost</p>
             <div className="mt-0.5">
-              {showBoost ? (
+              {hasDeposit ? (
                 <DashboardYieldBoostBadge multiplier={row.boostMultiplier} />
               ) : (
-                <span className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} text-[#1E4775]/40`}>
-                  —
-                </span>
+                <span className={NO_DEPOSIT_VALUE_CLASS}>—</span>
               )}
             </div>
           </div>
           <YieldMobileMetric
             label="Yield pool %"
-            value={formatPercent(row.yieldSharePct, { decimals: 4 })}
+            value={
+              hasDeposit
+                ? formatPercent(row.yieldSharePct, { decimals: 4 })
+                : "—"
+            }
+            valueClassName={hasDeposit ? "" : "text-[#1E4775]/40"}
           />
           <YieldMobileMetric
             label="Total paid"
-            value={formatUSD(row.paidUSD, { compact: false })}
+            value={
+              hasDeposit ? formatUSD(row.paidUSD, { compact: false }) : "—"
+            }
+            valueClassName={hasDeposit ? "" : "text-[#1E4775]/40"}
           />
           <YieldMobileMetric
             label="Pending distribution"
-            value={formatUSD(row.outstandingUSD, { compact: false })}
-            valueClassName={row.outstandingUSD > 0 ? "text-harbor-coral" : ""}
+            value={
+              hasDeposit
+                ? formatUSD(row.outstandingUSD, { compact: false })
+                : "—"
+            }
+            valueClassName={
+              hasDeposit && row.outstandingUSD > 0 ? "text-harbor-coral" : ""
+            }
           />
         </div>
       </div>
@@ -172,34 +194,46 @@ function DashboardYieldRowView({ row }: { row: FounderMetricRow }) {
           </span>
         </div>
         <div className={DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME}>
-          <span className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} tabular-nums`}>
-            {formatPercent(row.ownershipSharePct, { decimals: 2 })}
+          <span
+            className={`${hasDeposit ? DASHBOARD_POSITIONS_VALUE_TEXT_CLASS : NO_DEPOSIT_VALUE_CLASS} tabular-nums`}
+          >
+            {hasDeposit
+              ? formatPercent(row.ownershipSharePct, { decimals: 2 })
+              : "—"}
           </span>
         </div>
         <div className={DASHBOARD_YIELD_COL_BOOST_CLASSNAME}>
-          {showBoost ? (
+          {hasDeposit ? (
             <DashboardYieldBoostBadge multiplier={row.boostMultiplier} />
           ) : (
-            <span className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} text-[#1E4775]/40`}>—</span>
+            <span className={NO_DEPOSIT_VALUE_CLASS}>—</span>
           )}
         </div>
         <div className={DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME}>
-          <span className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} tabular-nums`}>
-            {formatPercent(row.yieldSharePct, { decimals: 4 })}
-          </span>
-        </div>
-        <div className={DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME}>
-          <span className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} tabular-nums`}>
-            {formatUSD(row.paidUSD, { compact: false })}
+          <span
+            className={`${hasDeposit ? DASHBOARD_POSITIONS_VALUE_TEXT_CLASS : NO_DEPOSIT_VALUE_CLASS} tabular-nums`}
+          >
+            {hasDeposit
+              ? formatPercent(row.yieldSharePct, { decimals: 4 })
+              : "—"}
           </span>
         </div>
         <div className={DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME}>
           <span
-            className={`${DASHBOARD_POSITIONS_VALUE_TEXT_CLASS} tabular-nums ${
-              row.outstandingUSD > 0 ? "text-harbor-coral" : ""
+            className={`${hasDeposit ? DASHBOARD_POSITIONS_VALUE_TEXT_CLASS : NO_DEPOSIT_VALUE_CLASS} tabular-nums`}
+          >
+            {hasDeposit ? formatUSD(row.paidUSD, { compact: false }) : "—"}
+          </span>
+        </div>
+        <div className={DASHBOARD_YIELD_COL_CENTER_NUMERIC_CLASSNAME}>
+          <span
+            className={`${hasDeposit ? DASHBOARD_POSITIONS_VALUE_TEXT_CLASS : NO_DEPOSIT_VALUE_CLASS} tabular-nums ${
+              hasDeposit && row.outstandingUSD > 0 ? "text-harbor-coral" : ""
             }`}
           >
-            {formatUSD(row.outstandingUSD, { compact: false })}
+            {hasDeposit
+              ? formatUSD(row.outstandingUSD, { compact: false })
+              : "—"}
           </span>
         </div>
       </div>

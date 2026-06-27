@@ -325,6 +325,16 @@ body.app-bg-megaeth .app-index-manage-btn:hover {
     color: transparent;
   }
 
+  /* Sail earn tagline — long side (mint / earn). */
+  .sail-earn-long-gradient {
+    display: inline-block;
+    background-image: linear-gradient(to right, #4a9784, #6bc4a8, #b8ebd5);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
   /** Explore the Upside deposit slider — thumb size must match UPSIDE_SLIDER_THUMB_PX in maidenVoyageUpsideSlider.ts. */
   .mv-upside-slider {
     -webkit-appearance: none;
@@ -339,6 +349,7 @@ body.app-bg-megaeth .app-index-manage-btn:hover {
   .mv-upside-slider::-webkit-slider-runnable-track {
     height: 6px;
     border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.12);
   }
 
   .mv-upside-slider::-webkit-slider-thumb {
@@ -362,7 +373,7 @@ body.app-bg-megaeth .app-index-manage-btn:hover {
   .mv-upside-slider::-moz-range-track {
     height: 6px;
     border-radius: 9999px;
-    background: transparent;
+    background: rgba(255, 255, 255, 0.12);
   }
 
   .mv-upside-slider::-moz-range-thumb {

@@ -47,14 +47,44 @@ export const GENESIS_COMPLETED_HEADER_INNER_GRID_CLASS = `grid ${GENESIS_COMPLET
 
 export const GENESIS_COMPLETED_DESKTOP_ROW_GRID_CLASS = `hidden md:grid ${GENESIS_COMPLETED_GRID_COLS_LG} ${GENESIS_COMPLETED_GRID_COLS_MD} gap-4 items-center`;
 
+/** Frosted white fill — re-exported from shared Harbor glass tokens. */
+export {
+  HARBOR_FROSTED_FILL as GENESIS_TABLE_FROSTED_FILL,
+  HARBOR_FROSTED_EDGE as GENESIS_TABLE_FROSTED_EDGE,
+  HARBOR_FROSTED_SURFACE as GENESIS_TABLE_FROSTED_SURFACE,
+  HARBOR_FROSTED_SURFACE_HOVER,
+  HARBOR_FROSTED_SURFACE_SELECTED,
+} from "@/components/shared/harborFrostedSurfaceStyles";
+
+import {
+  HARBOR_FROSTED_FILL,
+  HARBOR_FROSTED_PILL,
+  HARBOR_FROSTED_SURFACE,
+  HARBOR_FROSTED_SURFACE_HOVER,
+  HARBOR_FROSTED_SURFACE_SELECTED,
+} from "@/components/shared/harborFrostedSurfaceStyles";
+
 /** Shared table row shell — matches active Ongoing row height and radius. */
-export const GENESIS_TABLE_ROW_SHELL_CLASS =
-  "bg-white py-2.5 px-2 rounded-lg min-h-[52px]";
+export const GENESIS_TABLE_ROW_SHELL_CLASS = `${HARBOR_FROSTED_SURFACE} py-2.5 px-2 rounded-lg min-h-[52px]`;
 
 /** Header label cell — matches Maiden Voyage explorer Lifecycle column. */
 export const GENESIS_TABLE_HEADER_CELL_CLASSNAME =
   "flex min-w-0 items-center justify-center text-center truncate";
 
-/** White header strip above archived/completed/active rows. */
-export const GENESIS_TABLE_HEADER_SHELL_CLASS =
-  "hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0 rounded-md border border-[#1E4775]/15 shadow-sm";
+/** Frosted header strip above archived/completed/active rows. */
+export const GENESIS_TABLE_HEADER_SHELL_CLASS = `hidden md:block ${HARBOR_FROSTED_SURFACE} py-1.5 px-2 overflow-x-auto mb-0 rounded-md`;
+
+/** Interactive voyage row (expandable active markets). */
+export const GENESIS_TABLE_ROW_INTERACTIVE_IDLE_CLASS = `${HARBOR_FROSTED_SURFACE} ${HARBOR_FROSTED_SURFACE_HOVER}`;
+
+export const GENESIS_TABLE_ROW_INTERACTIVE_EXPANDED_CLASS =
+  HARBOR_FROSTED_SURFACE_SELECTED;
+
+/** Compact voyage card + expanded panel shells. */
+export const GENESIS_VOYAGE_COMPACT_CARD_SHELL_CLASS = `overflow-hidden rounded-xl ${HARBOR_FROSTED_SURFACE} text-[#1E4775]`;
+
+export const GENESIS_VOYAGE_EXPANDED_PANEL_SHELL_CLASS = `overflow-hidden border-t border-[#1E4775]/12 ${HARBOR_FROSTED_FILL} backdrop-blur-md px-5 py-4`;
+
+/** Inline market title pill on voyage rows. */
+export const GENESIS_VOYAGE_ROW_PILL_CLASS =
+  `inline-flex h-9 shrink-0 items-center gap-2 rounded-md pl-2 pr-3.5 text-[#1E4775] ${HARBOR_FROSTED_PILL}`;

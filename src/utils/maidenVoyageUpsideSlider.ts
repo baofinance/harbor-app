@@ -149,6 +149,7 @@ export function upsideSliderFillBackground(
 ): string {
   const pct = upsideDepositToTrackRatio(valueUsd, minUsd, maxUsd, pivotUsd) * 100;
   const fill = "#B8EBD5";
+  /** Track on dark deposit panel. */
   const track = "rgba(255, 255, 255, 0.12)";
   return `linear-gradient(to right, ${fill} 0%, ${fill} ${pct}%, ${track} ${pct}%, ${track} 100%)`;
 }

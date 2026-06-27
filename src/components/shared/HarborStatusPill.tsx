@@ -101,6 +101,9 @@ function classFromLabel(
     return HARBOR_STATUS_PILL_ACTIVE_LIGHT;
   }
   if (normalized.includes("ended") || normalized.includes("inactive")) {
+    if (variant === "coral") {
+      return HARBOR_STATUS_PILL_CORAL_LIGHT;
+    }
     return HARBOR_STATUS_PILL_ENDED_LIGHT;
   }
   if (normalized.includes("position")) {

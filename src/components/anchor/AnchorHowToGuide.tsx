@@ -49,7 +49,7 @@ export function AnchorHowToGuide() {
                 onClick={() => setActiveStep(index)}
                 className={`rounded-full border px-3 py-1 text-sm transition-colors relative z-10 ${
                   index === activeStep
-                    ? "border-[#1E4775]/25 bg-white text-[#1E4775] font-semibold shadow-sm"
+                    ? "border-[#1E4775]/25 bg-white/90 backdrop-blur-sm text-[#1E4775] font-semibold shadow-sm"
                     : "border-[#1E4775]/15 bg-white/60 text-[#1E4775]/65 hover:border-[#FF8A7A]/60 hover:text-[#1E4775]"
                 }`}
               >
@@ -70,7 +70,7 @@ export function AnchorHowToGuide() {
           type="button"
           onClick={goPrev}
           disabled={activeStep === 0}
-          className="rounded-full border border-[#FF8A7A]/55 bg-white px-4 py-1.5 text-sm font-semibold text-[#1E4775] transition hover:bg-[#FF8A7A]/10 disabled:opacity-40"
+          className="rounded-full border border-[#FF8A7A]/55 bg-white/90 backdrop-blur-sm px-4 py-1.5 text-sm font-semibold text-[#1E4775] transition hover:bg-[#FF8A7A]/10 disabled:opacity-40"
         >
           Previous
         </button>

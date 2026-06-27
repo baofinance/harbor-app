@@ -2,6 +2,7 @@ export type FounderParticipant = {
   user: string;
   finalMaidenVoyageOwnershipShare?: string | null;
   maidenVoyageBoostMultiplier?: string | null;
+  maidenVoyageDepositCountedUSD?: string | null;
 };
 
 export type FounderWalletMetricInput = {
@@ -18,6 +19,8 @@ export type FounderWalletMetric = {
   ownershipSharePct: number;
   /** Current MV retention boost from indexer; null if this wallet has no marks row for that genesis. */
   boostMultiplier: number | null;
+  /** Counted maiden-voyage deposit USD from subgraph (0 if never deposited). */
+  depositCountedUsd: number;
   totalEarnedUSD: number;
   paidUSD: number;
   outstandingUSD: number;
@@ -46,8 +49,17 @@ export function deriveFounderWalletMetric(
   const targetShare = target?.share ?? 0;
 
   const participant = input.participants.find((p) => p.user.toLowerCase() === walletLower);
+  const depositCountedUsd = participant
+    ? Number.parseFloat(participant.maidenVoyageDepositCountedUSD || "0") || 0
+    : 0;
+  const ownershipSharePct = targetShare * 100;
+  const hasGenesisDeposit = founderMetricRowHasGenesisDeposit({
+    ownershipSharePct,
+    depositCountedUsd,
+  });
+
   let boostMultiplier: number | null = null;
-  if (participant) {
+  if (participant && hasGenesisDeposit) {
     const b = Number.parseFloat(participant.maidenVoyageBoostMultiplier || "1");
     boostMultiplier = Number.isFinite(b) && b > 0 ? b : 1;
   }
@@ -66,12 +78,22 @@ export function deriveFounderWalletMetric(
 
   return {
     yieldSharePct: poolShare * 100,
-    ownershipSharePct: targetShare * 100,
+    ownershipSharePct,
     boostMultiplier,
+    depositCountedUsd,
     totalEarnedUSD,
     paidUSD: input.paidUSD,
     outstandingUSD: totalEarnedUSD - input.paidUSD,
   };
+}
+
+/** True when this wallet had a counted maiden-voyage deposit or non-zero ownership. */
+export function founderMetricRowHasGenesisDeposit(row: {
+  ownershipSharePct: number;
+  depositCountedUsd: number;
+}): boolean {
+  if (row.depositCountedUsd > 0) return true;
+  return Number(row.ownershipSharePct.toFixed(2)) > 0;
 }
 
 /** Hide revenue-share rows that would display as 0% pool share (incl. float dust). */

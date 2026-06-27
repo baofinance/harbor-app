@@ -167,7 +167,7 @@ function NetworkOptions() {
                             }}
                             className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-[#1E4775] rounded-md transition-colors ${
                                 isCurrent
-                                    ? "bg-white cursor-default shadow-md ring-2 ring-[#1E4775]/40"
+                                    ? "bg-white/90 backdrop-blur-sm cursor-default shadow-md ring-2 ring-[#1E4775]/40"
                                     : "bg-gray-300 hover:bg-gray-400"
                             } ${!canUseSwitch ? "opacity-50 cursor-not-allowed" : ""}`}
                         >
@@ -212,7 +212,7 @@ export function Account() {
         <>
             <button
                 onClick={() => setShowModal(true)}
-                className="relative inline-flex items-center gap-2 px-2.5 sm:px-3 py-2 text-sm font-medium text-[#1E4775] bg-white shadow-sm hover:bg-white/90 rounded-md"
+                className="relative inline-flex items-center gap-2 px-2.5 sm:px-3 py-2 text-sm font-medium text-[#1E4775] bg-white/90 backdrop-blur-sm shadow-sm hover:bg-white/90 rounded-md"
             >
                 <Wallet className="h-4 w-4 shrink-0 text-[#1E4775]/80" />
                 <div className="flex items-center gap-2">

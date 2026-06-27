@@ -2,14 +2,17 @@
 
 import { HandCoins } from "lucide-react";
 import { useTideClaimActions } from "@/hooks/useTideClaimActions";
-import { TideAmountPanel } from "./TideAmountPanel";
+import { formatTideTokenAmount } from "@/utils/tideSnapshot";
 import { TideFeatureCard } from "./TideFeatureCard";
 import {
-  TIDE_AMOUNT_SM_CLASS,
   TIDE_CARD_CONTENT_STACK,
+  TIDE_FIELD_LABEL_CLASS,
   TIDE_FOOTER_EXTRA_MINT_CLASS,
-  TIDE_INSET_LABEL_CLASS,
+  TIDE_INSET_LIGHT_AMOUNT_SM_CLASS,
+  TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS,
+  TIDE_INSET_LIGHT_META_CLASS,
   TIDE_META_TEXT,
+  TIDE_OVERVIEW_PANEL_SHELL,
   TIDE_PRIMARY_BUTTON_CLASS,
   TIDE_THEME,
 } from "./tideCardStyles";
@@ -19,7 +22,6 @@ function ClaimBucket({
   methodLabel,
   amountTokens,
   isLoading,
-  themeInset,
   blockReason,
   alreadyClaimed,
   canClaim,
@@ -30,7 +32,6 @@ function ClaimBucket({
   methodLabel: string;
   amountTokens: number;
   isLoading: boolean;
-  themeInset: string;
   blockReason: string | null;
   alreadyClaimed: boolean;
   canClaim: boolean;
@@ -39,56 +40,51 @@ function ClaimBucket({
 }) {
   const hasBalance = amountTokens > 0;
 
-  if (isLoading) {
-    return (
-      <div className="flex w-full flex-col gap-1.5">
-        <p className={`${TIDE_INSET_LABEL_CLASS} text-[#B8EBD5]/85`}>{label}</p>
-        <div className={`w-full px-4 py-3 ${themeInset}`}>
-          <p className={TIDE_META_TEXT}>Loading snapshot…</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <TideAmountPanel
-      label={label}
-      amountTokens={amountTokens}
-      insetClassName={themeInset}
-      labelClassName={`${TIDE_INSET_LABEL_CLASS} text-[#B8EBD5]/85`}
-      amountClassName={TIDE_AMOUNT_SM_CLASS}
-      unitClassName="text-base text-white/55"
-      layout="stack"
-      headerRight={
-        <span className="shrink-0 font-mono text-[9px] uppercase tracking-wide text-white/35">
-          {methodLabel}
-        </span>
-      }
-      footer={
-        <>
-          {hasBalance && alreadyClaimed ? (
-            <p className="mt-3 text-sm font-medium text-[#B8EBD5]">Claimed</p>
-          ) : hasBalance && blockReason ? (
-            <p className={`mt-3 ${TIDE_META_TEXT}`}>{blockReason}</p>
-          ) : null}
-          {!alreadyClaimed ? (
-            <button
-              type="button"
-              onClick={onClaim}
-              disabled={!canClaim || isClaiming || !hasBalance}
-              className={`mt-3 ${TIDE_PRIMARY_BUTTON_CLASS}`}
-              title={
-                methodLabel === "claimVeBao"
-                  ? "Some wallets mislabel this tx due to a 4-byte selector collision — the contract call is still claimVeBao"
-                  : undefined
-              }
-            >
-              {isClaiming ? "Claiming…" : "Claim"}
-            </button>
-          ) : null}
-        </>
-      }
-    />
+    <div className="flex w-full flex-col gap-2">
+      <span className={TIDE_FIELD_LABEL_CLASS}>{label}</span>
+
+      <div className={TIDE_OVERVIEW_PANEL_SHELL}>
+        <div className="flex justify-end">
+          <span
+            className={`shrink-0 font-mono uppercase tracking-wide ${TIDE_INSET_LIGHT_META_CLASS}`}
+          >
+            {methodLabel}
+          </span>
+        </div>
+
+        {isLoading ? (
+          <p className={`mt-2 ${TIDE_META_TEXT}`}>Loading snapshot…</p>
+        ) : (
+          <>
+            <p className={`mt-2 ${TIDE_INSET_LIGHT_AMOUNT_SM_CLASS}`}>
+              {formatTideTokenAmount(amountTokens)}{" "}
+              <span className={TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS}>TIDE</span>
+            </p>
+            {hasBalance && alreadyClaimed ? (
+              <p className="mt-3 text-sm font-medium text-[#4A9784]">Claimed</p>
+            ) : hasBalance && blockReason ? (
+              <p className={`mt-3 ${TIDE_META_TEXT}`}>{blockReason}</p>
+            ) : null}
+            {!alreadyClaimed ? (
+              <button
+                type="button"
+                onClick={onClaim}
+                disabled={!canClaim || isClaiming || !hasBalance}
+                className={`mt-3 ${TIDE_PRIMARY_BUTTON_CLASS}`}
+                title={
+                  methodLabel === "claimVeBao"
+                    ? "Some wallets mislabel this tx due to a 4-byte selector collision — the contract call is still claimVeBao"
+                    : undefined
+                }
+              >
+                {isClaiming ? "Claiming…" : "Claim"}
+              </button>
+            ) : null}
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -101,7 +97,6 @@ export function TideClaimCard() {
   return (
     <TideFeatureCard
       icon={<HandCoins className="h-4 w-4" strokeWidth={1.75} />}
-      accentBarClass={theme.accentBar}
       iconBadgeClass={theme.iconBadge}
       title="Claim"
       subtitle="Merkle snapshot"
@@ -124,7 +119,6 @@ export function TideClaimCard() {
             methodLabel="claimVeBao"
             amountTokens={claim.veBaoAllocation?.amountTokens ?? 0}
             isLoading={bucketLoading}
-            themeInset={theme.inset}
             blockReason={claim.veBaoBlockReason}
             alreadyClaimed={claim.hasClaimedVeBao}
             canClaim={claim.canClaimVeBao}
@@ -136,7 +130,6 @@ export function TideClaimCard() {
             methodLabel="claimStandard"
             amountTokens={claim.standardAllocation?.amountTokens ?? 0}
             isLoading={bucketLoading}
-            themeInset={theme.inset}
             blockReason={claim.standardBlockReason}
             alreadyClaimed={claim.hasClaimedStandard}
             canClaim={claim.canClaimStandard}

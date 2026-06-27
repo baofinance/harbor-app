@@ -23,8 +23,8 @@ export const DASHBOARD_EMPTY_STATES = {
   earn: {
     title: "No active Earn positions",
     message: "Deposit into a stability pool to start earning.",
-    href: "/anchor",
-    linkLabel: "Open Anchor",
+    href: "/earn",
+    linkLabel: "Open Earn",
   },
   sail: {
     title: "No Sail positions",

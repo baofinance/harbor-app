@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { HARBOR_FROSTED_DROPDOWN_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import TokenIconClient from "@/components/TokenIconClient";
 
@@ -97,7 +98,7 @@ export function TokenSelectorDropdown({
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className="w-full flex items-center justify-between rounded-md px-3 py-2 bg-white text-[#1E4775] border border-[#1E4775]/20 focus:border-[#1E4775]/40 focus:ring-1 focus:ring-[#1E4775]/20 focus:outline-none text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1E4775]/5"
+        className="w-full flex items-center justify-between rounded-md px-3 py-2 bg-white/85 backdrop-blur-sm text-[#1E4775] border border-[#1E4775]/20 focus:border-[#1E4775]/40 focus:ring-1 focus:ring-[#1E4775]/20 focus:outline-none text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1E4775]/5"
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {selectedToken ? (
@@ -125,7 +126,7 @@ export function TokenSelectorDropdown({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-2 w-full bg-white border border-[#1E4775]/20 rounded-md shadow-lg overflow-hidden max-h-60 overflow-y-auto">
+        <div className={`absolute z-50 mt-2 w-full ${HARBOR_FROSTED_DROPDOWN_SHELL} border border-[#1E4775]/20 rounded-md shadow-lg overflow-hidden max-h-60 overflow-y-auto`}>
           {groups.map((group, groupIdx) => (
             <div key={groupIdx}>
               {groups.length > 1 && (

@@ -54,6 +54,10 @@ import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { getDepositMode } from "@/utils/depositMode";
 import type { DefinedMarket } from "@/config/markets";
 import { depositsBlockedForMarket, isMarketArchived } from "@/config/markets";
+import {
+  SailTradeFeeFooter,
+  type SailTradeMarketFees,
+} from "@/components/sail/SailTradeFeeFooter";
 
 interface SailManageModalProps {
  isOpen: boolean;
@@ -62,12 +66,16 @@ interface SailManageModalProps {
  market: DefinedMarket;
  initialTab?:"mint" |"redeem";
  onSuccess?: () => void;
+ /** Inline panel on UI+ advanced layout (no modal overlay). */
+ embedded?: boolean;
  /** USD price of leveraged token (e.g. hsSTETH-EUR). Used for value-based output estimation when swap+dry-run yields wrong results. */
  leveragedTokenPriceUSD?: number;
  /** Pre-loaded prices from parent (Sail page). Avoids $0.00 when modal mounts before CoinGecko responds. */
  ethPrice?: number | null;
  wstETHPrice?: number | null;
  fxSAVEPrice?: number | null;
+ /** Current market buy/sell fee bands for embedded trade footer. */
+ marketFees?: SailTradeMarketFees;
 }
 
 type ModalStep =
@@ -77,6 +85,12 @@ type ModalStep =
  |"redeeming"
  |"success"
  |"error";
+
+/** User-facing trade tab labels (internal tab values remain mint/redeem). */
+const SAIL_TRADE_TAB_LABEL = {
+  mint: "Buy",
+  redeem: "Sell",
+} as const;
 
 // Helper function to get accepted deposit assets from market config
 function getAcceptedDepositAssets(
@@ -100,10 +114,12 @@ export const SailManageModal = ({
  market,
  initialTab ="mint",
  onSuccess,
+ embedded = false,
  leveragedTokenPriceUSD,
  ethPrice: ethPriceProp,
  wstETHPrice: wstETHPriceProp,
  fxSAVEPrice: fxSAVEPriceProp,
+ marketFees,
 }: SailManageModalProps) => {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
@@ -140,7 +156,7 @@ export const SailManageModal = ({
     permitEnabled,
     setPermitEnabled,
   } = usePermitFlow({
-    enabled: isOpen && !!address,
+    enabled: (isOpen || embedded) && !!address,
     depositAssetSymbol:
       activeTab === "redeem"
         ? market?.leveragedToken?.symbol
@@ -1719,6 +1735,10 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
  return;
  }
  }
+ if (embedded) {
+   resetSailMintFormKeepToken();
+   return;
+ }
  onClose();
  };
 
@@ -1728,7 +1748,7 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
  setError(null);
  };
 
- if (!isOpen) return null;
+ if (!isOpen && !embedded) return null;
 
  const isProcessing =
  step ==="approving" || step ==="minting" || step ==="redeeming";
@@ -1790,9 +1810,10 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
      errorMessage={progress.steps.find((s) => s.status === "error")?.error}
    />
  )}
- {!progress.isOpen && isOpen && (
+ {!progress.isOpen && (isOpen || embedded) && (
  <DepositModalShell
-   isOpen={isOpen}
+   variant={embedded ? "inline" : "modal"}
+   isOpen={isOpen || embedded}
    onClose={handleClose}
    title={
      <DepositModalTitle
@@ -1801,7 +1822,7 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
        tokenIcon={
          (market.leveragedToken as { icon?: string } | undefined)?.icon
        }
-       actionLabel={activeTab === "mint" ? "Mint" : "Redeem"}
+       actionLabel={SAIL_TRADE_TAB_LABEL[activeTab]}
      />
    }
    notifications={{
@@ -1849,8 +1870,8 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
    tabs={
      <DepositModalTabHeader
        tabs={[
-         { value: "mint", label: "Mint" },
-         { value: "redeem", label: "Redeem" },
+         { value: "mint", label: SAIL_TRADE_TAB_LABEL.mint },
+         { value: "redeem", label: SAIL_TRADE_TAB_LABEL.redeem },
        ]}
        activeTab={activeTab}
        onTabChange={(v) => handleTabChange(v as "mint" | "redeem")}
@@ -1859,8 +1880,14 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
      />
    }
    closeDisabled={isProcessing}
-  panelClassName="max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col"
-  contentClassName="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4"
+  panelClassName={
+    embedded
+      ? "flex h-full min-h-0 flex-1 flex-col"
+      : "max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col"
+  }
+  contentClassName={
+    embedded ? "flex min-h-0 flex-1 flex-col space-y-4" : "min-h-0 flex-1 overflow-y-auto p-3 sm:p-4"
+  }
  >
  {step ==="success" ? (
  <TransactionSuccessMessage
@@ -1872,12 +1899,15 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
    txHash={txHash}
  />
  ) : (
- <div className="space-y-4">
-   <DepositModalFlowOverview
-     parts={
-       activeTab === "mint" ? sailMintFlowParts() : sailRedeemFlowParts()
-     }
-   />
+ <div className={embedded ? "flex min-h-0 flex-1 flex-col" : "space-y-4"}>
+   <div className={embedded ? "min-h-0 flex-1 space-y-4 overflow-y-auto" : "space-y-4"}>
+   {!embedded ? (
+     <DepositModalFlowOverview
+       parts={
+         activeTab === "mint" ? sailMintFlowParts() : sailRedeemFlowParts()
+       }
+     />
+   ) : null}
  {/* Input Section */}
  <TokenAmountSection
    tokenSelector={
@@ -1916,8 +1946,8 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
                  }]
                : []),
            ],
-           label: "Select Deposit Token",
-           placeholder: "Select Deposit Token",
+           label: "Buy with",
+           placeholder: "Buy with",
            disabled: isProcessing,
            showCustomOption: !isCollateralOnlyChain,
            onCustomOptionClick: () => {
@@ -1980,31 +2010,23 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
    }}
    afterAmount={
     activeTab === "mint" || activeTab === "redeem" ? (
-   <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
-     <div className="text-[#1E4775]/80">
-      {activeTab === "mint"
-        ? "Use permit (gasless approval) for this deposit"
-        : "Use permit (gasless approval) for this redemption"}
-     </div>
+   <div className="flex items-center justify-between gap-2 text-xs text-[#1E4775]/80">
+     <span>Gasless approval</span>
      {disableReason ? (
        <SimpleTooltip label={disableReason}>
-         <span className="flex items-center gap-2 text-[#1E4775]/80 cursor-not-allowed opacity-70">
-           <span className={permitEnabled ? "text-[#1E4775]" : "text-[#1E4775]/60"}>Off</span>
+         <span className="flex items-center cursor-not-allowed opacity-70">
            <button
              type="button"
              disabled
              className="relative inline-flex h-5 w-9 items-center rounded-full bg-[#1E4775]/30 cursor-not-allowed"
-             aria-label="Permit disabled"
+             aria-label="Gasless approval disabled"
            >
              <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-1" />
            </button>
          </span>
        </SimpleTooltip>
      ) : (
-       <label className="flex items-center gap-2 text-[#1E4775]/80 cursor-pointer">
-         <span className={permitEnabled ? "text-[#1E4775]" : "text-[#1E4775]/60"}>
-           {permitEnabled ? "On" : "Off"}
-         </span>
+       <label className="flex items-center cursor-pointer">
          <button
            type="button"
            onClick={() => setPermitEnabled((prev) => !prev)}
@@ -2012,7 +2034,7 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
              permitEnabled ? "bg-[#1E4775]" : "bg-[#1E4775]/30"
            }`}
            aria-pressed={permitEnabled}
-           aria-label="Toggle permit usage"
+           aria-label="Toggle gasless approval"
            disabled={isProcessing}
          >
            <span
@@ -2071,20 +2093,6 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
              ({parseFloat(amount).toFixed(6)} {selectedDepositAsset || collateralSymbol} ≈ {Number(formatEther(expectedMintOutput)).toFixed(6)} {leveragedTokenSymbol})
            </div>
          )}
-         {mintFeePercentage !== undefined && parsedAmount && parsedAmount > 0n && (
-           <div className="pt-2 border-t border-[#1E4775]/20">
-             <div className="flex justify-end items-center gap-2 text-xs text-right">
-               <span
-                 className={`font-bold font-mono ${
-                   mintFeePercentage > 2 && mintFeePercentage <= 100 ? "text-red-600" : "text-[#1E4775]"
-                 }`}
-               >
-                 Mint Fee: {mintFeePercentage > 100 ? "~1.00" : mintFeePercentage.toFixed(2)}%
-                 {mintFeePercentage > 2 && mintFeePercentage <= 100 && " ⚠️"}
-               </span>
-             </div>
-           </div>
-         )}
        </div>
      )}
      {activeTab === "redeem" && (
@@ -2123,20 +2131,6 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
              ({parseFloat(amount).toFixed(6)} {leveragedTokenSymbol} ≈ {Number(formatEther(expectedRedeemOutput)).toFixed(6)} {collateralSymbol})
            </div>
          )}
-         {redeemFeePercentage !== undefined && parsedAmount && parsedAmount > 0n && (
-           <div className="pt-2 border-t border-[#1E4775]/20">
-             <div className="flex justify-end items-center gap-2 text-xs text-right">
-               <span
-                 className={`font-bold font-mono ${
-                   redeemFeePercentage > 2 ? "text-red-600" : "text-[#1E4775]"
-                 }`}
-               >
-                 Redemption Fee: {redeemFeePercentage.toFixed(2)}%
-                 {redeemFeePercentage > 2 && " ⚠️"}
-               </span>
-             </div>
-           </div>
-         )}
        </div>
      )}
    </div>
@@ -2164,13 +2158,23 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
  </div>
  )}
 
- {/* Action Buttons - no line above; Anchor-style mt-4 spacing */}
+   </div>
+
+ {/* Action footer — fees + primary button pinned to bottom in embedded mode */}
  {!isProcessing && (
- <div className="flex gap-3 mt-4">
- {(step ==="error" || step ==="input") && (
+ <div className={embedded ? "mt-auto shrink-0 space-y-3 pt-2" : "mt-4 space-y-3"}>
+   <SailTradeFeeFooter
+     marketFees={marketFees}
+     activeTab={activeTab}
+     buyFeeEstimatePct={mintFeePercentage}
+     sellFeeEstimatePct={redeemFeePercentage}
+     showEstimates={Boolean(parsedAmount && parsedAmount > 0n)}
+   />
+ <div className={embedded ? "" : "flex gap-3"}>
+ {(step ==="error" || step ==="input") && !embedded && (
  <button
  onClick={step ==="error" ? handleCancel : handleClose}
- className="flex-1 py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
+ className="flex-1 py-3 px-4 bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
  >
  Cancel
  </button>
@@ -2190,10 +2194,19 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
          parsedAmount &&
          parsedAmount > currentBalance)
  )}
- className="flex-1 py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+ className={
+   embedded
+     ? `w-full rounded-lg py-3 px-4 font-semibold transition-colors disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 ${
+         activeTab === "mint"
+           ? "bg-[#4A9784] text-white hover:bg-[#3f8576]"
+           : "bg-[#1E4775] text-white hover:bg-[#17395F]"
+       }`
+     : "flex-1 py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+ }
  >
- {step ==="error" ? "Try Again" : activeTab ==="mint" ? "Mint" : "Redeem"}
+ {step ==="error" ? "Try Again" : SAIL_TRADE_TAB_LABEL[activeTab]}
  </button>
+ </div>
  </div>
  )}
  </div>

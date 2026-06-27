@@ -10409,7 +10409,7 @@ export const AnchorDepositWithdrawModal = ({
                             )}
                           </div>
                         ),
-                        inputClassName: `w-full h-14 rounded-md px-4 pr-24 bg-white text-[#1E4775] border-2 ${error ? "border-red-500" : "border-[#1E4775]/30"} focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-xl font-mono`,
+                        inputClassName: `w-full h-14 rounded-md px-4 pr-24 bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 ${error ? "border-red-500" : "border-[#1E4775]/30"} focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-xl font-mono`,
                         customHandleMax: handleMaxClick,
                         customHandleChange: handleAmountChange,
                       }}
@@ -10847,7 +10847,7 @@ export const AnchorDepositWithdrawModal = ({
                         <button
                           onClick={() => resetSimpleDepositFlowKeepToken()}
                           disabled={isProcessing}
-                          className="flex-1 py-3 px-4 rounded-md bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
+                          className="flex-1 py-3 px-4 rounded-md bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
                         >
                           ← Back
                         </button>
@@ -11338,7 +11338,7 @@ export const AnchorDepositWithdrawModal = ({
                             <>
                               <button
                                 onClick={handleCancel}
-                                className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
+                                className="flex-1 py-2 px-4 bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
                               >
                                 Cancel
                               </button>
@@ -11353,7 +11353,7 @@ export const AnchorDepositWithdrawModal = ({
                             <>
                               <button
                                 onClick={handleCancel}
-                                className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
+                                className="flex-1 py-2 px-4 bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
                               >
                                 Cancel
                               </button>
@@ -11373,7 +11373,7 @@ export const AnchorDepositWithdrawModal = ({
                                     : leaveStabilityPoolStepToReward()
                                 }
                                 disabled={isProcessing}
-                                className="flex-1 py-3 px-4 rounded-md bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
+                                className="flex-1 py-3 px-4 rounded-md bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
                               >
                                 ← Back
                               </button>
@@ -11530,7 +11530,7 @@ export const AnchorDepositWithdrawModal = ({
                             <>
                               <button
                                 onClick={handleCancel}
-                                className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
+                                className="flex-1 py-2 px-4 bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
                               >
                                 Cancel
                               </button>
@@ -11545,7 +11545,7 @@ export const AnchorDepositWithdrawModal = ({
                             <>
                               <button
                                 onClick={handleCancel}
-                                className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
+                                className="flex-1 py-2 px-4 bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
                               >
                                 Cancel
                               </button>
@@ -11565,7 +11565,7 @@ export const AnchorDepositWithdrawModal = ({
                                     : leaveStabilityPoolStepToReward()
                                 }
                                 disabled={isProcessing}
-                                className="flex-1 py-3 px-4 rounded-md bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
+                                className="flex-1 py-3 px-4 rounded-md bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
                               >
                                 ← Back
                               </button>
@@ -12139,7 +12139,7 @@ export const AnchorDepositWithdrawModal = ({
                                       )
                                     }
                                     placeholder="0.0"
-                                    className={`w-full h-10 px-3 pr-16 rounded-lg bg-white text-[#1E4775] border focus:ring-2 focus:outline-none text-sm font-mono ${
+                                    className={`w-full h-10 px-3 pr-16 rounded-lg bg-white/85 backdrop-blur-sm text-[#1E4775] border focus:ring-2 focus:outline-none text-sm font-mono ${
                                               exceeds
                                         ? "border-red-500 focus:border-red-500 focus:ring-red-200"
                                         : "border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-[#1E4775]/20"
@@ -12243,7 +12243,7 @@ export const AnchorDepositWithdrawModal = ({
                                       }}
                                       className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
                                         active
-                                          ? "bg-white text-[#1E4775] shadow-sm"
+                                          ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
                                           : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
                                       }`}
                                     >
@@ -12339,7 +12339,7 @@ export const AnchorDepositWithdrawModal = ({
                                       )
                                     }
                                     placeholder="0.0"
-                                    className={`w-full h-10 px-3 pr-16 bg-white text-[#1E4775] border focus:ring-2 focus:outline-none text-sm font-mono ${
+                                    className={`w-full h-10 px-3 pr-16 bg-white/85 backdrop-blur-sm text-[#1E4775] border focus:ring-2 focus:outline-none text-sm font-mono ${
                                 positionExceedsBalance.wallet
                                         ? "border-red-500 focus:border-red-500 focus:ring-red-200"
                                         : "border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-[#1E4775]/20"
@@ -12948,7 +12948,7 @@ export const AnchorDepositWithdrawModal = ({
                         value={amount}
                         onChange={handleAmountChange}
                         placeholder="0.0"
-                        className={`w-full px-3 pr-20 py-2 bg-white text-[#1E4775] border ${
+                        className={`w-full px-3 pr-20 py-2 bg-white/85 backdrop-blur-sm text-[#1E4775] border ${
                           error ? "border-red-500" : "border-[#1E4775]/30"
                         } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`}
                         disabled={isProcessing}
@@ -13514,7 +13514,7 @@ export const AnchorDepositWithdrawModal = ({
                           {step !== "input" && (
                             <button
                               onClick={handleBackToWithdrawInput}
-                              className="shrink-0 py-2 px-4 rounded-md bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
+                              className="shrink-0 py-2 px-4 rounded-md bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
                             >
                               Back
                             </button>
@@ -13848,7 +13848,7 @@ export const AnchorDepositWithdrawModal = ({
                 <>
                   <button
                     onClick={handleCancel}
-                    className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-medium transition-colors hover:bg-[#1E4775]/5"
+                    className="flex-1 py-2 px-4 bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 border-[#1E4775]/30 font-medium transition-colors hover:bg-[#1E4775]/5"
                   >
                     Cancel
                   </button>
@@ -13863,7 +13863,7 @@ export const AnchorDepositWithdrawModal = ({
                 <>
                   <button
                     onClick={handleCancel}
-                    className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-medium transition-colors hover:bg-[#1E4775]/5"
+                    className="flex-1 py-2 px-4 bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 border-[#1E4775]/30 font-medium transition-colors hover:bg-[#1E4775]/5"
                   >
                     Cancel
                   </button>
@@ -13882,7 +13882,7 @@ export const AnchorDepositWithdrawModal = ({
                         ? handleCancel
                         : handleBackToWithdrawInput
                     }
-                    className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-medium transition-colors hover:bg-[#1E4775]/5"
+                    className="flex-1 py-2 px-4 bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 border-[#1E4775]/30 font-medium transition-colors hover:bg-[#1E4775]/5"
                   >
                     {step === "input" ? "Cancel" : "Back"}
                   </button>

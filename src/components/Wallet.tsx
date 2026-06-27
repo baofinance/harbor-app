@@ -124,7 +124,7 @@ function ConnectButton() {
                     reset()
                     setShowModal(true)
                 }}
-                className="relative inline-flex items-center gap-2 px-2.5 sm:px-3 py-2 text-sm font-medium text-[#1E4775] bg-white shadow-sm hover:bg-white/90 rounded-md"
+                className="relative inline-flex items-center gap-2 px-2.5 sm:px-3 py-2 text-sm font-medium text-[#1E4775] bg-white/90 backdrop-blur-sm shadow-sm hover:bg-white/90 rounded-md"
             >
                 <Wallet className="h-4 w-4 shrink-0 text-[#1E4775]/80" />
                 {displayAddr ? (

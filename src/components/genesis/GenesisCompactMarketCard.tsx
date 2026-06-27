@@ -18,6 +18,10 @@ import {
 } from "@/components/market-cards/harborBasicMarketTokens";
 import { formatUSD } from "@/utils/formatters";
 import type { GenesisDepositCapData } from "@/utils/genesisDepositCap";
+import {
+  GENESIS_TABLE_FROSTED_FILL,
+  GENESIS_VOYAGE_COMPACT_CARD_SHELL_CLASS,
+} from "./genesisActiveTableStyles";
 
 /** Match chain badge + status + expanded APR: one corner radius family on the card. */
 const GENESIS_CARD_CONTROL_RADIUS = "rounded-xl";
@@ -263,7 +267,7 @@ export function GenesisCompactMarketCard({
 
   return (
     <article
-      className={`overflow-hidden rounded-xl bg-white text-[#1E4775] shadow-[0_16px_40px_-30px_rgba(0,0,0,0.55)] ring-1 ring-black/5 ${
+      className={`${GENESIS_VOYAGE_COMPACT_CARD_SHELL_CLASS} ${
         blockConfiguredDeposits ? "relative opacity-[0.92] saturate-[0.72]" : ""
       }`}
     >
@@ -650,7 +654,7 @@ export function GenesisCompactMarketCard({
       )}
 
       {isExpanded && expandedContent ? (
-        <div className="overflow-hidden border-t border-[#1E4775]/12 bg-white px-4 py-3.5">
+        <div className={`overflow-hidden border-t border-[#1E4775]/12 px-4 py-3.5 ${GENESIS_TABLE_FROSTED_FILL}`}>
           {expandedContent}
         </div>
       ) : null}

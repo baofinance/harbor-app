@@ -9,6 +9,7 @@ import { resolveGenesisUnderlyingApr } from "@/utils/genesisAprDerived";
 import {
   GENESIS_TABLE_HEADER_CELL_CLASSNAME,
   GENESIS_TABLE_HEADER_SHELL_CLASS,
+  GENESIS_TABLE_ROW_SHELL_CLASS,
 } from "./genesisActiveTableStyles";
 
 function getLongSide(market: { leveragedToken?: { description?: string; name?: string; symbol?: string } }): string {
@@ -91,7 +92,7 @@ export function GenesisComingNextMarketsSection({
           const marketName = `${collateralSymbol}-${mkt.pegTarget?.toUpperCase() || "TOKEN"}`;
 
           return (
-            <div key={id} className="bg-white py-2.5 px-2 rounded-md border border-white/10">
+            <div key={id} className={GENESIS_TABLE_ROW_SHELL_CLASS}>
               <div className="hidden md:grid lg:grid-cols-[32px_1.5fr_80px_0.9fr_1fr_0.9fr] md:grid-cols-[32px_120px_80px_100px_1fr_110px] gap-4 items-center">
                 <div className="flex items-center justify-center">
                   <NetworkIconCell

@@ -16,4 +16,8 @@ export type { SailBasicMarketCardsGridProps } from "./SailBasicMarketCardsGrid";
 export { SailBasicMarketCard } from "./SailBasicMarketCard";
 export { SailMarketExpandedView } from "./SailMarketExpandedView";
 export type { SailMarketPnLData } from "./sailMarketTypes";
+export { SailAdvancedLayout } from "./advanced/SailAdvancedLayout";
+export type { SailAdvancedLayoutProps } from "./advanced/SailAdvancedLayout";
+export { SailMarketActionPanel } from "./advanced/SailMarketActionPanel";
+export type { SailMarketActionPanelProps } from "./advanced/SailMarketActionPanel";
 export type { DefinedMarket } from "@/config/markets";

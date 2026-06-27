@@ -1,4 +1,5 @@
 import type { FounderMetricRow } from "@/hooks/useFounderMetrics";
+import { founderMetricRowHasGenesisDeposit } from "@/utils/founderMetrics";
 import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
 import { markets } from "@/config/markets";
 import { formatUSD } from "@/utils/formatters";
@@ -47,12 +48,18 @@ export function toSectionSummarySegments(
 
   switch (productId) {
     case "yield": {
-      const markets = findMetric(metrics, "Markets");
+      const positions = findMetric(metrics, "Positions");
+      const value = findMetric(metrics, "Value");
       const earned = findMetric(metrics, "Earned");
       const pending = findMetric(metrics, "Pending");
       const segments: DashboardSectionSummarySegment[] = [];
-      if (markets) {
-        segments.push({ text: loadingOrDash(markets.value) });
+      if (positions) {
+        segments.push({ text: loadingOrDash(positions.value) });
+      }
+      if (value) {
+        segments.push({
+          text: value.value === "…" ? "…" : `Value ${value.value}`,
+        });
       }
       if (earned) {
         segments.push({
@@ -260,6 +267,7 @@ export function aggregateYieldShareSummary(rows: FounderMetricRow[]) {
   const revenueSharePct = rows.reduce((s, r) => s + r.yieldSharePct, 0);
   const pendingDistributionUsd = rows.reduce((s, r) => s + r.outstandingUSD, 0);
   const boostMultiplier = rows.reduce((max, r) => {
+    if (!founderMetricRowHasGenesisDeposit(r)) return max;
     const m = r.boostMultiplier ?? 0;
     return m > max ? m : max;
   }, 0);
@@ -278,11 +286,6 @@ function positionCountLabel(count: number): string {
   return `${count} positions`;
 }
 
-function marketCountLabel(count: number): string {
-  if (count === 1) return "1 market";
-  return `${count} markets`;
-}
-
 function disconnectedMetrics(
   labels: string[],
 ): DashboardProductSummaryMetric[] {
@@ -296,26 +299,52 @@ export function buildRevenueShareSummaryMetrics(input: {
   earnedUsd: number;
   pendingDistributionUsd: number;
 }): DashboardProductSummaryMetric[] {
+  return buildMaidenVoyageCombinedSummaryMetrics({
+    isConnected: input.isConnected,
+    loading: input.loading,
+    maidenLoading: false,
+    activeMaidenCount: 0,
+    activeMaidenUsd: 0,
+    earnedUsd: input.earnedUsd,
+    pendingDistributionUsd: input.pendingDistributionUsd,
+  });
+}
+
+export function buildMaidenVoyageCombinedSummaryMetrics(input: {
+  isConnected: boolean;
+  loading: boolean;
+  maidenLoading: boolean;
+  activeMaidenCount: number;
+  activeMaidenUsd: number;
+  earnedUsd: number;
+  pendingDistributionUsd: number;
+}): DashboardProductSummaryMetric[] {
   if (!input.isConnected) {
-    return disconnectedMetrics(["Markets", "Earned"]);
+    return disconnectedMetrics(["Value", "Earned"]);
   }
+
+  const loading = input.loading || input.maidenLoading;
 
   const metrics: DashboardProductSummaryMetric[] = [
     {
-      label: "Markets",
-      value: input.loading ? "…" : marketCountLabel(input.marketCount),
+      label: "Value",
+      value: loading ? "…" : formatSummaryUsd(input.activeMaidenUsd),
+    },
+    {
+      label: "Positions",
+      value: loading ? "…" : positionCountLabel(input.activeMaidenCount),
     },
     {
       label: "Earned",
-      value: input.loading ? "…" : formatSummaryEarnedUsd(input.earnedUsd),
-      context: "Distributed",
+      value: loading ? "…" : formatSummaryEarnedUsd(input.earnedUsd),
+      context: "Revenue share",
     },
   ];
 
   if (input.pendingDistributionUsd > 0) {
     metrics.push({
       label: "Pending",
-      value: input.loading ? "…" : formatSummaryEarnedUsd(input.pendingDistributionUsd),
+      value: loading ? "…" : formatSummaryEarnedUsd(input.pendingDistributionUsd),
       context: "Owed to you",
     });
   }
@@ -520,7 +549,9 @@ export function dashboardPositionStatusLabel(
   }
 
   if (row.category === "earn") {
-    if (positionSubtype === "wallet") return "Earn wallet";
+    if (positionSubtype === "wallet") {
+      return positionType !== "Anchored" ? `${positionType} wallet` : "Earn wallet";
+    }
     if (positionSubtype === "stability") {
       return positionType === "Sail pool"
         ? "Sail stability pool"

@@ -5,6 +5,7 @@ import {
   MAIDEN_VOYAGE_DOCS_LINKS,
   MAIDEN_VOYAGE_YIELD_RULES,
 } from "@/config/maidenVoyageEducation";
+import { MV_ICON_BADGE_EARN_SM } from "./maidenVoyageLayoutStyles";
 
 export type GenesisYieldShareRulesCardProps = {
   yieldRevSharePct: number | null;
@@ -24,11 +25,10 @@ export function GenesisYieldShareRulesCard({
       <p className="mt-1 text-xs leading-relaxed text-white/55">{shareHint}</p>
       <ul className="mt-3 space-y-2.5">
         {MAIDEN_VOYAGE_YIELD_RULES.map(({ id, label }) => (
-          <li key={id} className="flex items-start gap-2 text-sm text-white/80">
-            <CheckIcon
-              className="mt-0.5 h-4 w-4 shrink-0 text-[#4A9784]"
-              aria-hidden
-            />
+          <li key={id} className="flex items-start gap-2.5 text-sm text-white/80">
+            <span className={`mt-0.5 ${MV_ICON_BADGE_EARN_SM}`} aria-hidden>
+              <CheckIcon className="h-3.5 w-3.5" strokeWidth={1.75} />
+            </span>
             <span>{label}</span>
           </li>
         ))}
