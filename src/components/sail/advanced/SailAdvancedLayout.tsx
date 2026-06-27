@@ -11,12 +11,10 @@ import { SailMarketChartColumn } from "./SailMarketChartColumn";
 import { SailMarketHeader } from "./SailMarketHeader";
 import { SailMarketInfoFooter } from "./SailMarketInfoFooter";
 import { SailMarketMetricsCollapsible } from "./SailMarketMetricsCollapsible";
-import { SailMarketNoPositionHint } from "./SailMarketNoPositionHint";
-import { SailMarketPositionBar } from "./SailMarketPositionBar";
 import { SailMobileTradeBar } from "./SailMobileTradeBar";
 import { SailOtherMarketsStrip } from "./SailOtherMarketsStrip";
 import type { SailWalletStatsStripProps } from "./SailWalletStatsStrip";
-import { SAIL_ADVANCED_MAIN_GRID_CLASS, SAIL_ADVANCED_SECTION_LABEL } from "./sailAdvancedStyles";
+import { SAIL_ADVANCED_MAIN_GRID_CLASS } from "./sailAdvancedStyles";
 
 const SAIL_TRADE_PANEL_ID = "sail-trade-panel";
 
@@ -143,7 +141,6 @@ export function SailAdvancedLayout({
     );
   }
 
-  const hasMarketPosition = userDeposit !== undefined && userDeposit > 0n;
 
   return (
     <div className="space-y-4 pb-[calc(4.25rem+env(safe-area-inset-bottom))] lg:pb-0">
@@ -153,27 +150,17 @@ export function SailAdvancedLayout({
         dropdownOptions={dropdownOptions}
         onSelectMarket={onSelectMarket}
         walletStats={walletStats}
+        marketPosition={{
+          userDeposit,
+          currentValueUSD,
+          leveragedTokenPriceUSD,
+          isConnected,
+        }}
       />
 
       <div className="space-y-4">
         <div className={`relative z-0 ${SAIL_ADVANCED_MAIN_GRID_CLASS}`}>
           <div className="order-1 flex min-h-0 flex-col gap-3 lg:order-none lg:h-full">
-            {hasMarketPosition ? (
-              <div className="shrink-0">
-                <p className={SAIL_ADVANCED_SECTION_LABEL}>This market</p>
-                <SailMarketPositionBar
-                  market={selectedMarket}
-                  userDeposit={userDeposit}
-                  currentValueUSD={currentValueUSD}
-                  leveragedTokenPriceUSD={leveragedTokenPriceUSD}
-                  isConnected={isConnected}
-                />
-              </div>
-            ) : (
-              <div className="shrink-0">
-                <SailMarketNoPositionHint isConnected={isConnected} />
-              </div>
-            )}
             <div className="flex min-h-[22rem] flex-1 flex-col sm:min-h-[26rem] lg:min-h-0">
               <SailMarketChartColumn
                 marketId={selectedMarketId}

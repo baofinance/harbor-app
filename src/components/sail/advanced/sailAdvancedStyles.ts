@@ -20,9 +20,6 @@ export const SAIL_ADVANCED_FROSTED_CARD = `rounded-xl ${HARBOR_FROSTED_LIGHT_CAR
 /** Whitest frosted panels — chart, trade form, dropdown. */
 export const SAIL_ADVANCED_FROSTED_LIGHT_PANEL = HARBOR_FROSTED_LIGHT_CARD;
 
-/** @deprecated Use SAIL_ADVANCED_FROSTED_CARD */
-export const SAIL_ADVANCED_PANEL = SAIL_ADVANCED_FROSTED_CARD;
-
 export const SAIL_ADVANCED_SHELL = MV_CARD_SHELL;
 export const SAIL_ADVANCED_LABEL = MV_SECTION_LABEL;
 /** Small zone label above header stat groups (Market, Your wallet, etc.). */

@@ -50,14 +50,19 @@ function formatPositionPnL(
   };
 }
 
-/** Per-market position value and PnL — sits above the price chart. */
+/** Per-market position value and PnL — header row beside wallet stats. */
 export function SailMarketPositionBar({
   market,
   userDeposit,
   currentValueUSD,
   leveragedTokenPriceUSD,
   isConnected,
-}: SailMarketPositionBarProps) {
+  embedded = false,
+  className = "",
+}: SailMarketPositionBarProps & {
+  embedded?: boolean;
+  className?: string;
+}) {
   const hasPosition = userDeposit !== undefined && userDeposit > 0n;
   const leveragedTokenAddress = market.addresses?.leveragedToken as
     | `0x${string}`
@@ -90,11 +95,12 @@ export function SailMarketPositionBar({
     isConnected,
   );
 
+  const shellClass = embedded
+    ? `grid w-full grid-cols-2 divide-x divide-[#1E4775]/10 ${className}`.trim()
+    : `${SAIL_ADVANCED_FROSTED_CARD} grid grid-cols-2 divide-x divide-[#1E4775]/10 ${className}`.trim();
+
   return (
-    <div
-      className={`${SAIL_ADVANCED_FROSTED_CARD} grid grid-cols-2 divide-x divide-[#1E4775]/10`}
-      aria-label="Your position in this market"
-    >
+    <div className={shellClass} aria-label="Your position in this market">
       <div className="flex min-w-0 flex-col items-center justify-center px-3 py-2 text-center sm:py-2.5">
         <span className={SAIL_ADVANCED_LIGHT_LABEL}>Your position</span>
         <span className={SAIL_POSITION_STAT_VALUE}>{positionValue}</span>
