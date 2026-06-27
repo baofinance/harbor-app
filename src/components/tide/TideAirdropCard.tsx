@@ -14,7 +14,6 @@ import {
   TIDE_AMOUNT_CLASS,
   TIDE_CARD_CONTENT_STACK,
   TIDE_FOOTER_EXTRA_CORAL_CLASS,
-  TIDE_INSET_LABEL_CLASS,
   TIDE_INSET_LIGHT_AMOUNT_SM_CLASS,
   TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS,
   TIDE_INSET_LIGHT_LABEL_CLASS,
@@ -32,7 +31,7 @@ function AirdropBucketRow({
   themeInset: string;
 }) {
   return (
-    <div className={`flex w-full items-center justify-between gap-3 rounded-xl px-4 py-2.5 ${themeInset}`}>
+    <div className={`flex w-full items-center justify-between gap-3 px-4 py-2.5 ${themeInset}`}>
       <p className={TIDE_INSET_LIGHT_LABEL_CLASS}>{label}</p>
       <p className={`${TIDE_INSET_LIGHT_AMOUNT_SM_CLASS} text-base sm:text-lg`}>
         {formatTideTokenAmount(amount.amountTokens)}{" "}
@@ -55,7 +54,6 @@ export function TideAirdropCard() {
   return (
     <TideFeatureCard
       icon={<Gift className="h-4 w-4" strokeWidth={1.75} />}
-      accentBarClass={theme.accentBar}
       iconBadgeClass={theme.iconBadge}
       title="Airdrop"
       subtitle="veBAO · Boosters · Raise · Marks"
@@ -77,12 +75,12 @@ export function TideAirdropCard() {
       ) : buckets ? (
         <div className={TIDE_CARD_CONTENT_STACK}>
           <div className="text-center">
-            <p className={`mb-1.5 ${TIDE_INSET_LABEL_CLASS} text-white/50`}>
+            <p className={`mb-1.5 ${TIDE_INSET_LIGHT_LABEL_CLASS}`}>
               Total allocation
             </p>
             <p className={TIDE_AMOUNT_CLASS}>
               {formatTideTokenAmount(totalTokens)}{" "}
-              <span className="text-lg text-white/60 sm:text-xl">TIDE</span>
+              <span className="text-lg text-[#1E4775]/55 sm:text-xl">TIDE</span>
             </p>
           </div>
 

@@ -47,7 +47,7 @@ function ClaimBucket({
     <div className="flex w-full flex-col gap-1.5">
       <p className={`${TIDE_INSET_LIGHT_LABEL_CLASS} text-[#4A9784]`}>{label}</p>
 
-      <div className={`w-full rounded-xl px-4 py-3 ${themeInset}`}>
+      <div className={`w-full px-4 py-3 ${themeInset}`}>
         <div className="flex justify-end">
           <span className={`shrink-0 font-mono uppercase tracking-wide ${TIDE_INSET_LIGHT_META_CLASS}`}>
             {methodLabel}
@@ -63,7 +63,7 @@ function ClaimBucket({
               <span className={TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS}>TIDE</span>
             </p>
             {hasBalance && alreadyClaimed ? (
-              <p className="mt-3 text-sm font-medium text-[#B8EBD5]">Claimed</p>
+              <p className="mt-3 text-sm font-medium text-[#4A9784]">Claimed</p>
             ) : hasBalance && blockReason ? (
               <p className={`mt-3 ${TIDE_META_TEXT}`}>{blockReason}</p>
             ) : null}
@@ -98,7 +98,6 @@ export function TideClaimCard() {
     <>
       <TideFeatureCard
         icon={<HandCoins className="h-4 w-4" strokeWidth={1.75} />}
-        accentBarClass={theme.accentBar}
         iconBadgeClass={theme.iconBadge}
         title="Claim"
         subtitle="Merkle snapshot"

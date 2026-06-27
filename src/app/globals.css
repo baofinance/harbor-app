@@ -349,7 +349,7 @@ body.app-bg-megaeth .app-index-manage-btn:hover {
   .mv-upside-slider::-webkit-slider-runnable-track {
     height: 6px;
     border-radius: 9999px;
-    background: rgba(30, 71, 117, 0.22);
+    background: rgba(255, 255, 255, 0.12);
   }
 
   .mv-upside-slider::-webkit-slider-thumb {
@@ -373,7 +373,7 @@ body.app-bg-megaeth .app-index-manage-btn:hover {
   .mv-upside-slider::-moz-range-track {
     height: 6px;
     border-radius: 9999px;
-    background: rgba(30, 71, 117, 0.22);
+    background: rgba(255, 255, 255, 0.12);
   }
 
   .mv-upside-slider::-moz-range-thumb {

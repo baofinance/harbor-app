@@ -189,12 +189,16 @@ export const MV_UPSIDE_OWNERSHIP_PANEL =
 /** Ownership bar sparkle icon tile. */
 export const MV_UPSIDE_OWNERSHIP_ICON = MV_ICON_BADGE_LG;
 
-/** Deposit row shell — white frosted glass (Explore the Upside). */
+/** White frosted shell for upside benchmark tiles. */
 export const MV_UPSIDE_LIGHT_CARD_SHELL = HARBOR_FROSTED_LIGHT_CARD_ELEVATED;
 
-export const MV_UPSIDE_DEPOSIT_PANEL = `${MV_UPSIDE_LIGHT_CARD_SHELL} px-3 py-3 sm:px-4 sm:py-4`;
+/** Deposit row shell — dark stat tile glass (Explore the Upside). */
+export const MV_UPSIDE_DEPOSIT_PANEL = `${MV_STAT_TILE} px-3 py-3 sm:px-4 sm:py-4`;
 
-/** Labels on white upside cards. */
+/** Labels on dark upside deposit panel. */
+export const MV_UPSIDE_DEPOSIT_LABEL = MV_SECTION_LABEL;
+
+/** Labels on white upside benchmark cards. */
 export const MV_UPSIDE_LIGHT_LABEL =
   "text-xs font-medium tracking-wide text-[#1E4775]/65";
 

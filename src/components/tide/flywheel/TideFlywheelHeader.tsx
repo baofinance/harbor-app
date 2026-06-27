@@ -2,12 +2,10 @@
 
 import type { ReactNode } from "react";
 import {
-  MV_HEADLINE,
-  MV_HEADLINE_ACCENT,
-  MV_HEADLINE_PRIMARY,
-} from "@/components/genesis/maidenVoyageLayoutStyles";
-import {
   TIDE_FLYWHEEL_FOOTER_PANEL,
+  TIDE_FLYWHEEL_HEADLINE,
+  TIDE_FLYWHEEL_HEADLINE_ACCENT,
+  TIDE_FLYWHEEL_HEADLINE_PRIMARY,
   TIDE_FLYWHEEL_META,
   TIDE_FLYWHEEL_REVENUE_PILL,
   TIDE_FLYWHEEL_STAT_LABEL,
@@ -34,9 +32,9 @@ export function TideFlywheelHeader({
   return (
     <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0 [container-type:inline-size]">
-        <h2 className={MV_HEADLINE}>
-          <span className={MV_HEADLINE_PRIMARY}>{titlePrimary}</span>
-          <span className={MV_HEADLINE_ACCENT}>{titleAccent}</span>
+        <h2 className={TIDE_FLYWHEEL_HEADLINE}>
+          <span className={TIDE_FLYWHEEL_HEADLINE_PRIMARY}>{titlePrimary}</span>{" "}
+          <span className={TIDE_FLYWHEEL_HEADLINE_ACCENT}>{titleAccent}</span>
         </h2>
         <p className={`mt-1 max-w-xl ${TIDE_FLYWHEEL_META}`}>{subtitle}</p>
       </div>

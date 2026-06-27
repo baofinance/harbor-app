@@ -6,13 +6,11 @@ import {
   estimateMaidenVoyageYieldSharePct,
 } from "@/utils/maidenVoyageYieldShareEstimate";
 import { computeUpsideBenchmarks } from "@/utils/maidenVoyageUpsideBenchmarks";
-import { GenesisUpsideBackdrop } from "./GenesisUpsideBackdrop";
 import { GenesisUpsideBenchmarkCards } from "./GenesisUpsideBenchmarkCards";
 import { GenesisUpsideBenchmarkExplainer } from "./GenesisUpsideBenchmarkExplainer";
 import { GenesisUpsideHeroMetric } from "./GenesisUpsideHeroMetric";
 import {
   MV_CAPTION_TEXT,
-  MV_CARD_INNER_GRADIENT,
   MV_CARD_SHELL,
   MV_SECTION_LABEL,
 } from "./maidenVoyageLayoutStyles";
@@ -58,12 +56,10 @@ export function GenesisRevenueShareCalculator({
 
   return (
     <section
-      className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} relative w-full overflow-hidden px-4 py-4 sm:px-5 sm:py-5 ${className}`.trim()}
+      className={`${MV_CARD_SHELL} w-full px-4 py-4 sm:px-5 sm:py-5 ${className}`.trim()}
       aria-label="Explore the upside"
     >
-      <GenesisUpsideBackdrop />
-
-      <div className="relative z-10">
+      <div>
         <div className="min-w-0 border-l-2 border-[#FF8A7A]/50 pl-2.5 text-center sm:text-left">
           <h2 className="text-sm font-semibold text-white/90">
             {MAIDEN_VOYAGE_UPSIDE_COPY.sectionTitle}

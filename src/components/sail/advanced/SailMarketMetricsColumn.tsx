@@ -10,10 +10,10 @@ import {
 import type { DefinedMarket } from "@/config/markets";
 import { getSailMarketTokenSymbol } from "@/utils/sailMarketDirectionLabels";
 import {
-  SAIL_ADVANCED_FROSTED_CARD,
-  SAIL_ADVANCED_LIGHT_CAPTION,
-  SAIL_ADVANCED_LIGHT_SECTION_TITLE,
-  SAIL_ADVANCED_LIGHT_VALUE,
+  SAIL_ADVANCED_GLASS_CAPTION,
+  SAIL_ADVANCED_GLASS_CARD,
+  SAIL_ADVANCED_GLASS_SECTION_TITLE,
+  SAIL_ADVANCED_GLASS_VALUE,
 } from "./sailAdvancedStyles";
 
 type SailMarketMetricsPanelProps = {
@@ -29,9 +29,9 @@ function MetricRow({ label, value }: { label: string; value: ReactNode }) {
   if (isEmptyMetric(value)) return null;
 
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-[#1E4775]/10 py-2 last:border-b-0">
-      <span className={SAIL_ADVANCED_LIGHT_CAPTION}>{label}</span>
-      <span className={`text-right ${SAIL_ADVANCED_LIGHT_VALUE}`}>{value}</span>
+    <div className="flex items-start justify-between gap-3 border-b border-white/[0.08] py-2 last:border-b-0">
+      <span className={SAIL_ADVANCED_GLASS_CAPTION}>{label}</span>
+      <span className={`text-right ${SAIL_ADVANCED_GLASS_VALUE}`}>{value}</span>
     </div>
   );
 }
@@ -47,8 +47,8 @@ function MetricSectionCard({
   if (visibleRows.length === 0) return null;
 
   return (
-    <div className={`${SAIL_ADVANCED_FROSTED_CARD} p-3`}>
-      <h3 className={`mb-2 ${SAIL_ADVANCED_LIGHT_SECTION_TITLE}`}>
+    <div className={`${SAIL_ADVANCED_GLASS_CARD} p-3`}>
+      <h3 className={`mb-2 ${SAIL_ADVANCED_GLASS_SECTION_TITLE}`}>
         {title}
       </h3>
       <div>

@@ -53,7 +53,6 @@ export function TideSwapCard() {
     <>
       <TideFeatureCard
         icon={<ArrowLeftRight className="h-4 w-4" strokeWidth={1.75} />}
-        accentBarClass={theme.accentBar}
         iconBadgeClass={theme.iconBadge}
         title="Swap"
         subtitle="BAO → TIDE"
@@ -77,8 +76,8 @@ export function TideSwapCard() {
             </p>
           ) : null}
 
-          <div className={`rounded-xl px-4 py-3 text-center ${theme.inset}`}>
-            <p className={`mb-1.5 ${TIDE_INSET_LIGHT_LABEL_CLASS} text-[#1E4775]/65`}>
+          <div className={`px-4 py-3 text-center ${theme.inset}`}>
+            <p className={`mb-1.5 ${TIDE_INSET_LIGHT_LABEL_CLASS}`}>
               BAO balance
             </p>
             <p className={TIDE_INSET_LIGHT_AMOUNT_SM_CLASS}>
@@ -130,7 +129,7 @@ export function TideSwapCard() {
             <div className="space-y-1.5">
               <p className={TIDE_INSET_LIGHT_LABEL_CLASS}>You receive</p>
               <div
-                className={`flex items-center justify-between rounded-xl px-3 py-2.5 ${theme.highlight}`}
+                className={`flex items-center justify-between px-3 py-2.5 ${theme.highlight}`}
               >
                 <span className="font-mono text-lg tabular-nums text-[#1E4775]">
                   {isPreviewLoading && baoAmount ? "…" : tideOutput || "0"}

@@ -1,7 +1,9 @@
 import {
+  MV_ACCENT_GRADIENT,
   MV_CARD_INNER_GRADIENT,
   MV_CARD_SHELL,
   MV_FOOTER_PANEL,
+  MV_HEADLINE,
   MV_PROGRESS_FILL,
   MV_PROGRESS_FILL_COMPLETE,
 } from "@/components/genesis/maidenVoyageLayoutStyles";
@@ -11,6 +13,16 @@ import { TIDE_META_TEXT } from "@/components/tide/tideCardStyles";
 export const TIDE_FLYWHEEL_SECTION_CLASS = `mt-8 flex min-w-0 flex-col overflow-hidden ${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT}`;
 
 export const TIDE_FLYWHEEL_CONTENT_CLASS = "min-w-0 p-3 sm:p-4 lg:p-5";
+
+/** Single-line flywheel title — larger than Maiden Voyage hero lines. */
+export const TIDE_FLYWHEEL_HEADLINE_SIZE =
+  "text-[length:clamp(1.875rem,calc(100cqi/7.5),4.75rem)]";
+
+export const TIDE_FLYWHEEL_HEADLINE = `${MV_HEADLINE} whitespace-nowrap ${TIDE_FLYWHEEL_HEADLINE_SIZE}`;
+
+export const TIDE_FLYWHEEL_HEADLINE_PRIMARY = "text-white";
+
+export const TIDE_FLYWHEEL_HEADLINE_ACCENT = MV_ACCENT_GRADIENT;
 
 /** Shared white-glass shell for flywheel stat cards and the revenue pill. */
 export const TIDE_FLYWHEEL_LIGHT_CARD_SHELL = HARBOR_FROSTED_LIGHT_CARD_ELEVATED;

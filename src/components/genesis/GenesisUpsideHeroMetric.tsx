@@ -21,8 +21,8 @@ import {
 import { GenesisUpsideAnimatedNumber } from "./GenesisUpsideAnimatedMetrics";
 import {
   MV_UPSIDE_DEPOSIT_INPUT_FOCUS,
+  MV_UPSIDE_DEPOSIT_LABEL,
   MV_UPSIDE_DEPOSIT_PANEL,
-  MV_UPSIDE_LIGHT_LABEL,
   MV_UPSIDE_OWNERSHIP_FLASH,
   MV_UPSIDE_OWNERSHIP_TEXT,
 } from "./maidenVoyageLayoutStyles";
@@ -121,11 +121,11 @@ export function GenesisUpsideHeroMetric({
     >
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-[auto_auto] gap-x-3 sm:gap-x-5 lg:gap-x-6">
         <div className="col-start-1 row-start-1 self-end shrink-0">
-          <label htmlFor="mv-upside-deposit" className={MV_UPSIDE_LIGHT_LABEL}>
+          <label htmlFor="mv-upside-deposit" className={MV_UPSIDE_DEPOSIT_LABEL}>
             {MAIDEN_VOYAGE_UPSIDE_COPY.depositLabel}
           </label>
           <div className="mt-1.5 flex items-center gap-2">
-            <span className="text-lg font-medium text-[#1E4775]/50">$</span>
+            <span className="text-lg font-medium text-white/50">$</span>
             <input
               id="mv-upside-deposit"
               type="text"
@@ -136,9 +136,9 @@ export function GenesisUpsideHeroMetric({
                   parseUpsideDepositInput(e.target.value, depositUsd),
                 )
               }
-              className={`w-[6.25rem] min-w-0 border-0 bg-transparent p-0 font-mono text-2xl font-semibold tabular-nums text-[#1E4775] outline-none sm:w-[7rem] sm:text-[1.65rem] ${MV_UPSIDE_DEPOSIT_INPUT_FOCUS}`}
+              className={`w-[6.25rem] min-w-0 border-0 bg-transparent p-0 font-mono text-2xl font-semibold tabular-nums text-white outline-none sm:w-[7rem] sm:text-[1.65rem] ${MV_UPSIDE_DEPOSIT_INPUT_FOCUS}`}
             />
-            <span className="shrink-0 rounded-lg border border-[#1E4775]/12 bg-[#1E4775]/[0.05] px-2 py-1 text-[11px] font-medium text-[#1E4775]/60">
+            <span className="shrink-0 rounded-lg border border-white/12 bg-white/[0.06] px-2 py-1 text-[11px] font-medium text-white/60">
               USD
             </span>
           </div>
@@ -157,7 +157,7 @@ export function GenesisUpsideHeroMetric({
                 return (
                   <span
                     key={`tick-${preset}`}
-                    className="pointer-events-none absolute top-1/2 z-0 h-2 w-px bg-[#1E4775]/20"
+                    className="pointer-events-none absolute top-1/2 z-0 h-2 w-px bg-white/20"
                     style={{
                       left: markStyle.left,
                       transform: `${markStyle.transform} translateY(-50%)`,
@@ -201,8 +201,8 @@ export function GenesisUpsideHeroMetric({
                     onClick={() => onDepositChange(preset)}
                     className={`absolute top-0 whitespace-nowrap font-mono text-[10px] font-medium tabular-nums transition-colors sm:text-[11px] ${
                       isActive
-                        ? "text-[#4A9784]"
-                        : "text-[#1E4775]/45 hover:text-[#1E4775]/70"
+                        ? "text-[#B8EBD5]"
+                        : "text-white/45 hover:text-white/70"
                     }`}
                     style={upsideSliderMarkStyle(
                       preset,
@@ -220,10 +220,10 @@ export function GenesisUpsideHeroMetric({
         </div>
 
         <div
-          className="col-start-3 row-start-1 self-end shrink-0 border-l border-[#1E4775]/12 pl-3 text-right sm:pl-4"
+          className="col-start-3 row-start-1 self-end shrink-0 border-l border-white/12 pl-3 text-right sm:pl-4"
           title={MAIDEN_VOYAGE_UPSIDE_COPY.revenueShareCaption}
         >
-          <p className={`${MV_UPSIDE_LIGHT_LABEL} whitespace-nowrap`}>
+          <p className={`${MV_UPSIDE_DEPOSIT_LABEL} whitespace-nowrap`}>
             {MAIDEN_VOYAGE_UPSIDE_COPY.revenueShareTitle}
           </p>
           <p
