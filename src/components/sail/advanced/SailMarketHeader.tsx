@@ -1,8 +1,6 @@
 "use client";
 
 import type { DefinedMarket } from "@/config/markets";
-import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
-import NetworkIconCell from "@/components/NetworkIconCell";
 import { SailMarketEarnTagline } from "./SailMarketEarnTagline";
 import { SailMarketDropdown } from "./SailMarketDropdown";
 import {
@@ -15,7 +13,7 @@ import {
 } from "./SailWalletStatsStrip";
 import {
   SAIL_ADVANCED_LABEL,
-  SAIL_ADVANCED_META,
+  SAIL_ADVANCED_MAIN_GRID_COLUMNS,
 } from "./sailAdvancedStyles";
 
 type SailMarketHeaderProps = {
@@ -46,37 +44,26 @@ export function SailMarketHeader({
 
   return (
     <div className="relative z-40 flex flex-col gap-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-        <div className="min-w-0 flex-1">
-          <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>Market</p>
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-            <div className="w-full min-w-0 max-w-xs shrink-0 sm:max-w-sm">
-              <SailMarketDropdown
-                selectedMarketId={selectedMarketId}
-                options={dropdownOptions}
-                onSelect={onSelectMarket}
-              />
-            </div>
-            <SailMarketEarnTagline market={selectedMarket} />
+      <div className="min-w-0">
+        <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>Market</p>
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+          <div className="w-full min-w-0 max-w-xs shrink-0 sm:max-w-sm">
+            <SailMarketDropdown
+              selectedMarketId={selectedMarketId}
+              options={dropdownOptions}
+              onSelect={onSelectMarket}
+            />
           </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-2 self-start px-1 sm:pt-6">
-          <NetworkIconCell
-            chainName={harborMarketChainKey(selectedMarket)}
-            chainLogo={selectedMarket.chain?.logo}
-          />
-          <span className={SAIL_ADVANCED_META}>
-            {harborMarketChainKey(selectedMarket)}
-          </span>
+          <SailMarketEarnTagline market={selectedMarket} />
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-4">
-        <div className="min-w-0 flex-1">
+      <div className={SAIL_ADVANCED_MAIN_GRID_COLUMNS}>
+        <div className="min-w-0">
           <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>Your wallet</p>
           <SailWalletStatsStrip {...walletStats} className="min-w-0 w-full" />
         </div>
-        <div className="min-w-0 flex-1 sm:max-w-md lg:max-w-none lg:flex-1">
+        <div className="min-w-0">
           <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>This market</p>
           <SailMarketPositionBar
             market={selectedMarket}

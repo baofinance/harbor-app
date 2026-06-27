@@ -11,8 +11,12 @@ import {
   HARBOR_FROSTED_LIGHT_CARD_ELEVATED,
 } from "@/components/shared/harborFrostedSurfaceStyles";
 
+/** Two-column Sail UI+ layout — chart/main left, trade panel right (lg+). */
+export const SAIL_ADVANCED_MAIN_GRID_COLUMNS =
+  "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-stretch";
+
 export const SAIL_ADVANCED_MAIN_GRID_CLASS =
-  "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-stretch lg:min-h-[36rem]";
+  `${SAIL_ADVANCED_MAIN_GRID_COLUMNS} lg:min-h-[36rem]`;
 
 /** @deprecated Use SAIL_ADVANCED_MAIN_GRID_CLASS */
 export const SAIL_ADVANCED_GRID_CLASS = SAIL_ADVANCED_MAIN_GRID_CLASS;
