@@ -3,40 +3,40 @@
  * Use for cards, rows, modals, dropdowns, nav pills (not toggle thumbs or text).
  */
 
-/** Translucent glass fill — lets dark chrome bleed through blur for depth. */
+/** Whitest frosted fill — light cards, panels, chart shells. */
 export const HARBOR_FROSTED_LIGHT_FILL =
-  "bg-gradient-to-b from-white/80 via-white/68 to-white/58 backdrop-blur-xl backdrop-saturate-150";
+  "bg-white/90 backdrop-blur-lg backdrop-saturate-150";
 
 /** Core frosted fill (alias of light fill for shared surfaces). */
 export const HARBOR_FROSTED_FILL = HARBOR_FROSTED_LIGHT_FILL;
 
-/** Lift + specular glass edge on dark page backgrounds. */
+/** Lift + glass edge on dark page backgrounds. */
 export const HARBOR_FROSTED_EDGE =
-  "border border-white/35 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.88),inset_0_0_0_1px_rgba(255,255,255,0.12),0_14px_36px_-18px_rgba(0,0,0,0.38)] ring-1 ring-[#1E4775]/6";
+  "border border-white/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.72),0_10px_28px_-18px_rgba(0,0,0,0.32)] ring-1 ring-[#1E4775]/8";
 
 /** Full light card on dark chrome — chart, trade form, inner metric tiles. */
 export const HARBOR_FROSTED_LIGHT_CARD = `${HARBOR_FROSTED_LIGHT_FILL} ${HARBOR_FROSTED_EDGE}`;
 
 /** Standard elevated light card — Tide flywheel, Earn panels, basic market cards. */
 export const HARBOR_FROSTED_LIGHT_CARD_ELEVATED =
-  `rounded-xl ${HARBOR_FROSTED_LIGHT_CARD} ring-1 ring-white/25`;
+  `rounded-xl ${HARBOR_FROSTED_LIGHT_CARD} ring-1 ring-[#1E4775]/10`;
 
 /** Rounded light card — alias of elevated shell for backward compatibility. */
 export const HARBOR_FROSTED_LIGHT_CARD_ROUNDED = HARBOR_FROSTED_LIGHT_CARD_ELEVATED;
 
 export const HARBOR_FROSTED_SURFACE = HARBOR_FROSTED_LIGHT_CARD;
 
-/** Index table rows / headers — harbor-blue border family with glass rim. */
+/** Index table rows / headers — harbor-blue border family. */
 export const HARBOR_FROSTED_INDEX_EDGE =
-  "border border-white/32 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.82),0_10px_28px_-18px_rgba(0,0,0,0.32)] ring-1 ring-[#1E4775]/8";
+  "border border-harbor-blue/15 shadow-sm ring-1 ring-[#1E4775]/6";
 
 export const HARBOR_FROSTED_INDEX_SURFACE = `${HARBOR_FROSTED_LIGHT_FILL} ${HARBOR_FROSTED_INDEX_EDGE}`;
 
 export const HARBOR_FROSTED_SURFACE_HOVER =
-  "transition-[background-color,border-color,box-shadow] duration-200 hover:border-white/45 hover:from-white/86 hover:via-white/74 hover:to-white/64 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.94),0_16px_40px_-16px_rgba(0,0,0,0.42)]";
+  "transition-colors hover:bg-white/92 backdrop-blur-lg backdrop-saturate-150";
 
 export const HARBOR_FROSTED_SURFACE_SELECTED =
-  `${HARBOR_FROSTED_LIGHT_FILL} border border-white/42 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.92),0_14px_36px_-18px_rgba(0,0,0,0.38)] ring-1 ring-white/30`;
+  `${HARBOR_FROSTED_LIGHT_FILL} border border-white/35 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.78),0_10px_28px_-18px_rgba(0,0,0,0.32)] ring-1 ring-[#1E4775]/10`;
 
 /** Modal / dropdown panels. */
 export const HARBOR_FROSTED_PANEL_FILL = HARBOR_FROSTED_LIGHT_FILL;
@@ -53,16 +53,15 @@ export const HARBOR_FROSTED_NAV_DROPDOWN_SHELL =
 /** Inner cards inside expanded rows / transparency grids. */
 export const HARBOR_FROSTED_CARD_CLASS = HARBOR_FROSTED_LIGHT_CARD_ROUNDED;
 
-/** Form controls on frosted panels — nested glass inset. */
-export const HARBOR_FROSTED_INPUT_FILL =
-  "border border-white/25 bg-white/45 backdrop-blur-md shadow-[inset_0_1px_2px_rgba(30,71,117,0.06)]";
+/** Form controls on frosted panels. */
+export const HARBOR_FROSTED_INPUT_FILL = "bg-white/85 backdrop-blur-sm";
 
 /** Active nav pill, segmented toggle selected, tab selected, etc. */
 export const HARBOR_FROSTED_ACTIVE_PILL =
-  "border border-white/35 bg-white/75 backdrop-blur-md text-[#1E4775] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8)]";
+  "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm";
 
 export const HARBOR_FROSTED_PILL =
-  "border border-white/30 bg-white/55 backdrop-blur-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.65)] ring-1 ring-white/20";
+  "bg-white/85 backdrop-blur-sm shadow-sm ring-1 ring-white/35";
 
 /** Top protocol banner bar. */
 export const HARBOR_FROSTED_BAR = `${HARBOR_FROSTED_LIGHT_FILL} border-b border-white/20`;

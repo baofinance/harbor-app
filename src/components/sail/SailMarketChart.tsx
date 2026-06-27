@@ -15,7 +15,6 @@ import {
 } from "@/utils/sailMarketChartSeries";
 import {
   SailMarketMultiSeriesChart,
-  type SailChartOverlays,
 } from "./SailMarketMultiSeriesChart";
 
 export type SailMarketChartProps = {
@@ -82,11 +81,7 @@ export function SailMarketChart({
   onConfigReady,
 }: SailMarketChartProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>("1M");
-  const [overlays, setOverlays] = useState<SailChartOverlays>({
-    longUsd: false,
-    shortUsd: false,
-    hsPriceUsd: false,
-  });
+  const [showHsPriceUsd, setShowHsPriceUsd] = useState(false);
 
   const config = useMemo(() => getSailMarketChartConfig(market), [market]);
   const pegTargetPrices = usePegTargetPrices();
@@ -220,8 +215,8 @@ export function SailMarketChart({
     onLiveDefaultRatioChange?.(ratio);
   }, [config, livePrices, onLiveDefaultRatioChange]);
 
-  const toggleOverlay = (key: keyof SailChartOverlays) => {
-    setOverlays((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleOverlay = () => {
+    setShowHsPriceUsd((prev) => !prev);
   };
 
   return (
@@ -229,21 +224,9 @@ export function SailMarketChart({
       <div className="mb-2 flex shrink-0 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <OverlayToggle
-            label={`Long ${config.longLabel} (USD)`}
-            active={overlays.longUsd}
-            onClick={() => toggleOverlay("longUsd")}
-            color="#4A9784"
-          />
-          <OverlayToggle
-            label={`Short ${config.shortLabel} (USD)`}
-            active={overlays.shortUsd}
-            onClick={() => toggleOverlay("shortUsd")}
-            color="#C9732A"
-          />
-          <OverlayToggle
             label={`${config.hsSymbol} (USD)`}
-            active={overlays.hsPriceUsd}
-            onClick={() => toggleOverlay("hsPriceUsd")}
+            active={showHsPriceUsd}
+            onClick={toggleOverlay}
             color="#6B5B95"
           />
         </div>
@@ -286,7 +269,7 @@ export function SailMarketChart({
           <SailMarketMultiSeriesChart
             data={filteredData}
             config={config}
-            overlays={overlays}
+            showHsPriceUsd={showHsPriceUsd}
             formatTimestamp={formatTimestamp}
             formatTooltipTimestamp={formatTooltipTimestamp}
           />

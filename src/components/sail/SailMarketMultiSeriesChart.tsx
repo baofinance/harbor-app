@@ -17,24 +17,16 @@ import {
   formatSailChartUsdValue,
 } from "@/utils/sailMarketChartSeries";
 
-export type SailChartOverlays = {
-  longUsd: boolean;
-  shortUsd: boolean;
-  hsPriceUsd: boolean;
-};
-
 interface SailMarketMultiSeriesChartProps {
   data: SailMarketChartPoint[];
   config: SailMarketChartConfig;
-  overlays: SailChartOverlays;
+  showHsPriceUsd: boolean;
   formatTimestamp: (timestamp: number) => string;
   formatTooltipTimestamp: (timestamp: number) => string;
 }
 
 const SERIES_COLORS = {
   defaultRatio: "#1E4775",
-  longUsd: "#4A9784",
-  shortUsd: "#C9732A",
   hsPriceUsd: "#6B5B95",
 } as const;
 
@@ -44,14 +36,14 @@ function MultiSeriesTooltip({
   label,
   formatTooltipTimestamp,
   config,
-  overlays,
+  showHsPriceUsd,
 }: {
   active?: boolean;
   payload?: Array<{ payload?: SailMarketChartPoint }>;
   label?: number;
   formatTooltipTimestamp: (timestamp: number) => string;
   config: SailMarketChartConfig;
-  overlays: SailChartOverlays;
+  showHsPriceUsd: boolean;
 }) {
   if (!active || !payload?.length || label == null) return null;
 
@@ -66,21 +58,7 @@ function MultiSeriesTooltip({
     },
   ];
 
-  if (overlays.longUsd) {
-    items.push({
-      label: `Long ${config.longLabel} (USD)`,
-      value: formatSailChartUsdValue(row.longUsd),
-      color: SERIES_COLORS.longUsd,
-    });
-  }
-  if (overlays.shortUsd) {
-    items.push({
-      label: `Short ${config.shortLabel} (USD)`,
-      value: formatSailChartUsdValue(row.shortUsd),
-      color: SERIES_COLORS.shortUsd,
-    });
-  }
-  if (overlays.hsPriceUsd) {
+  if (showHsPriceUsd) {
     items.push({
       label: `${config.hsSymbol} (USD)`,
       value: formatSailChartUsdValue(row.hsPriceUsd),
@@ -110,25 +88,17 @@ function MultiSeriesTooltip({
 export function SailMarketMultiSeriesChart({
   data,
   config,
-  overlays,
+  showHsPriceUsd,
   formatTimestamp,
   formatTooltipTimestamp,
 }: SailMarketMultiSeriesChartProps) {
-  const hasUsdOverlays = overlays.longUsd || overlays.shortUsd || overlays.hsPriceUsd;
-
   const legendPayload = [
     {
       value: config.defaultMetricLabel,
       type: "line" as const,
       color: SERIES_COLORS.defaultRatio,
     },
-    ...(overlays.longUsd
-      ? [{ value: `Long ${config.longLabel} (USD)`, type: "line" as const, color: SERIES_COLORS.longUsd }]
-      : []),
-    ...(overlays.shortUsd
-      ? [{ value: `Short ${config.shortLabel} (USD)`, type: "line" as const, color: SERIES_COLORS.shortUsd }]
-      : []),
-    ...(overlays.hsPriceUsd
+    ...(showHsPriceUsd
       ? [{ value: `${config.hsSymbol} (USD)`, type: "line" as const, color: SERIES_COLORS.hsPriceUsd }]
       : []),
   ];
@@ -137,7 +107,7 @@ export function SailMarketMultiSeriesChart({
     <ResponsiveContainer width="100%" height="100%">
       <ComposedChart
         data={data}
-        margin={{ top: 8, right: hasUsdOverlays ? 56 : 15, bottom: 30, left: 8 }}
+        margin={{ top: 8, right: showHsPriceUsd ? 56 : 15, bottom: 30, left: 8 }}
       >
         <defs>
           <linearGradient id="sailDefaultGradient" x1="0" y1="0" x2="0" y2="1">
@@ -177,7 +147,7 @@ export function SailMarketMultiSeriesChart({
             return n.toFixed(2);
           }}
         />
-        {hasUsdOverlays ? (
+        {showHsPriceUsd ? (
           <YAxis
             yAxisId="right"
             orientation="right"
@@ -200,7 +170,7 @@ export function SailMarketMultiSeriesChart({
             <MultiSeriesTooltip
               formatTooltipTimestamp={formatTooltipTimestamp}
               config={config}
-              overlays={overlays}
+              showHsPriceUsd={showHsPriceUsd}
             />
           }
         />
@@ -228,33 +198,7 @@ export function SailMarketMultiSeriesChart({
           connectNulls
           isAnimationActive={false}
         />
-        {overlays.longUsd ? (
-          <Line
-            yAxisId="right"
-            type="monotone"
-            dataKey="longUsd"
-            name={`Long ${config.longLabel} (USD)`}
-            stroke={SERIES_COLORS.longUsd}
-            strokeWidth={2}
-            dot={false}
-            connectNulls
-            isAnimationActive={false}
-          />
-        ) : null}
-        {overlays.shortUsd ? (
-          <Line
-            yAxisId="right"
-            type="monotone"
-            dataKey="shortUsd"
-            name={`Short ${config.shortLabel} (USD)`}
-            stroke={SERIES_COLORS.shortUsd}
-            strokeWidth={2}
-            dot={false}
-            connectNulls
-            isAnimationActive={false}
-          />
-        ) : null}
-        {overlays.hsPriceUsd ? (
+        {showHsPriceUsd ? (
           <Line
             yAxisId="right"
             type="monotone"
