@@ -14,10 +14,10 @@ import {
 export const HARBOR_DATA_ROW_HOVER_CLASS = HARBOR_FROSTED_SURFACE_HOVER;
 
 /** Frosted table row shell on dark page backgrounds. */
-export const HARBOR_DATA_ROW_SHELL_CLASS = `rounded-md overflow-hidden ${HARBOR_FROSTED_INDEX_SURFACE} ${HARBOR_DATA_ROW_HOVER_CLASS}`;
+export const HARBOR_DATA_ROW_SHELL_CLASS = `rounded-xl overflow-hidden ${HARBOR_FROSTED_INDEX_SURFACE} ${HARBOR_DATA_ROW_HOVER_CLASS}`;
 
 /** Column header band above index-style tables. */
-export const HARBOR_TABLE_HEADER_WRAP_CLASS = `${HARBOR_FROSTED_INDEX_SURFACE} py-1.5 px-2 overflow-x-auto mb-0 rounded-md`;
+export const HARBOR_TABLE_HEADER_WRAP_CLASS = `${HARBOR_FROSTED_INDEX_SURFACE} py-1.5 px-2 overflow-x-auto mb-0 rounded-xl`;
 
 /** Column label typography in table headers. */
 export const HARBOR_TABLE_HEADER_LABEL_CLASS =
