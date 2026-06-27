@@ -549,7 +549,9 @@ export function dashboardPositionStatusLabel(
   }
 
   if (row.category === "earn") {
-    if (positionSubtype === "wallet") return "Earn wallet";
+    if (positionSubtype === "wallet") {
+      return positionType !== "Anchored" ? `${positionType} wallet` : "Earn wallet";
+    }
     if (positionSubtype === "stability") {
       return positionType === "Sail pool"
         ? "Sail stability pool"

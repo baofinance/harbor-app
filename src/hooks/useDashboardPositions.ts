@@ -145,6 +145,12 @@ function earnHaTokenLabel(marketId: string | undefined, pegSym?: string): string
   return marketCfg(marketId)?.peggedToken?.symbol ?? marketId;
 }
 
+function earnWalletDetail(marketId: string | undefined): string {
+  const cfg = marketCfg(marketId);
+  const label = cfg?.collateral?.symbol ?? cfg?.peggedToken?.symbol ?? "Anchored";
+  return `${label} · wallet`;
+}
+
 function poolRewardApr(
   poolRewardsMap: Map<`0x${string}`, { totalRewardAPR?: number }>,
   poolAddress: string | undefined,
@@ -358,7 +364,7 @@ export function useDashboardPositions() {
 
   const anchorMarkets = anchorMarketsForPositions as AnchorMarketTuple[];
 
-  const { reads, isLoading: anchorReadsLoading } = useAnchorContractReads(
+  const { reads } = useAnchorContractReads(
     anchorMarkets,
     false,
     { enabled: isConnected },
@@ -366,7 +372,7 @@ export function useDashboardPositions() {
 
   const { prices: coinGeckoPrices } = useCoinGeckoPrices(["ethereum", "bitcoin"]);
 
-  const { poolRewardsMap, isLoadingAllRewards } = useAnchorRewards(
+  const { poolRewardsMap } = useAnchorRewards(
     anchorMarkets,
     reads,
     coinGeckoPrices.ethereum ?? null,
@@ -522,6 +528,7 @@ export function useDashboardPositions() {
   const earnRows = useMemo((): DashboardPositionRow[] => {
     const rows: DashboardPositionRow[] = [];
     const seen = new Set<string>();
+    const seenWalletTokens = new Set<string>();
 
     for (const [marketId, pos] of Object.entries(onChainPositions)) {
       const mkt = (markets as Record<string, MarketTokenCfg & { name?: string; addresses?: Record<string, string> }>)[marketId];
@@ -540,13 +547,15 @@ export function useDashboardPositions() {
         );
         if (shouldShowPositionRow(walletTokens, usd, usdUnpriced)) {
           seen.add(`${marketId}:wallet`);
+          const pegAddr = mkt?.addresses?.peggedToken?.toLowerCase();
+          if (pegAddr) seenWalletTokens.add(pegAddr);
           rows.push(
             withChain({
               id: `onchain-wallet-${marketId}`,
               category: "earn",
               marketId,
               marketLabel: haLabel,
-              detail: `${pegSym ?? "Anchored"} · wallet`,
+              detail: earnWalletDetail(marketId),
               iconSymbol: pegSym || iconSymbolFromMarketLabel(haLabel),
               statusTone: "neutral",
               statusLabel: "Wallet",
@@ -619,8 +628,18 @@ export function useDashboardPositions() {
     for (const b of haBalances) {
       if (!nonZeroBalanceToken(b.balance)) continue;
       const tok = b.tokenAddress.toLowerCase();
+      if (seenWalletTokens.has(tok)) continue;
+
       const meta = index.haTokenByAddressLower.get(tok);
       const marketId = meta?.marketId;
+      const onChainPos = marketId ? onChainPositions[marketId] : undefined;
+      if (
+        marketId &&
+        (!onChainPositionsLoading || onChainPos !== undefined) &&
+        (seen.has(`${marketId}:wallet`) || (onChainPos?.walletHa ?? 0n) > 0n)
+      ) {
+        continue;
+      }
       if (marketId && seen.has(`${marketId}:wallet`)) continue;
 
       const balanceTokens = parseFloat(b.balance);
@@ -633,13 +652,15 @@ export function useDashboardPositions() {
         (markets as Record<string, { peggedToken?: { symbol?: string } }>)[meta.marketId]
           ?.peggedToken?.symbol;
       const haLabel = earnHaTokenLabel(meta?.marketId, pegSym);
+      seenWalletTokens.add(tok);
+      if (marketId) seen.add(`${marketId}:wallet`);
       rows.push(
         withChain({
           id: `ha-${b.id}`,
           category: "earn",
           marketId: meta?.marketId,
           marketLabel: haLabel,
-          detail: `${pegSym ?? "Anchored"} · wallet`,
+          detail: earnWalletDetail(meta?.marketId),
           iconSymbol: pegSym || iconSymbolFromMarketLabel(haLabel),
           statusTone: "neutral",
           statusLabel: "Wallet",
@@ -657,6 +678,17 @@ export function useDashboardPositions() {
       const isSailPool = meta?.roleLabel === "Sail pool";
       const marketId = meta?.marketId;
       const seenKey = isSailPool ? `${marketId}:sail-pool` : `${marketId}:anchor-pool`;
+      const onChainPos = marketId ? onChainPositions[marketId] : undefined;
+      const onChainPoolBalance = isSailPool
+        ? onChainPos?.sailPool
+        : onChainPos?.collateralPool;
+      if (
+        marketId &&
+        (!onChainPositionsLoading || onChainPos !== undefined) &&
+        (seen.has(seenKey) || (onChainPoolBalance ?? 0n) > 0n)
+      ) {
+        continue;
+      }
       if (marketId && seen.has(seenKey)) continue;
 
       const balanceTokens = parseFloat(d.balance);
@@ -669,6 +701,7 @@ export function useDashboardPositions() {
         (markets as Record<string, { peggedToken?: { symbol?: string } }>)[marketId]
           ?.peggedToken?.symbol;
       const haLabel = earnHaTokenLabel(marketId, pegSym);
+      if (marketId) seen.add(seenKey);
       rows.push(
         withChain({
           id: `pool-${d.id}`,
@@ -688,7 +721,23 @@ export function useDashboardPositions() {
     }
 
     return rows.sort((a, b) => b.usd - a.usd);
-  }, [onChainPositions, haBalances, poolDeposits, index, tokenPricesByMarket, poolRewardsMap]);
+  }, [
+    onChainPositions,
+    onChainPositionsLoading,
+    haBalances,
+    poolDeposits,
+    index,
+    tokenPricesByMarket,
+    poolRewardsMap,
+  ]);
+
+  const hasOnChainEarnPositions = useMemo(
+    () =>
+      Object.values(onChainPositions).some(
+        (p) => p.walletHa > 0n || p.collateralPool > 0n || p.sailPool > 0n,
+      ),
+    [onChainPositions],
+  );
 
   const leverageRows = useMemo((): DashboardPositionRow[] => {
     const raw = (sailData?.userSailPositions ?? []) as Array<{
@@ -783,10 +832,8 @@ export function useDashboardPositions() {
     leverageRows,
     isLoading: {
       anchor:
-        anchorLoading ||
         onChainPositionsLoading ||
-        anchorReadsLoading ||
-        isLoadingAllRewards,
+        (anchorLoading && !hasOnChainEarnPositions),
       maidenVoyage: mvLoading && mvIds.length > 0,
       leverage:
         (sailLoading && !!sailGraphUrl) ||
