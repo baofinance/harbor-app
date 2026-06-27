@@ -56,8 +56,8 @@ export function formatSailMarketDirectionTitle(
   return `Short ${shortLabel} · Long ${longLabel}`;
 }
 
-/** Dropdown / picker title — e.g. "Long USD vs ETH". */
-export function formatSailMarketDropdownTitle(
+/** Pair-style market title — e.g. "USD/ETH". */
+export function formatSailMarketPairTitle(
   market: DefinedMarket,
   longSide = "",
   shortSide = ""
@@ -67,7 +67,30 @@ export function formatSailMarketDropdownTitle(
     longSide,
     shortSide
   );
-  return `Long ${longLabel} vs ${shortLabel}`;
+  return `${longLabel}/${shortLabel}`;
+}
+
+/** Dropdown / picker title — e.g. "USD/ETH". */
+export function formatSailMarketDropdownTitle(
+  market: DefinedMarket,
+  longSide = "",
+  shortSide = ""
+): string {
+  return formatSailMarketPairTitle(market, longSide, shortSide);
+}
+
+/** Header tagline — e.g. "Earn amplified returns if USD outperforms ETH." */
+export function formatSailMarketEarnDescription(
+  market: DefinedMarket,
+  longSide = "",
+  shortSide = ""
+): string {
+  const { longLabel, shortLabel } = getSailDirectionChipLabels(
+    market,
+    longSide,
+    shortSide
+  );
+  return `Earn amplified returns if ${longLabel} outperforms ${shortLabel}.`;
 }
 
 export function getSailMarketTokenSymbol(market: DefinedMarket): string {

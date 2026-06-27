@@ -4,8 +4,6 @@ import { SailManageModal } from "@/components/SailManageModal";
 import type { DefinedMarket } from "@/config/markets";
 import type { SailTradeMarketFees } from "@/components/sail/SailTradeFeeFooter";
 import {
-  SAIL_ADVANCED_LABEL,
-  SAIL_ADVANCED_META,
   SAIL_EMBEDDED_FORM_PANEL,
 } from "./sailAdvancedStyles";
 
@@ -35,12 +33,6 @@ export function SailMarketActionPanel({
 }: SailMarketActionPanelProps) {
   return (
     <aside className="flex h-full min-h-0 flex-col">
-      <div className="mb-3 shrink-0">
-        <h2 className={SAIL_ADVANCED_LABEL}>Trade</h2>
-        <p className={`mt-0.5 ${SAIL_ADVANCED_META}`}>
-          Buy or sell in this market
-        </p>
-      </div>
       <div className={`${SAIL_EMBEDDED_FORM_PANEL} flex min-h-0 flex-1 flex-col`}>
         <div className="flex min-h-0 flex-1 flex-col">
         <SailManageModal

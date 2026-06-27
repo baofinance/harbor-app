@@ -2,7 +2,7 @@
 
 import { formatUSD } from "@/utils/formatters";
 import {
-  SAIL_ADVANCED_FROSTED_LIGHT_PANEL,
+  SAIL_ADVANCED_FROSTED_CARD,
   SAIL_ADVANCED_LIGHT_LABEL,
   SAIL_ADVANCED_LIGHT_VALUE,
 } from "./sailAdvancedStyles";
@@ -29,7 +29,7 @@ export type SailWalletStatsStripProps = {
 const SAIL_WALLET_STATS_GRID =
   "grid w-full divide-x divide-[#1E4775]/10";
 
-const SAIL_WALLET_STATS_SHELL = `overflow-hidden rounded-xl ${SAIL_WALLET_STATS_GRID} ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`;
+const SAIL_WALLET_STATS_SHELL = `overflow-hidden ${SAIL_WALLET_STATS_GRID} ${SAIL_ADVANCED_FROSTED_CARD}`;
 
 const SAIL_WALLET_STATS_EMBEDDED_SHELL = SAIL_WALLET_STATS_GRID;
 
