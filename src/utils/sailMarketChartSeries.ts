@@ -126,22 +126,46 @@ export function computeLiveDefaultRatio(
   return longUsd / shortUsd;
 }
 
-function resolveSideUsd(
+function isPlausiblePegUsdPrice(asset: PegAssetKey, price: number): boolean {
+  if (!Number.isFinite(price) || price <= 0) return false;
+  switch (asset) {
+    case "ETH":
+    case "BTC":
+    case "XAU":
+      return price > 100;
+    case "EUR":
+      return price > 0.5 && price < 2.5;
+    case "XAG":
+      return price > 1 && price < 500;
+    case "USD":
+      return Math.abs(price - 1) < 0.05;
+    default:
+      return true;
+  }
+}
+
+/** Resolve peg-asset USD — mirrors {@link computeLiveDefaultRatio} using historical oracles. */
+function resolvePegAssetUsd(
   pegAsset: PegAssetKey,
-  preferCollateral: boolean,
   index: number,
   collateralPrices: number[],
-  resampledByAsset: Partial<Record<PegAssetKey, number[]>>
+  config: SailMarketChartConfig,
+  resampledByAsset: Partial<Record<PegAssetKey, number[]>>,
 ): number {
   if (pegAsset === "USD") return 1;
 
-  if (preferCollateral) {
-    const collateral = collateralPrices[index];
-    if (Number.isFinite(collateral) && collateral > 0) return collateral;
+  const fromChainlink = resampledByAsset[pegAsset]?.[index];
+  if (isPlausiblePegUsdPrice(pegAsset, fromChainlink ?? NaN)) {
+    return fromChainlink!;
   }
 
-  const oracle = resampledByAsset[pegAsset]?.[index];
-  if (Number.isFinite(oracle) && oracle > 0) return oracle;
+  // Subgraph collateral USD tracks wstETH/fxSAVE — only use when magnitude matches the peg asset.
+  if (config.collateralIsLong && pegAsset === config.longPegAsset) {
+    const collateral = collateralPrices[index];
+    if (isPlausiblePegUsdPrice(pegAsset, collateral)) {
+      return collateral;
+    }
+  }
 
   return NaN;
 }
@@ -149,11 +173,10 @@ function resolveSideUsd(
 function buildResampledByAsset(
   timestamps: number[],
   chainlinkHistories: Partial<Record<PegAssetKey, ChainlinkPricePoint[]>>,
-  liveFallback?: LiveSideUsdPrices,
   config?: SailMarketChartConfig
 ): Partial<Record<PegAssetKey, number[]>> {
   const result: Partial<Record<PegAssetKey, number[]>> = {};
-  const assetsToResolve = new Set<PegAssetKey>(["ETH", "BTC", "EUR", "XAU", "XAG"]);
+  const assetsToResolve = new Set<PegAssetKey>();
 
   if (config) {
     if (config.longPegAsset !== "USD") assetsToResolve.add(config.longPegAsset);
@@ -164,16 +187,9 @@ function buildResampledByAsset(
     if (asset === "USD") continue;
 
     const history = chainlinkHistories[asset];
-    let resampled = history?.length
+    const resampled = history?.length
       ? resamplePriceSeries(timestamps, history)
       : timestamps.map(() => NaN);
-
-    if (resampled.every((v) => !Number.isFinite(v)) && liveFallback) {
-      const spot = pegAssetUsdFromLive(asset, liveFallback);
-      if (spot != null && spot > 0) {
-        resampled = timestamps.map(() => spot);
-      }
-    }
 
     if (resampled.some((v) => Number.isFinite(v))) {
       result[asset] = resampled;
@@ -213,7 +229,7 @@ export function buildSailMarketChartPoints(
   config: SailMarketChartConfig,
   mergedSubgraph: MergedChartPoint[],
   chainlinkHistories: Partial<Record<PegAssetKey, ChainlinkPricePoint[]>>,
-  liveFallback?: LiveSideUsdPrices
+  _liveFallback?: LiveSideUsdPrices
 ): SailMarketChartPoint[] {
   const timestamps = buildChartTimestamps(mergedSubgraph, chainlinkHistories);
   if (timestamps.length === 0) return [];
@@ -233,26 +249,22 @@ export function buildSailMarketChartPoints(
   const resampledByAsset = buildResampledByAsset(
     timestamps,
     chainlinkHistories,
-    liveFallback,
     config
   );
 
-  const longPrefersCollateral = config.collateralIsLong;
-  const shortPrefersCollateral = !config.collateralIsLong;
-
   return timestamps.map((timestamp, i) => {
-    const longUsd = resolveSideUsd(
+    const longUsd = resolvePegAssetUsd(
       config.longPegAsset,
-      longPrefersCollateral,
       i,
       collateralPrices,
+      config,
       resampledByAsset
     );
-    const shortUsd = resolveSideUsd(
+    const shortUsd = resolvePegAssetUsd(
       config.shortPegAsset,
-      shortPrefersCollateral,
       i,
       collateralPrices,
+      config,
       resampledByAsset
     );
     const hsPriceUsd = hsPrices[i];
@@ -330,9 +342,6 @@ export function resamplePriceSeries(
     let price = NaN;
     if (sorted[chainIdx].timestamp <= ts) {
       price = sorted[chainIdx].priceUsd;
-    } else if (sorted[0].timestamp > ts) {
-      // Subgraph/oracle grid starts before our Chainlink window — use earliest round.
-      price = sorted[0].priceUsd;
     }
 
     result.push(Number.isFinite(price) && price > 0 ? price : NaN);

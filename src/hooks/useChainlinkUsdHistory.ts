@@ -7,7 +7,9 @@ import { CHAINLINK_FEEDS } from "@/config/chainlink";
 import { CHAINLINK_ORACLE_ABI } from "@/abis/shared";
 import type { ChainlinkPricePoint, PegAssetKey } from "@/utils/sailMarketChartSeries";
 
-const ROUNDS_TO_FETCH = 100;
+const ROUNDS_TO_FETCH = 1000;
+/** Stop walking rounds once we reach this age (31d chart + buffer). */
+const MAX_HISTORY_AGE_SEC = 32 * 24 * 60 * 60;
 
 export type { ChainlinkPricePoint };
 
@@ -22,7 +24,9 @@ const FEED_BY_ASSET: Record<PegAssetKey, `0x${string}` | null> = {
 
 export function useChainlinkUsdHistory(
   asset: PegAssetKey | null,
-  enabled = true
+  enabled = true,
+  /** Earliest unix timestamp the series should cover (optional). */
+  minTimestamp?: number
 ): { priceHistory: ChainlinkPricePoint[]; isLoading: boolean } {
   const [priceHistory, setPriceHistory] = useState<ChainlinkPricePoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,6 +59,9 @@ export function useChainlinkUsdHistory(
 
         const points: ChainlinkPricePoint[] = [];
         const latestRoundId = Number(latestRound[0]);
+        const cutoffTs =
+          minTimestamp ??
+          Math.floor(Date.now() / 1000) - MAX_HISTORY_AGE_SEC;
 
         for (let i = 0; i < ROUNDS_TO_FETCH; i++) {
           const roundId = latestRoundId - i;
@@ -73,6 +80,7 @@ export function useChainlinkUsdHistory(
 
             if (timestamp > 0 && price > 0) {
               points.push({ timestamp, priceUsd: price });
+              if (timestamp <= cutoffTs) break;
             }
           } catch {
             continue;
@@ -93,7 +101,7 @@ export function useChainlinkUsdHistory(
     return () => {
       cancelled = true;
     };
-  }, [asset, enabled, publicClient]);
+  }, [asset, enabled, minTimestamp, publicClient]);
 
   return { priceHistory, isLoading };
 }

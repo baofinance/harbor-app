@@ -85,6 +85,10 @@ export function SailMarketChart({
 
   const config = useMemo(() => getSailMarketChartConfig(market), [market]);
   const pegTargetPrices = usePegTargetPrices();
+  const chartSinceTimestamp = useMemo(
+    () => Math.floor(Date.now() / 1000) - 31 * 24 * 60 * 60,
+    []
+  );
 
   const leveragedTokenAddress = markets[marketId]?.addresses?.leveragedToken as
     | string
@@ -96,13 +100,15 @@ export function SailMarketChart({
   const { priceHistory: longChainlinkHistory, isLoading: isLongChainlinkLoading } =
     useChainlinkUsdHistory(
       longNeedsChainlink ? config.longPegAsset : null,
-      longNeedsChainlink
+      longNeedsChainlink,
+      chartSinceTimestamp
     );
 
   const { priceHistory: shortChainlinkHistory, isLoading: isShortChainlinkLoading } =
     useChainlinkUsdHistory(
       shortNeedsChainlink ? config.shortPegAsset : null,
-      shortNeedsChainlink
+      shortNeedsChainlink,
+      chartSinceTimestamp
     );
 
   const chainlinkHistories = useMemo(
