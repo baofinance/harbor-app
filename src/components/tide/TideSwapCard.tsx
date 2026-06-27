@@ -5,10 +5,11 @@ import { useTideSwap } from "@/hooks/useTideSwap";
 import { TideFeatureCard } from "./TideFeatureCard";
 import { TideTransactionModal } from "./TideTransactionModal";
 import {
-  TIDE_AMOUNT_SM_CLASS,
   TIDE_CARD_CONTENT_STACK,
   TIDE_FOOTER_EXTRA_BLUE_CLASS,
-  TIDE_INSET_LABEL_CLASS,
+  TIDE_INSET_LIGHT_AMOUNT_SM_CLASS,
+  TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS,
+  TIDE_INSET_LIGHT_LABEL_CLASS,
   TIDE_INPUT_SHELL_CLASS,
   TIDE_META_TEXT,
   TIDE_PRIMARY_BUTTON_CLASS,
@@ -76,22 +77,20 @@ export function TideSwapCard() {
             </p>
           ) : null}
 
-          <div className={`px-4 py-3 text-center ${theme.inset}`}>
-            <p
-              className={`mb-1.5 ${TIDE_INSET_LABEL_CLASS} text-[#8CB8DC]/85`}
-            >
+          <div className={`rounded-xl px-4 py-3 text-center ${theme.inset}`}>
+            <p className={`mb-1.5 ${TIDE_INSET_LIGHT_LABEL_CLASS} text-[#1E4775]/65`}>
               BAO balance
             </p>
-            <p className={TIDE_AMOUNT_SM_CLASS}>
+            <p className={TIDE_INSET_LIGHT_AMOUNT_SM_CLASS}>
               {isBalanceLoading ? "…" : balanceFormatted}{" "}
-              <span className="text-base text-white/55">BAO</span>
+              <span className={TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS}>BAO</span>
             </p>
           </div>
 
           <div className="space-y-1.5">
             <label
               htmlFor="tide-swap-bao-amount"
-              className={TIDE_INSET_LABEL_CLASS}
+              className={TIDE_INSET_LIGHT_LABEL_CLASS}
             >
               You swap
             </label>
@@ -104,15 +103,15 @@ export function TideSwapCard() {
                 placeholder="0"
                 value={baoAmount}
                 onChange={(e) => setBaoAmount(e.target.value)}
-                className="min-w-0 flex-1 bg-transparent font-mono text-base text-white outline-none placeholder:text-white/25 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className="min-w-0 flex-1 bg-transparent font-mono text-base text-[#1E4775] outline-none placeholder:text-[#1E4775]/25 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
-              <span className="shrink-0 text-sm font-medium text-white/55">
+              <span className={`shrink-0 text-sm font-medium ${TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS}`}>
                 BAO
               </span>
               <button
                 type="button"
                 onClick={handleMax}
-                className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide hover:bg-white/5 ${theme.maxButton}`}
+                className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide hover:bg-[#1E4775]/5 ${theme.maxButton}`}
               >
                 Max
               </button>
@@ -129,14 +128,16 @@ export function TideSwapCard() {
 
           <div className="space-y-3.5 sm:space-y-4">
             <div className="space-y-1.5">
-              <p className={TIDE_INSET_LABEL_CLASS}>You receive</p>
+              <p className={TIDE_INSET_LIGHT_LABEL_CLASS}>You receive</p>
               <div
-                className={`flex items-center justify-between px-3 py-2.5 ${theme.highlight}`}
+                className={`flex items-center justify-between rounded-xl px-3 py-2.5 ${theme.highlight}`}
               >
-                <span className="font-mono text-lg tabular-nums text-white/95">
+                <span className="font-mono text-lg tabular-nums text-[#1E4775]">
                   {isPreviewLoading && baoAmount ? "…" : tideOutput || "0"}
                 </span>
-                <span className="text-sm font-medium text-white/55">TIDE</span>
+                <span className={`text-sm font-medium ${TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS}`}>
+                  TIDE
+                </span>
               </div>
             </div>
 

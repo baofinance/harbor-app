@@ -6,10 +6,12 @@ import { formatTideTokenAmount } from "@/utils/tideSnapshot";
 import { TideFeatureCard } from "./TideFeatureCard";
 import { TideTransactionModal } from "./TideTransactionModal";
 import {
-  TIDE_AMOUNT_SM_CLASS,
   TIDE_CARD_CONTENT_STACK,
   TIDE_FOOTER_EXTRA_MINT_CLASS,
-  TIDE_INSET_LABEL_CLASS,
+  TIDE_INSET_LIGHT_AMOUNT_SM_CLASS,
+  TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS,
+  TIDE_INSET_LIGHT_LABEL_CLASS,
+  TIDE_INSET_LIGHT_META_CLASS,
   TIDE_META_TEXT,
   TIDE_PRIMARY_BUTTON_CLASS,
   TIDE_THEME,
@@ -43,11 +45,11 @@ function ClaimBucket({
 
   return (
     <div className="flex w-full flex-col gap-1.5">
-      <p className={`${TIDE_INSET_LABEL_CLASS} text-[#B8EBD5]/85`}>{label}</p>
+      <p className={`${TIDE_INSET_LIGHT_LABEL_CLASS} text-[#4A9784]`}>{label}</p>
 
-      <div className={`w-full px-4 py-3 ${themeInset}`}>
+      <div className={`w-full rounded-xl px-4 py-3 ${themeInset}`}>
         <div className="flex justify-end">
-          <span className="shrink-0 font-mono text-[9px] uppercase tracking-wide text-white/35">
+          <span className={`shrink-0 font-mono uppercase tracking-wide ${TIDE_INSET_LIGHT_META_CLASS}`}>
             {methodLabel}
           </span>
         </div>
@@ -56,9 +58,9 @@ function ClaimBucket({
           <p className={`mt-2 ${TIDE_META_TEXT}`}>Loading snapshot…</p>
         ) : (
           <>
-            <p className={`mt-2 ${TIDE_AMOUNT_SM_CLASS}`}>
+            <p className={`mt-2 ${TIDE_INSET_LIGHT_AMOUNT_SM_CLASS}`}>
               {formatTideTokenAmount(displayTokens)}{" "}
-              <span className="text-base text-white/55">TIDE</span>
+              <span className={TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS}>TIDE</span>
             </p>
             {hasBalance && alreadyClaimed ? (
               <p className="mt-3 text-sm font-medium text-[#B8EBD5]">Claimed</p>

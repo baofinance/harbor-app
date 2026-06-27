@@ -57,10 +57,11 @@ export function TideValueFlywheel() {
   const burnPct = metrics.burn.supplyBurnedPct ?? 0;
 
   return (
-    <section className={TIDE_FLYWHEEL_SECTION_CLASS} aria-label="TIDE Value Flywheel">
+    <section className={TIDE_FLYWHEEL_SECTION_CLASS} aria-label="The TIDE Flywheel">
       <div className={TIDE_FLYWHEEL_CONTENT_CLASS}>
         <TideFlywheelHeader
-          title={copy.title}
+          titlePrimary={copy.titlePrimary}
+          titleAccent={copy.titleAccent}
           subtitle={copy.subtitle}
           revenueLabel={copy.revenuePillLabel}
           revenueValue={lifetimeRevenueDisplay}

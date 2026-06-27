@@ -1,12 +1,12 @@
 "use client";
 
 import type { DefinedMarket } from "@/config/markets";
+import { MV_ACCENT_GRADIENT } from "@/components/genesis/maidenVoyageLayoutStyles";
 import { getSailDirectionChipLabels } from "@/utils/sailMarketDirectionLabels";
 
 const SAIL_EARN_TAGLINE_CLASS =
-  "min-w-0 flex-1 text-base font-medium leading-snug text-white/85 sm:text-lg lg:text-xl";
-const SAIL_EARN_TAGLINE_LONG_CLASS = "font-semibold text-harbor-mint";
-const SAIL_EARN_TAGLINE_SHORT_CLASS = "font-semibold text-harbor-coral";
+  "min-w-0 flex-1 text-lg font-medium leading-snug text-white/85 sm:text-xl lg:text-2xl";
+const SAIL_EARN_TAGLINE_HIGHLIGHT_CLASS = `font-semibold ${MV_ACCENT_GRADIENT}`;
 
 type SailMarketEarnTaglineProps = {
   market: DefinedMarket;
@@ -23,8 +23,8 @@ export function SailMarketEarnTagline({
   return (
     <p className={`${SAIL_EARN_TAGLINE_CLASS} ${className}`.trim()}>
       Earn amplified returns if{" "}
-      <span className={SAIL_EARN_TAGLINE_LONG_CLASS}>{longLabel}</span> outperforms{" "}
-      <span className={SAIL_EARN_TAGLINE_SHORT_CLASS}>{shortLabel}</span>.
+      <span className={SAIL_EARN_TAGLINE_HIGHLIGHT_CLASS}>{longLabel}</span> outperforms{" "}
+      <span className={SAIL_EARN_TAGLINE_HIGHLIGHT_CLASS}>{shortLabel}</span>.
     </p>
   );
 }

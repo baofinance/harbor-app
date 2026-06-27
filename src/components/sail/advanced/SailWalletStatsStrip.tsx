@@ -2,10 +2,11 @@
 
 import { formatUSD } from "@/utils/formatters";
 import {
-  SAIL_ADVANCED_FROSTED_CARD,
-  SAIL_ADVANCED_LIGHT_LABEL,
-  SAIL_ADVANCED_LIGHT_VALUE,
-} from "./sailAdvancedStyles";
+  HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS,
+  HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS,
+  HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS,
+  HARBOR_STAT_TILE_INTRO_STRIP_SHELL_CLASS,
+} from "@/components/shared/harborStatTileStyles";
 
 export type SailWalletStatsStripProps = {
   isConnected: boolean;
@@ -27,18 +28,17 @@ export type SailWalletStatsStripProps = {
 };
 
 const SAIL_WALLET_STATS_GRID =
-  "grid w-full divide-x divide-[#1E4775]/10";
+  "grid w-full divide-x divide-white/[0.08]";
 
-const SAIL_WALLET_STATS_SHELL = `overflow-hidden ${SAIL_WALLET_STATS_GRID} ${SAIL_ADVANCED_FROSTED_CARD}`;
+const SAIL_WALLET_STATS_SHELL = `${HARBOR_STAT_TILE_INTRO_STRIP_SHELL_CLASS} ${SAIL_WALLET_STATS_GRID}`;
 
 const SAIL_WALLET_STATS_EMBEDDED_SHELL = SAIL_WALLET_STATS_GRID;
 
-const SAIL_WALLET_STATS_CELL =
-  "flex min-w-0 flex-col items-center justify-center px-2 py-2 text-center sm:px-4 sm:py-2.5";
+const SAIL_WALLET_STATS_CELL = `${HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS} px-2 sm:px-4 sm:py-2.5`;
 
-const SAIL_WALLET_STATS_LABEL = SAIL_ADVANCED_LIGHT_LABEL;
+const SAIL_WALLET_STATS_LABEL = `${HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS} text-[10px] tracking-wide`;
 
-const SAIL_WALLET_STATS_VALUE = `mt-0.5 truncate ${SAIL_ADVANCED_LIGHT_VALUE} text-xs sm:text-sm`;
+const SAIL_WALLET_STATS_VALUE = `truncate ${HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS} text-xs sm:text-sm`;
 
 function formatSailMarks(value: number): string {
   if (value <= 0) return "0";

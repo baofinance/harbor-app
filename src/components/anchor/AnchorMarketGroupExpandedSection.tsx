@@ -168,7 +168,7 @@ export function AnchorMarketGroupExpandedSection({
       <div className="mb-4">
         {/* Withdrawal requests for the group */}
         {groupWithdrawalRequests.length > 0 && (
-          <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-3 space-y-2 mb-3 rounded-md`}>
+          <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-3 space-y-2 mb-3`}>
             <div className="text-[10px] text-[#1E4775]/70 font-semibold uppercase tracking-wide">
               Withdrawal Requests
             </div>
@@ -382,7 +382,7 @@ export function AnchorMarketGroupExpandedSection({
 
         {/* Your Positions - consolidated (only stability pool deposits) */}
         {hasGroupPositions && (
-          <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-3 space-y-2 rounded-md`}>
+          <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-3 space-y-2`}>
             <div className="text-[10px] text-[#1E4775]/70 font-semibold uppercase tracking-wide">
               Your Positions
             </div>
@@ -699,7 +699,7 @@ export function AnchorMarketGroupExpandedSection({
 
     return (
       <React.Fragment key={marketData.marketId}>
-            <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-2 mb-2 border border-[#1E4775]/10 rounded-md`}>
+            <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-2 mb-2`}>
         <div className="flex items-center justify-end mb-2">
           <button
             onClick={() =>

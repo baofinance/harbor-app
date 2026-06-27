@@ -12,10 +12,12 @@ import { formatTideTokenAmount } from "@/utils/tideSnapshot";
 import { TideFeatureCard } from "./TideFeatureCard";
 import {
   TIDE_AMOUNT_CLASS,
-  TIDE_AMOUNT_SM_CLASS,
   TIDE_CARD_CONTENT_STACK,
   TIDE_FOOTER_EXTRA_CORAL_CLASS,
   TIDE_INSET_LABEL_CLASS,
+  TIDE_INSET_LIGHT_AMOUNT_SM_CLASS,
+  TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS,
+  TIDE_INSET_LIGHT_LABEL_CLASS,
   TIDE_META_TEXT,
   TIDE_THEME,
 } from "./tideCardStyles";
@@ -30,11 +32,11 @@ function AirdropBucketRow({
   themeInset: string;
 }) {
   return (
-    <div className={`flex w-full items-center justify-between gap-3 px-4 py-2.5 ${themeInset}`}>
-      <p className={`${TIDE_INSET_LABEL_CLASS} text-white/55`}>{label}</p>
-      <p className={`${TIDE_AMOUNT_SM_CLASS} text-base sm:text-lg`}>
+    <div className={`flex w-full items-center justify-between gap-3 rounded-xl px-4 py-2.5 ${themeInset}`}>
+      <p className={TIDE_INSET_LIGHT_LABEL_CLASS}>{label}</p>
+      <p className={`${TIDE_INSET_LIGHT_AMOUNT_SM_CLASS} text-base sm:text-lg`}>
         {formatTideTokenAmount(amount.amountTokens)}{" "}
-        <span className="text-sm text-white/50">TIDE</span>
+        <span className={TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS}>TIDE</span>
       </p>
     </div>
   );

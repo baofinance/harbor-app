@@ -5,7 +5,7 @@ import {
   MV_PROGRESS_FILL,
   MV_PROGRESS_FILL_COMPLETE,
 } from "@/components/genesis/maidenVoyageLayoutStyles";
-import { HARBOR_FROSTED_LIGHT_CARD } from "@/components/shared/harborFrostedSurfaceStyles";
+import { HARBOR_FROSTED_LIGHT_CARD_ELEVATED, HARBOR_FROSTED_LIGHT_ICON_BADGE_BASE } from "@/components/shared/harborFrostedSurfaceStyles";
 import { TIDE_META_TEXT } from "@/components/tide/tideCardStyles";
 
 export const TIDE_FLYWHEEL_SECTION_CLASS = `mt-8 flex min-w-0 flex-col overflow-hidden ${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT}`;
@@ -13,7 +13,7 @@ export const TIDE_FLYWHEEL_SECTION_CLASS = `mt-8 flex min-w-0 flex-col overflow-
 export const TIDE_FLYWHEEL_CONTENT_CLASS = "min-w-0 p-3 sm:p-4 lg:p-5";
 
 /** Shared white-glass shell for flywheel stat cards and the revenue pill. */
-export const TIDE_FLYWHEEL_LIGHT_CARD_SHELL = `rounded-xl ${HARBOR_FROSTED_LIGHT_CARD} ring-1 ring-[#1E4775]/10`;
+export const TIDE_FLYWHEEL_LIGHT_CARD_SHELL = HARBOR_FROSTED_LIGHT_CARD_ELEVATED;
 
 export const TIDE_FLYWHEEL_CARD_BASE = `${TIDE_FLYWHEEL_LIGHT_CARD_SHELL} flex min-w-[220px] max-w-[280px] shrink-0 snap-center flex-col p-3 sm:min-w-[240px] sm:p-4 lg:min-h-0 lg:min-w-0 lg:max-w-none lg:w-full lg:shrink`;
 
@@ -23,7 +23,7 @@ export const TIDE_FLYWHEEL_CARD_ACTIVE =
 export const TIDE_FLYWHEEL_CARD_INACTIVE = "";
 
 export const TIDE_FLYWHEEL_ICON_BADGE =
-  "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#1E4775]/12 bg-[#1E4775]/[0.06] text-[#4A9784]";
+  `${HARBOR_FROSTED_LIGHT_ICON_BADGE_BASE} h-9 w-9 text-[#4A9784]`;
 
 export const TIDE_FLYWHEEL_CARD_TITLE =
   "text-sm font-semibold leading-tight text-[#1E4775]";

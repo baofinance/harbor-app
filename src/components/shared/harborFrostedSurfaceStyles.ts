@@ -17,8 +17,12 @@ export const HARBOR_FROSTED_EDGE =
 /** Full light card on dark chrome — chart, trade form, inner metric tiles. */
 export const HARBOR_FROSTED_LIGHT_CARD = `${HARBOR_FROSTED_LIGHT_FILL} ${HARBOR_FROSTED_EDGE}`;
 
-/** Rounded light card — inner panels, fee bands, expanded-row tiles. */
-export const HARBOR_FROSTED_LIGHT_CARD_ROUNDED = `rounded-md ${HARBOR_FROSTED_LIGHT_CARD}`;
+/** Standard elevated light card — Tide flywheel, Earn panels, basic market cards. */
+export const HARBOR_FROSTED_LIGHT_CARD_ELEVATED =
+  `rounded-xl ${HARBOR_FROSTED_LIGHT_CARD} ring-1 ring-[#1E4775]/10`;
+
+/** Rounded light card — alias of elevated shell for backward compatibility. */
+export const HARBOR_FROSTED_LIGHT_CARD_ROUNDED = HARBOR_FROSTED_LIGHT_CARD_ELEVATED;
 
 export const HARBOR_FROSTED_SURFACE = HARBOR_FROSTED_LIGHT_CARD;
 
@@ -62,6 +66,9 @@ export const HARBOR_FROSTED_PILL =
 /** Top protocol banner bar. */
 export const HARBOR_FROSTED_BAR = `${HARBOR_FROSTED_LIGHT_FILL} border-b border-white/20`;
 
+/** Icon well on elevated light cards (Tide flywheel, MV benchmark tiles). */
+export const HARBOR_FROSTED_LIGHT_ICON_BADGE_BASE =
+  "flex shrink-0 items-center justify-center rounded-full border border-[#1E4775]/12 bg-[#1E4775]/[0.06]";
+
 /** Large marketing / simple-view card shells (Earn, Sail basic grid). */
-export const HARBOR_FROSTED_MARKET_CARD_SHELL =
-  `rounded-3xl ${HARBOR_FROSTED_LIGHT_CARD} shadow-xl shadow-black/[0.06]`;
+export const HARBOR_FROSTED_MARKET_CARD_SHELL = HARBOR_FROSTED_LIGHT_CARD_ELEVATED;

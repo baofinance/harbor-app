@@ -2,7 +2,7 @@ import {
   BASIC_MARKET_DIRECTION_LONG_CHIP_CLASS,
   BASIC_MARKET_DIRECTION_SHORT_CHIP_CLASS,
 } from "@/components/market-cards/harborBasicMarketTokens";
-import { HARBOR_FROSTED_LIGHT_CARD } from "@/components/shared/harborFrostedSurfaceStyles";
+import { HARBOR_FROSTED_LIGHT_CARD_ELEVATED, HARBOR_FROSTED_LIGHT_ICON_BADGE_BASE } from "@/components/shared/harborFrostedSurfaceStyles";
 
 /** Shared Maiden Voyage 2.0 landing layout tokens (dark campaign theme). */
 
@@ -154,8 +154,8 @@ export const MV_ICON_BADGE_EARN_SM = `${MV_ICON_BADGE_BASE} h-7 w-7 border-harbo
 /** Neutral footer / explainer badges (TIDE archived tone). */
 export const MV_ICON_BADGE_NEUTRAL = `${MV_ICON_BADGE_BASE} h-8 w-8 border-white/10 text-white/40`;
 
-/** Benchmark card icon shell — same dark glass base as MV / section cards. */
-export const MV_ICON_BADGE_BENCHMARK = `${MV_ICON_BADGE_BASE} h-8 w-8 sm:h-9 sm:w-9`;
+/** Benchmark card icon shell — light frosted tile (Tide flywheel style). */
+export const MV_ICON_BADGE_BENCHMARK = `${HARBOR_FROSTED_LIGHT_ICON_BADGE_BASE} h-8 w-8 sm:h-9 sm:w-9`;
 
 export const MV_DETAILS_PANEL = MV_POSITION_ROW;
 
@@ -190,7 +190,7 @@ export const MV_UPSIDE_OWNERSHIP_PANEL =
 export const MV_UPSIDE_OWNERSHIP_ICON = MV_ICON_BADGE_LG;
 
 /** Deposit row shell — white frosted glass (Explore the Upside). */
-export const MV_UPSIDE_LIGHT_CARD_SHELL = `rounded-xl ${HARBOR_FROSTED_LIGHT_CARD} ring-1 ring-[#1E4775]/10`;
+export const MV_UPSIDE_LIGHT_CARD_SHELL = HARBOR_FROSTED_LIGHT_CARD_ELEVATED;
 
 export const MV_UPSIDE_DEPOSIT_PANEL = `${MV_UPSIDE_LIGHT_CARD_SHELL} px-3 py-3 sm:px-4 sm:py-4`;
 

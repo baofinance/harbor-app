@@ -9,9 +9,23 @@ import {
   MV_FOOTER_PANEL,
   MV_META_TEXT,
   MV_SECTION_LABEL,
-  MV_STAT_TILE,
 } from "@/components/genesis/maidenVoyageLayoutStyles";
+import { HARBOR_FROSTED_LIGHT_CARD_ELEVATED } from "@/components/shared/harborFrostedSurfaceStyles";
 import type { StatusBadgeVariant } from "@/components/dashboard/portfolio/StatusBadge";
+
+/** Solid white frosted inset panels inside Tide feature cards. */
+export const TIDE_INSET_LIGHT_CARD_SHELL = HARBOR_FROSTED_LIGHT_CARD_ELEVATED;
+
+/** Typography on white inset panels. */
+export const TIDE_INSET_LIGHT_LABEL_CLASS =
+  "text-[10px] font-medium uppercase tracking-wide text-[#1E4775]/55";
+
+export const TIDE_INSET_LIGHT_AMOUNT_SM_CLASS =
+  "font-mono text-lg font-semibold tabular-nums text-[#1E4775] sm:text-xl";
+
+export const TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS = "text-base text-[#1E4775]/55";
+
+export const TIDE_INSET_LIGHT_META_CLASS = "text-xs text-[#1E4775]/45";
 
 /** Harbor theme accents — aligned with dashboard product cards. */
 export const TIDE_THEME = {
@@ -20,9 +34,9 @@ export const TIDE_THEME = {
     iconBadge: DASHBOARD_PRODUCT_ICON_MV_CLASS,
     subtitle: "text-[#FF8A7A]",
     badgeVariant: "coral" as StatusBadgeVariant,
-    highlight: `${MV_STAT_TILE} border-[#FF8A7A]/25`,
+    highlight: `${TIDE_INSET_LIGHT_CARD_SHELL} ring-2 ring-[#FF8A7A]/25`,
     highlightText: "text-[#FF8A7A]",
-    inset: MV_STAT_TILE,
+    inset: TIDE_INSET_LIGHT_CARD_SHELL,
     valueAccent: "text-white",
   },
   mint: {
@@ -30,9 +44,9 @@ export const TIDE_THEME = {
     iconBadge: DASHBOARD_PRODUCT_ICON_EARN_CLASS,
     subtitle: "text-[#B8EBD5]",
     badgeVariant: "green" as StatusBadgeVariant,
-    highlight: `${MV_STAT_TILE} border-[#B8EBD5]/25`,
+    highlight: `${TIDE_INSET_LIGHT_CARD_SHELL} ring-2 ring-[#B8EBD5]/25`,
     highlightText: "text-[#B8EBD5]",
-    inset: MV_STAT_TILE,
+    inset: TIDE_INSET_LIGHT_CARD_SHELL,
     valueAccent: "text-[#B8EBD5]",
   },
   blue: {
@@ -41,9 +55,9 @@ export const TIDE_THEME = {
       "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#8CB8DC]/25 bg-[#1E4775]/55 text-[#8CB8DC] backdrop-blur-md",
     subtitle: "text-[#8CB8DC]",
     badgeVariant: "neutral" as StatusBadgeVariant,
-    highlight: `${MV_STAT_TILE} border-[#1E4775]/40`,
+    highlight: `${TIDE_INSET_LIGHT_CARD_SHELL} ring-2 ring-[#1E4775]/15`,
     highlightText: "text-[#8CB8DC]",
-    inset: MV_STAT_TILE,
+    inset: TIDE_INSET_LIGHT_CARD_SHELL,
     valueAccent: "text-white",
     button:
       "bg-white/90 backdrop-blur-sm text-[#1E4775] enabled:hover:bg-white/90 disabled:opacity-40",
@@ -76,9 +90,9 @@ export const TIDE_AMOUNT_SM_CLASS =
 export const TIDE_INSET_LABEL_CLASS = `${MV_SECTION_LABEL} text-[10px] uppercase tracking-wide`;
 
 export const TIDE_PRIMARY_BUTTON_CLASS =
-  "w-full rounded-lg bg-white/90 backdrop-blur-sm px-4 py-2.5 text-sm font-semibold text-[#1E4775] shadow-sm transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40";
+  "w-full rounded-lg bg-harbor-coral px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#FF6B5A] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500";
 
-export const TIDE_INPUT_SHELL_CLASS = `${MV_STAT_TILE} flex items-center gap-2 px-3 py-2`;
+export const TIDE_INPUT_SHELL_CLASS = `${TIDE_INSET_LIGHT_CARD_SHELL} flex items-center gap-2 px-3 py-2`;
 
 export const TIDE_FOOTER_EXTRA_CORAL_CLASS =
   "text-[10px] font-medium leading-snug text-[#FF8A7A]";

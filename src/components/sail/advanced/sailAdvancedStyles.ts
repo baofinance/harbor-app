@@ -6,7 +6,10 @@ import {
   MV_META_TEXT,
   MV_SECTION_LABEL,
 } from "@/components/genesis/maidenVoyageLayoutStyles";
-import { HARBOR_FROSTED_LIGHT_CARD } from "@/components/shared/harborFrostedSurfaceStyles";
+import {
+  HARBOR_FROSTED_LIGHT_CARD,
+  HARBOR_FROSTED_LIGHT_CARD_ELEVATED,
+} from "@/components/shared/harborFrostedSurfaceStyles";
 
 export const SAIL_ADVANCED_MAIN_GRID_CLASS =
   "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-stretch lg:min-h-[36rem]";
@@ -15,7 +18,7 @@ export const SAIL_ADVANCED_MAIN_GRID_CLASS =
 export const SAIL_ADVANCED_GRID_CLASS = SAIL_ADVANCED_MAIN_GRID_CLASS;
 
 /** Standard white frosted card on Sail UI+ dark chrome. */
-export const SAIL_ADVANCED_FROSTED_CARD = `rounded-xl ${HARBOR_FROSTED_LIGHT_CARD}`;
+export const SAIL_ADVANCED_FROSTED_CARD = HARBOR_FROSTED_LIGHT_CARD_ELEVATED;
 
 /** Whitest frosted panels — chart, trade form, dropdown. */
 export const SAIL_ADVANCED_FROSTED_LIGHT_PANEL = HARBOR_FROSTED_LIGHT_CARD;
