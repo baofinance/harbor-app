@@ -42,9 +42,17 @@ export const DASHBOARD_POSITION_METRIC_CELL_CLASS =
 export const DASHBOARD_YIELD_METRICS_STACK_CLASS =
   "grid grid-cols-1 gap-y-2 sm:grid-cols-[minmax(0,1fr)_7.25rem_8.5rem_7rem_9rem] sm:gap-x-4 sm:gap-y-2";
 
-/** Parent grid for earn/sail/maiden rows — badge + trailing value column. */
+/** Parent grid for earn/maiden rows — badge + trailing value column. */
 export const DASHBOARD_POSITION_METRICS_STACK_CLASS =
   "grid grid-cols-1 gap-y-2 sm:grid-cols-[minmax(0,1fr)_auto_9rem] sm:gap-x-4 sm:gap-y-2";
+
+/** Sail rows — badge + PnL + position value columns. */
+export const DASHBOARD_SAIL_POSITION_METRICS_STACK_CLASS =
+  "grid grid-cols-1 gap-y-2 sm:grid-cols-[minmax(0,1fr)_auto_8rem_9rem] sm:gap-x-4 sm:gap-y-2";
+
+/** Earn rows — badge + APR + balance columns. */
+export const DASHBOARD_EARN_POSITION_METRICS_STACK_CLASS =
+  "grid grid-cols-1 gap-y-2 sm:grid-cols-[minmax(0,1fr)_auto_5rem_9rem] sm:gap-x-4 sm:gap-y-2";
 
 /** Archived rows — market | deposited value | withdraw action. */
 export const DASHBOARD_ARCHIVED_POSITION_METRICS_STACK_CLASS =

@@ -15,6 +15,10 @@ import {
   isGenesisHiddenFromIndex,
 } from "@/config/markets";
 import { buildSailMarketPageHref } from "@/utils/sailPageRoutes";
+import type { AnchorMarketTuple } from "@/types/anchor";
+import { useAnchorContractReads } from "@/hooks/anchor/useAnchorContractReads";
+import { useAnchorRewards } from "@/hooks/anchor/useAnchorRewards";
+import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
 import {
   chainFromMarketId,
   genesisStatusFromEnded,
@@ -52,6 +56,8 @@ export type DashboardPositionRow = {
   /** Sail leveraged positions — unrealized PnL when cost basis is available. */
   unrealizedPnLUsd?: number;
   unrealizedPnLPercent?: number;
+  /** Earn stability pool APR when deposited in a pool. */
+  aprPct?: number;
   href: string;
 };
 
@@ -131,6 +137,21 @@ function withChain(
 ): DashboardPositionRow {
   const { chainName, chainLogo } = chainFromMarketId(row.marketId);
   return { ...row, chainName, chainLogo };
+}
+
+function earnHaTokenLabel(marketId: string | undefined, pegSym?: string): string {
+  if (pegSym) return pegSym;
+  if (!marketId) return "Earn";
+  return marketCfg(marketId)?.peggedToken?.symbol ?? marketId;
+}
+
+function poolRewardApr(
+  poolRewardsMap: Map<`0x${string}`, { totalRewardAPR?: number }>,
+  poolAddress: string | undefined,
+): number | undefined {
+  if (!poolAddress) return undefined;
+  const apr = poolRewardsMap.get(poolAddress as `0x${string}`)?.totalRewardAPR;
+  return apr && apr > 0 ? apr : undefined;
 }
 
 /** Genesis + user id for `userHarborMarks` (matches `useHarborMarks`). */
@@ -335,6 +356,24 @@ export function useDashboardPositions() {
     return map;
   }, [tokenPricesByMarket]);
 
+  const anchorMarkets = anchorMarketsForPositions as AnchorMarketTuple[];
+
+  const { reads, isLoading: anchorReadsLoading } = useAnchorContractReads(
+    anchorMarkets,
+    false,
+    { enabled: isConnected },
+  );
+
+  const { prices: coinGeckoPrices } = useCoinGeckoPrices(["ethereum", "bitcoin"]);
+
+  const { poolRewardsMap, isLoadingAllRewards } = useAnchorRewards(
+    anchorMarkets,
+    reads,
+    coinGeckoPrices.ethereum ?? null,
+    coinGeckoPrices.bitcoin ?? null,
+    peggedPriceUSDMap,
+  );
+
   const {
     positionsMap: onChainPositions,
     isLoading: onChainPositionsLoading,
@@ -485,10 +524,12 @@ export function useDashboardPositions() {
     const seen = new Set<string>();
 
     for (const [marketId, pos] of Object.entries(onChainPositions)) {
-      const mkt = (markets as Record<string, MarketTokenCfg & { name?: string }>)[marketId];
-      const marketLabel = mkt?.name ?? marketId;
+      const mkt = (markets as Record<string, MarketTokenCfg & { name?: string; addresses?: Record<string, string> }>)[marketId];
       const pegSym = mkt?.peggedToken?.symbol;
+      const haLabel = earnHaTokenLabel(marketId, pegSym);
       const priceUsd = tokenPricesByMarket[marketId]?.peggedPriceUSD;
+      const collateralPoolAddress = mkt?.addresses?.stabilityPoolCollateral;
+      const sailPoolAddress = mkt?.addresses?.stabilityPoolLeveraged;
 
       const walletTokens = Number(pos.walletHa) / 1e18;
       if (pos.walletHa > 0n) {
@@ -504,9 +545,9 @@ export function useDashboardPositions() {
               id: `onchain-wallet-${marketId}`,
               category: "earn",
               marketId,
-              marketLabel,
+              marketLabel: haLabel,
               detail: `${pegSym ?? "Anchored"} · wallet`,
-              iconSymbol: pegSym || iconSymbolFromMarketLabel(marketLabel),
+              iconSymbol: pegSym || iconSymbolFromMarketLabel(haLabel),
               statusTone: "neutral",
               statusLabel: "Wallet",
               usd,
@@ -531,13 +572,14 @@ export function useDashboardPositions() {
               id: `onchain-pool-${marketId}`,
               category: "earn",
               marketId,
-              marketLabel,
+              marketLabel: haLabel,
               detail: "Anchor pool · stability",
-              iconSymbol: iconSymbolFromMarketLabel(marketLabel),
+              iconSymbol: pegSym || iconSymbolFromMarketLabel(haLabel),
               statusTone: "neutral",
               statusLabel: "Stability",
               usd,
               usdUnpriced,
+              aprPct: poolRewardApr(poolRewardsMap, collateralPoolAddress),
               href: "/earn",
             })
           );
@@ -558,13 +600,14 @@ export function useDashboardPositions() {
               id: `onchain-sail-pool-${marketId}`,
               category: "earn",
               marketId,
-              marketLabel,
+              marketLabel: haLabel,
               detail: "Sail pool · stability",
-              iconSymbol: iconSymbolFromMarketLabel(marketLabel),
+              iconSymbol: pegSym || iconSymbolFromMarketLabel(haLabel),
               statusTone: "neutral",
               statusLabel: "Stability",
               usd,
               usdUnpriced,
+              aprPct: poolRewardApr(poolRewardsMap, sailPoolAddress),
               href: "/earn",
             })
           );
@@ -585,19 +628,19 @@ export function useDashboardPositions() {
       const { usd, usdUnpriced } = resolveUsdValue(b.balanceUSD, balanceTokens, priceUsd);
       if (!shouldShowPositionRow(balanceTokens, usd, usdUnpriced)) continue;
 
-      const marketLabel = meta?.displayName ?? "Earn";
       const pegSym =
         meta &&
         (markets as Record<string, { peggedToken?: { symbol?: string } }>)[meta.marketId]
           ?.peggedToken?.symbol;
+      const haLabel = earnHaTokenLabel(meta?.marketId, pegSym);
       rows.push(
         withChain({
           id: `ha-${b.id}`,
           category: "earn",
           marketId: meta?.marketId,
-          marketLabel,
+          marketLabel: haLabel,
           detail: `${pegSym ?? "Anchored"} · wallet`,
-          iconSymbol: pegSym || iconSymbolFromMarketLabel(marketLabel),
+          iconSymbol: pegSym || iconSymbolFromMarketLabel(haLabel),
           statusTone: "neutral",
           statusLabel: "Wallet",
           usd,
@@ -621,26 +664,31 @@ export function useDashboardPositions() {
       const { usd, usdUnpriced } = resolveUsdValue(d.balanceUSD, balanceTokens, priceUsd);
       if (!shouldShowPositionRow(balanceTokens, usd, usdUnpriced)) continue;
 
-      const marketLabel = meta?.displayName ?? "Earn";
+      const pegSym =
+        marketId &&
+        (markets as Record<string, { peggedToken?: { symbol?: string } }>)[marketId]
+          ?.peggedToken?.symbol;
+      const haLabel = earnHaTokenLabel(marketId, pegSym);
       rows.push(
         withChain({
           id: `pool-${d.id}`,
           category: "earn",
           marketId: meta?.marketId,
-          marketLabel,
+          marketLabel: haLabel,
           detail: isSailPool ? "Sail pool · stability" : "Anchor pool · stability",
-          iconSymbol: iconSymbolFromMarketLabel(marketLabel),
+          iconSymbol: pegSym || iconSymbolFromMarketLabel(haLabel),
           statusTone: "neutral",
           statusLabel: "Stability",
           usd,
           usdUnpriced,
+          aprPct: poolRewardApr(poolRewardsMap, d.poolAddress),
           href: "/earn",
         })
       );
     }
 
     return rows.sort((a, b) => b.usd - a.usd);
-  }, [onChainPositions, haBalances, poolDeposits, index, tokenPricesByMarket]);
+  }, [onChainPositions, haBalances, poolDeposits, index, tokenPricesByMarket, poolRewardsMap]);
 
   const leverageRows = useMemo((): DashboardPositionRow[] => {
     const raw = (sailData?.userSailPositions ?? []) as Array<{
@@ -734,7 +782,11 @@ export function useDashboardPositions() {
     earnRows,
     leverageRows,
     isLoading: {
-      anchor: anchorLoading || onChainPositionsLoading,
+      anchor:
+        anchorLoading ||
+        onChainPositionsLoading ||
+        anchorReadsLoading ||
+        isLoadingAllRewards,
       maidenVoyage: mvLoading && mvIds.length > 0,
       leverage:
         (sailLoading && !!sailGraphUrl) ||

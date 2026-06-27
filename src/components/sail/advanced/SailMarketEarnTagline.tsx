@@ -5,9 +5,9 @@ import { MV_ACCENT_GRADIENT } from "@/components/genesis/maidenVoyageLayoutStyle
 import { getSailDirectionChipLabels } from "@/utils/sailMarketDirectionLabels";
 
 const SAIL_EARN_TAGLINE_CLASS =
-  "min-w-0 flex-1 text-xl font-semibold leading-snug text-white/85 sm:text-2xl lg:text-3xl";
-const SAIL_EARN_TAGLINE_LONG_CLASS = "font-bold sail-earn-long-gradient";
-const SAIL_EARN_TAGLINE_SHORT_CLASS = `font-bold ${MV_ACCENT_GRADIENT}`;
+  "min-w-0 text-xl font-bold leading-snug text-white/85 sm:text-2xl lg:text-3xl";
+const SAIL_EARN_TAGLINE_LONG_CLASS = "font-extrabold sail-earn-long-gradient";
+const SAIL_EARN_TAGLINE_SHORT_CLASS = `font-extrabold ${MV_ACCENT_GRADIENT}`;
 
 type SailMarketEarnTaglineProps = {
   market: DefinedMarket;

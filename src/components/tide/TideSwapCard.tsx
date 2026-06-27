@@ -6,12 +6,13 @@ import { TideFeatureCard } from "./TideFeatureCard";
 import { TideTransactionModal } from "./TideTransactionModal";
 import {
   TIDE_CARD_CONTENT_STACK,
+  TIDE_FIELD_LABEL_CLASS,
   TIDE_FOOTER_EXTRA_BLUE_CLASS,
-  TIDE_INSET_LIGHT_AMOUNT_SM_CLASS,
   TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS,
-  TIDE_INSET_LIGHT_LABEL_CLASS,
-  TIDE_INPUT_SHELL_CLASS,
+  TIDE_INPUT_FIELD_WITH_MAX_CLASS,
+  TIDE_MAX_BUTTON_CLASS,
   TIDE_META_TEXT,
+  TIDE_OVERVIEW_PANEL_SHELL,
   TIDE_PRIMARY_BUTTON_CLASS,
   TIDE_THEME,
 } from "./tideCardStyles";
@@ -49,6 +50,10 @@ export function TideSwapCard() {
     }
   };
 
+  const inputBorderClass = exceedsBalance
+    ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
+    : "border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-[#1E4775]/20";
+
   return (
     <>
       <TideFeatureCard
@@ -76,43 +81,35 @@ export function TideSwapCard() {
             </p>
           ) : null}
 
-          <div className={`px-4 py-3 text-center ${theme.inset}`}>
-            <p className={`mb-1.5 ${TIDE_INSET_LIGHT_LABEL_CLASS}`}>
-              BAO balance
-            </p>
-            <p className={TIDE_INSET_LIGHT_AMOUNT_SM_CLASS}>
-              {isBalanceLoading ? "…" : balanceFormatted}{" "}
-              <span className={TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS}>BAO</span>
-            </p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2 text-sm">
+              <span className={TIDE_FIELD_LABEL_CLASS}>BAO balance</span>
+              <span className="font-mono tabular-nums text-[#1E4775]/70">
+                {isBalanceLoading ? "…" : balanceFormatted}{" "}
+                <span className="font-sans">BAO</span>
+              </span>
+            </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label
-              htmlFor="tide-swap-bao-amount"
-              className={TIDE_INSET_LIGHT_LABEL_CLASS}
-            >
-              You swap
-            </label>
-            <div className={TIDE_INPUT_SHELL_CLASS}>
+          <div className="space-y-2">
+            <span className={TIDE_FIELD_LABEL_CLASS}>You swap</span>
+            <div className="relative">
               <input
                 id="tide-swap-bao-amount"
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                placeholder="0"
+                placeholder="0.0"
                 value={baoAmount}
                 onChange={(e) => setBaoAmount(e.target.value)}
-                className="min-w-0 flex-1 bg-transparent font-mono text-base text-[#1E4775] outline-none placeholder:text-[#1E4775]/25 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className={`${TIDE_INPUT_FIELD_WITH_MAX_CLASS} ${inputBorderClass}`}
               />
-              <span className={`shrink-0 text-sm font-medium ${TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS}`}>
-                BAO
-              </span>
               <button
                 type="button"
                 onClick={handleMax}
-                className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide hover:bg-[#1E4775]/5 ${theme.maxButton}`}
+                className={TIDE_MAX_BUTTON_CLASS}
               >
-                Max
+                MAX
               </button>
             </div>
             {exceedsBalance ? (
@@ -125,42 +122,40 @@ export function TideSwapCard() {
             ) : null}
           </div>
 
-          <div className="space-y-3.5 sm:space-y-4">
-            <div className="space-y-1.5">
-              <p className={TIDE_INSET_LIGHT_LABEL_CLASS}>You receive</p>
-              <div
-                className={`flex items-center justify-between px-3 py-2.5 ${theme.highlight}`}
-              >
-                <span className="font-mono text-lg tabular-nums text-[#1E4775]">
-                  {isPreviewLoading && baoAmount ? "…" : tideOutput || "0"}
-                </span>
-                <span className={`text-sm font-medium ${TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS}`}>
-                  TIDE
-                </span>
-              </div>
-            </div>
-
-            {swapError ? (
-              <p className="rounded-lg border border-[#FF8A7A]/30 bg-[#FF8A7A]/10 px-3 py-2 text-xs text-[#FF8A7A]">
-                {swapError}
-              </p>
-            ) : null}
-
-            <button
-              type="button"
-              disabled={!canSwap}
-              onClick={() => void executeSwap()}
-              className={TIDE_PRIMARY_BUTTON_CLASS}
+          <div className="space-y-2">
+            <span className={TIDE_FIELD_LABEL_CLASS}>You receive</span>
+            <div
+              className={`flex items-center justify-between ${TIDE_OVERVIEW_PANEL_SHELL}`}
             >
-              {isSwapping
-                ? needsApproval
-                  ? "Approving…"
-                  : "Swapping…"
-                : needsApproval
-                  ? "Approve & Swap"
-                  : "Swap"}
-            </button>
+              <span className="font-mono text-lg tabular-nums text-[#1E4775]">
+                {isPreviewLoading && baoAmount ? "…" : tideOutput || "0"}
+              </span>
+              <span className={`text-sm font-medium ${TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS}`}>
+                TIDE
+              </span>
+            </div>
           </div>
+
+          {swapError ? (
+            <p className="rounded-lg border border-[#FF8A7A]/30 bg-[#FF8A7A]/10 px-3 py-2 text-xs text-[#FF8A7A]">
+              {swapError}
+            </p>
+          ) : null}
+
+          <button
+            type="button"
+            disabled={!canSwap}
+            onClick={() => void executeSwap()}
+            className={TIDE_PRIMARY_BUTTON_CLASS}
+          >
+            {isSwapping
+              ? needsApproval
+                ? "Approving…"
+                : "Swapping…"
+              : needsApproval
+                ? "Approve & Swap"
+                : "Swap"}
+          </button>
         </div>
       </TideFeatureCard>
 

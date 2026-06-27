@@ -6,7 +6,6 @@ import {
   TIDE_FLYWHEEL_HEADLINE,
   TIDE_FLYWHEEL_HEADLINE_ACCENT,
   TIDE_FLYWHEEL_HEADLINE_PRIMARY,
-  TIDE_FLYWHEEL_META,
   TIDE_FLYWHEEL_REVENUE_PILL,
   TIDE_FLYWHEEL_STAT_LABEL,
   TIDE_FLYWHEEL_STAT_VALUE,
@@ -15,7 +14,6 @@ import {
 export type TideFlywheelHeaderProps = {
   titlePrimary: string;
   titleAccent: string;
-  subtitle: string;
   revenueLabel: string;
   revenueValue: string;
   revenueLoading?: boolean;
@@ -24,7 +22,6 @@ export type TideFlywheelHeaderProps = {
 export function TideFlywheelHeader({
   titlePrimary,
   titleAccent,
-  subtitle,
   revenueLabel,
   revenueValue,
   revenueLoading = false,
@@ -36,7 +33,6 @@ export function TideFlywheelHeader({
           <span className={TIDE_FLYWHEEL_HEADLINE_PRIMARY}>{titlePrimary}</span>{" "}
           <span className={TIDE_FLYWHEEL_HEADLINE_ACCENT}>{titleAccent}</span>
         </h2>
-        <p className={`mt-1 max-w-xl ${TIDE_FLYWHEEL_META}`}>{subtitle}</p>
       </div>
       <div className={TIDE_FLYWHEEL_REVENUE_PILL}>
         <span className={TIDE_FLYWHEEL_STAT_LABEL}>{revenueLabel}</span>

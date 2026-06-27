@@ -39,8 +39,6 @@ export const TIDE_FLYWHEEL_CONFIG = {
   copy: {
     titlePrimary: "The TIDE",
     titleAccent: "Flywheel",
-    subtitle:
-      "Protocol revenue flows back into TIDE, strengthening the ecosystem over time.",
     revenuePillLabel: "Revenue Generated (All Time)",
     steps: {
       buybacks: {

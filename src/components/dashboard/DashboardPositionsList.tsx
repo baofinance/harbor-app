@@ -8,7 +8,9 @@ import { DashboardEmptyState } from "./portfolio/DashboardEmptyState";
 import { PositionCard } from "./portfolio/PositionCard";
 import {
   DASHBOARD_ARCHIVED_POSITION_METRICS_STACK_CLASS,
+  DASHBOARD_EARN_POSITION_METRICS_STACK_CLASS,
   DASHBOARD_POSITION_METRICS_STACK_CLASS,
+  DASHBOARD_SAIL_POSITION_METRICS_STACK_CLASS,
 } from "./portfolio/portfolioStyles";
 
 export type DashboardEmptyStateConfig = {
@@ -28,6 +30,10 @@ export type DashboardPositionsListProps = {
   loadingSkeletonCount?: number;
   onManage?: (row: DashboardPositionRow) => void;
   showWithdrawNotice?: boolean;
+  /** Sail positions — show dedicated PnL column before position value. */
+  showPnLColumn?: boolean;
+  /** Earn positions — show APR column before balance. */
+  showAprColumn?: boolean;
 };
 
 export function DashboardPositionsList({
@@ -39,10 +45,16 @@ export function DashboardPositionsList({
   loadingSkeletonCount = 3,
   onManage,
   showWithdrawNotice = false,
+  showPnLColumn = false,
+  showAprColumn = false,
 }: DashboardPositionsListProps) {
   const stackClass = onManage
     ? DASHBOARD_ARCHIVED_POSITION_METRICS_STACK_CLASS
-    : DASHBOARD_POSITION_METRICS_STACK_CLASS;
+    : showPnLColumn
+      ? DASHBOARD_SAIL_POSITION_METRICS_STACK_CLASS
+      : showAprColumn
+        ? DASHBOARD_EARN_POSITION_METRICS_STACK_CLASS
+        : DASHBOARD_POSITION_METRICS_STACK_CLASS;
 
   if (error) {
     return <p className="text-sm text-white/70">{error}</p>;
@@ -79,7 +91,13 @@ export function DashboardPositionsList({
       {showWithdrawNotice ? <DashboardArchivedWithdrawNotice /> : null}
       <div className={stackClass}>
         {rows.map((row) => (
-          <PositionCard key={row.id} row={row} onWithdraw={onManage} />
+          <PositionCard
+            key={row.id}
+            row={row}
+            onWithdraw={onManage}
+            showPnLColumn={showPnLColumn}
+            showAprColumn={showAprColumn}
+          />
         ))}
       </div>
     </div>

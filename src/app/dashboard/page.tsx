@@ -127,6 +127,8 @@ function PositionProductCard({
         loadingSkeletonCount={group.rows.length === 0 ? 1 : 3}
         onManage={onManage}
         showWithdrawNotice={showWithdrawNotice}
+        showPnLColumn={productId === "sail"}
+        showAprColumn={productId === "earn"}
       />
     </DashboardProductCard>
   );

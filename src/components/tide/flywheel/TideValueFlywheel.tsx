@@ -62,7 +62,6 @@ export function TideValueFlywheel() {
         <TideFlywheelHeader
           titlePrimary={copy.titlePrimary}
           titleAccent={copy.titleAccent}
-          subtitle={copy.subtitle}
           revenueLabel={copy.revenuePillLabel}
           revenueValue={lifetimeRevenueDisplay}
           revenueLoading={metrics.isLoading}

@@ -42,11 +42,11 @@ export const SAIL_ADVANCED_LIGHT_LABEL =
   "text-[10px] font-medium uppercase tracking-wide text-[#1E4775]/55";
 
 export const SAIL_ADVANCED_LIGHT_SECTION_TITLE =
-  "text-[10px] font-semibold uppercase tracking-wider text-[#1E4775]/50";
+  "text-sm font-semibold leading-snug text-[#1E4775]";
 
-export const SAIL_ADVANCED_LIGHT_CAPTION = "text-xs text-[#1E4775]/65";
+export const SAIL_ADVANCED_LIGHT_CAPTION = "text-xs text-[#1E4775]/75";
 
-export const SAIL_ADVANCED_LIGHT_BODY = "text-xs leading-relaxed text-[#1E4775]/70";
+export const SAIL_ADVANCED_LIGHT_BODY = "text-sm leading-relaxed text-[#1E4775]/85";
 
 export const SAIL_ADVANCED_LIGHT_VALUE =
   "font-mono text-sm font-semibold tabular-nums text-[#1E4775]";

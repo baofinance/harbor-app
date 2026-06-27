@@ -5,6 +5,7 @@ import { TokenLogo } from "@/components/shared";
 import type { DashboardPositionRow } from "@/hooks/useDashboardPositions";
 import { INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL } from "@/utils/indexPageManageButton";
 import { formatUSD } from "@/utils/formatters";
+import { formatAPR } from "@/utils/anchor";
 import {
   DASHBOARD_POSITION_METRIC_LABEL_CLASS,
   DASHBOARD_POSITION_METRIC_VALUE_CLASS,
@@ -38,9 +39,39 @@ function statusVariant(
 export type PositionCardProps = {
   row: DashboardPositionRow;
   onWithdraw?: (row: DashboardPositionRow) => void;
+  showPnLColumn?: boolean;
+  showAprColumn?: boolean;
 };
 
-export function PositionCard({ row, onWithdraw }: PositionCardProps) {
+function leveragePnLDisplay(row: DashboardPositionRow): {
+  text: string;
+  className: string;
+  percentText: string | null;
+} {
+  if (
+    row.unrealizedPnLUsd === undefined ||
+    row.unrealizedPnLUsd === 0
+  ) {
+    return {
+      text: "—",
+      className: DASHBOARD_POSITION_METRIC_VALUE_CLASS,
+      percentText: null,
+    };
+  }
+  const formatted = formatDashboardPnL(row.unrealizedPnLUsd);
+  return {
+    text: formatted.text,
+    className: formatted.className,
+    percentText: formatDashboardPnLPercent(row.unrealizedPnLPercent ?? 0),
+  };
+}
+
+export function PositionCard({
+  row,
+  onWithdraw,
+  showPnLColumn = false,
+  showAprColumn = false,
+}: PositionCardProps) {
   const valueDisplay = row.usdUnpriced ? "—" : formatUSD(row.usd, { compact: false });
   const marketName = formatMarketLabel(row.marketLabel);
   const valueContext = positionValueContext(row);
@@ -49,12 +80,8 @@ export function PositionCard({ row, onWithdraw }: PositionCardProps) {
     ? "Ready to withdraw"
     : dashboardPositionStatusLabel(row);
   const badgeVariant = onWithdraw ? "ended" : statusVariant(row.statusTone);
-  const pnlFormatted =
-    row.category === "leverage" &&
-    row.unrealizedPnLUsd !== undefined &&
-    row.unrealizedPnLUsd !== 0
-      ? formatDashboardPnL(row.unrealizedPnLUsd)
-      : null;
+  const pnl = showPnLColumn ? leveragePnLDisplay(row) : null;
+  const aprText = showAprColumn ? formatAPR(row.aprPct) : null;
 
   const valueTitle = [valueContext, row.detail].filter(Boolean).join(" · ");
 
@@ -80,6 +107,31 @@ export function PositionCard({ row, onWithdraw }: PositionCardProps) {
     </div>
   );
 
+  const pnlCell =
+    pnl ? (
+      <div className={DASHBOARD_POSITION_METRIC_CELL_CLASS}>
+        <span className="whitespace-nowrap text-sm">
+          <span className={DASHBOARD_POSITION_METRIC_LABEL_CLASS}>PnL</span>{" "}
+          <span className={`${pnl.className} font-semibold`}>{pnl.text}</span>
+          {pnl.percentText ? (
+            <span className={`ml-0.5 ${pnl.className}`}>({pnl.percentText})</span>
+          ) : null}
+        </span>
+      </div>
+    ) : null;
+
+  const aprCell =
+    showAprColumn ? (
+      <div className={DASHBOARD_POSITION_METRIC_CELL_CLASS}>
+        <span className="whitespace-nowrap text-sm">
+          <span className={DASHBOARD_POSITION_METRIC_LABEL_CLASS}>APR</span>{" "}
+          <span className={`${DASHBOARD_POSITION_METRIC_VALUE_CLASS} font-semibold`}>
+            {aprText}
+          </span>
+        </span>
+      </div>
+    ) : null;
+
   const valueCell = (
     <div className={`${DASHBOARD_POSITION_METRIC_CELL_CLASS} ${onWithdraw ? "sm:pr-2" : ""}`}>
       <span
@@ -90,12 +142,6 @@ export function PositionCard({ row, onWithdraw }: PositionCardProps) {
         <span className={`${DASHBOARD_POSITION_METRIC_VALUE_CLASS} font-semibold`}>
           {valueDisplay}
         </span>
-        {pnlFormatted ? (
-          <span className={`ml-1 ${pnlFormatted.className}`}>
-            ({pnlFormatted.text}{" "}
-            {formatDashboardPnLPercent(row.unrealizedPnLPercent ?? 0)})
-          </span>
-        ) : null}
       </span>
     </div>
   );
@@ -125,6 +171,8 @@ export function PositionCard({ row, onWithdraw }: PositionCardProps) {
     >
       {marketCell}
       {badgeCell}
+      {pnlCell}
+      {aprCell}
       {valueCell}
     </Link>
   );

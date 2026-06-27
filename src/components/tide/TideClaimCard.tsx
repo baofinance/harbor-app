@@ -7,12 +7,13 @@ import { TideFeatureCard } from "./TideFeatureCard";
 import { TideTransactionModal } from "./TideTransactionModal";
 import {
   TIDE_CARD_CONTENT_STACK,
+  TIDE_FIELD_LABEL_CLASS,
   TIDE_FOOTER_EXTRA_MINT_CLASS,
   TIDE_INSET_LIGHT_AMOUNT_SM_CLASS,
   TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS,
-  TIDE_INSET_LIGHT_LABEL_CLASS,
   TIDE_INSET_LIGHT_META_CLASS,
   TIDE_META_TEXT,
+  TIDE_OVERVIEW_PANEL_SHELL,
   TIDE_PRIMARY_BUTTON_CLASS,
   TIDE_THEME,
 } from "./tideCardStyles";
@@ -22,7 +23,6 @@ function ClaimBucket({
   methodLabel,
   amountTokens,
   isLoading,
-  themeInset,
   blockReason,
   alreadyClaimed,
   canClaim,
@@ -33,7 +33,6 @@ function ClaimBucket({
   methodLabel: string;
   amountTokens: number;
   isLoading: boolean;
-  themeInset: string;
   blockReason: string | null;
   alreadyClaimed: boolean;
   canClaim: boolean;
@@ -44,12 +43,14 @@ function ClaimBucket({
   const hasBalance = displayTokens > 0;
 
   return (
-    <div className="flex w-full flex-col gap-1.5">
-      <p className={`${TIDE_INSET_LIGHT_LABEL_CLASS} text-[#4A9784]`}>{label}</p>
+    <div className="flex w-full flex-col gap-2">
+      <span className={TIDE_FIELD_LABEL_CLASS}>{label}</span>
 
-      <div className={`w-full px-4 py-3 ${themeInset}`}>
+      <div className={TIDE_OVERVIEW_PANEL_SHELL}>
         <div className="flex justify-end">
-          <span className={`shrink-0 font-mono uppercase tracking-wide ${TIDE_INSET_LIGHT_META_CLASS}`}>
+          <span
+            className={`shrink-0 font-mono uppercase tracking-wide ${TIDE_INSET_LIGHT_META_CLASS}`}
+          >
             {methodLabel}
           </span>
         </div>
@@ -122,7 +123,6 @@ export function TideClaimCard() {
               methodLabel="claimVeBao"
               amountTokens={claim.veBaoAllocation?.amountTokens ?? 0}
               isLoading={bucketLoading}
-              themeInset={theme.inset}
               blockReason={claim.veBaoBlockReason}
               alreadyClaimed={claim.hasClaimedVeBao}
               canClaim={claim.canClaimVeBao}
@@ -134,7 +134,6 @@ export function TideClaimCard() {
               methodLabel="claimStandard"
               amountTokens={claim.standardAllocation?.amountTokens ?? 0}
               isLoading={bucketLoading}
-              themeInset={theme.inset}
               blockReason={claim.standardBlockReason}
               alreadyClaimed={claim.hasClaimedStandard}
               canClaim={claim.canClaimStandard}

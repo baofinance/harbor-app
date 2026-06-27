@@ -16,7 +16,7 @@ export const TIDE_FLYWHEEL_CONTENT_CLASS = "min-w-0 p-3 sm:p-4 lg:p-5";
 
 /** Single-line flywheel title — larger than Maiden Voyage hero lines. */
 export const TIDE_FLYWHEEL_HEADLINE_SIZE =
-  "text-[length:clamp(1.875rem,calc(100cqi/7.5),4.75rem)]";
+  "text-[length:clamp(2.25rem,calc(100cqi/5.5),6rem)]";
 
 export const TIDE_FLYWHEEL_HEADLINE = `${MV_HEADLINE} whitespace-nowrap ${TIDE_FLYWHEEL_HEADLINE_SIZE}`;
 

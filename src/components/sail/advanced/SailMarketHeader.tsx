@@ -54,7 +54,9 @@ export function SailMarketHeader({
               onSelect={onSelectMarket}
             />
           </div>
-          <SailMarketEarnTagline market={selectedMarket} />
+          <div className="flex min-w-0 flex-1 items-center justify-center text-center">
+            <SailMarketEarnTagline market={selectedMarket} />
+          </div>
         </div>
       </div>
 
