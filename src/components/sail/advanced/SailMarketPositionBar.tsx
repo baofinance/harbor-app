@@ -1,6 +1,7 @@
 "use client";
 
 import type { DefinedMarket } from "@/config/markets";
+import { SailConnectWalletStripNotice } from "@/components/sail/advanced/SailConnectWalletStripNotice";
 import { useSailPositionPnL } from "@/hooks/useSailPositionPnL";
 import { formatPnL, formatUSD } from "@/utils/sailDisplayFormat";
 import {
@@ -99,6 +100,17 @@ export function SailMarketPositionBar({
   const shellClass = embedded
     ? `grid w-full grid-cols-2 divide-x divide-white/[0.08] ${className}`.trim()
     : `${HARBOR_STAT_TILE_INTRO_STRIP_SHELL_CLASS} grid grid-cols-2 divide-x divide-white/[0.08] ${className}`.trim();
+
+  if (!isConnected) {
+    return (
+      <div className={shellClass} aria-label="Your position in this market">
+        <SailConnectWalletStripNotice
+          message="Connect your wallet to view your position in this market."
+          className="col-span-2"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={shellClass} aria-label="Your position in this market">

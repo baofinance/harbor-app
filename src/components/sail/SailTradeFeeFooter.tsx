@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { FeeBand } from "@/utils/sailFeeBands";
 import { SailFeeRatioCell } from "@/components/sail/SailFeeRatioCell";
 
@@ -16,7 +17,26 @@ type SailTradeFeeFooterProps = {
   showEstimates?: boolean;
 };
 
-/** Buy / sell fee row pinned to the bottom of the Sail trade panel. */
+function FeeEstimate({
+  pct,
+  warnHigh,
+}: {
+  pct: number;
+  warnHigh?: boolean;
+}) {
+  return (
+    <span
+      className={`font-mono text-[10px] tabular-nums ${
+        warnHigh ? "text-red-600" : "text-[#1E4775]/50"
+      }`}
+    >
+      est. {pct > 100 ? "~1.00" : pct.toFixed(2)}%
+      {warnHigh ? " ⚠️" : ""}
+    </span>
+  );
+}
+
+/** Buy / sell fees — compact row pinned to the bottom of the Sail trade panel. */
 export function SailTradeFeeFooter({
   marketFees,
   activeTab,
@@ -26,58 +46,60 @@ export function SailTradeFeeFooter({
 }: SailTradeFeeFooterProps) {
   if (!marketFees) return null;
 
+  const showBuyEstimate =
+    showEstimates &&
+    activeTab === "mint" &&
+    buyFeeEstimatePct != null &&
+    buyFeeEstimatePct > 0;
+
+  const showSellEstimate =
+    showEstimates &&
+    activeTab === "redeem" &&
+    sellFeeEstimatePct != null &&
+    sellFeeEstimatePct > 0;
+
   return (
     <div className="rounded-md border border-[#1E4775]/10 bg-[#17395F]/5 px-3 py-2.5">
-      <div className="space-y-2">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-xs font-medium text-[#1E4775]/70">Buy fee</span>
-          <div className="text-right">
-            <SailFeeRatioCell
-              ratio={marketFees.buyFeeRatio}
-              isMintSail
-              activeBand={marketFees.activeBuyBand}
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/55">
+        Fees
+      </p>
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#1E4775]/70">
+          Buy
+          <SailFeeRatioCell
+            ratio={marketFees.buyFeeRatio}
+            isMintSail
+            activeBand={marketFees.activeBuyBand}
+          />
+          {showBuyEstimate ? (
+            <FeeEstimate
+              pct={buyFeeEstimatePct!}
+              warnHigh={
+                buyFeeEstimatePct! > 2 && buyFeeEstimatePct! <= 100
+              }
             />
-            {showEstimates &&
-            activeTab === "mint" &&
-            buyFeeEstimatePct != null &&
-            buyFeeEstimatePct > 0 ? (
-              <p
-                className={`mt-0.5 text-[11px] font-mono ${
-                  buyFeeEstimatePct > 2 && buyFeeEstimatePct <= 100
-                    ? "text-red-600"
-                    : "text-[#1E4775]/55"
-                }`}
-              >
-                Est.{" "}
-                {buyFeeEstimatePct > 100 ? "~1.00" : buyFeeEstimatePct.toFixed(2)}%
-                {buyFeeEstimatePct > 2 && buyFeeEstimatePct <= 100 ? " ⚠️" : ""}
-              </p>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex items-center justify-between gap-3 border-t border-[#1E4775]/10 pt-2">
-          <span className="text-xs font-medium text-[#1E4775]/70">Sell fee</span>
-          <div className="text-right">
-            <SailFeeRatioCell
-              ratio={marketFees.sellFeeRatio}
-              isMintSail={false}
-              activeBand={marketFees.activeSellBand}
+          ) : null}
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#1E4775]/70">
+          Sell
+          <SailFeeRatioCell
+            ratio={marketFees.sellFeeRatio}
+            isMintSail={false}
+            activeBand={marketFees.activeSellBand}
+          />
+          {showSellEstimate ? (
+            <FeeEstimate
+              pct={sellFeeEstimatePct!}
+              warnHigh={sellFeeEstimatePct! > 2}
             />
-            {showEstimates &&
-            activeTab === "redeem" &&
-            sellFeeEstimatePct != null &&
-            sellFeeEstimatePct > 0 ? (
-              <p
-                className={`mt-0.5 text-[11px] font-mono ${
-                  sellFeeEstimatePct > 2 ? "text-red-600" : "text-[#1E4775]/55"
-                }`}
-              >
-                Est. {sellFeeEstimatePct.toFixed(2)}%
-                {sellFeeEstimatePct > 2 ? " ⚠️" : ""}
-              </p>
-            ) : null}
-          </div>
-        </div>
+          ) : null}
+        </span>
+        <Link
+          href="/transparency"
+          className="text-[11px] text-[#1E4775]/55 underline-offset-2 transition-colors hover:text-[#1E4775] hover:underline"
+        >
+          (see full fee structure)
+        </Link>
       </div>
     </div>
   );

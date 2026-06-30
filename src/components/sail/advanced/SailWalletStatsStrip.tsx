@@ -1,5 +1,6 @@
 "use client";
 
+import { SailConnectWalletStripNotice } from "@/components/sail/advanced/SailConnectWalletStripNotice";
 import { formatUSD } from "@/utils/formatters";
 import {
   HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS,
@@ -116,13 +117,30 @@ export function SailWalletStatsStrip({
   embedded = false,
   className = "",
 }: SailWalletStatsStripProps) {
-  const dash = "—";
   const pnl = formatPnL(pnlFromMarkets, pnlSummaryLoading, isConnected);
   const marksValue = isLoadingSailMarks ? "…" : formatSailMarks(totalSailMarks);
   const gridClass = showSailMarks
     ? "grid-cols-2 sm:grid-cols-4"
     : "grid-cols-3";
   const shellClass = embedded ? SAIL_WALLET_STATS_EMBEDDED_SHELL : SAIL_WALLET_STATS_SHELL;
+
+  if (!isConnected) {
+    const disconnectedGridClass = showSailMarks
+      ? "grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto]"
+      : "grid-cols-1";
+
+    return (
+      <div
+        className={`${shellClass} ${disconnectedGridClass} ${className}`.trim()}
+        aria-label="Your Sail wallet"
+      >
+        <SailConnectWalletStripNotice message="Connect your wallet to view portfolio stats." />
+        {showSailMarks ? (
+          <StatCell label="Sail marks" value={marksValue} />
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -131,15 +149,11 @@ export function SailWalletStatsStrip({
     >
       <StatCell
         label="Leverage Portfolio"
-        value={
-          isConnected
-            ? formatUSD(sailUserStats.totalPositionsUSD, { compact: false })
-            : dash
-        }
+        value={formatUSD(sailUserStats.totalPositionsUSD, { compact: false })}
       />
       <StatCell
         label="Positions"
-        value={isConnected ? String(sailUserStats.positionsCount) : dash}
+        value={String(sailUserStats.positionsCount)}
       />
       <StatCell
         label="PnL"
