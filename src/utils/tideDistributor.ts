@@ -128,8 +128,8 @@ export function formatTideClaimWindowMessage(
   endDate?: bigint
 ): string | null {
   if (status === "loading") return null;
-  if (status === "not_started" && startDate !== undefined) {
-    return `Claims open ${new Date(Number(startDate) * 1000).toLocaleString()}`;
+  if (status === "not_started") {
+    return formatTideClaimScheduleMessage();
   }
   if (status === "ended" && endDate !== undefined) {
     return `Claim window ended ${new Date(Number(endDate) * 1000).toLocaleString()}`;
@@ -144,15 +144,27 @@ function formatTideWindowMonthYear(timestampSec: bigint): string {
   });
 }
 
+export function formatTideAirdropScheduleFooter(): string {
+  return `Will be airdropped ${TIDE_CONFIG.airdropClaimScheduleLabel}`;
+}
+
+export function formatTideClaimScheduleMessage(): string {
+  return `Claims ${TIDE_CONFIG.airdropClaimScheduleLabel}`;
+}
+
+export function formatTideClaimScheduleFooter(): string {
+  return formatTideClaimScheduleMessage();
+}
+
 /** Compact claim window copy for card footers. */
 export function formatTideClaimWindowFooter(
   status: TideClaimWindowStatus,
-  startDate?: bigint,
+  _startDate?: bigint,
   endDate?: bigint
 ): string | null {
   if (status === "loading") return null;
-  if (status === "not_started" && startDate !== undefined) {
-    return `Claims open ${formatTideWindowMonthYear(startDate)}`;
+  if (status === "not_started") {
+    return formatTideClaimScheduleFooter();
   }
   if (status === "open" && endDate !== undefined) {
     return `Claim window open · ends ${formatTideWindowMonthYear(endDate)}`;
@@ -175,7 +187,9 @@ export function parseTideClaimError(error: unknown): string {
   const raw = err?.shortMessage || err?.cause?.reason || err?.message || "Transaction failed";
   if (raw.includes("AlreadyClaimed")) return "You have already claimed on this path";
   if (raw.includes("InvalidProof")) return "Invalid merkle proof — amount must match snapshot exactly";
-  if (raw.includes("ClaimNotStarted")) return "Claim window has not started yet";
+  if (raw.includes("ClaimNotStarted")) {
+    return `Claims ${TIDE_CONFIG.airdropClaimScheduleLabel}`;
+  }
   if (raw.includes("ClaimEnded")) return "Claim window has ended";
   if (raw.includes("LockEndTooEarly")) {
     return "Your lock must end after 31 December 2026 to claim TIDE. Extend your lock on veBAO, then return here to claim.";

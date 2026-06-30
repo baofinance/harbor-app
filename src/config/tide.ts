@@ -11,6 +11,8 @@ export const TIDE_CONFIG = {
     "0x8Bf70DFE40F07a5ab715F7e888478d9D3680a2B6" as `0x${string}`,
   /** veBAO lock extension UI — increase_unlock_time / create_lock. */
   veBaoAppUrl: "https://app.baofinance.io",
+  /** Customer-facing airdrop & claim schedule (production). */
+  airdropClaimScheduleLabel: "starting first week of July 2026",
   /** 1 BAO = 1758 / 10000 TIDE (on-chain). */
   tideNumerator: 1758,
   rateDenominator: 10_000,

@@ -8,7 +8,7 @@ import {
   type TideAirdropBucketKey,
 } from "@/config/tide";
 import { useTideAirdropEligibility } from "@/hooks/useTideAirdropEligibility";
-import { formatTideAirdropMonthYear } from "@/utils/tideDistributor";
+import { formatTideAirdropScheduleFooter } from "@/utils/tideDistributor";
 import { formatTideTokenAmount } from "@/utils/tideSnapshot";
 import { TideBoostersPendingHint } from "./TideBoostersPendingHint";
 import { TideFeatureCard } from "./TideFeatureCard";
@@ -64,8 +64,7 @@ function AirdropBucketRow({
 }
 
 export function TideAirdropCard() {
-  const { isLoading, buckets, totalTokens, airdropDate } =
-    useTideAirdropEligibility();
+  const { isLoading, buckets, totalTokens } = useTideAirdropEligibility();
   const theme = TIDE_THEME.coral;
 
   return (
@@ -79,11 +78,7 @@ export function TideAirdropCard() {
       badge="Snapshot"
       badgeVariant={theme.badgeVariant}
       footer="Eligibility from tide_airdrop.json"
-      footerExtra={
-        airdropDate
-          ? `Will be airdropped ${formatTideAirdropMonthYear(airdropDate)}`
-          : undefined
-      }
+      footerExtra={formatTideAirdropScheduleFooter()}
       footerExtraClassName={TIDE_FOOTER_EXTRA_CORAL_CLASS}
     >
       {isLoading ? (
