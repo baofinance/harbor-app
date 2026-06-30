@@ -7,6 +7,11 @@ import type { StatusBadgeVariant } from "@/components/dashboard/portfolio/Status
 import {
   TIDE_CARD_BODY,
   TIDE_CARD_FOOTER,
+  TIDE_DARK_CARD_FOOTER,
+  TIDE_DARK_FEATURE_CARD_SHELL,
+  TIDE_DARK_FEATURE_CARD_TITLE,
+  TIDE_DARK_FOOTER_NOTE_CLASS,
+  TIDE_DARK_INSET_LABEL_CLASS,
   TIDE_FEATURE_CARD_SHELL,
   TIDE_FEATURE_CARD_TITLE,
   TIDE_FOOTER_NOTE_CLASS,
@@ -24,6 +29,7 @@ export type TideFeatureCardProps = {
   footer?: string;
   footerExtra?: ReactNode;
   footerExtraClassName?: string;
+  variant?: "light" | "dark";
   children: ReactNode;
 };
 
@@ -38,10 +44,21 @@ export function TideFeatureCard({
   footer,
   footerExtra,
   footerExtraClassName,
+  variant = "light",
   children,
 }: TideFeatureCardProps) {
+  const isDark = variant === "dark";
+  const shellClass = isDark ? TIDE_DARK_FEATURE_CARD_SHELL : TIDE_FEATURE_CARD_SHELL;
+  const titleClass = isDark ? TIDE_DARK_FEATURE_CARD_TITLE : TIDE_FEATURE_CARD_TITLE;
+  const subtitleLabelClass = isDark
+    ? TIDE_DARK_INSET_LABEL_CLASS
+    : TIDE_INSET_LIGHT_LABEL_CLASS;
+  const footerClass = isDark ? TIDE_DARK_CARD_FOOTER : TIDE_CARD_FOOTER;
+  const footerNoteClass = isDark ? TIDE_DARK_FOOTER_NOTE_CLASS : TIDE_FOOTER_NOTE_CLASS;
+  const infoIconClass = isDark ? "text-white/35" : "text-[#1E4775]/40";
+
   return (
-    <article className={TIDE_FEATURE_CARD_SHELL}>
+    <article className={shellClass}>
       <header className="shrink-0">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -49,16 +66,20 @@ export function TideFeatureCard({
               {icon}
             </span>
             <div className="min-w-0">
-              <h3 className={TIDE_FEATURE_CARD_TITLE}>{title}</h3>
+              <h3 className={titleClass}>{title}</h3>
               <p
-                className={`${TIDE_INSET_LIGHT_LABEL_CLASS} mt-0.5 normal-case ${subtitleClass}`}
+                className={`${subtitleLabelClass} mt-0.5 normal-case ${subtitleClass}`}
               >
                 {subtitle}
               </p>
             </div>
           </div>
           {badge ? (
-            <StatusBadge label={badge} variant={badgeVariant} surface="light" />
+            <StatusBadge
+              label={badge}
+              variant={badgeVariant}
+              surface={isDark ? "dark" : "light"}
+            />
           ) : null}
         </div>
       </header>
@@ -66,28 +87,28 @@ export function TideFeatureCard({
       <div className={TIDE_CARD_BODY}>{children}</div>
 
       {footer || footerExtra ? (
-        <footer className={`${TIDE_CARD_FOOTER} flex flex-col gap-1`}>
+        <footer className={`${footerClass} flex flex-col gap-1`}>
           {footer ? (
             <div className="flex items-center gap-1.5">
               <Info
-                className="h-3.5 w-3.5 shrink-0 text-[#1E4775]/40"
+                className={`h-3.5 w-3.5 shrink-0 ${infoIconClass}`}
                 strokeWidth={1.75}
               />
-              <span className={TIDE_FOOTER_NOTE_CLASS}>{footer}</span>
+              <span className={footerNoteClass}>{footer}</span>
             </div>
           ) : footerExtra ? (
             <div className="flex items-center gap-1.5">
               <Info
-                className="h-3.5 w-3.5 shrink-0 text-[#1E4775]/40"
+                className={`h-3.5 w-3.5 shrink-0 ${infoIconClass}`}
                 strokeWidth={1.75}
               />
-              <p className={footerExtraClassName ?? TIDE_FOOTER_NOTE_CLASS}>
+              <p className={footerExtraClassName ?? footerNoteClass}>
                 {footerExtra}
               </p>
             </div>
           ) : null}
           {footer && footerExtra ? (
-            <p className={footerExtraClassName ?? TIDE_FOOTER_NOTE_CLASS}>
+            <p className={footerExtraClassName ?? footerNoteClass}>
               {footerExtra}
             </p>
           ) : null}

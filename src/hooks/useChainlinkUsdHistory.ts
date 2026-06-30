@@ -33,9 +33,14 @@ export function useChainlinkUsdHistory(
   const publicClient = usePublicClient({ chainId: 1 });
 
   useEffect(() => {
-    if (!enabled || !asset || asset === "USD" || !publicClient) {
+    if (!enabled || !asset || asset === "USD") {
       setPriceHistory([]);
       setIsLoading(false);
+      return;
+    }
+
+    if (!publicClient) {
+      setIsLoading(true);
       return;
     }
 
