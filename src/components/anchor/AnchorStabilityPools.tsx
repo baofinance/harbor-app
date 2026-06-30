@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import Link from "next/link";
 import { HARBOR_BTN_GLASS_PILL_CORAL_DARK_CLASS } from "@/components/shared/harborButtonStyles";
 import { markets, type DefinedMarket } from "@/config/markets";
 import { useAnchorContractReads } from "@/hooks/anchor/useAnchorContractReads";
