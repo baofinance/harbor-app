@@ -1,0 +1,9 @@
+{
+  "name": "fxn_tide_allocation",
+  "description": "TIDE standard claim (veFXN & liquid wrapper) via claimStandard. Placeholder — allocations pending.",
+  "contract": "HarborTideDistributor_v1",
+  "leafFormat": "keccak256(bytes.concat(keccak256(abi.encode(address, uint256))))",
+  "merkleRoot": null,
+  "addressCount": 0,
+  "allocations": []
+}

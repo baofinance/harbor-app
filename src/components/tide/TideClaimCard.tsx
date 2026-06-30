@@ -2,6 +2,7 @@
 
 import { HandCoins } from "lucide-react";
 import { useTideClaimActions } from "@/hooks/useTideClaimActions";
+import type { VeBaoClaimBlocker } from "@/utils/tideDistributor";
 import { formatTideTokenAmount } from "@/utils/tideSnapshot";
 import { TideFeatureCard } from "./TideFeatureCard";
 import {
@@ -17,11 +18,42 @@ import {
   TIDE_THEME,
 } from "./tideCardStyles";
 
+function ClaimBlockerMessage({
+  blocker,
+}: {
+  blocker: VeBaoClaimBlocker;
+}) {
+  if (blocker.kind === "extend_lock") {
+    return (
+      <div className="mt-3 space-y-2 rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2.5">
+        <p className="text-sm font-semibold text-[#1E4775]">{blocker.title}</p>
+        <p className={`${TIDE_META_TEXT} text-[#1E4775]/75`}>{blocker.message}</p>
+        {blocker.detail ? (
+          <p className="text-[11px] leading-snug text-[#1E4775]/60">{blocker.detail}</p>
+        ) : null}
+        {blocker.ctaHref ? (
+          <a
+            href={blocker.ctaHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex text-xs font-semibold text-[#4A9784] underline underline-offset-2 hover:text-[#3f8576]"
+          >
+            {blocker.ctaLabel ?? "Extend lock on veBAO"}
+          </a>
+        ) : null}
+      </div>
+    );
+  }
+
+  return <p className={`mt-3 ${TIDE_META_TEXT}`}>{blocker.message}</p>;
+}
+
 function ClaimBucket({
   label,
   methodLabel,
   amountTokens,
   isLoading,
+  blocker,
   blockReason,
   alreadyClaimed,
   canClaim,
@@ -32,13 +64,17 @@ function ClaimBucket({
   methodLabel: string;
   amountTokens: number;
   isLoading: boolean;
-  blockReason: string | null;
+  blocker?: VeBaoClaimBlocker | null;
+  blockReason?: string | null;
   alreadyClaimed: boolean;
   canClaim: boolean;
   isClaiming: boolean;
   onClaim: () => void;
 }) {
   const hasBalance = amountTokens > 0;
+  const showBlocker = hasBalance && !alreadyClaimed && blocker;
+  const showPlainReason =
+    hasBalance && !alreadyClaimed && !blocker && blockReason;
 
   return (
     <div className="flex w-full flex-col gap-2">
@@ -63,7 +99,9 @@ function ClaimBucket({
             </p>
             {hasBalance && alreadyClaimed ? (
               <p className="mt-3 text-sm font-medium text-[#4A9784]">Claimed</p>
-            ) : hasBalance && blockReason ? (
+            ) : null}
+            {showBlocker ? <ClaimBlockerMessage blocker={blocker} /> : null}
+            {showPlainReason ? (
               <p className={`mt-3 ${TIDE_META_TEXT}`}>{blockReason}</p>
             ) : null}
             {!alreadyClaimed ? (
@@ -103,7 +141,7 @@ export function TideClaimCard() {
       subtitleClass={theme.subtitle}
       badge="Snapshot"
       badgeVariant={theme.badgeVariant}
-      footer="Eligibility from vebao/standard_tide_allocation.json"
+      footer="Eligibility from vebao_tide_allocation.json & fxn_tide_allocation.json"
       footerExtra={claim.claimWindowFooter ?? undefined}
       footerExtraClassName={TIDE_FOOTER_EXTRA_MINT_CLASS}
     >
@@ -119,7 +157,7 @@ export function TideClaimCard() {
             methodLabel="claimVeBao"
             amountTokens={claim.veBaoAllocation?.amountTokens ?? 0}
             isLoading={bucketLoading}
-            blockReason={claim.veBaoBlockReason}
+            blocker={claim.veBaoBlocker}
             alreadyClaimed={claim.hasClaimedVeBao}
             canClaim={claim.canClaimVeBao}
             isClaiming={claim.claimingPath === "veBao"}
