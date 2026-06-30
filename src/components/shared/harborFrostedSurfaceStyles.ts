@@ -46,9 +46,9 @@ export const HARBOR_FROSTED_MODAL_SHELL = `${HARBOR_FROSTED_PANEL_FILL} border b
 export const HARBOR_FROSTED_DROPDOWN_SHELL =
   `${HARBOR_FROSTED_PANEL_FILL} border border-[#1E4775]/12 shadow-xl ring-1 ring-black/5`;
 
-/** Nav “More” burger menu — solid white panel over navy header (no bleed-through). */
+/** Nav “More” burger menu — frosted glass panel over navy header. */
 export const HARBOR_FROSTED_NAV_DROPDOWN_SHELL =
-  "bg-white border border-[#1E4775]/15 shadow-xl ring-1 ring-[#1E4775]/8";
+  `${HARBOR_FROSTED_PANEL_FILL} border border-[#1E4775]/15 shadow-xl ring-1 ring-[#1E4775]/8 backdrop-blur-lg backdrop-saturate-150`;
 
 /** Inner cards inside expanded rows / transparency grids. */
 export const HARBOR_FROSTED_CARD_CLASS = HARBOR_FROSTED_LIGHT_CARD_ROUNDED;
@@ -58,7 +58,7 @@ export const HARBOR_FROSTED_INPUT_FILL = "bg-white/85 backdrop-blur-sm";
 
 /** Active nav pill, segmented toggle selected, tab selected, etc. */
 export const HARBOR_FROSTED_ACTIVE_PILL =
-  "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm";
+  "bg-white/88 backdrop-blur-md backdrop-saturate-150 text-[#1E4775] border border-white/35 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.72),0_4px_16px_-12px_rgba(0,0,0,0.28)] ring-1 ring-[#1E4775]/10";
 
 export const HARBOR_FROSTED_PILL =
   "bg-white/85 backdrop-blur-sm shadow-sm ring-1 ring-white/35";

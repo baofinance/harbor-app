@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  SAIL_MOBILE_TRADE_BUY_BUTTON_CLASS,
+  SAIL_MOBILE_TRADE_SELL_BUTTON_CLASS,
+} from "./sailAdvancedStyles";
+
 type SailMobileTradeBarProps = {
   onMint: () => void;
   onRedeem: () => void;
@@ -16,14 +21,14 @@ export function SailMobileTradeBar({ onMint, onRedeem }: SailMobileTradeBarProps
         <button
           type="button"
           onClick={onMint}
-          className="flex-1 rounded-lg bg-[#4A9784] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#3d8070] active:scale-[0.98]"
+          className={SAIL_MOBILE_TRADE_BUY_BUTTON_CLASS}
         >
           Buy
         </button>
         <button
           type="button"
           onClick={onRedeem}
-          className="flex-1 rounded-lg bg-[#1E4775] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#163a5f] active:scale-[0.98]"
+          className={SAIL_MOBILE_TRADE_SELL_BUTTON_CLASS}
         >
           Sell
         </button>

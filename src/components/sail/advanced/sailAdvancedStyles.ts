@@ -11,6 +11,15 @@ import {
   HARBOR_FROSTED_LIGHT_CARD,
   HARBOR_FROSTED_LIGHT_CARD_ELEVATED,
 } from "@/components/shared/harborFrostedSurfaceStyles";
+import {
+  HARBOR_BTN_GLASS_CTA_FULL_CORAL_LIGHT_CLASS,
+  HARBOR_BTN_GLASS_CTA_FULL_MINT_CLASS,
+  HARBOR_BTN_GLASS_CTA_FULL_NAVY_CLASS,
+  HARBOR_BTN_GLASS_MINT_DARK,
+  HARBOR_BTN_GLASS_NAVY_DARK,
+  HARBOR_BTN_GLASS_OUTLINE_LIGHT,
+  HARBOR_BTN_GLASS_SEGMENT_ACTIVE_LIGHT,
+} from "@/components/shared/harborButtonStyles";
 
 /** Two-column Sail UI+ layout — chart/main left, trade panel right (lg+). */
 export const SAIL_ADVANCED_MAIN_GRID_COLUMNS =
@@ -67,3 +76,24 @@ export const SAIL_ADVANCED_HEADLINE = MV_HEADLINE;
 
 /** Embedded mint / redeem form — single white frosted shell. */
 export const SAIL_EMBEDDED_FORM_PANEL = `rounded-xl p-3 sm:p-4 text-[#1E4775] ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`;
+
+/** Trade panel primary actions on frosted light shell. */
+export const SAIL_TRADE_BUY_BUTTON_CLASS = HARBOR_BTN_GLASS_CTA_FULL_MINT_CLASS;
+
+export const SAIL_TRADE_SELL_BUTTON_CLASS = HARBOR_BTN_GLASS_CTA_FULL_NAVY_CLASS;
+
+export const SAIL_TRADE_MODAL_PRIMARY_BUTTON_CLASS =
+  HARBOR_BTN_GLASS_CTA_FULL_CORAL_LIGHT_CLASS;
+
+export const SAIL_TRADE_CANCEL_BUTTON_CLASS = `w-full rounded-lg py-3 px-4 font-semibold ${HARBOR_BTN_GLASS_OUTLINE_LIGHT}`;
+
+/** Sticky mobile trade bar — glass on dark chrome. */
+export const SAIL_MOBILE_TRADE_BUY_BUTTON_CLASS = `flex-1 rounded-lg px-4 py-2.5 text-sm active:scale-[0.98] ${HARBOR_BTN_GLASS_MINT_DARK}`;
+
+export const SAIL_MOBILE_TRADE_SELL_BUTTON_CLASS = `flex-1 rounded-lg px-4 py-2.5 text-sm active:scale-[0.98] ${HARBOR_BTN_GLASS_NAVY_DARK}`;
+
+/** Chart range / overlay toggles on frosted light chart chrome. */
+export const SAIL_CHART_TOGGLE_IDLE_CLASS =
+  "rounded-md border border-[#1E4775]/15 bg-white/60 px-2.5 py-1 text-[11px] font-medium text-[#1E4775]/55 transition hover:border-[#1E4775]/25 hover:bg-[#1E4775]/5";
+
+export const SAIL_CHART_TOGGLE_ACTIVE_CLASS = `${HARBOR_BTN_GLASS_SEGMENT_ACTIVE_LIGHT} px-2.5 py-1 text-[11px]`;

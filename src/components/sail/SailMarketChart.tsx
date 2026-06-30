@@ -14,6 +14,10 @@ import {
   type SailMarketChartPoint,
 } from "@/utils/sailMarketChartSeries";
 import {
+  SAIL_CHART_TOGGLE_ACTIVE_CLASS,
+  SAIL_CHART_TOGGLE_IDLE_CLASS,
+} from "@/components/sail/advanced/sailAdvancedStyles";
+import {
   SailMarketMultiSeriesChart,
 } from "./SailMarketMultiSeriesChart";
 
@@ -61,8 +65,8 @@ function OverlayToggle({
       onClick={onClick}
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
         active
-          ? "border-[#1E4775]/25 bg-[#1E4775]/10 text-[#1E4775]"
-          : "border-[#1E4775]/15 bg-white/60 text-[#1E4775]/55 hover:bg-[#1E4775]/5"
+          ? SAIL_CHART_TOGGLE_ACTIVE_CLASS
+          : SAIL_CHART_TOGGLE_IDLE_CLASS
       }`}
     >
       <span
@@ -248,10 +252,10 @@ export function SailMarketChart({
                 key={range}
                 type="button"
                 onClick={() => setTimeRange(range)}
-                className={`px-2 py-1 text-xs ${
+                className={`rounded-md px-2 py-1 text-xs transition-colors ${
                   timeRange === range
-                    ? "bg-[#1E4775] text-white"
-                    : "bg-[#eef1f7] text-[#4b5a78] hover:bg-[#1E4775]/10"
+                    ? SAIL_CHART_TOGGLE_ACTIVE_CLASS
+                    : SAIL_CHART_TOGGLE_IDLE_CLASS
                 }`}
               >
                 {range}

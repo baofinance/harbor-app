@@ -26,6 +26,7 @@ import {
 } from "./GenesisMaidenVoyageStageStrip";
 import { getMaidenVoyageLeveragedFlowLabel } from "@/utils/genesisDisplay";
 import { GenesisVoyageStatusBadge } from "./GenesisVoyageStatusBadge";
+import { HARBOR_BTN_GLASS_ICON_DARK } from "@/components/shared/harborButtonStyles";
 import {
   MV_CARD_INNER_GRADIENT,
   MV_MAIN_CARD_SHELL,
@@ -134,7 +135,7 @@ export function GenesisActiveVoyageCard({
               <button
                 type="button"
                 onClick={onNextMarket}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 bg-white/[0.06] text-white/80 transition hover:bg-white/[0.12] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
+                className={`${HARBOR_BTN_GLASS_ICON_DARK} h-8 w-8`}
                 aria-label="Next Maiden Voyage market"
               >
                 <ChevronRightIcon className="h-4 w-4 shrink-0" aria-hidden />

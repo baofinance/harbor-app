@@ -7,6 +7,10 @@ import { MV_GLASS_INSET_DARK } from "@/components/genesis/maidenVoyageLayoutStyl
 import {
   HARBOR_FROSTED_LIGHT_ICON_BADGE_BASE,
 } from "@/components/shared/harborFrostedSurfaceStyles";
+import {
+  HARBOR_BTN_GLASS_CTA_FULL_MINT_CLASS,
+  HARBOR_BTN_GLASS_MAX_CHIP_CLASS,
+} from "@/components/shared/harborButtonStyles";
 import type { StatusBadgeVariant } from "@/components/dashboard/portfolio/StatusBadge";
 
 /** Dark frosted glass inset — Tide airdrop card, flywheel revenue pill. */
@@ -35,8 +39,7 @@ export const TIDE_INPUT_FIELD_CLASS =
 
 export const TIDE_INPUT_FIELD_WITH_MAX_CLASS = `${TIDE_INPUT_FIELD_CLASS} pr-20`;
 
-export const TIDE_MAX_BUTTON_CLASS =
-  "absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-3 py-1.5 text-sm bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 font-medium";
+export const TIDE_MAX_BUTTON_CLASS = `absolute right-2 top-1/2 -translate-y-1/2 ${HARBOR_BTN_GLASS_MAX_CHIP_CLASS}`;
 
 /** Summary / receive rows — Sail transaction overview style. */
 export const TIDE_OVERVIEW_PANEL_SHELL =
@@ -107,9 +110,8 @@ export const TIDE_AMOUNT_CLASS =
 export const TIDE_DARK_AMOUNT_CLASS =
   "font-mono text-2xl font-bold tabular-nums text-white sm:text-3xl";
 
-/** Primary action — matches Sail embedded buy button. */
-export const TIDE_PRIMARY_BUTTON_CLASS =
-  "w-full rounded-lg py-3 px-4 text-sm font-semibold bg-[#4A9784] text-white transition hover:bg-[#3f8576] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500";
+/** Primary action — glass mint on frosted Tide cards. */
+export const TIDE_PRIMARY_BUTTON_CLASS = HARBOR_BTN_GLASS_CTA_FULL_MINT_CLASS;
 
 export const TIDE_FOOTER_NOTE_CLASS = "text-[11px] leading-snug text-[#1E4775]/55";
 

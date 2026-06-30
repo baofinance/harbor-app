@@ -27,7 +27,12 @@ import {
   minWrappedCollateralAfterUnderlyingToWrapped,
   minWrappedCollateralForEthBaseZap,
 } from "@/utils/minterZapV4";
-import SimpleTooltip from "@/components/SimpleTooltip";
+import {
+  SAIL_TRADE_BUY_BUTTON_CLASS,
+  SAIL_TRADE_CANCEL_BUTTON_CLASS,
+  SAIL_TRADE_MODAL_PRIMARY_BUTTON_CLASS,
+  SAIL_TRADE_SELL_BUTTON_CLASS,
+} from "@/components/sail/advanced/sailAdvancedStyles";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { InfoCallout } from "@/components/InfoCallout";
 import { AlertOctagon, Info, RefreshCw } from "lucide-react";
@@ -2174,7 +2179,7 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
  {(step ==="error" || step ==="input") && !embedded && (
  <button
  onClick={step ==="error" ? handleCancel : handleClose}
- className="flex-1 py-3 px-4 bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
+ className={SAIL_TRADE_CANCEL_BUTTON_CLASS}
  >
  Cancel
  </button>
@@ -2196,12 +2201,10 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
  )}
  className={
    embedded
-     ? `w-full rounded-lg py-3 px-4 font-semibold transition-colors disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 ${
-         activeTab === "mint"
-           ? "bg-[#4A9784] text-white hover:bg-[#3f8576]"
-           : "bg-[#1E4775] text-white hover:bg-[#17395F]"
-       }`
-     : "flex-1 py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+     ? activeTab === "mint"
+       ? SAIL_TRADE_BUY_BUTTON_CLASS
+       : SAIL_TRADE_SELL_BUTTON_CLASS
+     : `flex-1 ${SAIL_TRADE_MODAL_PRIMARY_BUTTON_CLASS}`
  }
  >
  {step ==="error" ? "Try Again" : SAIL_TRADE_TAB_LABEL[activeTab]}

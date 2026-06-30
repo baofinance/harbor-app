@@ -4,6 +4,15 @@ import {useAccount, useBalance, useDisconnect, useSwitchChain} from 'wagmi'
 import {useMemo, useState} from "react";
 import NetworkIconClient from "@/components/NetworkIconClient";
 import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
+import {
+  HARBOR_NAV_NETWORK_ACTIVE_CLASS,
+  HARBOR_NAV_NETWORK_IDLE_CLASS,
+  HARBOR_NAV_WALLET_ACTION_CLASS,
+  HARBOR_NAV_WALLET_CHIP_CLASS,
+  HARBOR_NAV_WALLET_INSET_PANEL_CLASS,
+  HARBOR_NAV_WALLET_MODAL_HEADER_CLASS,
+  HARBOR_NAV_WALLET_MODAL_SHELL_CLASS,
+} from "@/components/shared/harborNavStyles";
 import * as React from "react";
 import DecryptedText from "@/components/DecryptedText";
 import {Check, Copy, LogOut, Wallet} from "lucide-react";
@@ -43,11 +52,11 @@ function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowMo
                         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                         onClick={() => setShowModal(false)}
                     />
-                    <div className="relative w-full max-w-md mt-36 bg-[#1E4775] flex flex-col overflow-hidden rounded-lg shadow-lg">
+                    <div className={`relative mt-36 flex w-full max-w-md flex-col overflow-hidden rounded-lg ${HARBOR_NAV_WALLET_MODAL_SHELL_CLASS}`}>
                         <button
                             type="button"
                             onClick={() => setShowModal(false)}
-                            className="absolute top-3 right-3 text-white bg-transparent hover:bg-[#153A5F] hover:text-gray-900 text-sm p-1.5 inline-flex items-center"
+                            className="absolute top-3 right-3 z-10 inline-flex items-center rounded-md p-1.5 text-[#1E4775]/60 transition hover:bg-[#1E4775]/5 hover:text-[#1E4775]"
                         >
                             <svg
                                 aria-hidden="true"
@@ -65,34 +74,34 @@ function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowMo
                             <span className="sr-only">Close modal</span>
                         </button>
 
-                        <div className="px-6 py-4 bg-[#153A5F]">
-                            <h3 className="text-base font-semibold text-white lg:text-xl ">
+                        <div className={HARBOR_NAV_WALLET_MODAL_HEADER_CLASS}>
+                            <h3 className="text-base font-semibold text-[#1E4775] lg:text-xl">
                                 Wallet
                             </h3>
                         </div>
 
-                        <div className="p-6 overflow-y-auto flex flex-col gap-2 flex-1">
+                        <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-6">
 
                             <div className="flex items-center justify-between">
-                                <div className="text-sm text-white/80">
+                                <div className="text-sm text-[#1E4775]/85">
                                     <div className="font-mono">
                                         {displayAddr ? (
                                             <DecryptedText
                                                 text={displayAddr}
                                                 parentClassName="inline-block"
                                                 className=""
-                                                encryptedClassName="text-white/40"
+                                                encryptedClassName="text-[#1E4775]/40"
                                                 animateOn="hover"
                                             />
                                         ) : (
-                                            <span className="text-white/40">—</span>
+                                            <span className="text-[#1E4775]/40">—</span>
                                         )}
                                     </div>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={handleCopy}
-                                    className="inline-flex items-center gap-2 px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded-md"
+                                    className={`inline-flex items-center gap-2 px-2 py-1 text-xs ${HARBOR_NAV_WALLET_ACTION_CLASS}`}
                                 >
                                     {copied ? (
                                         <>
@@ -105,9 +114,9 @@ function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowMo
                                     )}
                                 </button>
                             </div>
-                            <div className="bg-white/5 p-3 rounded-md">
-                                <div className="text-xs text-white/60">Balance</div>
-                                <div className="font-mono text-white">
+                            <div className={HARBOR_NAV_WALLET_INSET_PANEL_CLASS}>
+                                <div className="text-xs text-[#1E4775]/60">Balance</div>
+                                <div className="font-mono text-[#1E4775]">
                                     {balance
                                         ? `${Number(balance.value) / 10 ** balance.decimals} ${
                                             balance.symbol
@@ -117,21 +126,21 @@ function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowMo
                             </div>
                         </div>
 
-                        <div className="px-6 py-4 bg-[#153A5F]">
-                            <h3 className="text-base font-semibold text-white lg:text-xl">
+                        <div className={HARBOR_NAV_WALLET_MODAL_HEADER_CLASS}>
+                            <h3 className="text-base font-semibold text-[#1E4775] lg:text-xl">
                                 Networks
                             </h3>
                         </div>
 
-                        <div className="p-6 overflow-y-auto flex-1">
+                        <div className="flex-1 overflow-y-auto p-6">
                             <NetworkOptions/>
                         </div>
 
-                        <div className="px-6 py-4 flex items-center justify-center ">
+                        <div className="flex items-center justify-center px-6 py-4">
                             <button
                                 type="button"
                                 onClick={() => disconnect()}
-                                className="w-full bg-[#153A5F] inline-flex items-center justify-center gap-2 px-3 py-2 hover:bg-white/20 rounded-md"
+                                className={`inline-flex w-full items-center justify-center gap-2 ${HARBOR_NAV_WALLET_ACTION_CLASS}`}
                             >
                                 <LogOut className="h-4 w-4" /> Disconnect
                             </button>
@@ -165,11 +174,11 @@ function NetworkOptions() {
                                 if (!switchChain || isCurrent) return
                                 switchChain({chainId: network.id})
                             }}
-                            className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-[#1E4775] rounded-md transition-colors ${
+                            className={
                                 isCurrent
-                                    ? "bg-white/90 backdrop-blur-sm cursor-default shadow-md ring-2 ring-[#1E4775]/40"
-                                    : "bg-gray-300 hover:bg-gray-400"
-                            } ${!canUseSwitch ? "opacity-50 cursor-not-allowed" : ""}`}
+                                    ? HARBOR_NAV_NETWORK_ACTIVE_CLASS
+                                    : `${HARBOR_NAV_NETWORK_IDLE_CLASS} ${!canUseSwitch ? "cursor-not-allowed opacity-50" : ""}`
+                            }
                         >
                             <NetworkIcon name={network.name} />
                             {network.name}
@@ -212,7 +221,7 @@ export function Account() {
         <>
             <button
                 onClick={() => setShowModal(true)}
-                className="relative inline-flex items-center gap-2 px-2.5 sm:px-3 py-2 text-sm font-medium text-[#1E4775] bg-white/90 backdrop-blur-sm shadow-sm hover:bg-white/90 rounded-md"
+                className={`relative inline-flex items-center gap-2 ${HARBOR_NAV_WALLET_CHIP_CLASS}`}
             >
                 <Wallet className="h-4 w-4 shrink-0 text-[#1E4775]/80" />
                 <div className="flex items-center gap-2">
