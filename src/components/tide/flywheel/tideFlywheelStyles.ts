@@ -3,6 +3,7 @@ import {
   MV_CARD_INNER_GRADIENT,
   MV_CARD_SHELL,
   MV_FOOTER_PANEL,
+  MV_GLASS_INSET_DARK,
   MV_HEADLINE,
   MV_PROGRESS_FILL,
   MV_PROGRESS_FILL_COMPLETE,
@@ -62,7 +63,13 @@ export const TIDE_FLYWHEEL_SCROLL_ROW =
 export const TIDE_FLYWHEEL_DESKTOP_ROW =
   "flex w-max min-w-full items-stretch gap-2 lg:grid lg:w-full lg:min-w-0 lg:max-w-full lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-x-0.5";
 
-export const TIDE_FLYWHEEL_REVENUE_PILL = `${TIDE_FLYWHEEL_LIGHT_CARD_SHELL} inline-flex shrink-0 flex-col items-center gap-1 self-center p-3 text-center sm:min-w-[11rem] sm:self-auto sm:p-4`;
+export const TIDE_FLYWHEEL_REVENUE_PILL = `rounded-xl ${MV_GLASS_INSET_DARK} inline-flex shrink-0 flex-col items-center gap-1 self-center p-3 text-center sm:min-w-[11rem] sm:self-auto sm:p-4`;
+
+export const TIDE_FLYWHEEL_REVENUE_LABEL =
+  "text-[10px] font-medium uppercase tracking-wide text-center text-white/55";
+
+export const TIDE_FLYWHEEL_REVENUE_VALUE =
+  "font-mono text-lg font-bold tabular-nums text-white/95 sm:text-xl text-center";
 
 export const TIDE_FLYWHEEL_TARGET_BADGE =
   "absolute right-0 top-1/2 max-w-[calc(100%-0.5rem)] -translate-y-1/2 truncate rounded-md bg-[#4A9784] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white";
