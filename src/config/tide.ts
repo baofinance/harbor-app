@@ -23,8 +23,8 @@ export const TIDE_CONFIG = {
     airdrop: "/data/tide/tide_airdrop.json",
     /** Path 2 — veBAO merkle claim (claimVeBao). */
     veBaoAllocation: "/data/tide/vebao_tide_allocation.json",
-    /** Path 3 — standard merkle claim (claimStandard). Same file on test deploy; split for production. */
-    standardAllocation: "/data/tide/vebao_tide_allocation.json",
+    /** Path 3 — standard merkle claim (claimStandard): veFXN & liquid wrapper. */
+    standardAllocation: "/data/tide/fxn_tide_allocation.json",
   },
 } as const;
 
