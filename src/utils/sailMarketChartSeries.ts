@@ -144,6 +144,37 @@ function isPlausiblePegUsdPrice(asset: PegAssetKey, price: number): boolean {
   }
 }
 
+/** Carry last-known oracle prices across gaps (never backward-fill from live spot). */
+function fillPriceSeriesGaps(values: number[]): number[] {
+  if (values.length === 0) return values;
+  const filled = [...values];
+
+  let last = NaN;
+  for (let i = 0; i < filled.length; i++) {
+    if (Number.isFinite(filled[i])) {
+      last = filled[i]!;
+    } else if (Number.isFinite(last)) {
+      filled[i] = last;
+    }
+  }
+
+  let first = NaN;
+  for (let i = 0; i < filled.length; i++) {
+    if (Number.isFinite(filled[i])) {
+      first = filled[i]!;
+      break;
+    }
+  }
+  if (Number.isFinite(first)) {
+    for (let i = 0; i < filled.length; i++) {
+      if (!Number.isFinite(filled[i])) filled[i] = first;
+      else break;
+    }
+  }
+
+  return filled;
+}
+
 /** Resolve peg-asset USD — mirrors {@link computeLiveDefaultRatio} using historical oracles. */
 function resolvePegAssetUsd(
   pegAsset: PegAssetKey,
@@ -151,6 +182,7 @@ function resolvePegAssetUsd(
   collateralPrices: number[],
   config: SailMarketChartConfig,
   resampledByAsset: Partial<Record<PegAssetKey, number[]>>,
+  liveFallback?: LiveSideUsdPrices,
 ): number {
   if (pegAsset === "USD") return 1;
 
@@ -160,11 +192,16 @@ function resolvePegAssetUsd(
   }
 
   // Subgraph collateral USD tracks wstETH/fxSAVE — only use when magnitude matches the peg asset.
-  if (config.collateralIsLong && pegAsset === config.longPegAsset) {
+  if (pegAsset === config.longPegAsset) {
     const collateral = collateralPrices[index];
     if (isPlausiblePegUsdPrice(pegAsset, collateral)) {
       return collateral;
     }
+  }
+
+  const spot = liveFallback ? pegAssetUsdFromLive(pegAsset, liveFallback) : null;
+  if (spot != null && isPlausiblePegUsdPrice(pegAsset, spot)) {
+    return spot;
   }
 
   return NaN;
@@ -188,7 +225,7 @@ function buildResampledByAsset(
 
     const history = chainlinkHistories[asset];
     const resampled = history?.length
-      ? resamplePriceSeries(timestamps, history)
+      ? fillPriceSeriesGaps(resamplePriceSeries(timestamps, history))
       : timestamps.map(() => NaN);
 
     if (resampled.some((v) => Number.isFinite(v))) {
@@ -229,7 +266,7 @@ export function buildSailMarketChartPoints(
   config: SailMarketChartConfig,
   mergedSubgraph: MergedChartPoint[],
   chainlinkHistories: Partial<Record<PegAssetKey, ChainlinkPricePoint[]>>,
-  _liveFallback?: LiveSideUsdPrices
+  liveFallback?: LiveSideUsdPrices
 ): SailMarketChartPoint[] {
   const timestamps = buildChartTimestamps(mergedSubgraph, chainlinkHistories);
   if (timestamps.length === 0) return [];
@@ -258,14 +295,16 @@ export function buildSailMarketChartPoints(
       i,
       collateralPrices,
       config,
-      resampledByAsset
+      resampledByAsset,
+      liveFallback
     );
     const shortUsd = resolvePegAssetUsd(
       config.shortPegAsset,
       i,
       collateralPrices,
       config,
-      resampledByAsset
+      resampledByAsset,
+      liveFallback
     );
     const hsPriceUsd = hsPrices[i];
     const defaultRatio =
@@ -342,6 +381,9 @@ export function resamplePriceSeries(
     let price = NaN;
     if (sorted[chainIdx].timestamp <= ts) {
       price = sorted[chainIdx].priceUsd;
+    } else if (sorted[0].timestamp > ts) {
+      // Chart starts before our Chainlink window — hold earliest observation.
+      price = sorted[0].priceUsd;
     }
 
     result.push(Number.isFinite(price) && price > 0 ? price : NaN);
