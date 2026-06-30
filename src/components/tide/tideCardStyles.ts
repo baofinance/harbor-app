@@ -72,9 +72,6 @@ export const TIDE_CARD_BODY =
 
 export const TIDE_CARD_CONTENT_STACK = "flex w-full flex-col gap-4";
 
-export const TIDE_DISCONNECTED_RING =
-  "flex h-20 w-20 items-center justify-center rounded-full border border-dashed border-[#1E4775]/20";
-
 export const TIDE_AMOUNT_CLASS =
   "font-mono text-2xl font-bold tabular-nums text-[#1E4775] sm:text-3xl";
 

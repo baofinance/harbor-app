@@ -1,25 +1,25 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { TideTransactionStatus } from "@/components/tide/TideTransactionModal";
+import type { HarborTransactionStatus } from "@/components/shared/HarborTransactionModal";
 
-export type TideTransactionModalState = {
+export type HarborTransactionModalState = {
   isOpen: boolean;
-  status: TideTransactionStatus;
+  status: HarborTransactionStatus;
   title: string;
   message: string;
   txHash?: string;
 };
 
-const CLOSED: TideTransactionModalState = {
+const CLOSED: HarborTransactionModalState = {
   isOpen: false,
   status: "awaiting_wallet",
   title: "",
   message: "",
 };
 
-export function useTideTransactionModal() {
-  const [modal, setModal] = useState<TideTransactionModalState>(CLOSED);
+export function useHarborTransactionModal() {
+  const [modal, setModal] = useState<HarborTransactionModalState>(CLOSED);
 
   const close = useCallback(() => setModal(CLOSED), []);
 
@@ -81,3 +81,7 @@ export function useTideTransactionModal() {
     updateMessage,
   };
 }
+
+export type HarborTransactionModalControls = ReturnType<
+  typeof useHarborTransactionModal
+>;

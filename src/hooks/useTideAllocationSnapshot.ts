@@ -1,7 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { useAccount } from "wagmi";
+import { useHarborAccount } from "@/hooks/useHarborAccount";
+import { useTideJsonSnapshot } from "@/hooks/useTideJsonSnapshot";
 import {
   TIDE_CONFIG,
   type TideAllocationSnapshot,
@@ -16,29 +16,15 @@ const ALLOCATION_PATHS: Record<TideAllocationPath, string> = {
   standard: TIDE_CONFIG.dataPaths.standardAllocation,
 };
 
-async function fetchAllocationSnapshot(
-  url: string
-): Promise<TideAllocationSnapshot> {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error("Failed to load TIDE allocation snapshot");
-  }
-  return res.json() as Promise<TideAllocationSnapshot>;
-}
-
-/** Loads a merkle allocation JSON for veBAO or standard claim paths. */
-export function useTideAllocationSnapshot(path: TideAllocationPath) {
-  const { address, isConnected } = useAccount();
-  const dataPath = ALLOCATION_PATHS[path];
-
-  const snapshotQuery = useQuery({
-    queryKey: ["tideAllocationSnapshot", path, dataPath],
-    queryFn: () => fetchAllocationSnapshot(dataPath),
-    staleTime: 60_000,
-  });
-
+function useAllocationFromSnapshot(
+  path: TideAllocationPath,
+  snapshot: TideAllocationSnapshot | undefined,
+  isLoading: boolean,
+  isError: boolean
+) {
+  const { address, isConnected } = useHarborAccount();
   const allocation: TideClaimAllocation | null = findTideAllocation(
-    snapshotQuery.data,
+    snapshot,
     address
   );
 
@@ -46,14 +32,52 @@ export function useTideAllocationSnapshot(path: TideAllocationPath) {
     path,
     isConnected,
     address,
-    isLoading: snapshotQuery.isLoading,
-    isError: snapshotQuery.isError,
+    isLoading,
+    isError,
     allocation,
-    snapshot: snapshotQuery.data,
+    snapshot,
     hasAllocation:
       allocation !== null &&
       allocation.amountTokens > 0 &&
       BigInt(allocation.amount) > 0n,
     hasProof: Boolean(allocation?.proof?.length),
+  };
+}
+
+/** Loads a merkle allocation JSON for veBAO or standard claim paths. */
+export function useTideAllocationSnapshot(path: TideAllocationPath) {
+  const dataPath = ALLOCATION_PATHS[path];
+  const snapshotQuery = useTideJsonSnapshot<TideAllocationSnapshot>(dataPath);
+
+  return useAllocationFromSnapshot(
+    path,
+    snapshotQuery.data,
+    snapshotQuery.isLoading,
+    snapshotQuery.isError
+  );
+}
+
+/** Both claim paths — React Query dedupes when JSON paths match. */
+export function useTideClaimSnapshots() {
+  const veBaoQuery = useTideJsonSnapshot<TideAllocationSnapshot>(
+    ALLOCATION_PATHS.veBao
+  );
+  const standardQuery = useTideJsonSnapshot<TideAllocationSnapshot>(
+    ALLOCATION_PATHS.standard
+  );
+
+  return {
+    veBao: useAllocationFromSnapshot(
+      "veBao",
+      veBaoQuery.data,
+      veBaoQuery.isLoading,
+      veBaoQuery.isError
+    ),
+    standard: useAllocationFromSnapshot(
+      "standard",
+      standardQuery.data,
+      standardQuery.isLoading,
+      standardQuery.isError
+    ),
   };
 }

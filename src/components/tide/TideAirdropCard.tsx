@@ -1,14 +1,16 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Gift } from "lucide-react";
 import {
   TIDE_AIRDROP_BUCKETS,
-  type TideAirdropBucketAmount,
+  TIDE_BOOSTERS,
   type TideAirdropBucketKey,
 } from "@/config/tide";
 import { useTideAirdropEligibility } from "@/hooks/useTideAirdropEligibility";
 import { formatTideAirdropMonthYear } from "@/utils/tideDistributor";
 import { formatTideTokenAmount } from "@/utils/tideSnapshot";
+import { TideBoostersPendingHint } from "./TideBoostersPendingHint";
 import { TideFeatureCard } from "./TideFeatureCard";
 import {
   TIDE_AMOUNT_CLASS,
@@ -25,30 +27,30 @@ import {
 
 function AirdropBucketRow({
   label,
-  amount,
+  amountTokens,
+  amountAdornment,
 }: {
   label: string;
-  amount: TideAirdropBucketAmount;
+  amountTokens: number;
+  amountAdornment?: ReactNode;
 }) {
   return (
     <div className={TIDE_ROW_DIVIDER}>
       <p className={TIDE_INSET_LIGHT_LABEL_CLASS}>{label}</p>
-      <p className={`${TIDE_INSET_LIGHT_AMOUNT_SM_CLASS} text-base sm:text-lg`}>
-        {formatTideTokenAmount(amount.amountTokens)}{" "}
-        <span className={TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS}>TIDE</span>
-      </p>
+      <div className="flex items-center gap-1.5">
+        <p className={`${TIDE_INSET_LIGHT_AMOUNT_SM_CLASS} text-base sm:text-lg`}>
+          {formatTideTokenAmount(amountTokens)}{" "}
+          <span className={TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS}>TIDE</span>
+        </p>
+        {amountAdornment}
+      </div>
     </div>
   );
 }
 
 export function TideAirdropCard() {
-  const {
-    isConnected,
-    isLoading,
-    buckets,
-    totalTokens,
-    airdropDate,
-  } = useTideAirdropEligibility();
+  const { isLoading, buckets, totalTokens, airdropDate } =
+    useTideAirdropEligibility();
   const theme = TIDE_THEME.coral;
 
   return (
@@ -67,12 +69,10 @@ export function TideAirdropCard() {
           : undefined
       }
       footerExtraClassName={TIDE_FOOTER_EXTRA_CORAL_CLASS}
-      isConnected={isConnected}
-      disconnectedMessage="Connect wallet to view your snapshot airdrop allocation"
     >
       {isLoading ? (
         <p className={TIDE_META_TEXT}>Loading snapshot…</p>
-      ) : buckets ? (
+      ) : (
         <div className={TIDE_CARD_CONTENT_STACK}>
           <div className="space-y-1.5 text-center">
             <p className={TIDE_FIELD_LABEL_CLASS}>Total allocation</p>
@@ -87,12 +87,17 @@ export function TideAirdropCard() {
               <AirdropBucketRow
                 key={key}
                 label={label}
-                amount={buckets[key as TideAirdropBucketKey]}
+                amountTokens={buckets[key as TideAirdropBucketKey].amountTokens}
+                amountAdornment={
+                  key === "boosters" && TIDE_BOOSTERS.pending ? (
+                    <TideBoostersPendingHint />
+                  ) : undefined
+                }
               />
             ))}
           </div>
         </div>
-      ) : null}
+      )}
     </TideFeatureCard>
   );
 }

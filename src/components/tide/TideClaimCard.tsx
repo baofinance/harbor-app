@@ -4,7 +4,6 @@ import { HandCoins } from "lucide-react";
 import { useTideClaimActions } from "@/hooks/useTideClaimActions";
 import { formatTideTokenAmount } from "@/utils/tideSnapshot";
 import { TideFeatureCard } from "./TideFeatureCard";
-import { TideTransactionModal } from "./TideTransactionModal";
 import {
   TIDE_CARD_CONTENT_STACK,
   TIDE_FIELD_LABEL_CLASS,
@@ -39,8 +38,7 @@ function ClaimBucket({
   isClaiming: boolean;
   onClaim: () => void;
 }) {
-  const displayTokens = amountTokens;
-  const hasBalance = displayTokens > 0;
+  const hasBalance = amountTokens > 0;
 
   return (
     <div className="flex w-full flex-col gap-2">
@@ -60,7 +58,7 @@ function ClaimBucket({
         ) : (
           <>
             <p className={`mt-2 ${TIDE_INSET_LIGHT_AMOUNT_SM_CLASS}`}>
-              {formatTideTokenAmount(displayTokens)}{" "}
+              {formatTideTokenAmount(amountTokens)}{" "}
               <span className={TIDE_INSET_LIGHT_AMOUNT_UNIT_CLASS}>TIDE</span>
             </p>
             {hasBalance && alreadyClaimed ? (
@@ -93,65 +91,53 @@ function ClaimBucket({
 export function TideClaimCard() {
   const claim = useTideClaimActions();
   const theme = TIDE_THEME.mint;
-  const bucketLoading = claim.isSnapshotLoading || claim.isChainLoading;
+  const bucketLoading =
+    claim.isConnected && (claim.isSnapshotLoading || claim.isChainLoading);
 
   return (
-    <>
-      <TideFeatureCard
-        icon={<HandCoins className="h-4 w-4" strokeWidth={1.75} />}
-        iconBadgeClass={theme.iconBadge}
-        title="Claim"
-        subtitle="Merkle snapshot"
-        subtitleClass={theme.subtitle}
-        badge="Snapshot"
-        badgeVariant={theme.badgeVariant}
-        footer="Eligibility from vebao/standard_tide_allocation.json"
-        footerExtra={claim.claimWindowFooter ?? undefined}
-        footerExtraClassName={TIDE_FOOTER_EXTRA_MINT_CLASS}
-        isConnected={claim.isConnected}
-        disconnectedMessage="Connect wallet to view snapshot claim balances"
-      >
-        <div className={TIDE_CARD_CONTENT_STACK}>
-          {claim.claimError ? (
-            <p className="w-full rounded-lg border border-[#FF8A7A]/30 bg-[#FF8A7A]/10 px-3 py-2 text-xs text-[#FF8A7A]">
-              {claim.claimError}
-            </p>
-          ) : null}
-          <div className="flex w-full flex-col gap-4">
-            <ClaimBucket
-              label="veBao"
-              methodLabel="claimVeBao"
-              amountTokens={claim.veBaoAllocation?.amountTokens ?? 0}
-              isLoading={bucketLoading}
-              blockReason={claim.veBaoBlockReason}
-              alreadyClaimed={claim.hasClaimedVeBao}
-              canClaim={claim.canClaimVeBao}
-              isClaiming={claim.claimingPath === "veBao"}
-              onClaim={claim.claimVeBao}
-            />
-            <ClaimBucket
-              label="veFXN & liquid wrapper"
-              methodLabel="claimStandard"
-              amountTokens={claim.standardAllocation?.amountTokens ?? 0}
-              isLoading={bucketLoading}
-              blockReason={claim.standardBlockReason}
-              alreadyClaimed={claim.hasClaimedStandard}
-              canClaim={claim.canClaimStandard}
-              isClaiming={claim.claimingPath === "standard"}
-              onClaim={claim.claimStandard}
-            />
-          </div>
+    <TideFeatureCard
+      icon={<HandCoins className="h-4 w-4" strokeWidth={1.75} />}
+      iconBadgeClass={theme.iconBadge}
+      title="Claim"
+      subtitle="Merkle snapshot"
+      subtitleClass={theme.subtitle}
+      badge="Snapshot"
+      badgeVariant={theme.badgeVariant}
+      footer="Eligibility from vebao/standard_tide_allocation.json"
+      footerExtra={claim.claimWindowFooter ?? undefined}
+      footerExtraClassName={TIDE_FOOTER_EXTRA_MINT_CLASS}
+    >
+      <div className={TIDE_CARD_CONTENT_STACK}>
+        {claim.claimError ? (
+          <p className="w-full rounded-lg border border-[#FF8A7A]/30 bg-[#FF8A7A]/10 px-3 py-2 text-xs text-[#FF8A7A]">
+            {claim.claimError}
+          </p>
+        ) : null}
+        <div className="flex w-full flex-col gap-4">
+          <ClaimBucket
+            label="veBao"
+            methodLabel="claimVeBao"
+            amountTokens={claim.veBaoAllocation?.amountTokens ?? 0}
+            isLoading={bucketLoading}
+            blockReason={claim.veBaoBlockReason}
+            alreadyClaimed={claim.hasClaimedVeBao}
+            canClaim={claim.canClaimVeBao}
+            isClaiming={claim.claimingPath === "veBao"}
+            onClaim={claim.claimVeBao}
+          />
+          <ClaimBucket
+            label="veFXN & liquid wrapper"
+            methodLabel="claimStandard"
+            amountTokens={claim.standardAllocation?.amountTokens ?? 0}
+            isLoading={bucketLoading}
+            blockReason={claim.standardBlockReason}
+            alreadyClaimed={claim.hasClaimedStandard}
+            canClaim={claim.canClaimStandard}
+            isClaiming={claim.claimingPath === "standard"}
+            onClaim={claim.claimStandard}
+          />
         </div>
-      </TideFeatureCard>
-
-      <TideTransactionModal
-        isOpen={claim.txModal.isOpen}
-        status={claim.txModal.status}
-        title={claim.txModal.title}
-        message={claim.txModal.message}
-        txHash={claim.txModal.txHash}
-        onClose={claim.closeTxModal}
-      />
-    </>
+      </div>
+    </TideFeatureCard>
   );
 }

@@ -2,34 +2,36 @@
 
 import { Loader2, X } from "lucide-react";
 import { getBlockExplorerConfig, getBlockExplorerTxUrl } from "@/config/blockExplorers";
-import { TIDE_CONFIG } from "@/config/tide";
 
-export type TideTransactionStatus =
+export type HarborTransactionStatus =
   | "awaiting_wallet"
   | "confirming"
   | "success"
   | "error";
 
-export type TideTransactionModalProps = {
+export type HarborTransactionModalProps = {
   isOpen: boolean;
-  status: TideTransactionStatus;
+  status: HarborTransactionStatus;
   title: string;
   message: string;
   txHash?: string;
+  chainId: number;
   onClose: () => void;
 };
 
-export function TideTransactionModal({
+export function HarborTransactionModal({
   isOpen,
   status,
   title,
   message,
   txHash,
+  chainId,
   onClose,
-}: TideTransactionModalProps) {
+}: HarborTransactionModalProps) {
   if (!isOpen) return null;
 
-  const explorer = getBlockExplorerConfig(TIDE_CONFIG.chainId);
+  const explorer = getBlockExplorerConfig(chainId);
+  const canDismiss = status === "success" || status === "error";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -37,15 +39,15 @@ export function TideTransactionModal({
         type="button"
         aria-label="Close dialog"
         className="absolute inset-0 bg-black/70"
-        onClick={status === "success" || status === "error" ? onClose : undefined}
+        onClick={canDismiss ? onClose : undefined}
       />
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="tide-tx-modal-title"
+        aria-labelledby="harbor-tx-modal-title"
         className="relative w-full max-w-md rounded-xl border border-white/10 bg-[#1a1a1a] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
       >
-        {(status === "success" || status === "error") && (
+        {canDismiss ? (
           <button
             type="button"
             onClick={onClose}
@@ -54,7 +56,7 @@ export function TideTransactionModal({
           >
             <X className="h-4 w-4" />
           </button>
-        )}
+        ) : null}
 
         <div className="flex flex-col items-center text-center">
           {status === "awaiting_wallet" || status === "confirming" ? (
@@ -69,17 +71,14 @@ export function TideTransactionModal({
             </div>
           )}
 
-          <h3
-            id="tide-tx-modal-title"
-            className="text-lg font-semibold text-white"
-          >
+          <h3 id="harbor-tx-modal-title" className="text-lg font-semibold text-white">
             {title}
           </h3>
           <p className="mt-2 text-sm leading-snug text-white/55">{message}</p>
 
           {txHash ? (
             <a
-              href={getBlockExplorerTxUrl(txHash, TIDE_CONFIG.chainId)}
+              href={getBlockExplorerTxUrl(txHash, chainId)}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-4 text-sm font-medium text-[#8CB8DC] hover:underline"
@@ -88,7 +87,7 @@ export function TideTransactionModal({
             </a>
           ) : null}
 
-          {(status === "success" || status === "error") && (
+          {canDismiss ? (
             <button
               type="button"
               onClick={onClose}
@@ -96,7 +95,7 @@ export function TideTransactionModal({
             >
               Close
             </button>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

@@ -1,41 +1,30 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { useAccount, useReadContract } from "wagmi";
-import { HARBOR_TIDE_DISTRIBUTOR_ABI } from "@/abis/harborTideDistributor";
 import { TIDE_CONFIG, type TideAirdropSnapshot } from "@/config/tide";
-import { findTideAirdropAllocation, emptyTideAirdropBuckets } from "@/utils/tideSnapshot";
-
-async function fetchAirdropSnapshot(): Promise<TideAirdropSnapshot> {
-  const res = await fetch(TIDE_CONFIG.dataPaths.airdrop);
-  if (!res.ok) {
-    throw new Error("Failed to load airdrop snapshot");
-  }
-  return res.json() as Promise<TideAirdropSnapshot>;
-}
+import { useHarborAccount } from "@/hooks/useHarborAccount";
+import { useTideDistributorWindow } from "@/hooks/useTideDistributorWindow";
+import { useTideJsonSnapshot } from "@/hooks/useTideJsonSnapshot";
+import {
+  emptyTideAirdropBuckets,
+  findTideAirdropAllocation,
+} from "@/utils/tideSnapshot";
 
 export function useTideAirdropEligibility() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useHarborAccount();
+  const { airdropDateMs } = useTideDistributorWindow();
 
-  const snapshotQuery = useQuery({
-    queryKey: ["tideAirdropSnapshot", TIDE_CONFIG.dataPaths.airdrop],
-    queryFn: fetchAirdropSnapshot,
-    staleTime: 60_000,
-  });
+  const snapshotQuery = useTideJsonSnapshot<TideAirdropSnapshot>(
+    TIDE_CONFIG.dataPaths.airdrop
+  );
 
   const airdrop = findTideAirdropAllocation(snapshotQuery.data, address);
-  const isLoading = snapshotQuery.isLoading;
+  const isLoading = isConnected && snapshotQuery.isLoading;
   const buckets =
-    isConnected && !isLoading
+    isConnected && !snapshotQuery.isLoading
       ? (airdrop?.buckets ?? emptyTideAirdropBuckets())
-      : null;
-
-  const { data: startDate } = useReadContract({
-    address: TIDE_CONFIG.distributorAddress,
-    abi: HARBOR_TIDE_DISTRIBUTOR_ABI,
-    functionName: "startDate",
-    chainId: TIDE_CONFIG.chainId,
-  });
+      : emptyTideAirdropBuckets();
+  const totalTokens =
+    isConnected && airdrop ? (airdrop.totalTokens ?? 0) : 0;
 
   return {
     isConnected,
@@ -43,8 +32,8 @@ export function useTideAirdropEligibility() {
     isError: snapshotQuery.isError,
     airdrop,
     buckets,
-    totalTokens: airdrop?.totalTokens ?? 0,
+    totalTokens,
     hasAllocation: airdrop !== null && (airdrop?.totalTokens ?? 0) > 0,
-    airdropDate: startDate !== undefined ? Number(startDate) * 1000 : undefined,
+    airdropDate: airdropDateMs,
   };
 }

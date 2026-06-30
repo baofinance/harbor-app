@@ -2,7 +2,6 @@
 
 import { useCallback, useMemo, useState } from "react";
 import {
-  useAccount,
   usePublicClient,
   useReadContract,
   useWriteContract,
@@ -11,22 +10,28 @@ import { parseUnits } from "viem";
 import { HARBOR_TIDE_DISTRIBUTOR_ABI } from "@/abis/harborTideDistributor";
 import { ERC20_ABI } from "@/abis/shared";
 import { TIDE_CONFIG } from "@/config/tide";
-import { useTideTransactionModal } from "@/hooks/useTideTransactionModal";
+import { useTideTransaction } from "@/contexts/TideTransactionContext";
+import { useHarborAccount } from "@/hooks/useHarborAccount";
+import { useTideDistributorWindow } from "@/hooks/useTideDistributorWindow";
 import { formatToken } from "@/utils/formatters";
+import { runHarborTransactionFlow } from "@/utils/harborTransactionFlow";
 import { parseTideClaimError } from "@/utils/tideDistributor";
-
-function floorTokenWei(amount: bigint, decimals: number): bigint {
-  if (decimals <= 0) return amount;
-  const unit = 10n ** BigInt(decimals);
-  return (amount / unit) * unit;
-}
+import { floorTokenWei } from "@/utils/tideSwap";
 
 export function useTideSwap() {
-  const { address, isConnected } = useAccount();
+  const {
+    address,
+    isConnected,
+    isImpersonating,
+    walletAddress,
+    walletConnected,
+  } = useHarborAccount();
+  const txModal = useTideTransaction();
+  const { isWindowOpen: windowOpen } = useTideDistributorWindow();
+
   const [baoAmount, setBaoAmountState] = useState("");
   const [isSwapping, setIsSwapping] = useState(false);
   const [swapError, setSwapError] = useState<string | null>(null);
-  const txModal = useTideTransactionModal();
 
   const distributor = TIDE_CONFIG.distributorAddress;
   const baoToken = TIDE_CONFIG.baoTokenAddress;
@@ -83,20 +88,6 @@ export function useTideSwap() {
     chainId: TIDE_CONFIG.chainId,
   });
 
-  const { data: startDate } = useReadContract({
-    address: distributor,
-    abi: HARBOR_TIDE_DISTRIBUTOR_ABI,
-    functionName: "startDate",
-    chainId: TIDE_CONFIG.chainId,
-  });
-
-  const { data: endDate } = useReadContract({
-    address: distributor,
-    abi: HARBOR_TIDE_DISTRIBUTOR_ABI,
-    functionName: "endDate",
-    chainId: TIDE_CONFIG.chainId,
-  });
-
   const { data: maxBaoCap } = useReadContract({
     address: distributor,
     abi: HARBOR_TIDE_DISTRIBUTOR_ABI,
@@ -138,8 +129,6 @@ export function useTideSwap() {
 
   const tideOut = (tideOutWei ?? 0n) as bigint;
   const minOut = (minTideOut ?? 0n) as bigint;
-  const windowStart = startDate as bigint | undefined;
-  const windowEnd = endDate as bigint | undefined;
 
   const tideOutput = tideOutWei
     ? formatToken(
@@ -153,17 +142,11 @@ export function useTideSwap() {
   const belowMinOut =
     baoAmountWei > 0n && tideOutWei !== undefined && minTideOut !== undefined && tideOut < minOut;
 
-  const now = BigInt(Math.floor(Date.now() / 1000));
-  const windowOpen =
-    windowStart !== undefined &&
-    windowEnd !== undefined &&
-    now >= windowStart &&
-    now < windowEnd;
-
   const needsApproval = baoAmountWei > 0n && allowance < baoAmountWei;
 
   const canSwap =
-    isConnected &&
+    walletConnected &&
+    !isImpersonating &&
     windowOpen &&
     baoAmountWei > 0n &&
     !exceedsBalance &&
@@ -174,81 +157,70 @@ export function useTideSwap() {
   const publicClient = usePublicClient({ chainId: TIDE_CONFIG.chainId });
 
   const executeSwap = useCallback(async () => {
-    if (!canSwap || !address) return;
+    if (!canSwap || !walletAddress) return;
 
     setSwapError(null);
     setIsSwapping(true);
 
-    try {
-      if (needsApproval) {
-        txModal.openAwaitingWallet(
-          "Approve BAO",
-          "Confirm the BAO approval in your wallet."
-        );
+    const steps = [];
 
-        const approveHash = await writeContractAsync({
-          address: baoToken,
-          abi: ERC20_ABI,
-          functionName: "approve",
-          args: [distributor, baoAmountWei],
-          chainId: TIDE_CONFIG.chainId,
-        });
-
-        txModal.openConfirming(
-          "Approve BAO",
-          "Waiting for approval confirmation…",
-          approveHash
-        );
-        await publicClient?.waitForTransactionReceipt({ hash: approveHash });
-        await refetchAllowance();
-      }
-
-      txModal.openAwaitingWallet(
-        "Swap BAO for TIDE",
-        "Confirm the swap in your wallet."
-      );
-
-      const swapHash = await writeContractAsync({
-        address: distributor,
-        abi: HARBOR_TIDE_DISTRIBUTOR_ABI,
-        functionName: "convertBao",
-        args: [baoAmountWei],
-        chainId: TIDE_CONFIG.chainId,
+    if (needsApproval) {
+      steps.push({
+        title: "Approve BAO",
+        execute: () =>
+          writeContractAsync({
+            address: baoToken,
+            abi: ERC20_ABI,
+            functionName: "approve",
+            args: [distributor, baoAmountWei],
+            chainId: TIDE_CONFIG.chainId,
+          }),
       });
-
-      txModal.openConfirming(
-        "Swap BAO for TIDE",
-        "Waiting for swap confirmation…",
-        swapHash
-      );
-
-      await publicClient?.waitForTransactionReceipt({ hash: swapHash });
-      await refetchBalance();
-
-      const received = tideOutWei
-        ? formatToken(
-            floorTokenWei(tideOut, TIDE_CONFIG.tideDecimals),
-            TIDE_CONFIG.tideDecimals,
-            0
-          )
-        : tideOutput;
-
-      txModal.openSuccess(
-        "Swap successful",
-        `You received ${received} TIDE in your wallet.`,
-        swapHash
-      );
-      setBaoAmount("");
-    } catch (error) {
-      const message = parseTideClaimError(error);
-      setSwapError(message);
-      txModal.openError("Swap failed", message);
-    } finally {
-      setIsSwapping(false);
     }
+
+    steps.push({
+      title: "Swap BAO for TIDE",
+      execute: () =>
+        writeContractAsync({
+          address: distributor,
+          abi: HARBOR_TIDE_DISTRIBUTOR_ABI,
+          functionName: "convertBao",
+          args: [baoAmountWei],
+          chainId: TIDE_CONFIG.chainId,
+        }),
+    });
+
+    const result = await runHarborTransactionFlow({
+      txModal,
+      publicClient,
+      parseError: parseTideClaimError,
+      errorTitle: "Swap failed",
+      successTitle: "Swap successful",
+      successMessage: () => {
+        const received = tideOutWei
+          ? formatToken(
+              floorTokenWei(tideOut, TIDE_CONFIG.tideDecimals),
+              TIDE_CONFIG.tideDecimals,
+              0
+            )
+          : tideOutput;
+        return `You received ${received} TIDE in your wallet.`;
+      },
+      onComplete: async () => {
+        await Promise.all([refetchAllowance(), refetchBalance()]);
+        setBaoAmount("");
+      },
+      steps,
+    });
+
+    if (!result.ok) {
+      setSwapError(result.message);
+    }
+
+    setIsSwapping(false);
   }, [
     canSwap,
-    address,
+    walletAddress,
     needsApproval,
     writeContractAsync,
     baoToken,
@@ -259,7 +231,9 @@ export function useTideSwap() {
     refetchBalance,
     tideOut,
     tideOutput,
+    tideOutWei,
     txModal,
+    setBaoAmount,
   ]);
 
   const swapRateLabel = "0.1758 TIDE per BAO";
@@ -298,7 +272,5 @@ export function useTideSwap() {
     executeSwap,
     swapRateLabel,
     maxSwapConversionLabel,
-    txModal: txModal.modal,
-    closeTxModal: txModal.close,
   };
 }
