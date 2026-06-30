@@ -18,7 +18,7 @@ import { useTideClaimSnapshots } from "@/hooks/useTideAllocationSnapshot";
 import { useTideDistributorWindow } from "@/hooks/useTideDistributorWindow";
 import { runHarborTransactionFlow } from "@/utils/harborTransactionFlow";
 import {
-  getVeBaoClaimBlockReason,
+  getVeBaoClaimBlocker,
   parseTideClaimError,
 } from "@/utils/tideDistributor";
 import { getTideAmountWei, normalizeMerkleProof } from "@/utils/tideClaim";
@@ -43,6 +43,7 @@ export function useTideClaimActions() {
   const txModal = useTideTransaction();
   const {
     status: claimWindowStatus,
+    endDate,
     isLoading: isChainLoading,
     windowMessage: claimWindowMessage,
     windowFooter: claimWindowFooter,
@@ -111,13 +112,33 @@ export function useTideClaimActions() {
   const isSnapshotLoading =
     veBaoSnapshot.isLoading || standardSnapshot.isLoading;
 
-  const veBaoBlockReason = useMemo(() => {
-    if (isWrongChain) return resolvedClaimWindowMessage;
+  const veBaoBlocker = useMemo(() => {
+    if (isWrongChain) {
+      return {
+        kind: "not_eligible" as const,
+        message: resolvedClaimWindowMessage ?? "Switch to Ethereum mainnet to claim",
+      };
+    }
     if (!veBaoSnapshot.hasAllocation) return null;
-    if (hasClaimedVeBao) return "Already claimed";
-    if (claimWindowStatus !== "open") return resolvedClaimWindowMessage;
-    if (!veBaoSnapshot.hasProof) return "Missing merkle proof in snapshot";
-    return getVeBaoClaimBlockReason(veClaimStatus);
+    if (hasClaimedVeBao) {
+      return {
+        kind: "already_claimed" as const,
+        message: "Already claimed",
+      };
+    }
+    if (claimWindowStatus !== "open") {
+      return {
+        kind: "not_eligible" as const,
+        message: resolvedClaimWindowMessage ?? "Claim window is not open",
+      };
+    }
+    if (!veBaoSnapshot.hasProof) {
+      return {
+        kind: "not_eligible" as const,
+        message: "Missing merkle proof in snapshot",
+      };
+    }
+    return getVeBaoClaimBlocker(veClaimStatus, endDate);
   }, [
     isWrongChain,
     resolvedClaimWindowMessage,
@@ -126,7 +147,10 @@ export function useTideClaimActions() {
     hasClaimedVeBao,
     claimWindowStatus,
     veClaimStatus,
+    endDate,
   ]);
+
+  const veBaoBlockReason = veBaoBlocker?.message ?? null;
 
   const standardBlockReason = useMemo(() => {
     if (isWrongChain) return resolvedClaimWindowMessage;
@@ -248,6 +272,7 @@ export function useTideClaimActions() {
     hasClaimedVeBao: Boolean(hasClaimedVeBao),
     hasClaimedStandard: Boolean(hasClaimedStandard),
     veClaimStatus,
+    veBaoBlocker,
     veBaoBlockReason,
     standardBlockReason,
     claimingPath,
@@ -262,7 +287,8 @@ export function useTideClaimActions() {
       !hasClaimedVeBao &&
       !isWrongChain &&
       claimWindowStatus === "open" &&
-      veBaoBlockReason === null,
+      veClaimStatus?.canClaimNow === true &&
+      veBaoBlocker === null,
     canClaimStandard:
       walletConnected &&
       !isImpersonating &&
