@@ -57,8 +57,6 @@ export function TideSwapCard() {
       title="Swap"
       subtitle="BAO → TIDE"
       subtitleClass={theme.subtitle}
-      badge="Test"
-      badgeVariant="gold"
       footer={`${swapRateLabel} via distributor`}
       footerExtra={
         maxSwapConversionLabel
