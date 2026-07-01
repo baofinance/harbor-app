@@ -192,7 +192,7 @@ export default function Example() {
           </div>
           <div className="-mr-2 flex sm:hidden">
             {/* Mobile menu button */}
-            <DisclosureButton className={`group relative inline-flex items-center justify-center p-2 text-gray-200 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-[#FF8A7A] ${HARBOR_NAV_ICON_BUTTON_CLASS}`}>
+            <DisclosureButton className={`group relative inline-flex items-center justify-center focus:outline-2 focus:-outline-offset-1 focus:outline-[#FF8A7A] ${HARBOR_NAV_ICON_BUTTON_CLASS}`}>
               <span className="absolute -inset-0.5" />
               <span className="sr-only">Open main menu</span>
               <Bars3Icon
@@ -211,7 +211,7 @@ export default function Example() {
       <DisclosurePanel className={`sm:hidden fixed inset-0 z-50 ${navBgClass} overflow-y-auto`} style={{ height: '100dvh', maxHeight: '100dvh' }}>
         <div className="flex flex-col min-h-full px-6 py-4 pb-24 space-y-2">
           <div className="flex justify-end mb-2 flex-shrink-0">
-            <DisclosureButton className={`inline-flex items-center justify-center p-2 text-gray-200 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-[#FF8A7A] rounded-full ${HARBOR_NAV_ICON_BUTTON_CLASS}`}>
+            <DisclosureButton className={`inline-flex items-center justify-center focus:outline-2 focus:-outline-offset-1 focus:outline-[#FF8A7A] rounded-full ${HARBOR_NAV_ICON_BUTTON_CLASS}`}>
               <span className="sr-only">Close main menu</span>
               <XMarkIcon
                 aria-hidden="true"
@@ -309,8 +309,8 @@ export default function Example() {
                     href={href}
                     className={`block w-full px-6 py-3.5 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                       isActive(href)
-                        ? HARBOR_FROSTED_ACTIVE_PILL
-                        : "text-white bg-white/10 hover:bg-white/20"
+                        ? HARBOR_NAV_LINK_ACTIVE_CLASS
+                        : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
                     }`}
                     aria-current={isActive(href) ? "page" : undefined}
                   >

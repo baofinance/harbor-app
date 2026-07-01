@@ -35,6 +35,7 @@ import {
 } from "@/components/sail/advanced/sailAdvancedStyles";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { InfoCallout } from "@/components/InfoCallout";
+import SimpleTooltip from "@/components/SimpleTooltip";
 import { AlertOctagon, Info, RefreshCw } from "lucide-react";
 import {
   TransactionProgressModal,

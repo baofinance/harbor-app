@@ -1,42 +1,48 @@
 /**
- * Glass chrome for the top navigation bar — links, toggles, wallet chip, dropdowns.
+ * Glass chrome for the top navigation bar — white frosted pills on dark Harbor header,
+ * matching Earn / Sail basic market cards (`HARBOR_FROSTED_LIGHT_CARD_*`).
  */
 
 import {
-  HARBOR_BTN_GLASS_DARK_SURFACE,
+  HARBOR_BTN_GLASS_LIGHT_HOVER,
+  HARBOR_BTN_GLASS_LIGHT_SURFACE,
   HARBOR_BTN_GLASS_NAVY_LIGHT,
   HARBOR_BTN_GLASS_OUTLINE_LIGHT,
-  HARBOR_BTN_GLASS_SEGMENT_ACTIVE_DARK,
+  HARBOR_BTN_GLASS_SEGMENT_ACTIVE_LIGHT,
 } from "@/components/shared/harborButtonStyles";
 import {
-  HARBOR_FROSTED_DROPDOWN_SHELL,
+  HARBOR_FROSTED_ACTIVE_PILL,
+  HARBOR_FROSTED_LIGHT_FILL,
   HARBOR_FROSTED_MODAL_SHELL,
+  HARBOR_FROSTED_NAV_DROPDOWN_SHELL,
+  HARBOR_FROSTED_PILL,
 } from "@/components/shared/harborFrostedSurfaceStyles";
 
-/** Selected primary nav link on dark header. */
-export const HARBOR_NAV_LINK_ACTIVE_CLASS =
-  "bg-white/88 backdrop-blur-md backdrop-saturate-150 text-[#1E4775] border border-white/35 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.72),0_4px_16px_-12px_rgba(0,0,0,0.28)] ring-1 ring-[#1E4775]/10";
+/** Compact white frosted idle pill — nav scale, same family as market cards. */
+const HARBOR_NAV_IDLE_PILL =
+  `${HARBOR_FROSTED_LIGHT_FILL} border border-[#1E4775]/12 shadow-sm ring-1 ring-[#1E4775]/6 text-[#1E4775]/85`;
 
-/** Idle primary nav link on dark header. */
-export const HARBOR_NAV_LINK_IDLE_CLASS =
-  "border border-transparent text-white hover:border-white/20 hover:bg-white/[0.08] backdrop-blur-sm";
+/** Selected primary nav link. */
+export const HARBOR_NAV_LINK_ACTIVE_CLASS = HARBOR_FROSTED_ACTIVE_PILL;
+
+/** Idle primary nav link. */
+export const HARBOR_NAV_LINK_IDLE_CLASS = `${HARBOR_NAV_IDLE_PILL} transition-colors hover:border-[#1E4775]/22 hover:bg-white/92 hover:text-[#1E4775]`;
 
 /** Mobile nav pill — idle. */
-export const HARBOR_NAV_MOBILE_LINK_IDLE_CLASS =
-  "border border-white/15 bg-white/[0.06] text-white backdrop-blur-md hover:border-white/25 hover:bg-white/[0.12]";
+export const HARBOR_NAV_MOBILE_LINK_IDLE_CLASS = `${HARBOR_NAV_IDLE_PILL} text-[#1E4775] transition-colors hover:bg-white/92`;
 
 /** Segmented control track (Theme, UI / UI+). */
 export const HARBOR_NAV_SEGMENT_SHELL_CLASS =
-  "rounded-md border border-white/15 bg-white/[0.06] p-0.5 backdrop-blur-md";
+  `${HARBOR_FROSTED_LIGHT_FILL} rounded-md border border-[#1E4775]/12 p-0.5 shadow-sm ring-1 ring-[#1E4775]/6 backdrop-blur-lg backdrop-saturate-150`;
 
-/** Selected segment on dark nav chrome. */
-export const HARBOR_NAV_SEGMENT_ACTIVE_CLASS = HARBOR_BTN_GLASS_SEGMENT_ACTIVE_DARK;
+/** Selected segment. */
+export const HARBOR_NAV_SEGMENT_ACTIVE_CLASS = HARBOR_BTN_GLASS_SEGMENT_ACTIVE_LIGHT;
 
-/** Idle segment on dark nav chrome. */
+/** Idle segment. */
 export const HARBOR_NAV_SEGMENT_IDLE_CLASS =
-  "rounded px-2 py-2 text-sm font-medium text-white transition-colors hover:bg-white/[0.1]";
+  "rounded px-2 py-2 text-sm font-medium text-[#1E4775]/70 transition-colors hover:bg-[#1E4775]/5 hover:text-[#1E4775]";
 
-/** Theme dropdown trigger on dark nav. */
+/** Theme dropdown trigger. */
 export const HARBOR_NAV_THEME_TRIGGER_CLASS = `h-9 w-full rounded border-[#1E4775]/30 px-1.5 py-0 text-sm font-medium text-[#1E4775] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4775]/25 ${HARBOR_BTN_GLASS_NAVY_LIGHT}`;
 
 /** Connect / account chip in nav bar. */
@@ -48,21 +54,21 @@ export const HARBOR_NAV_VERSION_BADGE_ACTIVE_CLASS =
 
 /** Maiden Voyage version badge — idle route. */
 export const HARBOR_NAV_VERSION_BADGE_IDLE_CLASS =
-  "rounded border border-white/30 bg-white/[0.08] px-1 py-0.5 text-[10px] font-bold leading-none font-mono text-white backdrop-blur-sm";
+  `${HARBOR_FROSTED_PILL} rounded px-1 py-0.5 text-[10px] font-bold leading-none font-mono text-[#1E4775]`;
 
 /** More-menu popover shell. */
-export const HARBOR_NAV_POPOVER_SHELL_CLASS = `${HARBOR_FROSTED_DROPDOWN_SHELL} backdrop-blur-lg backdrop-saturate-150`;
+export const HARBOR_NAV_POPOVER_SHELL_CLASS = HARBOR_FROSTED_NAV_DROPDOWN_SHELL;
 
 /** More-menu item — active. */
 export const HARBOR_NAV_DROPDOWN_ITEM_ACTIVE_CLASS =
-  "border-l-2 border-[#1E4775]/40 bg-[#1E4775]/[0.08] text-[#1E4775] backdrop-blur-sm";
+  "border-l-2 border-[#1E4775]/40 bg-[#1E4775]/[0.08] text-[#1E4775]";
 
 /** More-menu item — idle. */
 export const HARBOR_NAV_DROPDOWN_ITEM_IDLE_CLASS =
-  "bg-transparent text-[#1E4775] hover:bg-white/70 backdrop-blur-sm";
+  "bg-transparent text-[#1E4775] hover:bg-[#1E4775]/5";
 
-/** Burger / icon control on dark nav. */
-export const HARBOR_NAV_ICON_BUTTON_CLASS = `rounded-md p-2 text-white transition-colors ${HARBOR_BTN_GLASS_DARK_SURFACE} hover:border-white/35 hover:bg-white/[0.14]`;
+/** Burger / icon control. */
+export const HARBOR_NAV_ICON_BUTTON_CLASS = `rounded-md p-2 text-[#1E4775] transition-colors ${HARBOR_BTN_GLASS_LIGHT_SURFACE} border-[#1E4775]/20 ${HARBOR_BTN_GLASS_LIGHT_HOVER}`;
 
 /** Wallet modal shell. */
 export const HARBOR_NAV_WALLET_MODAL_SHELL_CLASS = HARBOR_FROSTED_MODAL_SHELL;
