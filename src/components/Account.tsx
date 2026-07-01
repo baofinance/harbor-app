@@ -11,9 +11,11 @@ import {
   HARBOR_NAV_WALLET_ACTION_CLASS,
   HARBOR_NAV_WALLET_CHIP_CLASS,
   HARBOR_NAV_WALLET_INSET_PANEL_CLASS,
+  HARBOR_NAV_WALLET_MODAL_CLOSE_CLASS,
   HARBOR_NAV_WALLET_MODAL_HEADER_CLASS,
   HARBOR_NAV_WALLET_MODAL_OVERLAY_CLASS,
   HARBOR_NAV_WALLET_MODAL_SHELL_CLASS,
+  HARBOR_NAV_WALLET_MODAL_TITLE_CLASS,
 } from "@/components/shared/harborNavStyles";
 import * as React from "react";
 import DecryptedText from "@/components/DecryptedText";
@@ -55,16 +57,16 @@ function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowMo
         <>
             {showModal && mounted
                 ? createPortal(
-                <div className={`${HARBOR_NAV_WALLET_MODAL_OVERLAY_CLASS} pt-36`}>
+                <div className={HARBOR_NAV_WALLET_MODAL_OVERLAY_CLASS}>
                     <div
                         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                         onClick={() => setShowModal(false)}
                     />
-                    <div className={`relative mt-36 flex w-full max-w-md flex-col overflow-hidden rounded-lg ${HARBOR_NAV_WALLET_MODAL_SHELL_CLASS}`}>
+                    <div className={HARBOR_NAV_WALLET_MODAL_SHELL_CLASS}>
                         <button
                             type="button"
                             onClick={() => setShowModal(false)}
-                            className="absolute top-3 right-3 z-10 inline-flex items-center rounded-md p-1.5 text-[#1E4775]/60 transition hover:bg-[#1E4775]/5 hover:text-[#1E4775]"
+                            className={HARBOR_NAV_WALLET_MODAL_CLOSE_CLASS}
                         >
                             <svg
                                 aria-hidden="true"
@@ -83,7 +85,7 @@ function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowMo
                         </button>
 
                         <div className={HARBOR_NAV_WALLET_MODAL_HEADER_CLASS}>
-                            <h3 className="text-base font-semibold text-[#1E4775] lg:text-xl">
+                            <h3 className={HARBOR_NAV_WALLET_MODAL_TITLE_CLASS}>
                                 Wallet
                             </h3>
                         </div>
@@ -91,18 +93,18 @@ function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowMo
                         <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-6">
 
                             <div className="flex items-center justify-between">
-                                <div className="text-sm text-[#1E4775]/85">
+                                <div className="text-sm text-white/80">
                                     <div className="font-mono">
                                         {displayAddr ? (
                                             <DecryptedText
                                                 text={displayAddr}
                                                 parentClassName="inline-block"
                                                 className=""
-                                                encryptedClassName="text-[#1E4775]/40"
+                                                encryptedClassName="text-white/40"
                                                 animateOn="hover"
                                             />
                                         ) : (
-                                            <span className="text-[#1E4775]/40">—</span>
+                                            <span className="text-white/40">—</span>
                                         )}
                                     </div>
                                 </div>
@@ -123,8 +125,8 @@ function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowMo
                                 </button>
                             </div>
                             <div className={HARBOR_NAV_WALLET_INSET_PANEL_CLASS}>
-                                <div className="text-xs text-[#1E4775]/60">Balance</div>
-                                <div className="font-mono text-[#1E4775]">
+                                <div className="text-xs text-white/60">Balance</div>
+                                <div className="font-mono text-white">
                                     {balance
                                         ? `${Number(balance.value) / 10 ** balance.decimals} ${
                                             balance.symbol
@@ -135,7 +137,7 @@ function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowMo
                         </div>
 
                         <div className={HARBOR_NAV_WALLET_MODAL_HEADER_CLASS}>
-                            <h3 className="text-base font-semibold text-[#1E4775] lg:text-xl">
+                            <h3 className={HARBOR_NAV_WALLET_MODAL_TITLE_CLASS}>
                                 Networks
                             </h3>
                         </div>
@@ -148,7 +150,7 @@ function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowMo
                             <button
                                 type="button"
                                 onClick={() => disconnect()}
-                                className={`inline-flex w-full items-center justify-center gap-2 ${HARBOR_NAV_WALLET_ACTION_CLASS}`}
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#153A5F] px-3 py-2 text-white hover:bg-white/20"
                             >
                                 <LogOut className="h-4 w-4" /> Disconnect
                             </button>

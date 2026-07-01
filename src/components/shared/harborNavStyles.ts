@@ -4,13 +4,8 @@
  */
 
 import {
-  HARBOR_BTN_GLASS_OUTLINE_LIGHT,
-  HARBOR_BTN_GLASS_NAVY_LIGHT,
-} from "@/components/shared/harborButtonStyles";
-import {
   HARBOR_FROSTED_ACTIVE_PILL,
   HARBOR_FROSTED_DROPDOWN_SHELL,
-  HARBOR_FROSTED_MODAL_SHELL,
   HARBOR_FROSTED_NAV_DROPDOWN_SHELL,
 } from "@/components/shared/harborFrostedSurfaceStyles";
 
@@ -65,24 +60,37 @@ export const HARBOR_NAV_MOBILE_MENU_BUTTON_CLASS =
 
 /** Wallet modal overlay — portaled to `document.body` so page glass stacks below. */
 export const HARBOR_NAV_WALLET_MODAL_OVERLAY_CLASS =
-  "fixed inset-0 z-[120] flex items-center justify-center px-4 pt-28";
+  "fixed inset-0 z-[120] flex items-center justify-center p-4";
 
-/** Wallet modal header strip. */
-export const HARBOR_NAV_WALLET_MODAL_HEADER_CLASS =
-  "border-b border-[#1E4775]/12 bg-white/70 px-6 py-4 backdrop-blur-md";
+/** Wallet modal shell — navy card (classic connect UI). */
+export const HARBOR_NAV_WALLET_MODAL_SHELL_CLASS =
+  "relative flex w-full max-w-md flex-col overflow-hidden rounded-lg bg-[#1E4775] shadow-lg";
+
+/** Wallet modal section header strip. */
+export const HARBOR_NAV_WALLET_MODAL_HEADER_CLASS = "px-6 py-4 bg-[#153A5F]";
+
+export const HARBOR_NAV_WALLET_MODAL_TITLE_CLASS =
+  "text-base font-semibold text-white lg:text-xl";
+
+/** Close control on navy wallet modal. */
+export const HARBOR_NAV_WALLET_MODAL_CLOSE_CLASS =
+  "absolute top-3 right-3 z-10 inline-flex items-center rounded-md bg-transparent p-1.5 text-sm text-white transition hover:bg-[#153A5F] hover:text-gray-200";
 
 /** Inset panel inside wallet modal (balance, etc.). */
-export const HARBOR_NAV_WALLET_INSET_PANEL_CLASS =
-  "rounded-md border border-[#1E4775]/12 bg-[#1E4775]/[0.04] p-3 backdrop-blur-sm";
+export const HARBOR_NAV_WALLET_INSET_PANEL_CLASS = "rounded-md bg-white/5 p-3";
 
-/** Wallet modal action row button. */
-export const HARBOR_NAV_WALLET_ACTION_CLASS = `rounded-md px-3 py-2 text-sm ${HARBOR_BTN_GLASS_OUTLINE_LIGHT}`;
+/** Wallet modal action row button (copy, disconnect). */
+export const HARBOR_NAV_WALLET_ACTION_CLASS =
+  "rounded-md bg-white/10 px-3 py-2 text-xs text-white hover:bg-white/20";
 
 /** Network row — selected in wallet modal. */
-export const HARBOR_NAV_NETWORK_ACTIVE_CLASS = `flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${HARBOR_BTN_GLASS_NAVY_LIGHT}`;
+export const HARBOR_NAV_NETWORK_ACTIVE_CLASS =
+  "flex w-full cursor-default items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-medium text-[#1E4775] shadow-md ring-2 ring-[#1E4775]/40";
 
 /** Network row — idle in wallet modal. */
-export const HARBOR_NAV_NETWORK_IDLE_CLASS = `flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${HARBOR_BTN_GLASS_OUTLINE_LIGHT}`;
+export const HARBOR_NAV_NETWORK_IDLE_CLASS =
+  "flex w-full items-center gap-2 rounded-md bg-gray-300 px-3 py-2 text-sm font-medium text-[#1E4775] transition-colors hover:bg-gray-400";
 
 /** Wallet connector option in connect modal. */
-export const HARBOR_NAV_WALLET_OPTION_CLASS = `flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm ${HARBOR_BTN_GLASS_OUTLINE_LIGHT}`;
+export const HARBOR_NAV_WALLET_OPTION_CLASS =
+  "flex w-full items-center gap-2 rounded-md bg-white/10 px-3 py-2 text-md text-white enabled:hover:bg-[#FF8A7A]/20 disabled:opacity-50";

@@ -206,8 +206,8 @@ export function SailMarketChart({
     return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
   };
 
-  const isLoading =
-    isSubgraphLoading ||
+  const isBlockingLoading = isSubgraphLoading;
+  const isEnrichingOracles =
     (longNeedsChainlink && isLongChainlinkLoading) ||
     (shortNeedsChainlink && isShortChainlinkLoading);
 
@@ -237,9 +237,11 @@ export function SailMarketChart({
         </div>
         <div className="flex items-center justify-end gap-4">
           <div className="text-xs text-[#1E4775]/60">
-            {isLoading
+            {isBlockingLoading
               ? "Loading..."
-              : `${validDefaultPoints.length} data points`}
+              : isEnrichingOracles
+                ? "Updating oracle data..."
+                : `${validDefaultPoints.length} data points`}
           </div>
           <div className="flex gap-2">
             {(["1D", "1W", "1M"] as const).map((range) => (
@@ -260,7 +262,7 @@ export function SailMarketChart({
         </div>
       </div>
       <div className="min-h-0 flex-1">
-        {isLoading ? (
+        {isBlockingLoading ? (
           <div className="flex h-full items-center justify-center text-[#1E4775]/60">
             Loading price history...
           </div>

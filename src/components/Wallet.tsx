@@ -12,9 +12,11 @@ import DecryptedText from "@/components/DecryptedText";
 import {
   HARBOR_NAV_WALLET_CHIP_CLASS,
   HARBOR_NAV_WALLET_INSET_PANEL_CLASS,
+  HARBOR_NAV_WALLET_MODAL_CLOSE_CLASS,
   HARBOR_NAV_WALLET_MODAL_HEADER_CLASS,
   HARBOR_NAV_WALLET_MODAL_OVERLAY_CLASS,
   HARBOR_NAV_WALLET_MODAL_SHELL_CLASS,
+  HARBOR_NAV_WALLET_MODAL_TITLE_CLASS,
   HARBOR_NAV_WALLET_OPTION_CLASS,
 } from '@/components/shared/harborNavStyles'
 import { useHarborWalletConnectors } from '@/hooks/useHarborWalletConnectors'
@@ -186,11 +188,11 @@ const WalletModal = React.memo(function WalletModal({
                 className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                 onClick={onClose}
             />
-            <div className={`relative mt-28 flex w-full max-w-md flex-col overflow-hidden rounded-lg ${HARBOR_NAV_WALLET_MODAL_SHELL_CLASS}`}>
+            <div className={`${HARBOR_NAV_WALLET_MODAL_SHELL_CLASS}`}>
                 <button
                     type="button"
                     onClick={onClose}
-                    className="absolute top-3 right-3 z-10 inline-flex items-center rounded-md p-1.5 text-[#1E4775]/60 transition hover:bg-[#1E4775]/5 hover:text-[#1E4775]"
+                    className={HARBOR_NAV_WALLET_MODAL_CLOSE_CLASS}
                 >
                     <svg
                         aria-hidden="true"
@@ -209,7 +211,7 @@ const WalletModal = React.memo(function WalletModal({
                 </button>
 
                 <div className={HARBOR_NAV_WALLET_MODAL_HEADER_CLASS}>
-                    <h3 className="text-base font-semibold text-[#1E4775] lg:text-xl">Wallets</h3>
+                    <h3 className={HARBOR_NAV_WALLET_MODAL_TITLE_CLASS}>Wallets</h3>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6">
