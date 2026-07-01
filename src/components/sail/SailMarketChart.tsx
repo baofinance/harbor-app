@@ -11,12 +11,18 @@ import {
   computeLiveDefaultRatio,
   getSailMarketChartConfig,
   type SailMarketChartConfig,
-  type SailMarketChartPoint,
 } from "@/utils/sailMarketChartSeries";
 import {
   SAIL_CHART_TOGGLE_ACTIVE_CLASS,
   SAIL_CHART_TOGGLE_IDLE_CLASS,
 } from "@/components/sail/advanced/sailAdvancedStyles";
+import {
+  SAIL_CHART_HISTORY_DAYS,
+  SAIL_CHART_TIME_RANGES,
+  filterSailChartPointsByRange,
+  formatSailChartAxisTimestamp,
+  type SailChartTimeRange,
+} from "@/utils/sailChartTimeRange";
 import {
   SailMarketMultiSeriesChart,
 } from "./SailMarketMultiSeriesChart";
@@ -27,26 +33,6 @@ export type SailMarketChartProps = {
   onLiveDefaultRatioChange?: (value: number | null) => void;
   onConfigReady?: (config: SailMarketChartConfig) => void;
 };
-
-type TimeRange = "1D" | "1W" | "1M";
-
-function filterByTimeRange(
-  points: SailMarketChartPoint[],
-  timeRange: TimeRange
-): SailMarketChartPoint[] {
-  if (points.length === 0) return [];
-  if (timeRange === "1M") return points;
-
-  const end = points.reduce((max, p) => (p.timestamp > max ? p.timestamp : max), 0);
-  if (end <= 0) return points;
-
-  const start =
-    timeRange === "1D"
-      ? end - 24 * 60 * 60
-      : end - 7 * 24 * 60 * 60;
-
-  return points.filter((p) => p.timestamp >= start);
-}
 
 function OverlayToggle({
   label,
@@ -84,13 +70,13 @@ export function SailMarketChart({
   onLiveDefaultRatioChange,
   onConfigReady,
 }: SailMarketChartProps) {
-  const [timeRange, setTimeRange] = useState<TimeRange>("1M");
+  const [timeRange, setTimeRange] = useState<SailChartTimeRange>("1M");
   const [showHsPriceUsd, setShowHsPriceUsd] = useState(false);
 
   const config = useMemo(() => getSailMarketChartConfig(market), [market]);
   const pegTargetPrices = usePegTargetPrices();
   const chartSinceTimestamp = useMemo(
-    () => Math.floor(Date.now() / 1000) - 31 * 24 * 60 * 60,
+    () => Math.floor(Date.now() / 1000) - SAIL_CHART_HISTORY_DAYS * 24 * 60 * 60,
     []
   );
 
@@ -143,7 +129,7 @@ export function SailMarketChart({
     tokenAddress: leveragedTokenAddress || "",
     genesisAddress: markets[marketId]?.addresses?.genesis as string | undefined,
     sinceGenesisEnd: true,
-    daysBack: 31,
+    daysBack: SAIL_CHART_HISTORY_DAYS,
     enabled: !!leveragedTokenAddress,
   });
 
@@ -170,35 +156,15 @@ export function SailMarketChart({
   );
 
   const filteredData = useMemo(
-    () => filterByTimeRange(chartPoints, timeRange),
+    () => filterSailChartPointsByRange(chartPoints, timeRange),
     [chartPoints, timeRange]
   );
 
   const validDefaultPoints = filteredData.filter((p) => Number.isFinite(p.defaultRatio));
 
   const formatTimestamp = useMemo(() => {
-    return (timestamp: number) => {
-      const date = new Date(timestamp * 1000);
-      switch (timeRange) {
-        case "1D":
-          return date.toLocaleTimeString("en-US", {
-            hour: "numeric",
-            minute: "2-digit",
-            hour12: true,
-          });
-        case "1W":
-          return date.toLocaleDateString("en-US", {
-            weekday: "short",
-            month: "numeric",
-            day: "numeric",
-          });
-        default:
-          return date.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          });
-      }
-    };
+    return (timestamp: number) =>
+      formatSailChartAxisTimestamp(timestamp, timeRange);
   }, [timeRange]);
 
   const formatTooltipTimestamp = (timestamp: number) => {
@@ -243,8 +209,8 @@ export function SailMarketChart({
                 ? "Updating oracle data..."
                 : `${validDefaultPoints.length} data points`}
           </div>
-          <div className="flex gap-2">
-            {(["1D", "1W", "1M"] as const).map((range) => (
+          <div className="flex flex-wrap justify-end gap-1.5 sm:gap-2">
+            {SAIL_CHART_TIME_RANGES.map((range) => (
               <button
                 key={range}
                 type="button"

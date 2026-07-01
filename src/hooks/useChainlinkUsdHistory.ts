@@ -8,9 +8,9 @@ import { CHAINLINK_AGGREGATOR_ABI } from "@/abis/chainlink";
 import { CHAINLINK_FEEDS } from "@/config/chainlink";
 import type { ChainlinkPricePoint, PegAssetKey } from "@/utils/sailMarketChartSeries";
 
-/** Stop walking rounds once we reach this age (31d chart + buffer). */
-const MAX_HISTORY_AGE_SEC = 32 * 24 * 60 * 60;
-const MAX_ROUNDS = 800;
+/** Stop walking rounds once we reach this age (up to 1Y chart window). */
+const DEFAULT_MAX_HISTORY_AGE_SEC = 366 * 24 * 60 * 60;
+const MAX_ROUNDS = 3000;
 const MULTICALL_BATCH_SIZE = 50;
 
 export type { ChainlinkPricePoint };
@@ -48,7 +48,7 @@ export async function fetchChainlinkUsdHistory(
   const points: ChainlinkPricePoint[] = [];
   let roundId = latestRound[0];
   const cutoffTs =
-    minTimestamp ?? Math.floor(Date.now() / 1000) - MAX_HISTORY_AGE_SEC;
+    minTimestamp ?? Math.floor(Date.now() / 1000) - DEFAULT_MAX_HISTORY_AGE_SEC;
 
   while (points.length < MAX_ROUNDS && roundId > 0n) {
     const batchSize = Math.min(
