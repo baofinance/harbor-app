@@ -3,6 +3,8 @@ import {
   buildSailMarketChartPoints,
   getSailMarketChartConfig,
   resamplePriceSeries,
+  sailChartHasHsPriceOverlay,
+  toRechartsSailChartData,
 } from "./sailMarketChartSeries";
 import type { DefinedMarket } from "@/config/markets";
 
@@ -57,5 +59,32 @@ describe("sailMarketChartSeries", () => {
       .filter((v) => Number.isFinite(v));
     expect(ratios.length).toBeGreaterThan(1);
     expect(Math.min(...ratios)).toBeLessThan(Math.max(...ratios));
+  });
+
+  it("carries hs token USD prices onto the chart timeline", () => {
+    const config = getSailMarketChartConfig(hsStethEurMarket);
+    const mergedSubgraph = [
+      {
+        timestamp: 1_700_000_000,
+        priceUSD: 1.2,
+        collateralPriceUSD: 1500,
+        source: "hourly" as const,
+      },
+      {
+        timestamp: 1_700_003_600,
+        priceUSD: 1.25,
+        collateralPriceUSD: 1510,
+        source: "hourly" as const,
+      },
+    ];
+
+    const points = buildSailMarketChartPoints(config, mergedSubgraph, {
+      ETH: mergedSubgraph.map((p) => ({ timestamp: p.timestamp, priceUsd: p.collateralPriceUSD })),
+      EUR: mergedSubgraph.map((p) => ({ timestamp: p.timestamp, priceUsd: 1.08 })),
+    });
+
+    expect(points.every((p) => p.hsPriceUsd === 1.2 || p.hsPriceUsd === 1.25)).toBe(true);
+    expect(sailChartHasHsPriceOverlay(points)).toBe(true);
+    expect(toRechartsSailChartData(points)[0]?.hsPriceUsd).toBe(1.2);
   });
 });

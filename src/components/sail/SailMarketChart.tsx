@@ -10,6 +10,7 @@ import {
   buildSailMarketChartPoints,
   computeLiveDefaultRatio,
   getSailMarketChartConfig,
+  sailChartHasHsPriceOverlay,
   type SailMarketChartConfig,
 } from "@/utils/sailMarketChartSeries";
 import {
@@ -39,17 +40,20 @@ function OverlayToggle({
   active,
   onClick,
   color,
+  disabled = false,
 }: {
   label: string;
   active: boolean;
   onClick: () => void;
   color: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+      disabled={disabled}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
         active
           ? SAIL_CHART_TOGGLE_ACTIVE_CLASS
           : SAIL_CHART_TOGGLE_IDLE_CLASS
@@ -165,6 +169,10 @@ export function SailMarketChart({
   );
 
   const validDefaultPoints = filteredData.filter((p) => Number.isFinite(p.defaultRatio));
+  const hasHsPriceData = useMemo(
+    () => sailChartHasHsPriceOverlay(filteredData),
+    [filteredData]
+  );
 
   const formatTimestamp = useMemo(() => {
     return (timestamp: number) =>
@@ -205,6 +213,7 @@ export function SailMarketChart({
             active={showHsPriceUsd}
             onClick={toggleOverlay}
             color="#6B5B95"
+            disabled={!hasHsPriceData && !isBlockingLoading}
           />
         </div>
         <div className="flex items-center justify-end gap-4">
@@ -250,7 +259,7 @@ export function SailMarketChart({
           <SailMarketMultiSeriesChart
             data={filteredData}
             config={config}
-            showHsPriceUsd={showHsPriceUsd}
+            showHsPriceUsd={showHsPriceUsd && hasHsPriceData}
             formatTimestamp={formatTimestamp}
             formatTooltipTimestamp={formatTooltipTimestamp}
           />

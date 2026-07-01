@@ -274,7 +274,9 @@ export function buildSailMarketChartPoints(
   const collateralPrices = timestamps.map(
     (ts) => collateralByTimestamp.get(ts) ?? NaN
   );
-  const hsPrices = timestamps.map((ts) => hsByTimestamp.get(ts) ?? NaN);
+  const hsPrices = fillPriceSeriesGaps(
+    timestamps.map((ts) => hsByTimestamp.get(ts) ?? NaN)
+  );
 
   const resampledByAsset = buildResampledByAsset(
     timestamps,
@@ -311,6 +313,22 @@ export function buildSailMarketChartPoints(
       hsPriceUsd: Number.isFinite(hsPriceUsd) && hsPriceUsd > 0 ? hsPriceUsd : NaN,
     };
   });
+}
+
+/** Recharts treats null as a gap; NaN can break dual-axis line scales. */
+export function toRechartsSailChartData(
+  data: SailMarketChartPoint[],
+): Array<SailMarketChartPoint & { defaultRatio: number | null; hsPriceUsd: number | null }> {
+  return data.map((row) => ({
+    ...row,
+    defaultRatio: Number.isFinite(row.defaultRatio) ? row.defaultRatio : null,
+    hsPriceUsd:
+      Number.isFinite(row.hsPriceUsd) && row.hsPriceUsd > 0 ? row.hsPriceUsd : null,
+  }));
+}
+
+export function sailChartHasHsPriceOverlay(data: SailMarketChartPoint[]): boolean {
+  return data.some((row) => Number.isFinite(row.hsPriceUsd) && row.hsPriceUsd > 0);
 }
 
 export function formatSailChartDefaultValue(

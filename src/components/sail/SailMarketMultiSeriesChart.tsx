@@ -15,6 +15,7 @@ import type { SailMarketChartConfig, SailMarketChartPoint } from "@/utils/sailMa
 import {
   formatSailChartDefaultValue,
   formatSailChartUsdValue,
+  toRechartsSailChartData,
 } from "@/utils/sailMarketChartSeries";
 
 interface SailMarketMultiSeriesChartProps {
@@ -39,7 +40,7 @@ function MultiSeriesTooltip({
   showHsPriceUsd,
 }: {
   active?: boolean;
-  payload?: Array<{ payload?: SailMarketChartPoint }>;
+  payload?: Array<{ payload?: SailMarketChartPoint & { hsPriceUsd?: number | null } }>;
   label?: number;
   formatTooltipTimestamp: (timestamp: number) => string;
   config: SailMarketChartConfig;
@@ -59,9 +60,12 @@ function MultiSeriesTooltip({
   ];
 
   if (showHsPriceUsd) {
+    const hsValue = row.hsPriceUsd;
     items.push({
       label: `${config.hsSymbol} (USD)`,
-      value: formatSailChartUsdValue(row.hsPriceUsd),
+      value: formatSailChartUsdValue(
+        hsValue == null ? undefined : hsValue,
+      ),
       color: SERIES_COLORS.hsPriceUsd,
     });
   }
@@ -92,13 +96,16 @@ export function SailMarketMultiSeriesChart({
   formatTimestamp,
   formatTooltipTimestamp,
 }: SailMarketMultiSeriesChartProps) {
+  const chartData = toRechartsSailChartData(data);
+  const showHsLine = showHsPriceUsd;
+
   const legendPayload = [
     {
       value: config.defaultMetricLabel,
       type: "line" as const,
       color: SERIES_COLORS.defaultRatio,
     },
-    ...(showHsPriceUsd
+    ...(showHsLine
       ? [{ value: `${config.hsSymbol} (USD)`, type: "line" as const, color: SERIES_COLORS.hsPriceUsd }]
       : []),
   ];
@@ -106,8 +113,9 @@ export function SailMarketMultiSeriesChart({
   return (
     <ResponsiveContainer width="100%" height="100%">
       <ComposedChart
-        data={data}
-        margin={{ top: 8, right: showHsPriceUsd ? 56 : 15, bottom: 30, left: 8 }}
+        key={showHsLine ? "dual-axis" : "single-axis"}
+        data={chartData}
+        margin={{ top: 8, right: showHsLine ? 56 : 15, bottom: 30, left: 8 }}
       >
         <defs>
           <linearGradient id="sailDefaultGradient" x1="0" y1="0" x2="0" y2="1">
@@ -147,14 +155,14 @@ export function SailMarketMultiSeriesChart({
             return n.toFixed(2);
           }}
         />
-        {showHsPriceUsd ? (
+        {showHsLine ? (
           <YAxis
             yAxisId="right"
             orientation="right"
-            stroke="#4b5a78"
-            opacity={0.6}
-            tick={{ fontSize: 10, fill: "#4b5a78", fontWeight: 500 }}
-            tickLine={{ stroke: "#4b5a78", opacity: 0.3 }}
+            stroke={SERIES_COLORS.hsPriceUsd}
+            opacity={0.75}
+            tick={{ fontSize: 10, fill: SERIES_COLORS.hsPriceUsd, fontWeight: 500 }}
+            tickLine={{ stroke: SERIES_COLORS.hsPriceUsd, opacity: 0.35 }}
             domain={["auto", "auto"]}
             width={52}
             tickFormatter={(v) => {
@@ -198,16 +206,22 @@ export function SailMarketMultiSeriesChart({
           connectNulls
           isAnimationActive={false}
         />
-        {showHsPriceUsd ? (
+        {showHsLine ? (
           <Line
             yAxisId="right"
             type="monotone"
             dataKey="hsPriceUsd"
             name={`${config.hsSymbol} (USD)`}
             stroke={SERIES_COLORS.hsPriceUsd}
-            strokeWidth={2}
-            strokeDasharray="4 3"
+            strokeWidth={2.5}
+            strokeDasharray="5 4"
             dot={false}
+            activeDot={{
+              r: 4,
+              strokeWidth: 2,
+              fill: "#fff",
+              stroke: SERIES_COLORS.hsPriceUsd,
+            }}
             connectNulls
             isAnimationActive={false}
           />
