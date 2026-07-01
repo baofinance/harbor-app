@@ -85,6 +85,33 @@ describe("sailMarketChartSeries", () => {
 
     expect(points.every((p) => p.hsPriceUsd === 1.2 || p.hsPriceUsd === 1.25)).toBe(true);
     expect(sailChartHasHsPriceOverlay(points)).toBe(true);
-    expect(toRechartsSailChartData(points)[0]?.hsPriceUsd).toBe(1.2);
+    expect(toRechartsSailChartData(points)[0]?.hsPriceUsdAbs).toBe(1.2);
+  });
+
+  it("indexes both series to range start when comparing performance", () => {
+    const points = [
+      {
+        timestamp: 1,
+        defaultRatio: 100,
+        longUsd: 100,
+        shortUsd: 1,
+        hsPriceUsd: 10,
+      },
+      {
+        timestamp: 2,
+        defaultRatio: 110,
+        longUsd: 110,
+        shortUsd: 1,
+        hsPriceUsd: 13,
+      },
+    ];
+
+    const compared = toRechartsSailChartData(points, true);
+    expect(compared[0]?.defaultRatio).toBeCloseTo(0, 5);
+    expect(compared[0]?.hsPriceUsd).toBeCloseTo(0, 5);
+    expect(compared[1]?.defaultRatio).toBeCloseTo(10, 5);
+    expect(compared[1]?.hsPriceUsd).toBeCloseTo(30, 5);
+    expect(compared[1]?.defaultRatioAbs).toBe(110);
+    expect(compared[1]?.hsPriceUsdAbs).toBe(13);
   });
 });

@@ -6,6 +6,7 @@ import {
   ComposedChart,
   Legend,
   Line,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -14,8 +15,10 @@ import {
 import type { SailMarketChartConfig, SailMarketChartPoint } from "@/utils/sailMarketChartSeries";
 import {
   formatSailChartDefaultValue,
+  formatSailChartPercentChange,
   formatSailChartUsdValue,
   toRechartsSailChartData,
+  type SailMarketChartRechartsPoint,
 } from "@/utils/sailMarketChartSeries";
 
 interface SailMarketMultiSeriesChartProps {
@@ -37,35 +40,39 @@ function MultiSeriesTooltip({
   label,
   formatTooltipTimestamp,
   config,
-  showHsPriceUsd,
+  comparePerformance,
 }: {
   active?: boolean;
-  payload?: Array<{ payload?: SailMarketChartPoint & { hsPriceUsd?: number | null } }>;
+  payload?: Array<{ payload?: SailMarketChartRechartsPoint }>;
   label?: number;
   formatTooltipTimestamp: (timestamp: number) => string;
   config: SailMarketChartConfig;
-  showHsPriceUsd: boolean;
+  comparePerformance: boolean;
 }) {
   if (!active || !payload?.length || label == null) return null;
 
   const row = payload[0]?.payload;
   if (!row) return null;
 
+  const baseAbs = row.defaultRatioAbs ?? row.defaultRatio;
+  const hsAbs = row.hsPriceUsdAbs ?? row.hsPriceUsd;
+
   const items: Array<{ label: string; value: string; color: string }> = [
     {
-      label: config.defaultMetricLabel,
-      value: formatSailChartDefaultValue(row.defaultRatio, config),
+      label: comparePerformance
+        ? `${config.defaultMetricLabel} (return)`
+        : config.defaultMetricLabel,
+      value: comparePerformance
+        ? `${formatSailChartPercentChange(row.defaultRatio)} · ${formatSailChartDefaultValue(baseAbs, config)}`
+        : formatSailChartDefaultValue(baseAbs, config),
       color: SERIES_COLORS.defaultRatio,
     },
   ];
 
-  if (showHsPriceUsd) {
-    const hsValue = row.hsPriceUsd;
+  if (comparePerformance) {
     items.push({
-      label: `${config.hsSymbol} (USD)`,
-      value: formatSailChartUsdValue(
-        hsValue == null ? undefined : hsValue,
-      ),
+      label: `${config.hsSymbol} (return)`,
+      value: `${formatSailChartPercentChange(row.hsPriceUsd)} · ${formatSailChartUsdValue(hsAbs)}`,
       color: SERIES_COLORS.hsPriceUsd,
     });
   }
@@ -89,6 +96,16 @@ function MultiSeriesTooltip({
   );
 }
 
+function formatAbsoluteAxisTick(value: number, config: SailMarketChartConfig): string {
+  if (!Number.isFinite(value)) return "";
+  if (config.shortLabel === "USD") {
+    return `$${value.toFixed(0)}`;
+  }
+  if (value < 0.001) return value.toExponential(1);
+  if (value < 1) return value.toFixed(4);
+  return value.toFixed(2);
+}
+
 export function SailMarketMultiSeriesChart({
   data,
   config,
@@ -96,26 +113,36 @@ export function SailMarketMultiSeriesChart({
   formatTimestamp,
   formatTooltipTimestamp,
 }: SailMarketMultiSeriesChartProps) {
-  const chartData = toRechartsSailChartData(data);
-  const showHsLine = showHsPriceUsd;
+  const comparePerformance = showHsPriceUsd;
+  const chartData = toRechartsSailChartData(data, comparePerformance);
 
-  const legendPayload = [
-    {
-      value: config.defaultMetricLabel,
-      type: "line" as const,
-      color: SERIES_COLORS.defaultRatio,
-    },
-    ...(showHsLine
-      ? [{ value: `${config.hsSymbol} (USD)`, type: "line" as const, color: SERIES_COLORS.hsPriceUsd }]
-      : []),
-  ];
+  const legendPayload = comparePerformance
+    ? [
+        {
+          value: `${config.defaultMetricLabel} (% chg)`,
+          type: "line" as const,
+          color: SERIES_COLORS.defaultRatio,
+        },
+        {
+          value: `${config.hsSymbol} (% chg)`,
+          type: "line" as const,
+          color: SERIES_COLORS.hsPriceUsd,
+        },
+      ]
+    : [
+        {
+          value: config.defaultMetricLabel,
+          type: "line" as const,
+          color: SERIES_COLORS.defaultRatio,
+        },
+      ];
 
   return (
     <ResponsiveContainer width="100%" height="100%">
       <ComposedChart
-        key={showHsLine ? "dual-axis" : "single-axis"}
+        key={comparePerformance ? "performance-compare" : "absolute-rate"}
         data={chartData}
-        margin={{ top: 8, right: showHsLine ? 56 : 15, bottom: 30, left: 8 }}
+        margin={{ top: 8, right: 15, bottom: 30, left: 8 }}
       >
         <defs>
           <linearGradient id="sailDefaultGradient" x1="0" y1="0" x2="0" y2="1">
@@ -142,35 +169,23 @@ export function SailMarketMultiSeriesChart({
           opacity={0.6}
           tick={{ fontSize: 10, fill: "#1E4775", fontWeight: 500 }}
           tickLine={{ stroke: "#1E4775", opacity: 0.3 }}
-          domain={["auto", "auto"]}
+          domain={comparePerformance ? ["auto", "auto"] : ["auto", "auto"]}
           width={56}
           tickFormatter={(v) => {
             const n = Number(v);
             if (!Number.isFinite(n)) return "";
-            if (config.shortLabel === "USD") {
-              return `$${n.toFixed(0)}`;
-            }
-            if (n < 0.001) return n.toExponential(1);
-            if (n < 1) return n.toFixed(4);
-            return n.toFixed(2);
+            return comparePerformance
+              ? formatSailChartPercentChange(n)
+              : formatAbsoluteAxisTick(n, config);
           }}
         />
-        {showHsLine ? (
-          <YAxis
-            yAxisId="right"
-            orientation="right"
-            stroke={SERIES_COLORS.hsPriceUsd}
-            opacity={0.75}
-            tick={{ fontSize: 10, fill: SERIES_COLORS.hsPriceUsd, fontWeight: 500 }}
-            tickLine={{ stroke: SERIES_COLORS.hsPriceUsd, opacity: 0.35 }}
-            domain={["auto", "auto"]}
-            width={52}
-            tickFormatter={(v) => {
-              const n = Number(v);
-              if (!Number.isFinite(n)) return "";
-              if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`;
-              return `$${n.toFixed(0)}`;
-            }}
+        {comparePerformance ? (
+          <ReferenceLine
+            yAxisId="left"
+            y={0}
+            stroke="#1E4775"
+            strokeDasharray="3 3"
+            opacity={0.35}
           />
         ) : null}
         <Tooltip
@@ -178,7 +193,7 @@ export function SailMarketMultiSeriesChart({
             <MultiSeriesTooltip
               formatTooltipTimestamp={formatTooltipTimestamp}
               config={config}
-              showHsPriceUsd={showHsPriceUsd}
+              comparePerformance={comparePerformance}
             />
           }
         />
@@ -192,26 +207,51 @@ export function SailMarketMultiSeriesChart({
             payload={legendPayload}
           />
         ) : null}
-        <Area
-          yAxisId="left"
-          type="monotone"
-          dataKey="defaultRatio"
-          name={config.defaultMetricLabel}
-          stroke={SERIES_COLORS.defaultRatio}
-          strokeWidth={2}
-          fillOpacity={1}
-          fill="url(#sailDefaultGradient)"
-          dot={false}
-          activeDot={{ r: 4, strokeWidth: 2, fill: "#0c0c0c", stroke: SERIES_COLORS.defaultRatio }}
-          connectNulls
-          isAnimationActive={false}
-        />
-        {showHsLine ? (
+        {comparePerformance ? (
           <Line
-            yAxisId="right"
+            yAxisId="left"
+            type="monotone"
+            dataKey="defaultRatio"
+            name={`${config.defaultMetricLabel} (% chg)`}
+            stroke={SERIES_COLORS.defaultRatio}
+            strokeWidth={2}
+            dot={false}
+            activeDot={{
+              r: 4,
+              strokeWidth: 2,
+              fill: "#fff",
+              stroke: SERIES_COLORS.defaultRatio,
+            }}
+            connectNulls
+            isAnimationActive={false}
+          />
+        ) : (
+          <Area
+            yAxisId="left"
+            type="monotone"
+            dataKey="defaultRatio"
+            name={config.defaultMetricLabel}
+            stroke={SERIES_COLORS.defaultRatio}
+            strokeWidth={2}
+            fillOpacity={1}
+            fill="url(#sailDefaultGradient)"
+            dot={false}
+            activeDot={{
+              r: 4,
+              strokeWidth: 2,
+              fill: "#0c0c0c",
+              stroke: SERIES_COLORS.defaultRatio,
+            }}
+            connectNulls
+            isAnimationActive={false}
+          />
+        )}
+        {comparePerformance ? (
+          <Line
+            yAxisId="left"
             type="monotone"
             dataKey="hsPriceUsd"
-            name={`${config.hsSymbol} (USD)`}
+            name={`${config.hsSymbol} (% chg)`}
             stroke={SERIES_COLORS.hsPriceUsd}
             strokeWidth={2.5}
             strokeDasharray="5 4"

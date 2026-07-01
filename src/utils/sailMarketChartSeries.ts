@@ -316,14 +316,71 @@ export function buildSailMarketChartPoints(
 }
 
 /** Recharts treats null as a gap; NaN can break dual-axis line scales. */
+export type SailMarketChartRechartsPoint = SailMarketChartPoint & {
+  defaultRatio: number | null;
+  hsPriceUsd: number | null;
+  /** Absolute values preserved when plotting relative performance. */
+  defaultRatioAbs: number | null;
+  hsPriceUsdAbs: number | null;
+};
+
+function firstPositiveFinite(values: Array<number | null | undefined>): number | null {
+  for (const value of values) {
+    if (value != null && Number.isFinite(value) && value > 0) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function percentChangeFromBaseline(
+  current: number | null,
+  baseline: number | null,
+): number | null {
+  if (
+    current == null ||
+    baseline == null ||
+    !Number.isFinite(current) ||
+    !Number.isFinite(baseline) ||
+    baseline <= 0
+  ) {
+    return null;
+  }
+  return ((current / baseline) - 1) * 100;
+}
+
 export function toRechartsSailChartData(
   data: SailMarketChartPoint[],
-): Array<SailMarketChartPoint & { defaultRatio: number | null; hsPriceUsd: number | null }> {
-  return data.map((row) => ({
+  comparePerformance = false,
+): SailMarketChartRechartsPoint[] {
+  const absoluteRows: SailMarketChartRechartsPoint[] = data.map((row) => {
+    const defaultRatioAbs =
+      Number.isFinite(row.defaultRatio) ? row.defaultRatio : null;
+    const hsPriceUsdAbs =
+      Number.isFinite(row.hsPriceUsd) && row.hsPriceUsd > 0 ? row.hsPriceUsd : null;
+
+    return {
+      ...row,
+      defaultRatio: defaultRatioAbs,
+      hsPriceUsd: hsPriceUsdAbs,
+      defaultRatioAbs,
+      hsPriceUsdAbs,
+    };
+  });
+
+  if (!comparePerformance) {
+    return absoluteRows;
+  }
+
+  const defaultBaseline = firstPositiveFinite(
+    absoluteRows.map((row) => row.defaultRatioAbs),
+  );
+  const hsBaseline = firstPositiveFinite(absoluteRows.map((row) => row.hsPriceUsdAbs));
+
+  return absoluteRows.map((row) => ({
     ...row,
-    defaultRatio: Number.isFinite(row.defaultRatio) ? row.defaultRatio : null,
-    hsPriceUsd:
-      Number.isFinite(row.hsPriceUsd) && row.hsPriceUsd > 0 ? row.hsPriceUsd : null,
+    defaultRatio: percentChangeFromBaseline(row.defaultRatioAbs, defaultBaseline),
+    hsPriceUsd: percentChangeFromBaseline(row.hsPriceUsdAbs, hsBaseline),
   }));
 }
 
@@ -363,6 +420,12 @@ export function formatSailChartUsdValue(value: number | null | undefined): strin
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+export function formatSailChartPercentChange(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return "—";
+  const sign = value > 0 ? "+" : value < 0 ? "" : "";
+  return `${sign}${value.toFixed(2)}%`;
 }
 
 /** Forward-fill Chainlink prices onto chart timestamps. */

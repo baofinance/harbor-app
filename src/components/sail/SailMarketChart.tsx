@@ -209,7 +209,7 @@ export function SailMarketChart({
       <div className="mb-2 flex shrink-0 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <OverlayToggle
-            label={`${config.hsSymbol} (USD)`}
+            label={`Compare ${config.hsSymbol}`}
             active={showHsPriceUsd}
             onClick={toggleOverlay}
             color="#6B5B95"
@@ -222,7 +222,9 @@ export function SailMarketChart({
               ? "Loading..."
               : isEnrichingOracles
                 ? "Updating oracle data..."
-                : `${validDefaultPoints.length} data points`}
+                : showHsPriceUsd && hasHsPriceData
+                  ? "Performance vs start of range"
+                  : `${validDefaultPoints.length} data points`}
           </div>
           <div className="flex flex-wrap justify-end gap-1.5 sm:gap-2">
             {SAIL_CHART_TIME_RANGES.map((range) => (
