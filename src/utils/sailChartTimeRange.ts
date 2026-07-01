@@ -14,6 +14,12 @@ export const SAIL_CHART_TIME_RANGES: readonly SailChartTimeRange[] = [
 
 const DAY_SEC = 24 * 60 * 60;
 
+/** Subgraph + oracle lookback for the selected chart range (small buffer, capped at 1Y). */
+export function sailChartFetchDaysForRange(range: SailChartTimeRange): number {
+  const windowDays = Math.ceil(sailChartRangeWindowSec(range) / DAY_SEC);
+  return Math.min(SAIL_CHART_HISTORY_DAYS, windowDays + 5);
+}
+
 export function sailChartRangeWindowSec(range: SailChartTimeRange): number {
   switch (range) {
     case "1D":

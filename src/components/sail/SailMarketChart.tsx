@@ -17,10 +17,10 @@ import {
   SAIL_CHART_TOGGLE_IDLE_CLASS,
 } from "@/components/sail/advanced/sailAdvancedStyles";
 import {
-  SAIL_CHART_HISTORY_DAYS,
   SAIL_CHART_TIME_RANGES,
   filterSailChartPointsByRange,
   formatSailChartAxisTimestamp,
+  sailChartFetchDaysForRange,
   type SailChartTimeRange,
 } from "@/utils/sailChartTimeRange";
 import {
@@ -75,9 +75,13 @@ export function SailMarketChart({
 
   const config = useMemo(() => getSailMarketChartConfig(market), [market]);
   const pegTargetPrices = usePegTargetPrices();
+  const fetchDays = useMemo(
+    () => sailChartFetchDaysForRange(timeRange),
+    [timeRange]
+  );
   const chartSinceTimestamp = useMemo(
-    () => Math.floor(Date.now() / 1000) - SAIL_CHART_HISTORY_DAYS * 24 * 60 * 60,
-    []
+    () => Math.floor(Date.now() / 1000) - fetchDays * 24 * 60 * 60,
+    [fetchDays]
   );
 
   const leveragedTokenAddress = markets[marketId]?.addresses?.leveragedToken as
@@ -129,7 +133,7 @@ export function SailMarketChart({
     tokenAddress: leveragedTokenAddress || "",
     genesisAddress: markets[marketId]?.addresses?.genesis as string | undefined,
     sinceGenesisEnd: true,
-    daysBack: SAIL_CHART_HISTORY_DAYS,
+    daysBack: fetchDays,
     enabled: !!leveragedTokenAddress,
   });
 
@@ -172,10 +176,12 @@ export function SailMarketChart({
     return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
   };
 
-  const isBlockingLoading = isSubgraphLoading;
   const isEnrichingOracles =
     (longNeedsChainlink && isLongChainlinkLoading) ||
     (shortNeedsChainlink && isShortChainlinkLoading);
+  const isAwaitingChartPoints =
+    validDefaultPoints.length === 0 && !subgraphError && isEnrichingOracles;
+  const isBlockingLoading = isSubgraphLoading || isAwaitingChartPoints;
 
   useEffect(() => {
     onConfigReady?.(config);
@@ -230,7 +236,9 @@ export function SailMarketChart({
       <div className="min-h-0 flex-1">
         {isBlockingLoading ? (
           <div className="flex h-full items-center justify-center text-[#1E4775]/60">
-            Loading price history...
+            {isSubgraphLoading
+              ? "Loading price history..."
+              : "Updating oracle data..."}
           </div>
         ) : validDefaultPoints.length === 0 ? (
           <div className="flex h-full items-center justify-center text-center text-sm text-[#1E4775]/60">

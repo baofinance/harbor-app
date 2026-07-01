@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   filterSailChartPointsByRange,
+  sailChartFetchDaysForRange,
   sailChartRangeWindowSec,
 } from "./sailChartTimeRange";
 
@@ -30,5 +31,10 @@ describe("sailChartTimeRange", () => {
   it("exposes expected range sizes", () => {
     expect(sailChartRangeWindowSec("1Y")).toBe(365 * day);
     expect(sailChartRangeWindowSec("3M")).toBe(90 * day);
+  });
+
+  it("scopes fetch window to selected range with buffer", () => {
+    expect(sailChartFetchDaysForRange("1M")).toBe(36);
+    expect(sailChartFetchDaysForRange("1Y")).toBe(366);
   });
 });
