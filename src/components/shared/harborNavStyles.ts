@@ -10,13 +10,13 @@ import {
 import {
   HARBOR_FROSTED_ACTIVE_PILL,
   HARBOR_FROSTED_DROPDOWN_SHELL,
-  HARBOR_FROSTED_INPUT_FILL,
   HARBOR_FROSTED_MODAL_SHELL,
   HARBOR_FROSTED_NAV_DROPDOWN_SHELL,
 } from "@/components/shared/harborFrostedSurfaceStyles";
 
-/** Selected primary nav link — white glass pill. */
-export const HARBOR_NAV_LINK_ACTIVE_CLASS = HARBOR_FROSTED_ACTIVE_PILL;
+/** Selected primary nav link — white glass pill (Earn basic market card surface). */
+export const HARBOR_NAV_LINK_ACTIVE_CLASS =
+  `${HARBOR_FROSTED_ACTIVE_PILL} rounded-md`;
 
 /** Idle primary nav link — plain white text on navy header. */
 export const HARBOR_NAV_LINK_IDLE_CLASS =
@@ -29,16 +29,16 @@ export const HARBOR_NAV_MOBILE_LINK_IDLE_CLASS =
 /** Segmented control track (Theme, UI / UI+). */
 export const HARBOR_NAV_SEGMENT_SHELL_CLASS = "rounded-md bg-white/10 p-0.5";
 
-/** Selected segment — white glass pill. */
+/** Selected segment — white glass pill (matches active nav link). */
 export const HARBOR_NAV_SEGMENT_ACTIVE_CLASS =
-  `${HARBOR_FROSTED_ACTIVE_PILL} rounded px-2 py-2 text-sm font-medium`;
+  `${HARBOR_FROSTED_ACTIVE_PILL} rounded-md px-2 py-2 text-sm font-medium`;
 
 /** Idle segment. */
 export const HARBOR_NAV_SEGMENT_IDLE_CLASS =
   "rounded px-2 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20";
 
-/** Theme dropdown trigger inside segment track. */
-export const HARBOR_NAV_THEME_TRIGGER_CLASS = `h-9 w-full cursor-pointer rounded px-1.5 py-0 text-sm font-medium text-[#1E4775] focus:outline-none focus:ring-1 focus:ring-[#1E4775]/20 ${HARBOR_FROSTED_INPUT_FILL}`;
+/** Theme dropdown trigger — always frosted white (reference “white glass” control). */
+export const HARBOR_NAV_THEME_TRIGGER_CLASS = `h-9 w-full cursor-pointer rounded-md px-1.5 py-0 text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#1E4775]/20 ${HARBOR_FROSTED_ACTIVE_PILL}`;
 
 /** Connect / account chip in nav bar. */
 export const HARBOR_NAV_WALLET_CHIP_CLASS =
@@ -63,8 +63,9 @@ export const HARBOR_NAV_ICON_BUTTON_CLASS =
 export const HARBOR_NAV_MOBILE_MENU_BUTTON_CLASS =
   "rounded-md p-2 text-gray-200 transition-colors hover:bg-[#FF8A7A]/20 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-[#FF8A7A]";
 
-/** Wallet modal shell. */
-export const HARBOR_NAV_WALLET_MODAL_SHELL_CLASS = HARBOR_FROSTED_MODAL_SHELL;
+/** Wallet modal overlay — portaled to `document.body` so page glass stacks below. */
+export const HARBOR_NAV_WALLET_MODAL_OVERLAY_CLASS =
+  "fixed inset-0 z-[120] flex items-center justify-center px-4 pt-28";
 
 /** Wallet modal header strip. */
 export const HARBOR_NAV_WALLET_MODAL_HEADER_CLASS =

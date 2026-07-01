@@ -71,7 +71,7 @@ export function SailTradeFeeFooter({
           full fee structure
         </Link>
       </p>
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+      <div className="mt-1.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5">
         <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#1E4775]/70">
           Buy
           <SailFeeRatioCell

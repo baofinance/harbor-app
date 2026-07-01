@@ -56,9 +56,11 @@ export const HARBOR_FROSTED_CARD_CLASS = HARBOR_FROSTED_LIGHT_CARD_ROUNDED;
 /** Form controls on frosted panels. */
 export const HARBOR_FROSTED_INPUT_FILL = "bg-white/85 backdrop-blur-sm";
 
-/** Active nav pill, segmented toggle selected, tab selected, etc. */
-export const HARBOR_FROSTED_ACTIVE_PILL =
-  "bg-white/88 backdrop-blur-md backdrop-saturate-150 text-[#1E4775] border border-white/35 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.72),0_4px_16px_-12px_rgba(0,0,0,0.28)] ring-1 ring-[#1E4775]/10";
+/**
+ * Selected chrome on dark navy header — same frosted white as Earn/Sail basic market cards.
+ * Use on active nav links, UI/UI+ selected segment, theme trigger, tabs, etc.
+ */
+export const HARBOR_FROSTED_ACTIVE_PILL = `${HARBOR_FROSTED_LIGHT_CARD} text-[#1E4775]`;
 
 export const HARBOR_FROSTED_PILL =
   "bg-white/85 backdrop-blur-sm shadow-sm ring-1 ring-white/35";

@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { createPortal } from 'react-dom'
 import type { Connector } from 'wagmi'
 import { useAccount } from 'wagmi'
 import { Account } from '@/components/Account'
@@ -12,6 +13,7 @@ import {
   HARBOR_NAV_WALLET_CHIP_CLASS,
   HARBOR_NAV_WALLET_INSET_PANEL_CLASS,
   HARBOR_NAV_WALLET_MODAL_HEADER_CLASS,
+  HARBOR_NAV_WALLET_MODAL_OVERLAY_CLASS,
   HARBOR_NAV_WALLET_MODAL_SHELL_CLASS,
   HARBOR_NAV_WALLET_OPTION_CLASS,
 } from '@/components/shared/harborNavStyles'
@@ -170,8 +172,16 @@ const WalletModal = React.memo(function WalletModal({
     onClose: () => void
     onConnected: () => void
 }) {
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pt-28">
+    const [mounted, setMounted] = React.useState(false)
+
+    React.useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    if (!mounted) return null
+
+    return createPortal(
+        <div className={HARBOR_NAV_WALLET_MODAL_OVERLAY_CLASS}>
             <div
                 className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                 onClick={onClose}
@@ -206,6 +216,7 @@ const WalletModal = React.memo(function WalletModal({
                     <WalletOptions onConnected={onConnected} />
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body,
     )
 })

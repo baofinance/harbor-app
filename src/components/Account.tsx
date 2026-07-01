@@ -1,7 +1,8 @@
 'use client'
 
 import {useAccount, useBalance, useDisconnect, useSwitchChain} from 'wagmi'
-import {useMemo, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
+import { createPortal } from "react-dom";
 import NetworkIconClient from "@/components/NetworkIconClient";
 import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
 import {
@@ -11,6 +12,7 @@ import {
   HARBOR_NAV_WALLET_CHIP_CLASS,
   HARBOR_NAV_WALLET_INSET_PANEL_CLASS,
   HARBOR_NAV_WALLET_MODAL_HEADER_CLASS,
+  HARBOR_NAV_WALLET_MODAL_OVERLAY_CLASS,
   HARBOR_NAV_WALLET_MODAL_SHELL_CLASS,
 } from "@/components/shared/harborNavStyles";
 import * as React from "react";
@@ -19,10 +21,15 @@ import {Check, Copy, LogOut, Wallet} from "lucide-react";
 
 function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowModal: (show: boolean) => void }) {
     const [copied, setCopied] = useState(false);
+    const [mounted, setMounted] = useState(false);
     const {disconnect} = useDisconnect()
     const {error} = useSwitchChain()
 
     const { address  } = useAccount()
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     const {data: balance} = useBalance({
         address,
@@ -46,8 +53,9 @@ function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowMo
 
     return (
         <>
-            {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pt-36">
+            {showModal && mounted
+                ? createPortal(
+                <div className={`${HARBOR_NAV_WALLET_MODAL_OVERLAY_CLASS} pt-36`}>
                     <div
                         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                         onClick={() => setShowModal(false)}
@@ -146,8 +154,10 @@ function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowMo
                             </button>
                         </div>
                     </div>
-                </div>
-            )}
+                </div>,
+                document.body,
+                )
+                : null}
 
             <div>{error && error.message}</div>
         </>

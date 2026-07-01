@@ -97,7 +97,7 @@ export default function Example() {
                 <span
                   className={`shrink-0 rounded border px-1 py-0.5 text-[10px] font-bold leading-none font-mono ${
                     isActive("/genesis")
-                      ? "border-[#1E4775]/30 bg-[#1E4775] text-white"
+                      ? "border-[#1E4775]/25 bg-[#1E4775]/10 text-[#1E4775]"
                       : "border-white/40 bg-white/10 text-white"
                   }`}
                 >
@@ -240,7 +240,7 @@ export default function Example() {
                 <span
                   className={`rounded border px-1.5 py-0.5 text-xs font-bold font-mono ${
                     isActive("/genesis")
-                      ? "border-[#1E4775]/30 bg-[#1E4775] text-white"
+                      ? "border-[#1E4775]/25 bg-[#1E4775]/10 text-[#1E4775]"
                       : "border-white/40 bg-white/10 text-white"
                   }`}
                 >
