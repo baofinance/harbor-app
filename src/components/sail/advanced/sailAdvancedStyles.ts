@@ -93,6 +93,9 @@ export const SAIL_MOBILE_TRADE_BUY_BUTTON_CLASS = `flex-1 rounded-lg px-4 py-2.5
 export const SAIL_MOBILE_TRADE_SELL_BUTTON_CLASS = `flex-1 rounded-lg px-4 py-2.5 text-sm active:scale-[0.98] ${HARBOR_BTN_GLASS_NAVY_DARK}`;
 
 /** Chart range / overlay toggles on frosted light chart chrome. */
+export const SAIL_CHART_BASELINE_COLOR = "#1F9D6A";
+export const SAIL_CHART_HS_COLOR = "#FF8A7A";
+
 export const SAIL_CHART_TOGGLE_IDLE_CLASS =
   "rounded-md border border-[#1E4775]/15 bg-white/60 px-2.5 py-1 text-[11px] font-medium text-[#1E4775]/55 transition hover:border-[#1E4775]/25 hover:bg-[#1E4775]/5";
 

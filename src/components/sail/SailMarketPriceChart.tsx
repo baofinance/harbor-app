@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
 import type { DefinedMarket } from "@/config/markets";
-import { formatUSD } from "@/utils/sailDisplayFormat";
 import {
   formatSailMarketDirectionTitle,
 } from "@/utils/sailMarketDirectionLabels";
@@ -43,7 +42,6 @@ export type SailMarketPriceChartProps = {
   hideTitle?: boolean;
   /** Price + symbol header for UI+ chart column. */
   showPriceHeader?: boolean;
-  tokenPriceUSD?: number;
   size?: SailMarketPriceChartSize;
   /** Grow chart to fill column height (UI+ desktop grid). */
   fillHeight?: boolean;
@@ -58,7 +56,6 @@ export function SailMarketPriceChart({
   className = "",
   hideTitle = false,
   showPriceHeader = false,
-  tokenPriceUSD,
   size = "default",
   fillHeight = false,
 }: SailMarketPriceChartProps) {
@@ -83,11 +80,6 @@ export function SailMarketPriceChart({
       ? formatSailChartDefaultValue(liveDefaultRatio, chartConfig)
       : "—";
 
-  const hsPriceDisplay =
-    tokenPriceUSD !== undefined && Number.isFinite(tokenPriceUSD)
-      ? formatUSD(tokenPriceUSD)
-      : null;
-
   return (
     <div
       className={`flex flex-col rounded-xl p-3 ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL} ${
@@ -103,11 +95,6 @@ export function SailMarketPriceChart({
             <p className="font-mono text-xl font-bold tabular-nums text-[#1E4775] sm:text-2xl">
               {primaryDisplay}
             </p>
-            {hsPriceDisplay ? (
-              <p className="mt-0.5 text-[11px] text-[#1E4775]/50">
-                {chartConfig?.hsSymbol ?? "hs"} spot {hsPriceDisplay}
-              </p>
-            ) : null}
           </div>
           <p className="hidden shrink-0 text-right text-[11px] text-[#1E4775]/50 sm:block">
             {chartTitle}

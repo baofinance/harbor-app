@@ -14,6 +14,7 @@ import {
   type SailMarketChartConfig,
 } from "@/utils/sailMarketChartSeries";
 import {
+  SAIL_CHART_HS_COLOR,
   SAIL_CHART_TOGGLE_ACTIVE_CLASS,
   SAIL_CHART_TOGGLE_IDLE_CLASS,
 } from "@/components/sail/advanced/sailAdvancedStyles";
@@ -75,7 +76,7 @@ export function SailMarketChart({
   onConfigReady,
 }: SailMarketChartProps) {
   const [timeRange, setTimeRange] = useState<SailChartTimeRange>("1M");
-  const [showHsPriceUsd, setShowHsPriceUsd] = useState(false);
+  const [showHsPriceUsd, setShowHsPriceUsd] = useState(true);
 
   const config = useMemo(() => getSailMarketChartConfig(market), [market]);
   const pegTargetPrices = usePegTargetPrices();
@@ -212,7 +213,7 @@ export function SailMarketChart({
             label={`Compare ${config.hsSymbol}`}
             active={showHsPriceUsd}
             onClick={toggleOverlay}
-            color="#6B5B95"
+            color={SAIL_CHART_HS_COLOR}
             disabled={!hasHsPriceData && !isBlockingLoading}
           />
         </div>

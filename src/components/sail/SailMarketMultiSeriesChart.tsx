@@ -20,6 +20,10 @@ import {
   toRechartsSailChartData,
   type SailMarketChartRechartsPoint,
 } from "@/utils/sailMarketChartSeries";
+import {
+  SAIL_CHART_BASELINE_COLOR,
+  SAIL_CHART_HS_COLOR,
+} from "@/components/sail/advanced/sailAdvancedStyles";
 
 interface SailMarketMultiSeriesChartProps {
   data: SailMarketChartPoint[];
@@ -30,8 +34,8 @@ interface SailMarketMultiSeriesChartProps {
 }
 
 const SERIES_COLORS = {
-  defaultRatio: "#1E4775",
-  hsPriceUsd: "#6B5B95",
+  defaultRatio: SAIL_CHART_BASELINE_COLOR,
+  hsPriceUsd: SAIL_CHART_HS_COLOR,
 } as const;
 
 function MultiSeriesTooltip({
@@ -166,9 +170,16 @@ export function SailMarketMultiSeriesChart({
         <YAxis
           yAxisId="left"
           stroke={SERIES_COLORS.defaultRatio}
-          opacity={0.6}
-          tick={{ fontSize: 10, fill: "#1E4775", fontWeight: 500 }}
-          tickLine={{ stroke: "#1E4775", opacity: 0.3 }}
+          opacity={0.75}
+          tick={{
+            fontSize: 10,
+            fill: comparePerformance ? SERIES_COLORS.defaultRatio : "#1E4775",
+            fontWeight: 500,
+          }}
+          tickLine={{
+            stroke: comparePerformance ? SERIES_COLORS.defaultRatio : "#1E4775",
+            opacity: 0.35,
+          }}
           domain={comparePerformance ? ["auto", "auto"] : ["auto", "auto"]}
           width={56}
           tickFormatter={(v) => {
@@ -183,9 +194,9 @@ export function SailMarketMultiSeriesChart({
           <ReferenceLine
             yAxisId="left"
             y={0}
-            stroke="#1E4775"
+            stroke={SERIES_COLORS.defaultRatio}
             strokeDasharray="3 3"
-            opacity={0.35}
+            opacity={0.25}
           />
         ) : null}
         <Tooltip
@@ -254,7 +265,6 @@ export function SailMarketMultiSeriesChart({
             name={`${config.hsSymbol} (% chg)`}
             stroke={SERIES_COLORS.hsPriceUsd}
             strokeWidth={2.5}
-            strokeDasharray="5 4"
             dot={false}
             activeDot={{
               r: 4,
