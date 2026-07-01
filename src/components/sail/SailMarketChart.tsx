@@ -165,13 +165,8 @@ export function SailMarketChart({
 
   const chartPoints = useMemo(
     () =>
-      buildSailMarketChartPoints(
-        config,
-        mergedSubgraph,
-        chainlinkHistories,
-        livePrices
-      ),
-    [config, mergedSubgraph, chainlinkHistories, livePrices]
+      buildSailMarketChartPoints(config, mergedSubgraph, chainlinkHistories),
+    [config, mergedSubgraph, chainlinkHistories]
   );
 
   const filteredData = useMemo(

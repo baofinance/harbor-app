@@ -125,19 +125,12 @@ export function SailWalletStatsStrip({
   const shellClass = embedded ? SAIL_WALLET_STATS_EMBEDDED_SHELL : SAIL_WALLET_STATS_SHELL;
 
   if (!isConnected) {
-    const disconnectedGridClass = showSailMarks
-      ? "grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto]"
-      : "grid-cols-1";
-
     return (
       <div
-        className={`${shellClass} ${disconnectedGridClass} ${className}`.trim()}
+        className={`${shellClass} grid-cols-1 ${className}`.trim()}
         aria-label="Your Sail wallet"
       >
         <SailConnectWalletStripNotice message="Connect your wallet to view portfolio stats." />
-        {showSailMarks ? (
-          <StatCell label="Sail marks" value={marksValue} />
-        ) : null}
       </div>
     );
   }

@@ -53,6 +53,19 @@ export const MV_FOOTER_PANEL_SURFACE =
 export const MV_FOOTER_PANEL =
   `border-t ${MV_FOOTER_PANEL_SURFACE}`;
 
+/** Coming soon preview — frosted veil over the active voyage card (dark theme). */
+export const MV_COMING_SOON_VEIL_CLASS =
+  "pointer-events-none absolute inset-0 z-[1] rounded-[inherit] bg-[#0a1628]/55 backdrop-blur-[2px]";
+
+export const MV_COMING_SOON_OVERLAY_CLASS =
+  "absolute inset-0 z-[2] flex cursor-not-allowed items-center justify-center";
+
+export const MV_COMING_SOON_LABEL_CLASS =
+  "rounded-full border border-white/20 bg-[#0a1628]/85 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-white/90 shadow-lg backdrop-blur-sm";
+
+export const MV_COMING_SOON_CONTENT_DIM_CLASS =
+  "relative z-0 flex min-h-0 flex-1 flex-col saturate-[0.78] brightness-[0.88]";
+
 export const MV_MUTED_TEXT = "text-white/75";
 
 /** Section and metric column labels. */

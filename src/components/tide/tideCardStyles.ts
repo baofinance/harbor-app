@@ -3,7 +3,11 @@ import {
   SAIL_ADVANCED_LIGHT_VALUE,
   SAIL_EMBEDDED_FORM_PANEL,
 } from "@/components/sail/advanced/sailAdvancedStyles";
-import { MV_GLASS_INSET_DARK } from "@/components/genesis/maidenVoyageLayoutStyles";
+import {
+  MV_CARD_INNER_GRADIENT,
+  MV_CARD_SHELL,
+  MV_GLASS_INSET_DARK,
+} from "@/components/genesis/maidenVoyageLayoutStyles";
 import {
   HARBOR_FROSTED_LIGHT_ICON_BADGE_BASE,
 } from "@/components/shared/harborFrostedSurfaceStyles";
@@ -13,13 +17,19 @@ import {
 } from "@/components/shared/harborButtonStyles";
 import type { StatusBadgeVariant } from "@/components/dashboard/portfolio/StatusBadge";
 
-/** Dark frosted glass inset — Tide airdrop card, flywheel revenue pill. */
+/** Dark frosted glass inset — flywheel revenue pill. */
 export const TIDE_DARK_GLASS_SHELL = `rounded-xl ${MV_GLASS_INSET_DARK}`;
 
-/** White frosted card shell — matches Sail embedded buy/sell panel. */
+/** Outer flywheel section glass — matches `TideValueFlywheel` shell. */
+export const TIDE_FLYWHEEL_BOX_SHELL = `${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT}`;
+
+/** White frosted card shell — Claim / Swap dashboard cards. */
 export const TIDE_FEATURE_CARD_SHELL = `flex min-h-[320px] flex-col lg:h-full ${SAIL_EMBEDDED_FORM_PANEL}`;
 
-/** Dark frosted feature card — airdrop snapshot panel. */
+/** Flywheel-box dashboard card — Airdrop snapshot panel. */
+export const TIDE_FLYWHEEL_BOX_CARD_SHELL = `flex min-h-[320px] flex-col lg:h-full overflow-hidden p-3 sm:p-4 ${TIDE_FLYWHEEL_BOX_SHELL}`;
+
+/** @deprecated Use TIDE_FLYWHEEL_BOX_CARD_SHELL for flywheel glass. */
 export const TIDE_DARK_FEATURE_CARD_SHELL = `flex min-h-[320px] flex-col lg:h-full ${TIDE_DARK_GLASS_SHELL} p-3 sm:p-4`;
 
 export const TIDE_FEATURE_CARD_TITLE =

@@ -14,6 +14,7 @@ import {
   TIDE_DARK_INSET_LABEL_CLASS,
   TIDE_FEATURE_CARD_SHELL,
   TIDE_FEATURE_CARD_TITLE,
+  TIDE_FLYWHEEL_BOX_CARD_SHELL,
   TIDE_FOOTER_NOTE_CLASS,
   TIDE_INSET_LIGHT_LABEL_CLASS,
 } from "./tideCardStyles";
@@ -29,7 +30,7 @@ export type TideFeatureCardProps = {
   footer?: string;
   footerExtra?: ReactNode;
   footerExtraClassName?: string;
-  variant?: "light" | "dark";
+  variant?: "light" | "dark" | "flywheel";
   children: ReactNode;
 };
 
@@ -47,15 +48,24 @@ export function TideFeatureCard({
   variant = "light",
   children,
 }: TideFeatureCardProps) {
-  const isDark = variant === "dark";
-  const shellClass = isDark ? TIDE_DARK_FEATURE_CARD_SHELL : TIDE_FEATURE_CARD_SHELL;
-  const titleClass = isDark ? TIDE_DARK_FEATURE_CARD_TITLE : TIDE_FEATURE_CARD_TITLE;
-  const subtitleLabelClass = isDark
+  const isDarkChrome = variant === "dark" || variant === "flywheel";
+  const shellClass =
+    variant === "flywheel"
+      ? TIDE_FLYWHEEL_BOX_CARD_SHELL
+      : variant === "dark"
+        ? TIDE_DARK_FEATURE_CARD_SHELL
+        : TIDE_FEATURE_CARD_SHELL;
+  const titleClass = isDarkChrome
+    ? TIDE_DARK_FEATURE_CARD_TITLE
+    : TIDE_FEATURE_CARD_TITLE;
+  const subtitleLabelClass = isDarkChrome
     ? TIDE_DARK_INSET_LABEL_CLASS
     : TIDE_INSET_LIGHT_LABEL_CLASS;
-  const footerClass = isDark ? TIDE_DARK_CARD_FOOTER : TIDE_CARD_FOOTER;
-  const footerNoteClass = isDark ? TIDE_DARK_FOOTER_NOTE_CLASS : TIDE_FOOTER_NOTE_CLASS;
-  const infoIconClass = isDark ? "text-white/35" : "text-[#1E4775]/40";
+  const footerClass = isDarkChrome ? TIDE_DARK_CARD_FOOTER : TIDE_CARD_FOOTER;
+  const footerNoteClass = isDarkChrome
+    ? TIDE_DARK_FOOTER_NOTE_CLASS
+    : TIDE_FOOTER_NOTE_CLASS;
+  const infoIconClass = isDarkChrome ? "text-white/35" : "text-[#1E4775]/40";
 
   return (
     <article className={shellClass}>
@@ -78,7 +88,7 @@ export function TideFeatureCard({
             <StatusBadge
               label={badge}
               variant={badgeVariant}
-              surface={isDark ? "dark" : "light"}
+              surface={isDarkChrome ? "dark" : "light"}
             />
           ) : null}
         </div>

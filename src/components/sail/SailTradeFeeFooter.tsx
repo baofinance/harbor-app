@@ -60,8 +60,16 @@ export function SailTradeFeeFooter({
 
   return (
     <div className="rounded-md border border-[#1E4775]/10 bg-[#17395F]/5 px-3 py-2.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/55">
-        Fees
+      <p className="flex flex-wrap items-baseline gap-x-2 text-[10px] leading-snug">
+        <span className="font-semibold uppercase tracking-wide text-[#1E4775]/55">
+          Fees
+        </span>
+        <Link
+          href="/transparency"
+          className="text-[#1E4775]/55 underline-offset-2 transition-colors hover:text-[#1E4775] hover:underline"
+        >
+          full fee structure
+        </Link>
       </p>
       <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#1E4775]/70">
@@ -94,12 +102,6 @@ export function SailTradeFeeFooter({
             />
           ) : null}
         </span>
-        <Link
-          href="/transparency"
-          className="text-[11px] text-[#1E4775]/55 underline-offset-2 transition-colors hover:text-[#1E4775] hover:underline"
-        >
-          (see full fee structure)
-        </Link>
       </div>
     </div>
   );

@@ -1,17 +1,14 @@
 import {
   MV_ACCENT_GRADIENT,
-  MV_CARD_INNER_GRADIENT,
-  MV_CARD_SHELL,
-  MV_FOOTER_PANEL,
-  MV_GLASS_INSET_DARK,
   MV_HEADLINE,
   MV_PROGRESS_FILL,
   MV_PROGRESS_FILL_COMPLETE,
+  MV_FOOTER_PANEL,
 } from "@/components/genesis/maidenVoyageLayoutStyles";
 import { HARBOR_FROSTED_LIGHT_CARD_ELEVATED, HARBOR_FROSTED_LIGHT_ICON_BADGE_BASE } from "@/components/shared/harborFrostedSurfaceStyles";
-import { TIDE_META_TEXT } from "@/components/tide/tideCardStyles";
+import { TIDE_DARK_GLASS_SHELL, TIDE_FLYWHEEL_BOX_SHELL, TIDE_META_TEXT } from "@/components/tide/tideCardStyles";
 
-export const TIDE_FLYWHEEL_SECTION_CLASS = `mt-8 flex min-w-0 flex-col overflow-hidden ${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT}`;
+export const TIDE_FLYWHEEL_SECTION_CLASS = `mt-8 flex min-w-0 flex-col overflow-hidden ${TIDE_FLYWHEEL_BOX_SHELL}`;
 
 export const TIDE_FLYWHEEL_CONTENT_CLASS = "min-w-0 p-3 sm:p-4 lg:p-5";
 
@@ -63,7 +60,7 @@ export const TIDE_FLYWHEEL_SCROLL_ROW =
 export const TIDE_FLYWHEEL_DESKTOP_ROW =
   "flex w-max min-w-full items-stretch gap-2 lg:grid lg:w-full lg:min-w-0 lg:max-w-full lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-x-0.5";
 
-export const TIDE_FLYWHEEL_REVENUE_PILL = `rounded-xl ${MV_GLASS_INSET_DARK} inline-flex shrink-0 flex-col items-center gap-1 self-center p-3 text-center sm:min-w-[11rem] sm:self-auto sm:p-4`;
+export const TIDE_FLYWHEEL_REVENUE_PILL = `${TIDE_DARK_GLASS_SHELL} inline-flex shrink-0 flex-col items-center gap-1 self-center p-3 text-center sm:min-w-[11rem] sm:self-auto sm:p-4`;
 
 export const TIDE_FLYWHEEL_REVENUE_LABEL =
   "text-[10px] font-medium uppercase tracking-wide text-center text-white/55";

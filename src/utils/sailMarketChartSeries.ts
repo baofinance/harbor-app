@@ -182,7 +182,6 @@ function resolvePegAssetUsd(
   collateralPrices: number[],
   config: SailMarketChartConfig,
   resampledByAsset: Partial<Record<PegAssetKey, number[]>>,
-  liveFallback?: LiveSideUsdPrices,
 ): number {
   if (pegAsset === "USD") return 1;
 
@@ -191,17 +190,12 @@ function resolvePegAssetUsd(
     return fromChainlink!;
   }
 
-  // Subgraph collateral USD tracks wstETH/fxSAVE — only use when magnitude matches the peg asset.
+  // Subgraph collateral USD tracks wstETH/fxSAVE — fallback when Chainlink is sparse.
   if (pegAsset === config.longPegAsset) {
     const collateral = collateralPrices[index];
     if (isPlausiblePegUsdPrice(pegAsset, collateral)) {
       return collateral;
     }
-  }
-
-  const spot = liveFallback ? pegAssetUsdFromLive(pegAsset, liveFallback) : null;
-  if (spot != null && isPlausiblePegUsdPrice(pegAsset, spot)) {
-    return spot;
   }
 
   return NaN;
@@ -265,8 +259,7 @@ export function buildChartTimestamps(
 export function buildSailMarketChartPoints(
   config: SailMarketChartConfig,
   mergedSubgraph: MergedChartPoint[],
-  chainlinkHistories: Partial<Record<PegAssetKey, ChainlinkPricePoint[]>>,
-  liveFallback?: LiveSideUsdPrices
+  chainlinkHistories: Partial<Record<PegAssetKey, ChainlinkPricePoint[]>>
 ): SailMarketChartPoint[] {
   const timestamps = buildChartTimestamps(mergedSubgraph, chainlinkHistories);
   if (timestamps.length === 0) return [];
@@ -295,16 +288,14 @@ export function buildSailMarketChartPoints(
       i,
       collateralPrices,
       config,
-      resampledByAsset,
-      liveFallback
+      resampledByAsset
     );
     const shortUsd = resolvePegAssetUsd(
       config.shortPegAsset,
       i,
       collateralPrices,
       config,
-      resampledByAsset,
-      liveFallback
+      resampledByAsset
     );
     const hsPriceUsd = hsPrices[i];
     const defaultRatio =

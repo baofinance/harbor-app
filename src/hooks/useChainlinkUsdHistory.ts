@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { formatUnits } from "viem";
+import { CHAINLINK_AGGREGATOR_ABI } from "@/abis/chainlink";
 import { CHAINLINK_FEEDS } from "@/config/chainlink";
-import { CHAINLINK_ORACLE_ABI } from "@/abis/shared";
 import type { ChainlinkPricePoint, PegAssetKey } from "@/utils/sailMarketChartSeries";
 
 const ROUNDS_TO_FETCH = 1000;
@@ -56,39 +56,45 @@ export function useChainlinkUsdHistory(
     async function fetchHistory() {
       setIsLoading(true);
       try {
-        const latestRound = await publicClient!.readContract({
-          address: feedAddress!,
-          abi: CHAINLINK_ORACLE_ABI,
-          functionName: "latestRoundData",
-        });
+        const [latestRound, decimals] = await Promise.all([
+          publicClient!.readContract({
+            address: feedAddress!,
+            abi: CHAINLINK_AGGREGATOR_ABI,
+            functionName: "latestRoundData",
+          }),
+          publicClient!.readContract({
+            address: feedAddress!,
+            abi: CHAINLINK_AGGREGATOR_ABI,
+            functionName: "decimals",
+          }),
+        ]);
 
         const points: ChainlinkPricePoint[] = [];
-        const latestRoundId = Number(latestRound[0]);
+        let roundId = latestRound[0];
         const cutoffTs =
           minTimestamp ??
           Math.floor(Date.now() / 1000) - MAX_HISTORY_AGE_SEC;
 
-        for (let i = 0; i < ROUNDS_TO_FETCH; i++) {
-          const roundId = latestRoundId - i;
-          if (roundId <= 0) break;
-
+        while (points.length < ROUNDS_TO_FETCH && roundId > 0n) {
           try {
             const roundData = await publicClient!.readContract({
               address: feedAddress!,
-              abi: CHAINLINK_ORACLE_ABI,
+              abi: CHAINLINK_AGGREGATOR_ABI,
               functionName: "getRoundData",
-              args: [BigInt(roundId)],
+              args: [roundId],
             });
 
-            const price = Number(formatUnits(roundData[1], 8));
+            const price = Number(formatUnits(roundData[1], decimals));
             const timestamp = Number(roundData[3]);
 
             if (timestamp > 0 && price > 0) {
               points.push({ timestamp, priceUsd: price });
               if (timestamp <= cutoffTs) break;
             }
+
+            roundId = roundId - 1n;
           } catch {
-            continue;
+            break;
           }
         }
 

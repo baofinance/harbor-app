@@ -221,7 +221,7 @@ export function Account() {
         <>
             <button
                 onClick={() => setShowModal(true)}
-                className={`relative inline-flex items-center gap-2 ${HARBOR_NAV_WALLET_CHIP_CLASS}`}
+                className={`relative inline-flex items-center ${HARBOR_NAV_WALLET_CHIP_CLASS}`}
             >
                 <Wallet className="h-4 w-4 shrink-0 text-[#1E4775]/80" />
                 <div className="flex items-center gap-2">

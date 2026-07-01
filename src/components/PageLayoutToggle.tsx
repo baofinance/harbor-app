@@ -43,7 +43,7 @@ export function PageLayoutToggle({
     backgroundOptions[0];
 
   const segment = (active: boolean) =>
-    `min-w-[2.75rem] tabular-nums tracking-tight transition-colors ${
+    `min-w-[2.75rem] tabular-nums tracking-tight ${
       active ? HARBOR_NAV_SEGMENT_ACTIVE_CLASS : HARBOR_NAV_SEGMENT_IDLE_CLASS
     }`;
   return (
@@ -56,7 +56,7 @@ export function PageLayoutToggle({
           by={(a, b) => a.id === b.id}
           onChange={(next) => setBackgroundMode(next.id)}
         >
-          <ListboxButton className={`${HARBOR_NAV_THEME_TRIGGER_CLASS} flex cursor-pointer items-center justify-between gap-1`}>
+          <ListboxButton className={`${HARBOR_NAV_THEME_TRIGGER_CLASS} flex items-center justify-between gap-1`}>
             <span className="inline-flex items-center gap-1 min-w-0">
               <NetworkIconClient
                 name={selectedBackground.icon}
@@ -71,7 +71,7 @@ export function PageLayoutToggle({
           </ListboxButton>
           <ListboxOptions
             modal={false}
-            className={`absolute right-0 top-[calc(100%+4px)] z-50 w-full overflow-hidden rounded-md outline-none backdrop-blur-lg backdrop-saturate-150 ${HARBOR_FROSTED_DROPDOWN_SHELL}`}
+            className={`absolute right-0 top-[calc(100%+4px)] z-50 w-full overflow-hidden rounded-md outline-none ${HARBOR_FROSTED_DROPDOWN_SHELL}`}
           >
             {backgroundOptions.map((option) => (
               <ListboxOption
