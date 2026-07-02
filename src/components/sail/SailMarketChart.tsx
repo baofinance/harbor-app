@@ -15,6 +15,7 @@ import {
 } from "@/utils/sailMarketChartSeries";
 import {
   SAIL_CHART_HS_COLOR,
+  SAIL_CHART_LEVERAGE_TOKEN_LABEL,
   SAIL_CHART_TOGGLE_ACTIVE_CLASS,
   SAIL_CHART_TOGGLE_IDLE_CLASS,
 } from "@/components/sail/advanced/sailAdvancedStyles";
@@ -34,6 +35,12 @@ export type SailMarketChartProps = {
   market: DefinedMarket;
   onLiveDefaultRatioChange?: (value: number | null) => void;
   onConfigReady?: (config: SailMarketChartConfig) => void;
+  /** Controlled compare overlay toggle (optional). */
+  showHsPriceOverlay?: boolean;
+  onShowHsPriceOverlayChange?: (value: boolean) => void;
+  /** Hide Recharts legend when rendered in the price header. */
+  hideLegend?: boolean;
+  onHasHsPriceDataChange?: (hasData: boolean) => void;
 };
 
 function OverlayToggle({
@@ -74,9 +81,15 @@ export function SailMarketChart({
   market,
   onLiveDefaultRatioChange,
   onConfigReady,
+  showHsPriceOverlay,
+  onShowHsPriceOverlayChange,
+  hideLegend = false,
+  onHasHsPriceDataChange,
 }: SailMarketChartProps) {
   const [timeRange, setTimeRange] = useState<SailChartTimeRange>("1M");
-  const [showHsPriceUsd, setShowHsPriceUsd] = useState(true);
+  const [internalShowHsPriceUsd, setInternalShowHsPriceUsd] = useState(true);
+  const showHsPriceUsd = showHsPriceOverlay ?? internalShowHsPriceUsd;
+  const setShowHsPriceUsd = onShowHsPriceOverlayChange ?? setInternalShowHsPriceUsd;
 
   const config = useMemo(() => getSailMarketChartConfig(market), [market]);
   const pegTargetPrices = usePegTargetPrices();
@@ -201,48 +214,48 @@ export function SailMarketChart({
     onLiveDefaultRatioChange?.(ratio);
   }, [config, livePrices, onLiveDefaultRatioChange]);
 
+  useEffect(() => {
+    onHasHsPriceDataChange?.(hasHsPriceData);
+  }, [hasHsPriceData, onHasHsPriceDataChange]);
+
   const toggleOverlay = () => {
-    setShowHsPriceUsd((prev) => !prev);
+    setShowHsPriceUsd(!showHsPriceUsd);
   };
 
   return (
     <div className="relative z-10 flex h-full min-h-0 flex-col">
-      <div className="mb-2 flex shrink-0 flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <OverlayToggle
-            label={`Compare ${config.hsSymbol}`}
-            active={showHsPriceUsd}
-            onClick={toggleOverlay}
-            color={SAIL_CHART_HS_COLOR}
-            disabled={!hasHsPriceData && !isBlockingLoading}
-          />
+      <div className="mb-2 flex shrink-0 flex-wrap items-center gap-2">
+        <OverlayToggle
+          label={`Compare ${SAIL_CHART_LEVERAGE_TOKEN_LABEL}`}
+          active={showHsPriceUsd}
+          onClick={toggleOverlay}
+          color={SAIL_CHART_HS_COLOR}
+          disabled={!hasHsPriceData && !isBlockingLoading}
+        />
+        <div className="min-w-0 flex-1 text-xs text-[#1E4775]/60">
+          {isBlockingLoading
+            ? "Loading..."
+            : isEnrichingOracles
+              ? "Updating oracle data..."
+              : showHsPriceUsd && hasHsPriceData
+                ? "Performance vs start of range"
+                : `${validDefaultPoints.length} data points`}
         </div>
-        <div className="flex items-center justify-end gap-4">
-          <div className="text-xs text-[#1E4775]/60">
-            {isBlockingLoading
-              ? "Loading..."
-              : isEnrichingOracles
-                ? "Updating oracle data..."
-                : showHsPriceUsd && hasHsPriceData
-                  ? "Performance vs start of range"
-                  : `${validDefaultPoints.length} data points`}
-          </div>
-          <div className="flex flex-wrap justify-end gap-1.5 sm:gap-2">
-            {SAIL_CHART_TIME_RANGES.map((range) => (
-              <button
-                key={range}
-                type="button"
-                onClick={() => setTimeRange(range)}
-                className={`rounded-md px-2 py-1 text-xs transition-colors ${
-                  timeRange === range
-                    ? SAIL_CHART_TOGGLE_ACTIVE_CLASS
-                    : SAIL_CHART_TOGGLE_IDLE_CLASS
-                }`}
-              >
-                {range}
-              </button>
-            ))}
-          </div>
+        <div className="flex flex-wrap justify-end gap-1.5 sm:gap-2">
+          {SAIL_CHART_TIME_RANGES.map((range) => (
+            <button
+              key={range}
+              type="button"
+              onClick={() => setTimeRange(range)}
+              className={`rounded-md px-2 py-1 text-xs transition-colors ${
+                timeRange === range
+                  ? SAIL_CHART_TOGGLE_ACTIVE_CLASS
+                  : SAIL_CHART_TOGGLE_IDLE_CLASS
+              }`}
+            >
+              {range}
+            </button>
+          ))}
         </div>
       </div>
       <div className="min-h-0 flex-1">
@@ -265,6 +278,7 @@ export function SailMarketChart({
             showHsPriceUsd={showHsPriceUsd && hasHsPriceData}
             formatTimestamp={formatTimestamp}
             formatTooltipTimestamp={formatTooltipTimestamp}
+            hideLegend={hideLegend}
           />
         )}
       </div>

@@ -11,6 +11,7 @@ import {
   type SailMarketChartConfig,
 } from "@/utils/sailMarketChartSeries";
 import { SAIL_ADVANCED_FROSTED_LIGHT_PANEL } from "@/components/sail/advanced/sailAdvancedStyles";
+import { SailChartSeriesLegend } from "@/components/sail/SailChartSeriesLegend";
 
 const SailMarketChart = dynamic(
   () =>
@@ -66,6 +67,8 @@ export function SailMarketPriceChart({
 
   const [chartConfig, setChartConfig] = useState<SailMarketChartConfig | null>(null);
   const [liveDefaultRatio, setLiveDefaultRatio] = useState<number | null>(null);
+  const [showHsOverlay, setShowHsOverlay] = useState(true);
+  const [hasHsOverlayData, setHasHsOverlayData] = useState(false);
 
   const handleConfigReady = useCallback((config: SailMarketChartConfig) => {
     setChartConfig(config);
@@ -88,17 +91,21 @@ export function SailMarketPriceChart({
     >
       {showPriceHeader ? (
         <div className="mb-2 flex shrink-0 items-end justify-between gap-3 border-b border-[#1E4775]/10 pb-2">
-          <div className="min-w-0">
-            <p className="truncate text-xs font-medium uppercase tracking-wide text-[#1E4775]/55">
+          <div className="min-w-0 shrink-0">
+            <p className="truncate text-[10px] font-medium uppercase tracking-wide text-[#1E4775]/50">
               {chartConfig?.defaultMetricLabel ?? "Market rate"}
             </p>
-            <p className="font-mono text-xl font-bold tabular-nums text-[#1E4775] sm:text-2xl">
+            <p className="font-mono text-sm font-semibold tabular-nums text-[#1E4775] sm:text-base">
               {primaryDisplay}
             </p>
           </div>
-          <p className="hidden shrink-0 text-right text-[11px] text-[#1E4775]/50 sm:block">
-            {chartTitle}
-          </p>
+          {chartConfig && showHsOverlay && hasHsOverlayData ? (
+            <SailChartSeriesLegend
+              config={chartConfig}
+              comparePerformance
+              className="min-w-0 flex-1"
+            />
+          ) : null}
         </div>
       ) : !hideTitle ? (
         <h3 className="mb-3 text-sm font-semibold text-[#1E4775]">
@@ -111,6 +118,10 @@ export function SailMarketPriceChart({
           market={market}
           onConfigReady={handleConfigReady}
           onLiveDefaultRatioChange={handleLiveDefaultRatioChange}
+          showHsPriceOverlay={showPriceHeader ? showHsOverlay : undefined}
+          onShowHsPriceOverlayChange={showPriceHeader ? setShowHsOverlay : undefined}
+          hideLegend={showPriceHeader}
+          onHasHsPriceDataChange={showPriceHeader ? setHasHsOverlayData : undefined}
         />
       </div>
     </div>

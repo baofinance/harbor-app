@@ -23,6 +23,7 @@ import {
 import {
   SAIL_CHART_BASELINE_COLOR,
   SAIL_CHART_HS_COLOR,
+  SAIL_CHART_LEVERAGE_TOKEN_LABEL,
 } from "@/components/sail/advanced/sailAdvancedStyles";
 
 interface SailMarketMultiSeriesChartProps {
@@ -31,6 +32,7 @@ interface SailMarketMultiSeriesChartProps {
   showHsPriceUsd: boolean;
   formatTimestamp: (timestamp: number) => string;
   formatTooltipTimestamp: (timestamp: number) => string;
+  hideLegend?: boolean;
 }
 
 const SERIES_COLORS = {
@@ -75,7 +77,7 @@ function MultiSeriesTooltip({
 
   if (comparePerformance) {
     items.push({
-      label: `${config.hsSymbol} (return)`,
+      label: `${SAIL_CHART_LEVERAGE_TOKEN_LABEL} (return)`,
       value: `${formatSailChartPercentChange(row.hsPriceUsd)} · ${formatSailChartUsdValue(hsAbs)}`,
       color: SERIES_COLORS.hsPriceUsd,
     });
@@ -116,6 +118,7 @@ export function SailMarketMultiSeriesChart({
   showHsPriceUsd,
   formatTimestamp,
   formatTooltipTimestamp,
+  hideLegend = false,
 }: SailMarketMultiSeriesChartProps) {
   const comparePerformance = showHsPriceUsd;
   const chartData = toRechartsSailChartData(data, comparePerformance);
@@ -128,7 +131,7 @@ export function SailMarketMultiSeriesChart({
           color: SERIES_COLORS.defaultRatio,
         },
         {
-          value: `${config.hsSymbol} (% chg)`,
+          value: `${SAIL_CHART_LEVERAGE_TOKEN_LABEL} (% chg)`,
           type: "line" as const,
           color: SERIES_COLORS.hsPriceUsd,
         },
@@ -208,7 +211,7 @@ export function SailMarketMultiSeriesChart({
             />
           }
         />
-        {legendPayload.length > 1 ? (
+        {legendPayload.length > 1 && !hideLegend ? (
           <Legend
             verticalAlign="top"
             align="left"
@@ -262,7 +265,7 @@ export function SailMarketMultiSeriesChart({
             yAxisId="left"
             type="monotone"
             dataKey="hsPriceUsd"
-            name={`${config.hsSymbol} (% chg)`}
+            name={`${SAIL_CHART_LEVERAGE_TOKEN_LABEL} (% chg)`}
             stroke={SERIES_COLORS.hsPriceUsd}
             strokeWidth={2.5}
             dot={false}
