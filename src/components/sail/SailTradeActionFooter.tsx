@@ -1,12 +1,11 @@
 "use client";
 
-import type { SailTradePrimaryAction } from "@/utils/sailTradeFormState";
+import type { DepositPrimaryAction } from "@/utils/depositFormState";
 import {
   SailTradeFeeFooter,
   type SailTradeMarketFees,
 } from "@/components/sail/SailTradeFeeFooter";
-import { SailTradePrimaryButton } from "@/components/sail/SailTradePrimaryButton";
-import { SAIL_TRADE_CANCEL_BUTTON_CLASS } from "@/components/sail/advanced/sailAdvancedStyles";
+import { DepositActionFooter } from "@/components/deposit/DepositActionFooter";
 
 type SailTradeActionFooterProps = {
   layout: "embedded" | "modal";
@@ -15,7 +14,7 @@ type SailTradeActionFooterProps = {
   buyFeeEstimatePct?: number;
   sellFeeEstimatePct?: number;
   showEstimates?: boolean;
-  action: SailTradePrimaryAction;
+  action: DepositPrimaryAction;
   onSubmit: () => void;
   onRetry: () => void;
   onCancel?: () => void;
@@ -35,37 +34,24 @@ export function SailTradeActionFooter({
   onCancel,
   showCancel = false,
 }: SailTradeActionFooterProps) {
-  const primaryClassName = layout === "modal" ? "flex-1" : undefined;
-
   return (
-    <div
-      className={
-        layout === "embedded"
-          ? "mt-auto shrink-0 space-y-2.5 border-t border-[#1E4775]/8 pt-3"
-          : "mt-auto shrink-0 space-y-2.5 border-t border-[#1E4775]/8 pt-3"
-      }
-    >
-      <SailTradeFeeFooter
-        marketFees={marketFees}
-        activeTab={activeTab}
-        buyFeeEstimatePct={buyFeeEstimatePct}
-        sellFeeEstimatePct={sellFeeEstimatePct}
-        showEstimates={showEstimates}
-        mode="activeTab"
-      />
-      <div className={layout === "modal" ? "flex gap-3" : undefined}>
-        {showCancel && onCancel ? (
-          <button type="button" onClick={onCancel} className={SAIL_TRADE_CANCEL_BUTTON_CLASS}>
-            Cancel
-          </button>
-        ) : null}
-        <SailTradePrimaryButton
-          action={action}
-          onSubmit={onSubmit}
-          onRetry={onRetry}
-          className={primaryClassName}
+    <DepositActionFooter
+      layout={layout}
+      action={action}
+      onSubmit={onSubmit}
+      onRetry={onRetry}
+      onCancel={onCancel}
+      showCancel={showCancel}
+      feeFooter={
+        <SailTradeFeeFooter
+          marketFees={marketFees}
+          activeTab={activeTab}
+          buyFeeEstimatePct={buyFeeEstimatePct}
+          sellFeeEstimatePct={sellFeeEstimatePct}
+          showEstimates={showEstimates}
+          mode="activeTab"
         />
-      </div>
-    </div>
+      }
+    />
   );
 }

@@ -2,6 +2,7 @@
 
 import { amountToUSD } from "@/utils/tokenPriceToUSD";
 import { formatEther } from "viem";
+import { DepositReceivePreview } from "@/components/deposit/DepositReceivePreview";
 
 export type SailTradeReceivePreviewProps = {
   activeTab: "mint" | "redeem";
@@ -57,28 +58,13 @@ export function SailTradeReceivePreview({
     const paySymbol = selectedDepositAsset || collateralSymbol;
 
     return (
-      <div className="space-y-0.5 px-1">
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="text-xs font-medium text-[#1E4775]/65">You receive</span>
-          <div className="text-right">
-            <p className="font-mono text-base font-semibold tabular-nums text-[#1E4775]">
-              ~{leveragedAmount.toFixed(6)} {leveragedTokenSymbol}
-            </p>
-            {usdValue > 0 ? (
-              <p className="font-mono text-[11px] tabular-nums text-[#1E4775]/50">
-                ${usdValue.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </p>
-            ) : null}
-          </div>
-        </div>
-        <p className="text-right text-[11px] italic text-[#1E4775]/45">
-          {numericAmount.toFixed(6)} {paySymbol} ≈ {leveragedAmount.toFixed(6)}{" "}
-          {leveragedTokenSymbol}
-        </p>
-      </div>
+      <DepositReceivePreview
+        visible
+        primaryAmount={`~${leveragedAmount.toFixed(6)}`}
+        primarySymbol={leveragedTokenSymbol}
+        usdValue={usdValue}
+        detailsLine={`${numericAmount.toFixed(6)} ${paySymbol} ≈ ${leveragedAmount.toFixed(6)} ${leveragedTokenSymbol}`}
+      />
     );
   }
 
@@ -92,27 +78,12 @@ export function SailTradeReceivePreview({
   });
 
   return (
-    <div className="space-y-0.5 px-1">
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-xs font-medium text-[#1E4775]/65">You receive</span>
-        <div className="text-right">
-          <p className="font-mono text-base font-semibold tabular-nums text-[#1E4775]">
-            ~{collateralAmount.toFixed(6)} {collateralSymbol}
-          </p>
-          {usdValue > 0 ? (
-            <p className="font-mono text-[11px] tabular-nums text-[#1E4775]/50">
-              ${usdValue.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </p>
-          ) : null}
-        </div>
-      </div>
-      <p className="text-right text-[11px] italic text-[#1E4775]/45">
-        {numericAmount.toFixed(6)} {leveragedTokenSymbol} ≈ {collateralAmount.toFixed(6)}{" "}
-        {collateralSymbol}
-      </p>
-    </div>
+    <DepositReceivePreview
+      visible
+      primaryAmount={`~${collateralAmount.toFixed(6)}`}
+      primarySymbol={collateralSymbol}
+      usdValue={usdValue}
+      detailsLine={`${numericAmount.toFixed(6)} ${leveragedTokenSymbol} ≈ ${collateralAmount.toFixed(6)} ${collateralSymbol}`}
+    />
   );
 }

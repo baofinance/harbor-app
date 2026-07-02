@@ -46,7 +46,7 @@ describe("sailTradeFormState", () => {
 
   it("returns submit Buy on mint tab when ready", () => {
     const action = resolveSailTradePrimaryAction(base);
-    expect(action).toEqual({ kind: "submit", label: "Buy" });
+    expect(action).toEqual({ kind: "submit", label: "Buy", variant: "mint" });
     expect(isSailTradePrimaryActionDisabled(action)).toBe(false);
   });
 
@@ -55,7 +55,7 @@ describe("sailTradeFormState", () => {
       ...base,
       activeTab: "redeem",
     });
-    expect(action).toEqual({ kind: "submit", label: "Sell" });
+    expect(action).toEqual({ kind: "submit", label: "Sell", variant: "navy" });
   });
 
   it("returns retry on error step", () => {

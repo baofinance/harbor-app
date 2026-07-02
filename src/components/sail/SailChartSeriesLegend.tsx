@@ -5,6 +5,8 @@ import {
   SAIL_CHART_BASELINE_COLOR,
   SAIL_CHART_HS_COLOR,
   SAIL_CHART_LEVERAGE_TOKEN_LABEL,
+  SAIL_CHART_LEGEND_CLASS,
+  SAIL_CHART_LEGEND_DOT_CLASS,
 } from "@/components/sail/advanced/sailAdvancedStyles";
 
 type SailChartSeriesLegendProps = {
@@ -38,13 +40,11 @@ export function SailChartSeriesLegend({
       ];
 
   return (
-    <div
-      className={`flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-[10px] leading-snug text-[#1E4775]/60 ${className}`}
-    >
+    <div className={`${SAIL_CHART_LEGEND_CLASS} ${className}`}>
       {items.map((item) => (
         <span key={item.label} className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <span
-            className="inline-block h-2 w-2 shrink-0 rounded-full"
+            className={SAIL_CHART_LEGEND_DOT_CLASS}
             style={{ backgroundColor: item.color }}
             aria-hidden
           />

@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import { useHarborWalletConnectors } from "@/hooks/useHarborWalletConnectors";
 import { HarborWalletModal } from "@/components/Wallet";
-import { SAIL_TRADE_PRIMARY_BUY_CLASS } from "@/components/sail/advanced/sailAdvancedStyles";
+import {
+  DEPOSIT_PRIMARY_MINT_CLASS,
+} from "@/components/deposit/depositFlowStyles";
 
 type HarborConnectWalletCtaProps = {
   className?: string;
@@ -34,7 +36,7 @@ export function HarborConnectWalletCta({
           reset();
           setShowModal(true);
         }}
-        className={className ?? SAIL_TRADE_PRIMARY_BUY_CLASS}
+        className={className ?? DEPOSIT_PRIMARY_MINT_CLASS}
       >
         {label}
       </button>

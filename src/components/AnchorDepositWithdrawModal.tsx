@@ -71,6 +71,11 @@ import { DepositModalTitle } from "@/components/DepositModalTitle";
 import { InfoCallout } from "@/components/InfoCallout";
 import { ErrorBanner } from "@/components/anchor/ErrorBanner";
 import { FeeDisplayRow } from "@/components/anchor/FeeDisplayRow";
+import { AnchorDepositFeeFooter } from "@/components/anchor/AnchorDepositFeeFooter";
+import { DepositAmountCard } from "@/components/deposit/DepositAmountCard";
+import { DepositReceivePreview } from "@/components/deposit/DepositReceivePreview";
+import { DepositActionFooter } from "@/components/deposit/DepositActionFooter";
+import { resolveAnchorDepositStep1PrimaryAction } from "@/utils/anchorDepositFormState";
 import { TokenLogo } from "@/components/shared";
 import { getRevertReason } from "@/utils/parseViemRevert";
 import type { DefinedMarket } from "@/config/markets";
@@ -10007,6 +10012,92 @@ export const AnchorDepositWithdrawModal = ({
     }
   };
 
+  const handleContinueStep1 = useCallback(() => {
+    if (step === "error") {
+      handleAction();
+      return;
+    }
+    if (
+      !selectedDepositAsset ||
+      !amount ||
+      parseFloat(amount) <= 0 ||
+      error
+    ) {
+      return;
+    }
+    if (mintOnly) {
+      handleMint();
+      return;
+    }
+    if (isDirectPeggedDeposit) {
+      if (rewardTokenOptions.length > 1 && !skipRewardStep) {
+        setCurrentStep(2);
+      } else {
+        if (rewardTokenOptions.length === 1) {
+          setSelectedRewardToken(rewardTokenOptions[0].token);
+        }
+        setCurrentStep(stabilityStep);
+      }
+      return;
+    }
+    if (skipRewardStep) {
+      setCurrentStep(stabilityStep);
+    } else {
+      setCurrentStep(2);
+    }
+  }, [
+    step,
+    selectedDepositAsset,
+    amount,
+    error,
+    mintOnly,
+    isDirectPeggedDeposit,
+    rewardTokenOptions,
+    skipRewardStep,
+    stabilityStep,
+    handleMint,
+    handleAction,
+  ]);
+
+  const step1PrimaryAction = useMemo(
+    () =>
+      resolveAnchorDepositStep1PrimaryAction({
+        isConnected,
+        amount,
+        parsedAmount: (() => {
+          if (!amount || parseFloat(amount) <= 0) return undefined;
+          try {
+            return isUSDC ? parseUnits(amount, 6) : parseEther(amount);
+          } catch {
+            return undefined;
+          }
+        })(),
+        currentBalance:
+          selectedAssetBalance != null
+            ? selectedAssetBalance
+            : collateralBalance,
+        selectedDepositAsset,
+        step,
+        mintOnly,
+        isDirectPeggedDeposit,
+        skipRewardStep,
+        rewardTokenOptionsCount: rewardTokenOptions.length,
+      }),
+    [
+      isConnected,
+      amount,
+      isUSDC,
+      selectedAssetBalance,
+      collateralBalance,
+      selectedDepositAsset,
+      step,
+      mintOnly,
+      isDirectPeggedDeposit,
+      skipRewardStep,
+      rewardTokenOptions.length,
+    ],
+  );
+
   const getButtonText = () => {
     if (activeTab === "deposit") {
       switch (step) {
@@ -10235,18 +10326,23 @@ export const AnchorDepositWithdrawModal = ({
           closeDisabled={isProcessing}
           closeTitle={isProcessing ? "Close modal (will cancel transaction)" : "Close"}
           panelClassName="max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col overflow-hidden"
-          contentClassName="p-3 sm:p-5"
+          contentClassName="flex min-h-0 flex-1 flex-col p-3 sm:p-4"
         >
             {simpleMode && activeTab === "deposit" ? (
               // Simple Mode: Step-by-Step Flow
-              <div className="space-y-4">
-                <DepositModalFlowOverview parts={depositFlowParts} />
-
-                {/* Step 1: Deposit Collateral & Amount */}
+              <div
+                className={
+                  currentStep === 1
+                    ? "flex min-h-0 flex-1 flex-col"
+                    : "space-y-4"
+                }
+              >
                 {currentStep === 1 && (
-                  <div className="space-y-4 animate-in fade-in-0 slide-in-from-right-2 duration-200">
-                    <div className="space-y-3">
-                    <TokenAmountSection
+                  <div className="flex min-h-0 flex-1 flex-col animate-in fade-in-0 slide-in-from-right-2 duration-200">
+                    <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+                    <DepositModalFlowOverview parts={depositFlowParts} />
+                    <DepositAmountCard
+                      tokenRowLabel="Deposit with"
                       tokenSelector={{
                         value: selectedDepositAsset ?? "",
                         onChange: (newAsset) => {
@@ -10267,11 +10363,10 @@ export const AnchorDepositWithdrawModal = ({
                             label: "Other Tokens (via Swap)",
                             tokens: depositAssetsForDropdown.filter(a => a.isUserToken).map((a) => ({ symbol: a.symbol, name: a.name, isUserToken: true })),
                           }] : []),
-                        ],
-                        label: "Select Deposit Token",
-                        placeholder: "Select Deposit Token",
-                        disabled: isProcessing,
-                      }}
+                          ],
+                          placeholder: "Select token",
+                          disabled: isProcessing,
+                        }}
                       betweenTokenAndAmount={
                         <>
                         {!isCollateralOnlyChain && anyTokenDeposit.needsSwap && selectedDepositAsset && amount && parseFloat(amount) > 0 && (() => {
@@ -10301,81 +10396,6 @@ export const AnchorDepositWithdrawModal = ({
                             <span>Depositing {marketForDepositAsset?.peggedToken?.symbol || "ha"} directly to stability pool. No minting required.</span>
                           </p>
                         )}
-                        {selectedDepositAsset && !isDirectPeggedDeposit && (() => {
-                          const displayFee = amount && parseFloat(amount) > 0 && feePercentage !== undefined ? feePercentage : undefined;
-                          const hasFee = displayFee !== undefined;
-                          const feeValue = hasFee ? displayFee : 0;
-                          const showRange = feeRange && feeRange.hasRange && marketsForToken.length > 1;
-                          return (
-                            <div className="mt-2 text-xs text-[#1E4775]">
-                              <span className="flex items-center gap-1.5">
-                                {amount && parseFloat(amount) > 0 ? "Mint Fee:" : showRange ? "Fee Range:" : "Fee:"}
-                                <SimpleTooltip
-                                    side="right"
-                                    label={
-                                      <div className="space-y-2">
-                                        <p className="font-semibold">
-                                          Dynamic Minting Fees
-                                        </p>
-                                        <p>
-                                          Minting fees are dynamic and adjust to
-                                          incentivize deposits/withdrawals that
-                                          help improve market health. When the
-                                          market is nearing the minimum
-                                          collateral ratio, fees increase for
-                                          minting anchor tokens (to discourage
-                                          actions that reduce the collateral
-                                          ratio further) and decrease for
-                                          minting sail tokens (to encourage
-                                          actions that help improve the
-                                          collateral ratio).
-                                        </p>
-                                        <p>
-                                          The fee you see is calculated in
-                                          real-time based on your deposit amount
-                                          and the current market conditions.
-                                        </p>
-                                      </div>
-                                    }
-                                  >
-                                    <span className="inline-flex h-4 w-4 items-center justify-center text-[#1E4775]/60 hover:text-[#1E4775] cursor-help">
-                                      <svg
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth={2}
-                                        className="h-3.5 w-3.5"
-                                      >
-                                        <circle cx="12" cy="12" r="10" />
-                                        <path d="M12 16v-4" />
-                                        <path d="M12 8h.01" />
-                                      </svg>
-                                    </span>
-                                  </SimpleTooltip>
-                                  <span
-                                    className={`font-semibold ${
-                                      hasFee && feeValue > 2
-                                        ? "text-red-600"
-                                        : "text-[#1E4775]"
-                                    }`}
-                                  >
-                                    {showRange &&
-                                    !(amount && parseFloat(amount) > 0)
-                                      ? `${feeRange.min.toFixed(
-                                          2
-                                        )}% - ${feeRange.max.toFixed(2)}%`
-                                      : hasFee
-                                      ? `${feeValue.toFixed(2)}%${
-                                          feeValue > 2 ? " ⚠️" : ""
-                                        }`
-                                      : feeRange
-                                      ? `${feeRange.min.toFixed(2)}%`
-                                      : "-"}
-                                  </span>
-                                </span>
-                              </div>
-                            );
-                          })()}
                         </>
                       }
                       amount={{
@@ -10417,18 +10437,9 @@ export const AnchorDepositWithdrawModal = ({
                         <>
                       {currentStep === 1 && !isDirectPeggedDeposit && (
                         <div className="space-y-2">
-                          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-[#f8fafc] px-3 py-2.5 text-xs">
-                            <div className="text-[#1E4775]/80">
-                              Mint only (do not deposit to stability pool)
-                            </div>
-                            <label className="flex items-center gap-2 text-[#1E4775]/80">
-                              <span
-                                className={
-                                  mintOnly ? "text-[#1E4775]" : "text-[#1E4775]/60"
-                                }
-                              >
-                                {mintOnly ? "On" : "Off"}
-                              </span>
+                          <div className="flex items-center justify-between gap-2 text-xs text-[#1E4775]/70">
+                            <span>Mint only (do not deposit to stability pool)</span>
+                            <label className="flex items-center cursor-pointer">
                               <button
                                 type="button"
                                 onClick={() => {
@@ -10465,12 +10476,12 @@ export const AnchorDepositWithdrawModal = ({
                         </div>
                       )}
                       {showPermitToggle && (
-                        <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-[#f8fafc] px-3 py-2.5 text-xs">
-                          <div className="text-[#1E4775]/80">
+                        <div className="flex items-center justify-between gap-2 text-xs text-[#1E4775]/70">
+                          <span>
                             {showDepositPermitToggle
                               ? "Use permit (gasless approval) for this deposit"
                               : "Use permit (gasless approval) for this redemption"}
-                          </div>
+                          </span>
                           {disableReason ? (
                             <SimpleTooltip label={disableReason}>
                               <span className="flex items-center gap-2 text-[#1E4775]/80 cursor-not-allowed opacity-70">
@@ -10486,10 +10497,7 @@ export const AnchorDepositWithdrawModal = ({
                               </span>
                             </SimpleTooltip>
                           ) : (
-                            <label className="flex items-center gap-2 text-[#1E4775]/80 cursor-pointer">
-                              <span className={permitEnabled ? "text-[#1E4775]" : "text-[#1E4775]/60"}>
-                                {permitEnabled ? "On" : "Off"}
-                              </span>
+                            <label className="flex items-center cursor-pointer">
                               <button
                                 type="button"
                                 onClick={() => setPermitEnabled((prev) => !prev)}
@@ -10596,203 +10604,120 @@ export const AnchorDepositWithdrawModal = ({
                         );
                       })()}
 
-                      {/* Transaction Overview - Show on first step, otherwise show simple preview */}
-                      {!isDirectPeggedDeposit && currentStep === 1 ? (
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-[#153B63] mb-1.5">
-                            Transaction Overview
-                          </label>
-                          <div className="rounded-lg border border-slate-200 bg-[#f8fafc] p-3">
-                            <div className="space-y-2 text-sm">
-                              {/* You will receive */}
-                              {expectedMintOutput && amount && parseFloat(amount) > 0 ? (
-                                <div className="flex justify-between items-center">
-                                  <span className="text-sm font-medium text-[#1E4775]/70">
-                                    You will receive:
-                                  </span>
-                                  <div className="text-right">
-                                    {(() => {
-                                      const outputAmount = Number(formatEther(expectedMintOutput));
-                                      const usdValue =
-                                        expectedDepositUSD > 0
-                                          ? expectedDepositUSD
-                                          : peggedTokenPriceUsdWei > 0n
-                                            ? outputAmount * Number(formatUnits(peggedTokenPriceUsdWei, 18))
-                                            : 0;
-                                      return (
-                                        <>
-                                          <div className="text-lg font-bold text-[#1E4775] font-mono">
-                                            {outputAmount.toFixed(6)} {peggedTokenSymbol}
-                                          </div>
-                                          {usdValue > 0 && (
-                                            <div className="text-xs text-[#1E4775]/50 font-mono">
-                                              ${usdValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                            </div>
-                                          )}
-                                        </>
-                                      );
-                                    })()}
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="flex justify-between items-center">
-                                  <span className="text-sm font-medium text-[#1E4775]/70">
-                                    You will receive:
-                                  </span>
-                                  <div className="text-right">
-                                    <div className="text-lg font-bold text-[#1E4775] font-mono">
-                                      ...
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                              {/* Conversion: "X fxUSD ≈ Y haETH" — mint only, no deposit amount row */}
-                              {expectedMintOutput && expectedMintOutput > 0n && amount && parseFloat(amount) > 0 && (
-                                <div className="text-xs text-[#1E4775]/50 italic text-right">
-                                  ({parseFloat(amount).toFixed(6)} {selectedDepositAsset || collateralSymbol} ≈ {Number(formatEther(expectedMintOutput)).toFixed(6)} {peggedTokenSymbol})
-                                </div>
-                              )}
-                              {/* Mint fee */}
-                              {feePercentage !== undefined && amount && parseFloat(amount) > 0 && (
-                                <>
-                                  {expectedMintOutput && <div className="border-t border-[#1E4775]/20"></div>}
-                                  <FeeDisplayRow
-                                    label="Mint fee:"
-                                    feePercentage={feePercentage}
-                                    feeAmount={parseFloat(amount) * (feePercentage / 100)}
-                                    feeSymbol={selectedDepositAsset || collateralSymbol}
-                                    feeUSD={amountToUSD(
-                                      parseFloat(amount) * (feePercentage / 100),
-                                      selectedDepositAsset || collateralSymbol,
-                                      {
-                                        ethPrice: ethPrice ?? 0,
-                                        wstETHPrice: wstETHPrice ?? 0,
-                                        fxSAVEPrice: fxSAVEPrice ?? 1.08,
-                                      }
-                                    )}
-                                  />
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ) : !isDirectPeggedDeposit ? (
-                        <div className="rounded-lg border border-slate-200 bg-[#f8fafc] p-3">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium text-[#1E4775]/70">
-                              You will receive:
-                            </span>
-                            <span className="text-xl font-bold text-[#1E4775] font-mono">
-                              {expectedMintOutput && amount && parseFloat(amount) > 0
-                                ? Number(formatEther(expectedMintOutput)).toFixed(6)
-                                : "0.000000"}
-                              {" "}
-                              {peggedTokenSymbol}
-                            </span>
-                          </div>
-                        </div>
-                      ) : null}
-
-                      {/* Direct ha deposit preview */}
-                      {isDirectPeggedDeposit &&
-                        amount &&
-                        parseFloat(amount) > 0 && (
-                          <div className="rounded-lg border border-slate-200 bg-[#f8fafc] p-3">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium text-[#1E4775]/70">
-                                You will deposit:
-                              </span>
-                              <span className="text-xl font-bold text-[#1E4775] font-mono">
-                                {parseFloat(amount).toFixed(6)}
-                                {" "}
-                                {marketForDepositAsset?.peggedToken?.symbol ||
-                                  peggedTokenSymbol}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-
-                      {/* Error - beneath transaction overview */}
-                      {error && <ErrorBanner message={error} />}
-
-                      <button
-                        onClick={() => {
-                          if (step === "error") {
-                            handleAction();
-                            return;
+                      {!isDirectPeggedDeposit ? (
+                        <DepositReceivePreview
+                          visible={Boolean(
+                            expectedMintOutput &&
+                              expectedMintOutput > 0n &&
+                              amount &&
+                              parseFloat(amount) > 0,
+                          )}
+                          primaryAmount={`~${Number(formatEther(expectedMintOutput ?? 0n)).toFixed(6)}`}
+                          primarySymbol={peggedTokenSymbol}
+                          usdValue={
+                            expectedDepositUSD > 0
+                              ? expectedDepositUSD
+                              : peggedTokenPriceUsdWei > 0n && expectedMintOutput
+                                ? Number(formatEther(expectedMintOutput)) *
+                                  Number(formatUnits(peggedTokenPriceUsdWei, 18))
+                                : undefined
                           }
-                          if (
-                            selectedDepositAsset &&
+                          detailsLine={
+                            expectedMintOutput &&
+                            expectedMintOutput > 0n &&
                             amount &&
-                            parseFloat(amount) > 0 &&
-                            !error
-                          ) {
-                            if (mintOnly) {
-                              handleMint();
-                            } else if (isDirectPeggedDeposit) {
-                              // If ha token is selected, check if there are multiple reward token options
-                              // If multiple options, go to reward selection; otherwise go straight to stability pool
-                              if (
-                                rewardTokenOptions.length > 1 &&
-                                !skipRewardStep
-                              ) {
-                                setCurrentStep(2);
-                              } else {
-                                // If only one or no reward tokens, skip to stability pool
-                                // Auto-select the single reward token if it exists
-                                if (rewardTokenOptions.length === 1) {
-                                  setSelectedRewardToken(
-                                    rewardTokenOptions[0].token
-                                  );
-                                }
-                                setCurrentStep(stabilityStep);
-                              }
-                            } else {
-                              // Otherwise go to reward selection unless we're skipping it
-                              if (skipRewardStep) {
-                                setCurrentStep(stabilityStep);
-                              } else {
-                                setCurrentStep(2);
-                              }
-                            }
+                            parseFloat(amount) > 0
+                              ? `${parseFloat(amount).toFixed(6)} ${selectedDepositAsset || collateralSymbol} ≈ ${Number(formatEther(expectedMintOutput)).toFixed(6)} ${peggedTokenSymbol}`
+                              : undefined
                           }
-                        }}
-                        disabled={
-                          step === "error"
-                            ? false
-                            : !selectedDepositAsset ||
-                              !amount ||
-                              parseFloat(amount) <= 0 ||
-                              !!error ||
-                              isProcessing
-                        }
-                        className={
-                          step === "error"
-                            ? "mt-4 w-full rounded-xl bg-[#FF8A7A] px-4 py-3 font-semibold text-white transition-colors hover:bg-[#FF6B5A]"
-                            : !selectedDepositAsset ||
-                                !amount ||
-                                parseFloat(amount) <= 0 ||
-                                !!error ||
-                                isProcessing
-                              ? "mt-4 w-full cursor-not-allowed rounded-xl border border-slate-200/80 bg-[#e8ecf2] px-4 py-3 font-semibold text-[#64748b]"
-                              : "mt-4 w-full rounded-xl bg-[#153B63] px-4 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-[#0F2F52]"
-                        }
-                      >
-                        {step === "error"
-                          ? "Try Again"
-                          : mintOnly
-                          ? "Mint"
-                          : isDirectPeggedDeposit
-                          ? rewardTokenOptions.length > 1 && !skipRewardStep
-                            ? "Continue to Step 2 →"
-                            : "Continue to Stability Pool →"
-                          : skipRewardStep
-                          ? "Continue to Stability Pool →"
-                          : "Continue to Step 2 →"}
-                      </button>
+                        />
+                      ) : (
+                        <DepositReceivePreview
+                          visible={Boolean(amount && parseFloat(amount) > 0)}
+                          receiveLabel="You will deposit"
+                          primaryAmount={parseFloat(amount || "0").toFixed(6)}
+                          primarySymbol={
+                            marketForDepositAsset?.peggedToken?.symbol ||
+                            peggedTokenSymbol
+                          }
+                        />
+                      )}
+
+                      {error ? <ErrorBanner message={error} /> : null}
                     </div>
+
+                    {!isProcessing ? (
+                      <DepositActionFooter
+                        layout="modal"
+                        action={step1PrimaryAction}
+                        onSubmit={handleContinueStep1}
+                        onRetry={handleContinueStep1}
+                        onCancel={handleClose}
+                        showCancel
+                        feeFooter={
+                          !isDirectPeggedDeposit && selectedDepositAsset ? (
+                            <AnchorDepositFeeFooter>
+                              <span className="font-semibold uppercase tracking-wide">
+                                {amount && parseFloat(amount) > 0
+                                  ? "Mint fee"
+                                  : feeRange?.hasRange
+                                    ? "Fee range"
+                                    : "Mint fee"}
+                              </span>
+                              <SimpleTooltip
+                                side="top"
+                                label={
+                                  <div className="space-y-2">
+                                    <p className="font-semibold">Dynamic Minting Fees</p>
+                                    <p>
+                                      Minting fees adjust in real time based on market
+                                      health and your deposit size.
+                                    </p>
+                                  </div>
+                                }
+                              >
+                                <span className="inline-flex h-4 w-4 items-center justify-center text-[#1E4775]/60 hover:text-[#1E4775] cursor-help">
+                                  <Info className="h-3.5 w-3.5" aria-hidden />
+                                </span>
+                              </SimpleTooltip>
+                              <span className="font-semibold tabular-nums text-[#1E4775]/70">
+                                {(() => {
+                                  const displayFee =
+                                    amount &&
+                                    parseFloat(amount) > 0 &&
+                                    feePercentage !== undefined
+                                      ? feePercentage
+                                      : undefined;
+                                  const showRange =
+                                    feeRange &&
+                                    feeRange.hasRange &&
+                                    marketsForToken.length > 1;
+                                  if (
+                                    showRange &&
+                                    !(amount && parseFloat(amount) > 0)
+                                  ) {
+                                    return `${feeRange.min.toFixed(2)}% – ${feeRange.max.toFixed(2)}%`;
+                                  }
+                                  if (displayFee !== undefined) {
+                                    return `${displayFee.toFixed(2)}%${displayFee > 2 ? " ⚠️" : ""}`;
+                                  }
+                                  if (feeRange) {
+                                    return `${feeRange.min.toFixed(2)}%`;
+                                  }
+                                  return "—";
+                                })()}
+                              </span>
+                            </AnchorDepositFeeFooter>
+                          ) : null
+                        }
+                      />
+                    ) : null}
                   </div>
                 )}
+
+                {currentStep !== 1 ? (
+                  <DepositModalFlowOverview parts={depositFlowParts} />
+                ) : null}
 
                 {/* Step 2: Reward Token - Only show if not mint only */}
                 {currentStep === 2 && !mintOnly && !skipRewardStep && (

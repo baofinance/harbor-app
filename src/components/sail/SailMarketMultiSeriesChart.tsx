@@ -24,6 +24,8 @@ import {
   SAIL_CHART_BASELINE_COLOR,
   SAIL_CHART_HS_COLOR,
   SAIL_CHART_LEVERAGE_TOKEN_LABEL,
+  SAIL_CHART_RECHARTS_LEGEND_FONT_SIZE,
+  SAIL_CHART_RECHARTS_LEGEND_ICON_SIZE,
 } from "@/components/sail/advanced/sailAdvancedStyles";
 
 interface SailMarketMultiSeriesChartProps {
@@ -216,8 +218,11 @@ export function SailMarketMultiSeriesChart({
             verticalAlign="top"
             align="left"
             iconType="circle"
-            iconSize={8}
-            wrapperStyle={{ fontSize: 11, paddingBottom: 4 }}
+            iconSize={SAIL_CHART_RECHARTS_LEGEND_ICON_SIZE}
+            wrapperStyle={{
+              fontSize: SAIL_CHART_RECHARTS_LEGEND_FONT_SIZE,
+              paddingBottom: 4,
+            }}
             payload={legendPayload}
           />
         ) : null}

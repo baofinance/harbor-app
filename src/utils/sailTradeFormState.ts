@@ -1,3 +1,6 @@
+import type { DepositPrimaryAction } from "@/utils/depositFormState";
+export type { DepositPrimaryAction as SailTradePrimaryAction };
+
 export type SailTradeTab = "mint" | "redeem";
 
 export type SailTradeModalStep =
@@ -7,13 +10,6 @@ export type SailTradeModalStep =
   | "redeeming"
   | "success"
   | "error";
-
-export type SailTradePrimaryAction =
-  | { kind: "connect" }
-  | { kind: "enter_amount" }
-  | { kind: "exceeds_balance" }
-  | { kind: "submit"; label: "Buy" | "Sell" }
-  | { kind: "retry" };
 
 export type ResolveSailTradePrimaryActionInput = {
   isConnected: boolean;
@@ -26,7 +22,7 @@ export type ResolveSailTradePrimaryActionInput = {
 
 export function resolveSailTradePrimaryAction(
   input: ResolveSailTradePrimaryActionInput,
-): SailTradePrimaryAction {
+): DepositPrimaryAction {
   const { isConnected, amount, parsedAmount, currentBalance, activeTab, step } =
     input;
 
@@ -53,29 +49,11 @@ export function resolveSailTradePrimaryAction(
   return {
     kind: "submit",
     label: activeTab === "mint" ? "Buy" : "Sell",
+    variant: activeTab === "mint" ? "mint" : "navy",
   };
 }
 
-export function sailTradePrimaryActionLabel(action: SailTradePrimaryAction): string {
-  switch (action.kind) {
-    case "connect":
-      return "Connect wallet";
-    case "enter_amount":
-      return "Enter an amount";
-    case "exceeds_balance":
-      return "Insufficient balance";
-    case "submit":
-      return action.label;
-    case "retry":
-      return "Try again";
-  }
-}
-
-export function isSailTradePrimaryActionDisabled(
-  action: SailTradePrimaryAction,
-): boolean {
-  return (
-    action.kind === "enter_amount" ||
-    action.kind === "exceeds_balance"
-  );
-}
+export {
+  depositPrimaryActionLabel as sailTradePrimaryActionLabel,
+  isDepositPrimaryActionDisabled as isSailTradePrimaryActionDisabled,
+} from "@/utils/depositFormState";
