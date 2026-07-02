@@ -1,5 +1,8 @@
 "use client";
 
+import {
+  HARBOR_BTN_GLASS_CTA_FULL_NAVY_CLASS,
+} from "@/components/shared/harborButtonStyles";
 import { HARBOR_FROSTED_MODAL_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 
 export type GenesisClaimProgressModalProps = {
@@ -85,7 +88,7 @@ export function GenesisClaimProgressModal({
                   <button
                     type="button"
                     onClick={onShare}
-                    className="w-full py-3 px-4 bg-black hover:bg-gray-800 text-white font-medium rounded-full transition-colors flex items-center justify-center gap-2 text-sm"
+                    className={`${HARBOR_BTN_GLASS_CTA_FULL_NAVY_CLASS} flex items-center justify-center gap-2`}
                   >
                     <svg
                       viewBox="0 0 24 24"

@@ -3,19 +3,26 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getSailPriceGraphUrlOptional, getGraphHeaders } from "@/config/graph";
+import { SAIL_CHART_HISTORY_DAYS } from "@/utils/sailChartTimeRange";
 
-// GraphQL query for sail token price history
-const PRICE_HISTORY_QUERY = `
-  query GetPriceHistory($tokenAddress: Bytes!, $since: BigInt!, $genesisId: ID) {
+const PAGE_SIZE = 1000;
+const MAX_PAGES = 20;
+
+const GENESIS_END_QUERY = `
+  query GetGenesisEnd($genesisId: ID) {
     genesisEnd(id: $genesisId) {
       timestamp
     }
+  }
+`;
 
+const PRICE_POINTS_PAGE_QUERY = `
+  query GetPricePointsPage($tokenAddress: Bytes!, $since: BigInt!, $cursor: BigInt!) {
     sailTokenPricePoints(
-      where: { tokenAddress: $tokenAddress, timestamp_gte: $since }
+      where: { tokenAddress: $tokenAddress, timestamp_gte: $since, timestamp_gt: $cursor }
       orderBy: timestamp
       orderDirection: asc
-      first: 1000
+      first: ${PAGE_SIZE}
     ) {
       id
       timestamp
@@ -27,12 +34,16 @@ const PRICE_HISTORY_QUERY = `
       tokenAmount
       impliedTokenPrice
     }
-    
+  }
+`;
+
+const HOURLY_SNAPSHOTS_PAGE_QUERY = `
+  query GetHourlySnapshotsPage($tokenAddress: Bytes!, $since: BigInt!, $cursor: BigInt!) {
     hourlyPriceSnapshots(
-      where: { tokenAddress: $tokenAddress, hourTimestamp_gte: $since }
+      where: { tokenAddress: $tokenAddress, hourTimestamp_gte: $since, hourTimestamp_gt: $cursor }
       orderBy: hourTimestamp
       orderDirection: asc
-      first: 1000
+      first: ${PAGE_SIZE}
     ) {
       id
       hourTimestamp
@@ -83,15 +94,133 @@ interface UseSailPriceHistoryOptions {
   tokenAddress: string;
   genesisAddress?: string;
   sinceGenesisEnd?: boolean;
-  daysBack?: number; // How many days of history to fetch
+  daysBack?: number;
   enabled?: boolean;
+}
+
+async function postGraphql<T>(
+  graphUrl: string,
+  query: string,
+  variables: Record<string, unknown>,
+): Promise<T> {
+  const response = await fetch(graphUrl, {
+    method: "POST",
+    headers: getGraphHeaders(graphUrl),
+    body: JSON.stringify({ query, variables }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `GraphQL query failed: ${response.status} ${response.statusText}${body ? ` - ${body}` : ""}`,
+    );
+  }
+
+  const result = await response.json();
+  if (result.errors) {
+    throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
+  }
+
+  return result.data as T;
+}
+
+function mapPricePoint(p: {
+  timestamp: string;
+  tokenPriceUSD: string;
+  collateralPriceUSD: string;
+  eventType: string;
+  impliedTokenPrice?: string | null;
+}): PricePoint {
+  return {
+    timestamp: parseInt(p.timestamp, 10),
+    priceUSD: parseFloat(p.tokenPriceUSD),
+    collateralPriceUSD: parseFloat(p.collateralPriceUSD),
+    eventType: p.eventType,
+    impliedPrice: p.impliedTokenPrice ? parseFloat(p.impliedTokenPrice) : undefined,
+  };
+}
+
+function mapHourlySnapshot(s: {
+  hourTimestamp: string;
+  tokenPriceUSD: string;
+  collateralPriceUSD: string;
+  totalSupply: string;
+  collateralBalance: string;
+  leverageRatio: string;
+  collateralRatio: string;
+}): HourlySnapshot {
+  return {
+    timestamp: parseInt(s.hourTimestamp, 10),
+    priceUSD: parseFloat(s.tokenPriceUSD),
+    collateralPriceUSD: parseFloat(s.collateralPriceUSD),
+    totalSupply: s.totalSupply,
+    collateralBalance: s.collateralBalance,
+    leverageRatio: parseFloat(s.leverageRatio) / 1e18,
+    collateralRatio: parseFloat(s.collateralRatio) / 1e18,
+  };
+}
+
+async function fetchAllPricePoints(
+  graphUrl: string,
+  tokenAddress: string,
+  sinceTimestamp: number,
+): Promise<PricePoint[]> {
+  const all: PricePoint[] = [];
+  let cursor = sinceTimestamp - 1;
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const data = await postGraphql<{
+      sailTokenPricePoints: Parameters<typeof mapPricePoint>[0][];
+    }>(graphUrl, PRICE_POINTS_PAGE_QUERY, {
+      tokenAddress: tokenAddress.toLowerCase(),
+      since: sinceTimestamp.toString(),
+      cursor: cursor.toString(),
+    });
+
+    const batch = (data.sailTokenPricePoints ?? []).map(mapPricePoint);
+    if (batch.length === 0) break;
+
+    all.push(...batch);
+    cursor = batch[batch.length - 1]!.timestamp;
+    if (batch.length < PAGE_SIZE) break;
+  }
+
+  return all;
+}
+
+async function fetchAllHourlySnapshots(
+  graphUrl: string,
+  tokenAddress: string,
+  sinceTimestamp: number,
+): Promise<HourlySnapshot[]> {
+  const all: HourlySnapshot[] = [];
+  let cursor = sinceTimestamp - 1;
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const data = await postGraphql<{
+      hourlyPriceSnapshots: Parameters<typeof mapHourlySnapshot>[0][];
+    }>(graphUrl, HOURLY_SNAPSHOTS_PAGE_QUERY, {
+      tokenAddress: tokenAddress.toLowerCase(),
+      since: sinceTimestamp.toString(),
+      cursor: cursor.toString(),
+    });
+
+    const batch = (data.hourlyPriceSnapshots ?? []).map(mapHourlySnapshot);
+    if (batch.length === 0) break;
+
+    all.push(...batch);
+    cursor = batch[batch.length - 1]!.timestamp;
+    if (batch.length < PAGE_SIZE) break;
+  }
+
+  return all;
 }
 
 export function useSailPriceHistory({
   tokenAddress,
   genesisAddress,
   sinceGenesisEnd = true,
-  daysBack = 30,
+  daysBack = SAIL_CHART_HISTORY_DAYS,
   enabled = true,
 }: UseSailPriceHistoryOptions): PriceHistoryData {
   const graphUrl = getSailPriceGraphUrlOptional();
@@ -115,75 +244,41 @@ export function useSailPriceHistory({
         return { pricePoints: [], hourlySnapshots: [] };
       }
 
-      const response = await fetch(graphUrl, {
-        method: "POST",
-        headers: getGraphHeaders(graphUrl),
-        body: JSON.stringify({
-          query: PRICE_HISTORY_QUERY,
-          variables: {
-            tokenAddress: tokenAddress.toLowerCase(),
-            since: sinceTimestamp.toString(),
-            genesisId: genesisAddress ? genesisAddress.toLowerCase() : null,
-          },
-        }),
-      });
+      const token = tokenAddress.toLowerCase();
 
-      if (!response.ok) {
-        const body = await response.text().catch(() => "");
-        throw new Error(
-          `GraphQL query failed: ${response.status} ${response.statusText}${body ? ` - ${body}` : ""}`
-        );
-      }
+      const [genesisData, rawPricePoints, rawHourlySnapshots] = await Promise.all([
+        genesisAddress
+          ? postGraphql<{ genesisEnd?: { timestamp: string } | null }>(
+              graphUrl,
+              GENESIS_END_QUERY,
+              { genesisId: genesisAddress.toLowerCase() },
+            )
+          : Promise.resolve(null),
+        fetchAllPricePoints(graphUrl, token, sinceTimestamp),
+        fetchAllHourlySnapshots(graphUrl, token, sinceTimestamp),
+      ]);
 
-      const result = await response.json();
-
-      if (result.errors) {
-        throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
-      }
-
-      const rawPricePoints: PricePoint[] = (result.data?.sailTokenPricePoints || []).map(
-        (p: any) => ({
-          timestamp: parseInt(p.timestamp),
-          priceUSD: parseFloat(p.tokenPriceUSD),
-          collateralPriceUSD: parseFloat(p.collateralPriceUSD),
-          eventType: p.eventType,
-          impliedPrice: p.impliedTokenPrice ? parseFloat(p.impliedTokenPrice) : undefined,
-        })
-      );
-
-      const rawHourlySnapshots: HourlySnapshot[] = (result.data?.hourlyPriceSnapshots || []).map(
-        (s: any) => ({
-          timestamp: parseInt(s.hourTimestamp),
-          priceUSD: parseFloat(s.tokenPriceUSD),
-          collateralPriceUSD: parseFloat(s.collateralPriceUSD),
-          totalSupply: s.totalSupply,
-          collateralBalance: s.collateralBalance,
-          leverageRatio: parseFloat(s.leverageRatio) / 1e18,
-          collateralRatio: parseFloat(s.collateralRatio) / 1e18,
-        })
-      );
-
-      const genesisEndTs = result.data?.genesisEnd?.timestamp
-        ? parseInt(result.data.genesisEnd.timestamp)
+      const genesisEndTs = genesisData?.genesisEnd?.timestamp
+        ? parseInt(genesisData.genesisEnd.timestamp, 10)
         : null;
 
-      // To avoid chart cliffs when subgraph logic changes (or grafted deployments),
-      // only show price series from genesis end onward (if we know it).
-      const cutoffTs = sinceGenesisEnd && genesisEndTs && genesisEndTs > 0
-        ? Math.max(sinceTimestamp, genesisEndTs)
-        : sinceTimestamp;
+      const cutoffTs =
+        sinceGenesisEnd && genesisEndTs && genesisEndTs > 0
+          ? Math.max(sinceTimestamp, genesisEndTs)
+          : sinceTimestamp;
 
       const pricePoints = rawPricePoints.filter((p) => p.timestamp >= cutoffTs);
-      const hourlySnapshots = rawHourlySnapshots.filter((s) => s.timestamp >= cutoffTs);
+      const hourlySnapshots = rawHourlySnapshots.filter(
+        (s) => s.timestamp >= cutoffTs,
+      );
 
       if (debug) {
         const authHeaderPresent = Boolean(getGraphHeaders(graphUrl)["Authorization"]);
-        // Log a tiny sample to avoid console spam
         // eslint-disable-next-line no-console
         console.log("[useSailPriceHistory] subgraph response", {
           graphUrl,
           authHeaderPresent,
-          tokenAddress: tokenAddress.toLowerCase(),
+          tokenAddress: token,
           since: sinceTimestamp,
           genesisAddress,
           genesisEndTs,
@@ -192,15 +287,14 @@ export function useSailPriceHistory({
           hourlySnapshots: hourlySnapshots.length,
           samplePoint: pricePoints[0],
           sampleHourly: hourlySnapshots[0],
-          dataKeys: result.data ? Object.keys(result.data) : null,
         });
       }
 
       return { pricePoints, hourlySnapshots };
     },
     enabled: enabled && !!tokenAddress && !!graphUrl,
-    refetchInterval: 60000, // Refetch every minute
-    staleTime: 30000, // Consider data stale after 30 seconds
+    refetchInterval: 60000,
+    staleTime: 5 * 60 * 1000,
   });
 
   return {

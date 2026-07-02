@@ -4,7 +4,7 @@ import React from "react";
 import { HARBOR_FROSTED_MODAL_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 import InfoTooltip from "./InfoTooltip";
 import {
-  INDEX_MANAGE_BUTTON_CLASS_DESKTOP,
+  INDEX_EARN_CLAIM_BUTTON_CLASS_DESKTOP,
   INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL,
 } from "@/utils/indexPageManageButton";
 
@@ -86,7 +86,7 @@ export const AnchorClaimMarketModal = ({
  className={
  isLoading
  ? "inline-flex items-center justify-center min-w-[7rem] px-4 py-2 text-xs font-medium rounded-md bg-gray-300 text-gray-500 cursor-not-allowed"
- : INDEX_MANAGE_BUTTON_CLASS_DESKTOP
+ : INDEX_EARN_CLAIM_BUTTON_CLASS_DESKTOP
  }
  >
  {isLoading ?"Claiming..." :"Claim"}

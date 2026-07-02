@@ -96,7 +96,6 @@ import { AnchorMarketsSections } from "@/components/anchor/AnchorMarketsSections
 import { AnchorMarketGroupExpandedSection } from "@/components/anchor/AnchorMarketGroupExpandedSection";
 import { AnchorMarketsTableHeader } from "@/components/anchor/AnchorMarketsTableHeader";
 import { AnchorBasicMarketCardsGrid } from "@/components/anchor/AnchorBasicMarketCardsGrid";
-import { AnchorStatsStrip } from "@/components/anchor/AnchorStatsStrip";
 import { AnchorRewardsStrip } from "@/components/anchor/AnchorRewardsStrip";
 import { AnchorEarningsSection } from "@/components/anchor/AnchorEarningsSection";
 import { AnchorWalletPositionsSection } from "@/components/anchor/AnchorWalletPositionsSection";
@@ -115,6 +114,13 @@ import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext"
 import {
   LEDGER_MARKS_STRIP_SURFACE_ABOVE_TOOLBAR_CLASS,
 } from "@/components/shared/indexMarketsToolbarStyles";
+import {
+  HARBOR_BTN_GLASS_COMPACT_CORAL_CLASS,
+  HARBOR_BTN_GLASS_MAX_CHIP_ROUND_CLASS,
+  HARBOR_BTN_GLASS_PILL_CORAL_CLASS,
+  HARBOR_BTN_GLASS_PILL_NAVY_CLASS,
+  HARBOR_BTN_GLASS_PILL_OUTLINE_CLASS,
+} from "@/components/shared/harborButtonStyles";
 import {
   INDEX_MANAGE_BUTTON_CLASS_DESKTOP,
   INDEX_MODAL_CANCEL_BUTTON_CLASS_DESKTOP,
@@ -466,8 +472,6 @@ export default function AnchorPage() {
       <HarborPageShell>
           {!anchorViewBasic && (
             <>
-              <AnchorStatsStrip anchorStats={anchorStats} />
-
               {ledgerMarksError && (
                 <IndexMarksSubgraphErrorBanner error={ledgerMarksError} />
               )}
@@ -618,7 +622,7 @@ export default function AnchorPage() {
                     </p>
                     <button
                       onClick={() => refetchReads()}
-                      className="px-4 py-2 bg-[#FF8A7A] text-white rounded hover:bg-[#FF6B5A] transition-colors"
+                      className={HARBOR_BTN_GLASS_COMPACT_CORAL_CLASS}
                     >
                       Try again
                     </button>
@@ -1643,7 +1647,7 @@ export default function AnchorPage() {
                       );
                       setWithdrawAmountError(null);
                     }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full font-medium"
+                    className={HARBOR_BTN_GLASS_MAX_CHIP_ROUND_CLASS}
                   >
                     MAX
                   </button>
@@ -1662,7 +1666,7 @@ export default function AnchorPage() {
                     setWithdrawAmountInput("");
                     setWithdrawAmountError(null);
                   }}
-                  className="flex-1 py-3 px-4 rounded-full border-2 border-[#1E4775]/30 text-[#1E4775] font-semibold hover:bg-[#1E4775]/5 transition-colors"
+                  className={HARBOR_BTN_GLASS_PILL_OUTLINE_CLASS}
                 >
                   Cancel
                 </button>
@@ -1694,11 +1698,11 @@ export default function AnchorPage() {
                     setWithdrawAmountInput("");
                     setWithdrawAmountError(null);
                   }}
-                  className={`flex-1 py-3 px-4 rounded-full font-semibold text-white transition-colors ${
+                  className={
                     withdrawAmountModal.useEarly
-                      ? "bg-orange-500 hover:bg-orange-600"
-                      : "bg-[#1E4775] hover:bg-[#17395F]"
-                  }`}
+                      ? HARBOR_BTN_GLASS_PILL_CORAL_CLASS
+                      : HARBOR_BTN_GLASS_PILL_NAVY_CLASS
+                  }
                 >
                   Confirm Withdraw
                 </button>

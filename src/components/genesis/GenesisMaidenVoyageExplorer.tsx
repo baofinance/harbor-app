@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
 import { BellIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { HARBOR_BTN_SECONDARY_CLASS } from "@/components/shared/harborButtonStyles";
 import { HarborSectionCard } from "@/components/shared/HarborSectionCard";
 import {
   HARBOR_SECTION_ACCENT_MV_CLASS,
@@ -447,7 +448,7 @@ function UpcomingExplorerRow({ voyageLabel, mkt }: UpcomingExplorerRowProps) {
             href={MAIDEN_VOYAGE_DOCS_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-[#1E4775]/25 px-3 py-1.5 text-xs font-semibold text-[#1E4775] transition hover:border-[#1E4775]/40 hover:bg-[#1E4775]/5"
+            className={HARBOR_BTN_SECONDARY_CLASS}
           >
             <BellIcon className="h-3.5 w-3.5" aria-hidden />
             Notify me
@@ -504,7 +505,7 @@ function UpcomingExplorerRow({ voyageLabel, mkt }: UpcomingExplorerRowProps) {
             href={MAIDEN_VOYAGE_DOCS_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md border border-[#1E4775]/25 px-3 py-1.5 text-xs font-semibold text-[#1E4775] transition hover:border-[#1E4775]/40 hover:bg-[#1E4775]/5"
+            className={HARBOR_BTN_SECONDARY_CLASS}
           >
             <BellIcon className="h-3.5 w-3.5" aria-hidden />
             Notify me

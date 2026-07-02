@@ -10,9 +10,22 @@ import {
   buildSailMarketChartPoints,
   computeLiveDefaultRatio,
   getSailMarketChartConfig,
+  sailChartHasHsPriceOverlay,
   type SailMarketChartConfig,
-  type SailMarketChartPoint,
 } from "@/utils/sailMarketChartSeries";
+import {
+  SAIL_CHART_HS_COLOR,
+  SAIL_CHART_LEVERAGE_TOKEN_LABEL,
+  SAIL_CHART_TOGGLE_ACTIVE_CLASS,
+  SAIL_CHART_TOGGLE_IDLE_CLASS,
+} from "@/components/sail/advanced/sailAdvancedStyles";
+import {
+  SAIL_CHART_TIME_RANGES,
+  filterSailChartPointsByRange,
+  formatSailChartAxisTimestamp,
+  sailChartFetchDaysForRange,
+  type SailChartTimeRange,
+} from "@/utils/sailChartTimeRange";
 import {
   SailMarketMultiSeriesChart,
 } from "./SailMarketMultiSeriesChart";
@@ -22,47 +35,36 @@ export type SailMarketChartProps = {
   market: DefinedMarket;
   onLiveDefaultRatioChange?: (value: number | null) => void;
   onConfigReady?: (config: SailMarketChartConfig) => void;
+  /** Controlled compare overlay toggle (optional). */
+  showHsPriceOverlay?: boolean;
+  onShowHsPriceOverlayChange?: (value: boolean) => void;
+  /** Hide Recharts legend when rendered in the price header. */
+  hideLegend?: boolean;
+  onHasHsPriceDataChange?: (hasData: boolean) => void;
 };
-
-type TimeRange = "1D" | "1W" | "1M";
-
-function filterByTimeRange(
-  points: SailMarketChartPoint[],
-  timeRange: TimeRange
-): SailMarketChartPoint[] {
-  if (points.length === 0) return [];
-  if (timeRange === "1M") return points;
-
-  const end = points.reduce((max, p) => (p.timestamp > max ? p.timestamp : max), 0);
-  if (end <= 0) return points;
-
-  const start =
-    timeRange === "1D"
-      ? end - 24 * 60 * 60
-      : end - 7 * 24 * 60 * 60;
-
-  return points.filter((p) => p.timestamp >= start);
-}
 
 function OverlayToggle({
   label,
   active,
   onClick,
   color,
+  disabled = false,
 }: {
   label: string;
   active: boolean;
   onClick: () => void;
   color: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+      disabled={disabled}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
         active
-          ? "border-[#1E4775]/25 bg-[#1E4775]/10 text-[#1E4775]"
-          : "border-[#1E4775]/15 bg-white/60 text-[#1E4775]/55 hover:bg-[#1E4775]/5"
+          ? SAIL_CHART_TOGGLE_ACTIVE_CLASS
+          : SAIL_CHART_TOGGLE_IDLE_CLASS
       }`}
     >
       <span
@@ -79,15 +81,25 @@ export function SailMarketChart({
   market,
   onLiveDefaultRatioChange,
   onConfigReady,
+  showHsPriceOverlay,
+  onShowHsPriceOverlayChange,
+  hideLegend = false,
+  onHasHsPriceDataChange,
 }: SailMarketChartProps) {
-  const [timeRange, setTimeRange] = useState<TimeRange>("1M");
-  const [showHsPriceUsd, setShowHsPriceUsd] = useState(false);
+  const [timeRange, setTimeRange] = useState<SailChartTimeRange>("1M");
+  const [internalShowHsPriceUsd, setInternalShowHsPriceUsd] = useState(true);
+  const showHsPriceUsd = showHsPriceOverlay ?? internalShowHsPriceUsd;
+  const setShowHsPriceUsd = onShowHsPriceOverlayChange ?? setInternalShowHsPriceUsd;
 
   const config = useMemo(() => getSailMarketChartConfig(market), [market]);
   const pegTargetPrices = usePegTargetPrices();
+  const fetchDays = useMemo(
+    () => sailChartFetchDaysForRange(timeRange),
+    [timeRange]
+  );
   const chartSinceTimestamp = useMemo(
-    () => Math.floor(Date.now() / 1000) - 31 * 24 * 60 * 60,
-    []
+    () => Math.floor(Date.now() / 1000) - fetchDays * 24 * 60 * 60,
+    [fetchDays]
   );
 
   const leveragedTokenAddress = markets[marketId]?.addresses?.leveragedToken as
@@ -139,7 +151,7 @@ export function SailMarketChart({
     tokenAddress: leveragedTokenAddress || "",
     genesisAddress: markets[marketId]?.addresses?.genesis as string | undefined,
     sinceGenesisEnd: true,
-    daysBack: 31,
+    daysBack: fetchDays,
     enabled: !!leveragedTokenAddress,
   });
 
@@ -161,45 +173,24 @@ export function SailMarketChart({
 
   const chartPoints = useMemo(
     () =>
-      buildSailMarketChartPoints(
-        config,
-        mergedSubgraph,
-        chainlinkHistories,
-        livePrices
-      ),
-    [config, mergedSubgraph, chainlinkHistories, livePrices]
+      buildSailMarketChartPoints(config, mergedSubgraph, chainlinkHistories),
+    [config, mergedSubgraph, chainlinkHistories]
   );
 
   const filteredData = useMemo(
-    () => filterByTimeRange(chartPoints, timeRange),
+    () => filterSailChartPointsByRange(chartPoints, timeRange),
     [chartPoints, timeRange]
   );
 
   const validDefaultPoints = filteredData.filter((p) => Number.isFinite(p.defaultRatio));
+  const hasHsPriceData = useMemo(
+    () => sailChartHasHsPriceOverlay(filteredData),
+    [filteredData]
+  );
 
   const formatTimestamp = useMemo(() => {
-    return (timestamp: number) => {
-      const date = new Date(timestamp * 1000);
-      switch (timeRange) {
-        case "1D":
-          return date.toLocaleTimeString("en-US", {
-            hour: "numeric",
-            minute: "2-digit",
-            hour12: true,
-          });
-        case "1W":
-          return date.toLocaleDateString("en-US", {
-            weekday: "short",
-            month: "numeric",
-            day: "numeric",
-          });
-        default:
-          return date.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          });
-      }
-    };
+    return (timestamp: number) =>
+      formatSailChartAxisTimestamp(timestamp, timeRange);
   }, [timeRange]);
 
   const formatTooltipTimestamp = (timestamp: number) => {
@@ -207,10 +198,12 @@ export function SailMarketChart({
     return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
   };
 
-  const isLoading =
-    isSubgraphLoading ||
+  const isEnrichingOracles =
     (longNeedsChainlink && isLongChainlinkLoading) ||
     (shortNeedsChainlink && isShortChainlinkLoading);
+  const isAwaitingChartPoints =
+    validDefaultPoints.length === 0 && !subgraphError && isEnrichingOracles;
+  const isBlockingLoading = isSubgraphLoading || isAwaitingChartPoints;
 
   useEffect(() => {
     onConfigReady?.(config);
@@ -221,49 +214,56 @@ export function SailMarketChart({
     onLiveDefaultRatioChange?.(ratio);
   }, [config, livePrices, onLiveDefaultRatioChange]);
 
+  useEffect(() => {
+    onHasHsPriceDataChange?.(hasHsPriceData);
+  }, [hasHsPriceData, onHasHsPriceDataChange]);
+
   const toggleOverlay = () => {
-    setShowHsPriceUsd((prev) => !prev);
+    setShowHsPriceUsd(!showHsPriceUsd);
   };
 
   return (
     <div className="relative z-10 flex h-full min-h-0 flex-col">
-      <div className="mb-2 flex shrink-0 flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <OverlayToggle
-            label={`${config.hsSymbol} (USD)`}
-            active={showHsPriceUsd}
-            onClick={toggleOverlay}
-            color="#6B5B95"
-          />
+      <div className="mb-2 flex shrink-0 flex-wrap items-center gap-2">
+        <OverlayToggle
+          label={`Compare ${SAIL_CHART_LEVERAGE_TOKEN_LABEL}`}
+          active={showHsPriceUsd}
+          onClick={toggleOverlay}
+          color={SAIL_CHART_HS_COLOR}
+          disabled={!hasHsPriceData && !isBlockingLoading}
+        />
+        <div className="min-w-0 flex-1 text-xs text-[#1E4775]/60">
+          {isBlockingLoading
+            ? "Loading..."
+            : isEnrichingOracles
+              ? "Updating oracle data..."
+              : showHsPriceUsd && hasHsPriceData
+                ? "Performance vs start of range"
+                : `${validDefaultPoints.length} data points`}
         </div>
-        <div className="flex items-center justify-end gap-4">
-          <div className="text-xs text-[#1E4775]/60">
-            {isLoading
-              ? "Loading..."
-              : `${validDefaultPoints.length} data points`}
-          </div>
-          <div className="flex gap-2">
-            {(["1D", "1W", "1M"] as const).map((range) => (
-              <button
-                key={range}
-                type="button"
-                onClick={() => setTimeRange(range)}
-                className={`px-2 py-1 text-xs ${
-                  timeRange === range
-                    ? "bg-[#1E4775] text-white"
-                    : "bg-[#eef1f7] text-[#4b5a78] hover:bg-[#1E4775]/10"
-                }`}
-              >
-                {range}
-              </button>
-            ))}
-          </div>
+        <div className="flex flex-wrap justify-end gap-1.5 sm:gap-2">
+          {SAIL_CHART_TIME_RANGES.map((range) => (
+            <button
+              key={range}
+              type="button"
+              onClick={() => setTimeRange(range)}
+              className={`rounded-md px-2 py-1 text-xs transition-colors ${
+                timeRange === range
+                  ? SAIL_CHART_TOGGLE_ACTIVE_CLASS
+                  : SAIL_CHART_TOGGLE_IDLE_CLASS
+              }`}
+            >
+              {range}
+            </button>
+          ))}
         </div>
       </div>
       <div className="min-h-0 flex-1">
-        {isLoading ? (
+        {isBlockingLoading ? (
           <div className="flex h-full items-center justify-center text-[#1E4775]/60">
-            Loading price history...
+            {isSubgraphLoading
+              ? "Loading price history..."
+              : "Updating oracle data..."}
           </div>
         ) : validDefaultPoints.length === 0 ? (
           <div className="flex h-full items-center justify-center text-center text-sm text-[#1E4775]/60">
@@ -275,9 +275,10 @@ export function SailMarketChart({
           <SailMarketMultiSeriesChart
             data={filteredData}
             config={config}
-            showHsPriceUsd={showHsPriceUsd}
+            showHsPriceUsd={showHsPriceUsd && hasHsPriceData}
             formatTimestamp={formatTimestamp}
             formatTooltipTimestamp={formatTooltipTimestamp}
+            hideLegend={hideLegend}
           />
         )}
       </div>

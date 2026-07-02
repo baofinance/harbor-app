@@ -182,7 +182,6 @@ function resolvePegAssetUsd(
   collateralPrices: number[],
   config: SailMarketChartConfig,
   resampledByAsset: Partial<Record<PegAssetKey, number[]>>,
-  liveFallback?: LiveSideUsdPrices,
 ): number {
   if (pegAsset === "USD") return 1;
 
@@ -191,17 +190,12 @@ function resolvePegAssetUsd(
     return fromChainlink!;
   }
 
-  // Subgraph collateral USD tracks wstETH/fxSAVE — only use when magnitude matches the peg asset.
+  // Subgraph collateral USD tracks wstETH/fxSAVE — fallback when Chainlink is sparse.
   if (pegAsset === config.longPegAsset) {
     const collateral = collateralPrices[index];
     if (isPlausiblePegUsdPrice(pegAsset, collateral)) {
       return collateral;
     }
-  }
-
-  const spot = liveFallback ? pegAssetUsdFromLive(pegAsset, liveFallback) : null;
-  if (spot != null && isPlausiblePegUsdPrice(pegAsset, spot)) {
-    return spot;
   }
 
   return NaN;
@@ -265,8 +259,7 @@ export function buildChartTimestamps(
 export function buildSailMarketChartPoints(
   config: SailMarketChartConfig,
   mergedSubgraph: MergedChartPoint[],
-  chainlinkHistories: Partial<Record<PegAssetKey, ChainlinkPricePoint[]>>,
-  liveFallback?: LiveSideUsdPrices
+  chainlinkHistories: Partial<Record<PegAssetKey, ChainlinkPricePoint[]>>
 ): SailMarketChartPoint[] {
   const timestamps = buildChartTimestamps(mergedSubgraph, chainlinkHistories);
   if (timestamps.length === 0) return [];
@@ -281,7 +274,9 @@ export function buildSailMarketChartPoints(
   const collateralPrices = timestamps.map(
     (ts) => collateralByTimestamp.get(ts) ?? NaN
   );
-  const hsPrices = timestamps.map((ts) => hsByTimestamp.get(ts) ?? NaN);
+  const hsPrices = fillPriceSeriesGaps(
+    timestamps.map((ts) => hsByTimestamp.get(ts) ?? NaN)
+  );
 
   const resampledByAsset = buildResampledByAsset(
     timestamps,
@@ -295,16 +290,14 @@ export function buildSailMarketChartPoints(
       i,
       collateralPrices,
       config,
-      resampledByAsset,
-      liveFallback
+      resampledByAsset
     );
     const shortUsd = resolvePegAssetUsd(
       config.shortPegAsset,
       i,
       collateralPrices,
       config,
-      resampledByAsset,
-      liveFallback
+      resampledByAsset
     );
     const hsPriceUsd = hsPrices[i];
     const defaultRatio =
@@ -320,6 +313,79 @@ export function buildSailMarketChartPoints(
       hsPriceUsd: Number.isFinite(hsPriceUsd) && hsPriceUsd > 0 ? hsPriceUsd : NaN,
     };
   });
+}
+
+/** Recharts treats null as a gap; NaN can break dual-axis line scales. */
+export type SailMarketChartRechartsPoint = SailMarketChartPoint & {
+  defaultRatio: number | null;
+  hsPriceUsd: number | null;
+  /** Absolute values preserved when plotting relative performance. */
+  defaultRatioAbs: number | null;
+  hsPriceUsdAbs: number | null;
+};
+
+function firstPositiveFinite(values: Array<number | null | undefined>): number | null {
+  for (const value of values) {
+    if (value != null && Number.isFinite(value) && value > 0) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function percentChangeFromBaseline(
+  current: number | null,
+  baseline: number | null,
+): number | null {
+  if (
+    current == null ||
+    baseline == null ||
+    !Number.isFinite(current) ||
+    !Number.isFinite(baseline) ||
+    baseline <= 0
+  ) {
+    return null;
+  }
+  return ((current / baseline) - 1) * 100;
+}
+
+export function toRechartsSailChartData(
+  data: SailMarketChartPoint[],
+  comparePerformance = false,
+): SailMarketChartRechartsPoint[] {
+  const absoluteRows: SailMarketChartRechartsPoint[] = data.map((row) => {
+    const defaultRatioAbs =
+      Number.isFinite(row.defaultRatio) ? row.defaultRatio : null;
+    const hsPriceUsdAbs =
+      Number.isFinite(row.hsPriceUsd) && row.hsPriceUsd > 0 ? row.hsPriceUsd : null;
+
+    return {
+      ...row,
+      defaultRatio: defaultRatioAbs,
+      hsPriceUsd: hsPriceUsdAbs,
+      defaultRatioAbs,
+      hsPriceUsdAbs,
+    };
+  });
+
+  if (!comparePerformance) {
+    return absoluteRows;
+  }
+
+  const defaultBaseline = firstPositiveFinite(
+    absoluteRows.map((row) => row.defaultRatioAbs),
+  );
+  const hsBaseline = firstPositiveFinite(absoluteRows.map((row) => row.hsPriceUsdAbs));
+
+  return absoluteRows.map((row) => ({
+    ...row,
+    defaultRatio: percentChangeFromBaseline(row.defaultRatioAbs, defaultBaseline),
+    hsPriceUsd: percentChangeFromBaseline(row.hsPriceUsdAbs, hsBaseline),
+  }));
+}
+
+export function sailChartHasHsPriceOverlay(data: SailMarketChartPoint[]): boolean {
+  return data.some((row) => Number.isFinite(row.hsPriceUsd) && row.hsPriceUsd > 0);
 }
 
 export function formatSailChartDefaultValue(
@@ -354,6 +420,12 @@ export function formatSailChartUsdValue(value: number | null | undefined): strin
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+export function formatSailChartPercentChange(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return "—";
+  const sign = value > 0 ? "+" : value < 0 ? "" : "";
+  return `${sign}${value.toFixed(2)}%`;
 }
 
 /** Forward-fill Chainlink prices onto chart timestamps. */

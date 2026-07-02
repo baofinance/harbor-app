@@ -1,6 +1,15 @@
 "use client";
 import { Suspense, useState } from "react";
-import { HARBOR_FROSTED_ACTIVE_PILL, HARBOR_FROSTED_NAV_DROPDOWN_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
+import {
+  HARBOR_NAV_DROPDOWN_ITEM_ACTIVE_CLASS,
+  HARBOR_NAV_DROPDOWN_ITEM_IDLE_CLASS,
+  HARBOR_NAV_ICON_BUTTON_CLASS,
+  HARBOR_NAV_LINK_ACTIVE_CLASS,
+  HARBOR_NAV_LINK_IDLE_CLASS,
+  HARBOR_NAV_MOBILE_LINK_IDLE_CLASS,
+  HARBOR_NAV_MOBILE_MENU_BUTTON_CLASS,
+  HARBOR_NAV_POPOVER_SHELL_CLASS,
+} from "@/components/shared/harborNavStyles";
 import {
   Disclosure,
   DisclosureButton,
@@ -42,10 +51,8 @@ export default function Example() {
   };
 
   const linkClass = (href: string) =>
-    `shrink-0 whitespace-nowrap rounded-md px-2 sm:px-2.5 py-2 text-sm font-medium ${
-      isActive(href)
-        ? HARBOR_FROSTED_ACTIVE_PILL
-        : "text-white hover:bg-white/20 hover:text-white"
+    `shrink-0 whitespace-nowrap rounded-md px-2 py-2 text-sm font-medium transition-colors sm:px-2.5 ${
+      isActive(href) ? HARBOR_NAV_LINK_ACTIVE_CLASS : HARBOR_NAV_LINK_IDLE_CLASS
     }`;
 
   return (
@@ -88,9 +95,9 @@ export default function Example() {
               >
                 <span>Maiden Voyage</span>
                 <span
-                  className={`shrink-0 rounded px-1 py-0.5 text-[10px] font-bold leading-none font-mono border ${
+                  className={`shrink-0 rounded border px-1 py-0.5 text-[10px] font-bold leading-none font-mono ${
                     isActive("/genesis")
-                      ? "border-[#1E4775]/30 bg-[#1E4775] text-white"
+                      ? "border-[#1E4775]/25 bg-[#1E4775]/10 text-[#1E4775]"
                       : "border-white/40 bg-white/10 text-white"
                   }`}
                 >
@@ -134,7 +141,7 @@ export default function Example() {
             <ConnectWallet />
             <Popover className="relative">
               <PopoverButton
-                className="group relative inline-flex items-center justify-center rounded-md p-2 text-white hover:bg-white/20 focus:outline-2 focus:-outline-offset-1 focus:outline-white/40"
+                className={HARBOR_NAV_ICON_BUTTON_CLASS}
                 aria-label="More navigation"
               >
                 <Bars3Icon aria-hidden="true" className="size-6" />
@@ -142,16 +149,16 @@ export default function Example() {
               <PopoverPanel
                 transition
                 anchor={{ to: "bottom end", gap: 8 }}
-                className={`z-[100] w-56 origin-top-right overflow-hidden rounded-lg py-1 outline-none transition data-closed:scale-95 data-closed:opacity-0 ${HARBOR_FROSTED_NAV_DROPDOWN_SHELL}`}
+                className={`z-[100] w-56 origin-top-right overflow-hidden rounded-lg py-1 outline-none transition data-closed:scale-95 data-closed:opacity-0 ${HARBOR_NAV_POPOVER_SHELL_CLASS}`}
               >
                 {MORE_NAV.map(({ href, label }) => (
                   <Link
                     key={href}
                     href={href}
-                    className={`block px-4 py-2.5 text-sm font-medium ${
+                    className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
                       isActive(href)
-                        ? "bg-[#1E4775]/10 text-[#1E4775]"
-                        : "bg-white text-[#1E4775] hover:bg-gray-100"
+                        ? HARBOR_NAV_DROPDOWN_ITEM_ACTIVE_CLASS
+                        : HARBOR_NAV_DROPDOWN_ITEM_IDLE_CLASS
                     }`}
                     aria-current={isActive(href) ? "page" : undefined}
                   >
@@ -164,10 +171,10 @@ export default function Example() {
                     <button
                       type="button"
                       onClick={() => setImpersonateOpen(true)}
-                      className={`block w-full px-4 py-2.5 text-left text-sm font-medium ${
+                      className={`block w-full px-4 py-2.5 text-left text-sm font-medium transition-colors ${
                         isImpersonating
-                          ? "bg-[#FF8A7A]/10 text-[#1E4775]"
-                          : "bg-white text-[#1E4775] hover:bg-gray-100"
+                          ? HARBOR_NAV_DROPDOWN_ITEM_ACTIVE_CLASS
+                          : HARBOR_NAV_DROPDOWN_ITEM_IDLE_CLASS
                       }`}
                     >
                       Impersonate
@@ -184,7 +191,7 @@ export default function Example() {
           </div>
           <div className="-mr-2 flex sm:hidden">
             {/* Mobile menu button */}
-            <DisclosureButton className="group relative inline-flex items-center justify-center p-2 text-gray-200 hover:bg-[#FF8A7A]/20 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-[#FF8A7A]">
+            <DisclosureButton className={`group relative inline-flex items-center justify-center ${HARBOR_NAV_MOBILE_MENU_BUTTON_CLASS}`}>
               <span className="absolute -inset-0.5" />
               <span className="sr-only">Open main menu</span>
               <Bars3Icon
@@ -203,7 +210,7 @@ export default function Example() {
       <DisclosurePanel className={`sm:hidden fixed inset-0 z-50 ${navBgClass} overflow-y-auto`} style={{ height: '100dvh', maxHeight: '100dvh' }}>
         <div className="flex flex-col min-h-full px-6 py-4 pb-24 space-y-2">
           <div className="flex justify-end mb-2 flex-shrink-0">
-            <DisclosureButton className="inline-flex items-center justify-center p-2 text-gray-200 hover:bg-[#FF8A7A]/20 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-[#FF8A7A] rounded-full">
+            <DisclosureButton className={`inline-flex items-center justify-center rounded-full ${HARBOR_NAV_MOBILE_MENU_BUTTON_CLASS}`}>
               <span className="sr-only">Close main menu</span>
               <XMarkIcon
                 aria-hidden="true"
@@ -223,17 +230,17 @@ export default function Example() {
               href="/genesis"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/genesis")
-                  ? HARBOR_FROSTED_ACTIVE_PILL
-                  : "text-white bg-white/10 hover:bg-white/20"
+                  ? HARBOR_NAV_LINK_ACTIVE_CLASS
+                  : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
               }`}
               aria-current={isActive("/genesis") ? "page" : undefined}
             >
               <span className="inline-flex items-center justify-center gap-2">
                 <span>Maiden Voyage</span>
                 <span
-                  className={`rounded px-1.5 py-0.5 text-xs font-bold font-mono border ${
+                  className={`rounded border px-1.5 py-0.5 text-xs font-bold font-mono ${
                     isActive("/genesis")
-                      ? "border-[#1E4775]/30 bg-[#1E4775] text-white"
+                      ? "border-[#1E4775]/25 bg-[#1E4775]/10 text-[#1E4775]"
                       : "border-white/40 bg-white/10 text-white"
                   }`}
                 >
@@ -246,8 +253,8 @@ export default function Example() {
               href="/anchor"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/anchor")
-                  ? HARBOR_FROSTED_ACTIVE_PILL
-                  : "text-white bg-white/10 hover:bg-white/20"
+                  ? HARBOR_NAV_LINK_ACTIVE_CLASS
+                  : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
               }`}
               aria-current={isActive("/anchor") ? "page" : undefined}
             >
@@ -258,8 +265,8 @@ export default function Example() {
               href="/sail"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/sail")
-                  ? HARBOR_FROSTED_ACTIVE_PILL
-                  : "text-white bg-white/10 hover:bg-white/20"
+                  ? HARBOR_NAV_LINK_ACTIVE_CLASS
+                  : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
               }`}
               aria-current={isActive("/sail") ? "page" : undefined}
             >
@@ -270,8 +277,8 @@ export default function Example() {
               href="/hytoken"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/hytoken")
-                  ? HARBOR_FROSTED_ACTIVE_PILL
-                  : "text-white bg-white/10 hover:bg-white/20"
+                  ? HARBOR_NAV_LINK_ACTIVE_CLASS
+                  : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
               }`}
               aria-current={isActive("/hytoken") ? "page" : undefined}
             >
@@ -282,8 +289,8 @@ export default function Example() {
               href="/transparency"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/transparency")
-                  ? HARBOR_FROSTED_ACTIVE_PILL
-                  : "text-white bg-white/10 hover:bg-white/20"
+                  ? HARBOR_NAV_LINK_ACTIVE_CLASS
+                  : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
               }`}
               aria-current={isActive("/transparency") ? "page" : undefined}
             >
@@ -301,8 +308,8 @@ export default function Example() {
                     href={href}
                     className={`block w-full px-6 py-3.5 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                       isActive(href)
-                        ? HARBOR_FROSTED_ACTIVE_PILL
-                        : "text-white bg-white/10 hover:bg-white/20"
+                        ? HARBOR_NAV_LINK_ACTIVE_CLASS
+                        : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
                     }`}
                     aria-current={isActive(href) ? "page" : undefined}
                   >
@@ -316,8 +323,8 @@ export default function Example() {
                     onClick={() => setImpersonateOpen(true)}
                     className={`block w-full px-6 py-3.5 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                       isImpersonating
-                        ? "text-[#1E4775] bg-[#FF8A7A]/30"
-                        : "text-white bg-white/10 hover:bg-white/20"
+                        ? HARBOR_NAV_LINK_ACTIVE_CLASS
+                        : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
                     }`}
                   >
                     Impersonate

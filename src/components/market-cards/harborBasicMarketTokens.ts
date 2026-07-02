@@ -10,6 +10,11 @@ export const HARBOR_CORAL_HEX = "#FF8A7A" as const;
 export const HARBOR_CHARCOAL_HEX = "#10141A" as const;
 
 import { HARBOR_FROSTED_MARKET_CARD_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
+import {
+  HARBOR_BTN_GLASS_CTA_COMPACT_NAVY_CLASS,
+  HARBOR_BTN_GLASS_CTA_COMPACT_OUTLINE_CLASS,
+  HARBOR_BTN_GLASS_CTA_FULL_NAVY_CLASS,
+} from "@/components/shared/harborButtonStyles";
 
 /** Card shell: match Sail/Anchor grids (rounded-3xl, shadow-xl family, shared border). Hover lift for optional-polish todo. */
 export const BASIC_MARKET_CARD_SHELL_CLASS =
@@ -103,9 +108,8 @@ export const BASIC_MARKET_STATUS_NEUTRAL_DOT_CLASS =
 export const BASIC_MARKET_STATUS_NEUTRAL_TEXT_CLASS =
   "text-xs font-semibold uppercase tracking-wide text-[#64748b]";
 
-/** Primary CTA: Nautical Blue (all basic market primary buttons). */
-export const HARBOR_PRIMARY_CTA_CLASS =
-  "w-full rounded-xl bg-[#1E4775] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1E4775]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4775]/30 disabled:cursor-not-allowed disabled:bg-[#1E4775]/40";
+/** Primary CTA: glass navy (all basic market primary buttons). */
+export const HARBOR_PRIMARY_CTA_CLASS = HARBOR_BTN_GLASS_CTA_FULL_NAVY_CLASS;
 export const HARBOR_PRIMARY_CTA_INLINE_FLEX_CLASS = `flex items-center justify-center gap-1.5 ${HARBOR_PRIMARY_CTA_CLASS}`;
 
 export const HARBOR_COMING_SOON_CTA_SURFACE_CLASS =
@@ -125,11 +129,9 @@ export const BASIC_MARKET_COMING_SOON_VEIL_CLASS =
 export const BASIC_MARKET_COMING_SOON_CONTENT_DIM_CLASS =
   "relative z-[2] saturate-[0.85]";
 
-/** Genesis compact card CTAs share Nautical Blue; kept slightly denser typography. */
-export const HARBOR_GENESIS_PRIMARY_CTA_CLASS =
-  "w-full rounded-xl bg-[#1E4775] px-3.5 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#1E4775]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4775]/30 disabled:cursor-not-allowed disabled:bg-[#1E4775]/35";
-export const HARBOR_GENESIS_SECONDARY_CTA_CLASS =
-  "w-full rounded-xl border border-[#1E4775]/20 bg-white/85 backdrop-blur-sm px-3.5 py-2.5 text-xs font-semibold text-[#1E4775] transition hover:bg-[#1E4775]/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4775]/15 disabled:cursor-not-allowed disabled:border-[#CBD5E1] disabled:bg-[#F8FAFC] disabled:text-[#64748b]";
+/** Genesis compact card CTAs — glass navy / outline. */
+export const HARBOR_GENESIS_PRIMARY_CTA_CLASS = HARBOR_BTN_GLASS_CTA_COMPACT_NAVY_CLASS;
+export const HARBOR_GENESIS_SECONDARY_CTA_CLASS = HARBOR_BTN_GLASS_CTA_COMPACT_OUTLINE_CLASS;
 
 /** Basic market grids: Sail + Anchor aligned rhythm (Grokk suggestion). */
 export const BASIC_MARKET_CARDS_GRID_CLASS =

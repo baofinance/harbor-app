@@ -8,6 +8,7 @@ import {
   getGenesisMarketTypeLabel,
   MAIDEN_VOYAGE_DOCS_URL,
 } from "@/config/maidenVoyageFeatured";
+import { isGenesisSoonUi } from "@/config/markets";
 import type { GenesisMarketConfig } from "@/types/genesisMarket";
 import type { ActiveVoyageStatus } from "@/utils/activeVoyageStatus";
 import {
@@ -26,12 +27,17 @@ import {
 } from "./GenesisMaidenVoyageStageStrip";
 import { getMaidenVoyageLeveragedFlowLabel } from "@/utils/genesisDisplay";
 import { GenesisVoyageStatusBadge } from "./GenesisVoyageStatusBadge";
+import { HARBOR_BTN_GLASS_ICON_DARK } from "@/components/shared/harborButtonStyles";
 import {
   MV_CARD_INNER_GRADIENT,
   MV_MAIN_CARD_SHELL,
   MV_FOOTER_PANEL,
   MV_META_TEXT,
   MV_PRIMARY_CTA,
+  MV_COMING_SOON_CONTENT_DIM_CLASS,
+  MV_COMING_SOON_LABEL_CLASS,
+  MV_COMING_SOON_OVERLAY_CLASS,
+  MV_COMING_SOON_VEIL_CLASS,
 } from "./maidenVoyageLayoutStyles";
 
 export type GenesisActiveVoyageCardProps = {
@@ -96,6 +102,8 @@ export function GenesisActiveVoyageCard({
     isConnected,
   });
   const footnote = getActiveVoyageFootnote(voyageStatus);
+  const showComingSoonOverlay =
+    isGenesisSoonUi(market) || voyageStatus === "opening_soon";
 
   const handleCtaClick = () => {
     if (cta.action === "deposit") onDeposit();
@@ -112,9 +120,29 @@ export function GenesisActiveVoyageCard({
   return (
     <section
       key={marketId}
-      className={`${MV_MAIN_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} flex flex-col overflow-hidden ${className}`}
-      aria-label="Active maiden voyage"
+      className={`${MV_MAIN_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} relative flex flex-col overflow-hidden ${className}`}
+      aria-label={
+        showComingSoonOverlay
+          ? "Active maiden voyage — coming soon"
+          : "Active maiden voyage"
+      }
     >
+      {showComingSoonOverlay ? (
+        <>
+          <div aria-hidden className={MV_COMING_SOON_VEIL_CLASS} />
+          <div className={MV_COMING_SOON_OVERLAY_CLASS} aria-hidden>
+            <span className={MV_COMING_SOON_LABEL_CLASS}>Coming Soon</span>
+          </div>
+        </>
+      ) : null}
+
+      <div
+        className={
+          showComingSoonOverlay
+            ? MV_COMING_SOON_CONTENT_DIM_CLASS
+            : "flex min-h-0 flex-1 flex-col"
+        }
+      >
       <div className="shrink-0 px-4 py-3 sm:px-5">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/15 pb-3">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
@@ -134,7 +162,7 @@ export function GenesisActiveVoyageCard({
               <button
                 type="button"
                 onClick={onNextMarket}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 bg-white/[0.06] text-white/80 transition hover:bg-white/[0.12] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
+                className={`${HARBOR_BTN_GLASS_ICON_DARK} h-8 w-8`}
                 aria-label="Next Maiden Voyage market"
               >
                 <ChevronRightIcon className="h-4 w-4 shrink-0" aria-hidden />
@@ -223,6 +251,7 @@ export function GenesisActiveVoyageCard({
       >
         <GenesisMaidenVoyageStageStrip status={voyageStatus} showHeading={false} />
       </footer>
+      </div>
     </section>
   );
 }

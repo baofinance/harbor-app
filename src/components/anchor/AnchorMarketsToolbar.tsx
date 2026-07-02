@@ -5,7 +5,7 @@ import {
   INDEX_MARKETS_TOOLBAR_FILTERS_ROW_CLASS,
   INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS,
 } from "@/components/shared/indexMarketsToolbarStyles";
-import { INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL } from "@/utils/indexPageManageButton";
+import { INDEX_EARN_CLAIM_BUTTON_CLASS_DESKTOP } from "@/utils/indexPageManageButton";
 import IndexToolbarMetricsGroup from "@/components/shared/IndexToolbarMetricsGroup";
 import type { NetworkFilterOption } from "@/utils/networkFilter";
 import IndexToolbarNetworkFilter from "@/components/shared/IndexToolbarNetworkFilter";
@@ -84,7 +84,7 @@ export function AnchorMarketsToolbar({
                   type="button"
                   onClick={basicClaimToolbar.onClaim}
                   disabled={basicClaimToolbar.claimDisabled}
-                  className={INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL}
+                  className={INDEX_EARN_CLAIM_BUTTON_CLASS_DESKTOP}
                 >
                   Claim
                 </button>

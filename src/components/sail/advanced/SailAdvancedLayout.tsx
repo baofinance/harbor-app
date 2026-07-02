@@ -155,7 +155,6 @@ export function SailAdvancedLayout({
               <SailMarketChartColumn
                 marketId={selectedMarketId}
                 market={selectedMarket}
-                tokenPriceUSD={selectedMetrics?.tokenPriceUSD}
               />
             </div>
           </div>

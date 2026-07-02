@@ -73,7 +73,7 @@ export function DepositModalShell({
     return (
       <div className={cn("flex min-h-0 flex-col", panelClassName)}>
         <div className="mb-3 shrink-0">{tabs}</div>
-        <div className={cn("min-h-0 flex-1 overflow-y-auto", contentClassName)}>
+        <div className={cn("flex min-h-0 flex-1 flex-col", contentClassName)}>
           {children}
         </div>
       </div>
@@ -160,7 +160,7 @@ export function DepositModalShell({
 
         <div
           className={cn(
-            "min-h-0 flex-1 overflow-y-auto",
+            "flex min-h-0 flex-1 flex-col",
             contentClassName || "p-3 sm:p-4 lg:p-6"
           )}
         >

@@ -35,6 +35,7 @@ import type { SailContractReads } from "@/types/sail";
 import type { SailMarketPnLData } from "./sailMarketTypes";
 import { SailMarketExpandedView } from "./SailMarketExpandedView";
 import { INDEX_MANAGE_BUTTON_CLASS_DESKTOP } from "@/utils/indexPageManageButton";
+import { HARBOR_BTN_GLASS_OUTLINE_LIGHT } from "@/components/shared/harborButtonStyles";
 
 export const SailMarketRow = React.memo(function SailMarketRow({
   id,
@@ -338,7 +339,7 @@ export const SailMarketRow = React.memo(function SailMarketRow({
                     e.stopPropagation();
                     onToggleExpand(id);
                   }}
-                  className="px-4 py-1.5 text-sm font-semibold text-[#1E4775] bg-white/85 backdrop-blur-sm border-2 border-[#1E4775] rounded-md inline-flex items-center gap-1 whitespace-nowrap min-w-[160px] justify-center"
+                  className={`${HARBOR_BTN_GLASS_OUTLINE_LIGHT} gap-1 whitespace-nowrap min-w-[160px] border-2 px-4 py-1.5 text-sm`}
                 >
                   More details
                   {isExpanded ? (

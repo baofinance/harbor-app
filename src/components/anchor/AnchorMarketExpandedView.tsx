@@ -2,6 +2,11 @@
 
 import React, { useMemo } from "react";
 import { HARBOR_FROSTED_LIGHT_CARD_ROUNDED } from "@/components/shared/harborFrostedSurfaceStyles";
+import {
+  HARBOR_BTN_GLASS_PILL_DISABLED_CLASS,
+  HARBOR_BTN_GLASS_PILL_NAVY_CLASS,
+  HARBOR_BTN_SOLID_CORAL_PILL_CLASS,
+} from "@/components/shared/harborButtonStyles";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { EtherscanLink as SharedEtherscanLink } from "@/components/shared";
 import { useStabilityPoolRewards } from "@/hooks/useStabilityPoolRewards";
@@ -610,7 +615,7 @@ export function AnchorMarketExpandedView({
                         isClaiming ||
                         isCompounding
                       }
-                      className="flex-1 px-4 py-2 text-sm font-medium bg-white/85 backdrop-blur-sm text-[#1E4775] border border-[#1E4775] hover:bg-[#1E4775]/5 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors rounded-full"
+                      className={HARBOR_BTN_SOLID_CORAL_PILL_CLASS}
                     >
                       Claim
                     </button>
@@ -639,7 +644,7 @@ export function AnchorMarketExpandedView({
                         isClaiming ||
                         isCompounding
                       }
-                      className="flex-1 px-4 py-2 text-sm font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full"
+                      className={HARBOR_BTN_GLASS_PILL_NAVY_CLASS}
                     >
                       Compound
                     </button>
@@ -654,13 +659,13 @@ export function AnchorMarketExpandedView({
                 <div className="flex gap-2">
                   <button
                     disabled
-                    className="flex-1 px-4 py-2 text-sm font-medium bg-gray-100 text-gray-400 border border-gray-300 cursor-not-allowed rounded-full"
+                    className={HARBOR_BTN_GLASS_PILL_DISABLED_CLASS}
                   >
                     Claim
                   </button>
                   <button
                     disabled
-                    className="flex-1 px-4 py-2 text-sm font-medium bg-gray-300 text-gray-500 cursor-not-allowed rounded-full"
+                    className={`${HARBOR_BTN_GLASS_PILL_DISABLED_CLASS} opacity-80`}
                   >
                     Compound
                   </button>
@@ -726,7 +731,7 @@ export function AnchorMarketExpandedView({
                         isClaiming ||
                         isCompounding
                       }
-                      className="flex-1 px-4 py-2 text-sm font-medium bg-white/85 backdrop-blur-sm text-[#1E4775] border border-[#1E4775] hover:bg-[#1E4775]/5 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors rounded-full"
+                      className={HARBOR_BTN_SOLID_CORAL_PILL_CLASS}
                     >
                       Claim
                     </button>
@@ -750,7 +755,7 @@ export function AnchorMarketExpandedView({
                         isClaiming ||
                         isCompounding
                       }
-                      className="flex-1 px-4 py-2 text-sm font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full"
+                      className={HARBOR_BTN_GLASS_PILL_NAVY_CLASS}
                     >
                       Compound
                     </button>
@@ -765,13 +770,13 @@ export function AnchorMarketExpandedView({
                 <div className="flex gap-2">
                   <button
                     disabled
-                    className="flex-1 px-4 py-2 text-sm font-medium bg-gray-100 text-gray-400 border border-gray-300 cursor-not-allowed rounded-full"
+                    className={HARBOR_BTN_GLASS_PILL_DISABLED_CLASS}
                   >
                     Claim
                   </button>
                   <button
                     disabled
-                    className="flex-1 px-4 py-2 text-sm font-medium bg-gray-300 text-gray-500 cursor-not-allowed rounded-full"
+                    className={`${HARBOR_BTN_GLASS_PILL_DISABLED_CLASS} opacity-80`}
                   >
                     Compound
                   </button>

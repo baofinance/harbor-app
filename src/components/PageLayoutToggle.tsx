@@ -11,9 +11,13 @@ import {
 import { CheckIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import NetworkIconClient from "@/components/NetworkIconClient";
 import {
-  HARBOR_FROSTED_ACTIVE_PILL,
+  HARBOR_NAV_SEGMENT_ACTIVE_CLASS,
+  HARBOR_NAV_SEGMENT_IDLE_CLASS,
+  HARBOR_NAV_SEGMENT_SHELL_CLASS,
+  HARBOR_NAV_THEME_TRIGGER_CLASS,
+} from "@/components/shared/harborNavStyles";
+import {
   HARBOR_FROSTED_DROPDOWN_SHELL,
-  HARBOR_FROSTED_INPUT_FILL,
 } from "@/components/shared/harborFrostedSurfaceStyles";
 
 export type PageLayoutToggleProps = {
@@ -38,16 +42,13 @@ export function PageLayoutToggle({
     backgroundOptions.find((option) => option.id === backgroundMode) ??
     backgroundOptions[0];
 
-  /** Match active nav link: `rounded-md` + white pill for selected segment */
   const segment = (active: boolean) =>
-    `min-w-[2.75rem] rounded px-2 py-2 text-sm font-medium tabular-nums tracking-tight transition-colors ${
-      active
-        ? HARBOR_FROSTED_ACTIVE_PILL
-        : "text-white hover:bg-white/20"
+    `min-w-[2.75rem] tabular-nums tracking-tight ${
+      active ? HARBOR_NAV_SEGMENT_ACTIVE_CLASS : HARBOR_NAV_SEGMENT_IDLE_CLASS
     }`;
   return (
     <div className="flex items-center gap-2">
-      <div className="flex w-[6.75rem] shrink-0 items-center rounded-md bg-white/10 p-0.5">
+      <div className={`flex w-[6.75rem] shrink-0 items-center ${HARBOR_NAV_SEGMENT_SHELL_CLASS}`}>
         <Listbox
           as="div"
           className="relative w-full"
@@ -55,7 +56,7 @@ export function PageLayoutToggle({
           by={(a, b) => a.id === b.id}
           onChange={(next) => setBackgroundMode(next.id)}
         >
-          <ListboxButton className={`h-9 w-full flex items-center justify-between gap-1 rounded px-1.5 py-0 text-sm font-medium text-[#1E4775] focus:ring-1 focus:ring-[#1E4775]/20 focus:outline-none cursor-pointer ${HARBOR_FROSTED_INPUT_FILL}`}>
+          <ListboxButton className={`${HARBOR_NAV_THEME_TRIGGER_CLASS} flex items-center justify-between gap-1`}>
             <span className="inline-flex items-center gap-1 min-w-0">
               <NetworkIconClient
                 name={selectedBackground.icon}
@@ -70,13 +71,13 @@ export function PageLayoutToggle({
           </ListboxButton>
           <ListboxOptions
             modal={false}
-            className={`absolute right-0 top-[calc(100%+4px)] z-50 w-full rounded-md overflow-hidden outline-none ${HARBOR_FROSTED_DROPDOWN_SHELL}`}
+            className={`absolute right-0 top-[calc(100%+4px)] z-50 w-full overflow-hidden rounded-md outline-none ${HARBOR_FROSTED_DROPDOWN_SHELL}`}
           >
             {backgroundOptions.map((option) => (
               <ListboxOption
                 key={option.id}
                 value={option}
-                className="group flex items-center gap-1.5 px-2 py-2 text-[#1E4775] cursor-pointer data-[focus]:bg-[#1E4775]/5 data-[selected]:bg-[#1E4775]/10"
+                className="group flex cursor-pointer items-center gap-1.5 px-2 py-2 text-[#1E4775] data-[focus]:bg-[#1E4775]/5 data-[selected]:border-l-2 data-[selected]:border-[#1E4775]/40 data-[selected]:bg-[#1E4775]/10"
               >
                 <NetworkIconClient name={option.icon} size={20} variant="branded" />
                 <span className="min-w-0 flex-1 truncate text-[11px] leading-none font-medium">
@@ -89,7 +90,7 @@ export function PageLayoutToggle({
         </Listbox>
       </div>
       <div
-        className="flex shrink-0 items-center gap-0.5 rounded-md bg-white/10 p-0.5"
+        className={`flex shrink-0 items-center gap-0.5 ${HARBOR_NAV_SEGMENT_SHELL_CLASS}`}
         role="group"
         aria-label={ariaLabel}
       >

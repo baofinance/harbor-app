@@ -23,8 +23,8 @@ import {
   HARBOR_STAT_TILE_INTRO_TITLE_CLASS,
 } from "@/components/shared/harborStatTileStyles";
 import {
+  INDEX_EARN_CLAIM_BUTTON_CLASS_DESKTOP,
   INDEX_MANAGE_BUTTON_CLASS_DESKTOP,
-  INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL,
 } from "@/utils/indexPageManageButton";
 
 const ANCHOR_MARKS_ENABLED = true;
@@ -772,7 +772,7 @@ export function AnchorRewardsStrip(props: AnchorRewardsStripProps) {
                       <button
                         onClick={onClaimAll}
                         disabled={isClaimingAll || isCompoundingAll}
-                        className={INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL}
+                        className={INDEX_EARN_CLAIM_BUTTON_CLASS_DESKTOP}
                       >
                         Claim
                       </button>

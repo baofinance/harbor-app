@@ -3,6 +3,7 @@ import {
   BASIC_MARKET_DIRECTION_SHORT_CHIP_CLASS,
 } from "@/components/market-cards/harborBasicMarketTokens";
 import { HARBOR_FROSTED_LIGHT_CARD_ELEVATED, HARBOR_FROSTED_LIGHT_ICON_BADGE_BASE } from "@/components/shared/harborFrostedSurfaceStyles";
+import { HARBOR_BTN_GLASS_CORAL_DARK } from "@/components/shared/harborButtonStyles";
 
 /** Shared Maiden Voyage 2.0 landing layout tokens (dark campaign theme). */
 
@@ -51,6 +52,19 @@ export const MV_FOOTER_PANEL_SURFACE =
 
 export const MV_FOOTER_PANEL =
   `border-t ${MV_FOOTER_PANEL_SURFACE}`;
+
+/** Coming soon preview — frosted veil over the active voyage card (dark theme). */
+export const MV_COMING_SOON_VEIL_CLASS =
+  "pointer-events-none absolute inset-0 z-[1] rounded-[inherit] bg-[#0a1628]/55 backdrop-blur-[2px]";
+
+export const MV_COMING_SOON_OVERLAY_CLASS =
+  "absolute inset-0 z-[2] flex cursor-not-allowed items-center justify-center";
+
+export const MV_COMING_SOON_LABEL_CLASS =
+  "rounded-full border border-white/20 bg-[#0a1628]/85 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-white/90 shadow-lg backdrop-blur-sm";
+
+export const MV_COMING_SOON_CONTENT_DIM_CLASS =
+  "relative z-0 flex min-h-0 flex-1 flex-col saturate-[0.78] brightness-[0.88]";
 
 export const MV_MUTED_TEXT = "text-white/75";
 
@@ -110,8 +124,7 @@ export const MV_PROGRESS_FILL =
 export const MV_PROGRESS_FILL_COMPLETE =
   "h-full rounded-full bg-[#4A9784] transition-[width]";
 
-export const MV_PRIMARY_CTA =
-  "w-full rounded-xl bg-gradient-to-r from-[#FF8A7A] to-[#ffb4a8] px-4 py-3 text-sm font-semibold text-[#1a0f0d] shadow-[0_8px_24px_-12px_rgba(255,138,122,0.65)] transition hover:brightness-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8A7A]/40 disabled:cursor-not-allowed disabled:opacity-45";
+export const MV_PRIMARY_CTA = `w-full rounded-xl px-4 py-3 text-sm ${HARBOR_BTN_GLASS_CORAL_DARK}`;
 
 export const MV_OUTLINE_BUTTON =
   "inline-flex items-center gap-1.5 rounded-full border border-white/22 bg-white/[0.06] px-4 py-2 text-sm font-semibold text-white/90 backdrop-blur-sm transition hover:border-white/35 hover:bg-white/[0.1]";
