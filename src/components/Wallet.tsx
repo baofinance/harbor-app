@@ -154,7 +154,7 @@ function ConnectButton() {
             </button>
 
             {showModal ? (
-                <WalletModal
+                <HarborWalletModal
                     onClose={() => {
                         reset()
                         setShowModal(false)
@@ -167,7 +167,7 @@ function ConnectButton() {
     )
 }
 
-const WalletModal = React.memo(function WalletModal({
+export const HarborWalletModal = React.memo(function HarborWalletModal({
     onClose,
     onConnected,
 }: {
