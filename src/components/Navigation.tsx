@@ -1,6 +1,7 @@
 "use client";
 import { Suspense, useState } from "react";
 import {
+  HARBOR_NAV_SHELL_CLASS,
   HARBOR_NAV_DROPDOWN_ITEM_ACTIVE_CLASS,
   HARBOR_NAV_DROPDOWN_ITEM_IDLE_CLASS,
   HARBOR_NAV_ICON_BUTTON_CLASS,
@@ -43,7 +44,7 @@ export default function Example() {
   const { isImpersonating } = useImpersonation();
   const [impersonateOpen, setImpersonateOpen] = useState(false);
   const navBgClass =
-    backgroundMode === "megaeth" ? "bg-[#10141A]" : "bg-[#1E4775]";
+    backgroundMode === "megaeth" ? "bg-[#10141A]" : HARBOR_NAV_SHELL_CLASS;
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -68,7 +69,7 @@ export default function Example() {
     ) : null}
     <Disclosure<"nav">
       as="nav"
-      className={`app-nav-shell relative w-full max-w-[1300px] shrink-0 ${navBgClass} after:pointer-events-none mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/20 mb-4 sm:mb-6`}
+      className={`app-nav-shell relative w-full max-w-[1300px] shrink-0 ${navBgClass} after:pointer-events-none mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-harbor-blue/10 mb-4 sm:mb-6`}
     >
       {/* Match index pages: `max-w-[1300px]` + `px-4 sm:px-10` on main */}
       <div className="w-full px-4 sm:px-10">
@@ -79,7 +80,7 @@ export default function Example() {
               className="relative mr-0 h-10 w-auto shrink-0 sm:mr-0"
             >
               <Image
-                src="/logo.svg"
+                src="/logo-navy.svg"
                 alt="Logo"
                 width={100}
                 height={40}
@@ -98,7 +99,7 @@ export default function Example() {
                   className={`shrink-0 rounded border px-1 py-0.5 text-[10px] font-bold leading-none font-mono ${
                     isActive("/genesis")
                       ? "border-[#1E4775]/25 bg-[#1E4775]/10 text-[#1E4775]"
-                      : "border-white/40 bg-white/10 text-white"
+                      : "border-harbor-blue/20 bg-harbor-blue/5 text-harbor-blue/80"
                   }`}
                 >
                   2.0
@@ -241,7 +242,7 @@ export default function Example() {
                   className={`rounded border px-1.5 py-0.5 text-xs font-bold font-mono ${
                     isActive("/genesis")
                       ? "border-[#1E4775]/25 bg-[#1E4775]/10 text-[#1E4775]"
-                      : "border-white/40 bg-white/10 text-white"
+                      : "border-harbor-blue/20 bg-harbor-blue/5 text-harbor-blue/80"
                   }`}
                 >
                   2.0

@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 
+import { HARBOR_THEME_TEXT_PRIMARY_CLASS } from "@/components/shared/harborTheme";
+
 /** Outer page wrapper — matches nav/footer max width (1300px). */
 export const HARBOR_PAGE_SHELL_CLASS =
-  "flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full";
+  `flex min-h-0 flex-1 flex-col ${HARBOR_THEME_TEXT_PRIMARY_CLASS} max-w-[1300px] mx-auto font-sans relative w-full`;
 
 /** Standard index-page main padding and horizontal inset. */
 export const HARBOR_PAGE_MAIN_CLASS =

@@ -2,6 +2,7 @@ import {
   MV_CARD_INNER_GRADIENT,
   MV_CARD_SHELL,
 } from "@/components/genesis/maidenVoyageLayoutStyles";
+import { HARBOR_FROSTED_LIGHT_ICON_BADGE_BASE } from "@/components/shared/harborFrostedSurfaceStyles";
 
 export const HARBOR_SECTION_CARD_SHELL_CLASS = `${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} overflow-hidden relative`;
 
@@ -14,10 +15,10 @@ export const HARBOR_SECTION_CARD_HEADER_ROW_CLASS =
   "flex min-h-[2.75rem] w-full items-center gap-2.5";
 
 export const HARBOR_SECTION_CARD_TITLE_CLASS =
-  "text-xs font-semibold uppercase tracking-normal text-white/80";
+  "text-xs font-semibold uppercase tracking-normal text-harbor-blue/75";
 
 export const HARBOR_SECTION_CARD_ICON_BADGE_BASE =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-[#0a1929]/55 backdrop-blur-md";
+  `${HARBOR_FROSTED_LIGHT_ICON_BADGE_BASE}`;
 
 export const HARBOR_SECTION_CARD_BODY_CLASS = "px-3 pb-2.5 pt-0 sm:px-4 sm:pb-3";
 

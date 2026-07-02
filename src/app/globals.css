@@ -56,8 +56,15 @@
   }
 
   body {
-    @apply bg-[#1E4775] text-white min-h-full;
+    @apply min-h-full text-harbor-blue;
+    background: linear-gradient(180deg, #fafbfd 0%, #eef2f8 100%);
+    background-attachment: fixed;
     scrollbar-gutter: stable;
+  }
+
+  body.app-bg-eth {
+    background: linear-gradient(180deg, #fafbfd 0%, #eef2f8 100%);
+    background-attachment: fixed;
   }
 
   .dark {
@@ -86,10 +93,6 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
-}
-
-body.app-bg-eth {
-  background-image: none;
 }
 
 body.app-bg-megaeth {

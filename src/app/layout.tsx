@@ -9,6 +9,11 @@ import Navigation from "@/components/Navigation";
 import FadeContent from "@/components/FadeContent";
 import { DocumentTextIcon } from "@heroicons/react/24/outline";
 import { SiDiscord, SiX } from "react-icons/si";
+import {
+  HARBOR_THEME_CANVAS_CLASS,
+  HARBOR_THEME_FOOTER_CLASS,
+  HARBOR_THEME_FOOTER_LINK_CLASS,
+} from "@/components/shared/harborTheme";
 
 const siteUrl ="https://app.harborfinance.io";
 /** Default tab title for `/`; nested routes use `title` + template `%s | Harbor`. */
@@ -85,7 +90,7 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
  <body
- className={`antialiased font-sans bg-[#1E4775] text-white relative overflow-x-hidden min-h-full flex flex-col`}
+ className={`antialiased font-sans ${HARBOR_THEME_CANVAS_CLASS} relative overflow-x-hidden min-h-full flex flex-col`}
  >
  <div className="relative z-10 flex flex-1 flex-col min-h-0">
  <ContextProvider cookies={cookies}>
@@ -105,7 +110,7 @@ export default async function RootLayout({
               </AppBackgroundProvider>
             </PageLayoutPreferenceProvider>
  </Suspense>
- <footer className="mt-auto flex-shrink-0 border-t border-white/20">
+ <footer className={`mt-auto flex-shrink-0 ${HARBOR_THEME_FOOTER_CLASS}`}>
    <div className="w-full max-w-[1300px] mx-auto px-4 sm:px-10 py-6">
      <div className="flex justify-center mb-4">
        <a
@@ -118,13 +123,13 @@ export default async function RootLayout({
        </a>
      </div>
 
-     <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5 text-sm text-white/70">
+     <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5 text-sm text-harbor-blue/65">
        <a
          href="https://docs.harborfinance.io/"
          target="_blank"
          rel="noopener noreferrer"
          title="Harbor Docs"
-         className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 font-normal hover:bg-white/10 hover:text-white transition-colors"
+         className={`inline-flex items-center gap-2 rounded-md px-2 py-1.5 font-normal ${HARBOR_THEME_FOOTER_LINK_CLASS}`}
        >
          <DocumentTextIcon className="h-4 w-4 shrink-0" aria-hidden />
          Docs
@@ -134,7 +139,7 @@ export default async function RootLayout({
          target="_blank"
          rel="noopener noreferrer"
          title="Harbor on Discord"
-         className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 font-normal hover:bg-white/10 hover:text-white transition-colors"
+         className={`inline-flex items-center gap-2 rounded-md px-2 py-1.5 font-normal ${HARBOR_THEME_FOOTER_LINK_CLASS}`}
        >
          <SiDiscord className="h-4 w-4 shrink-0" aria-hidden />
          Discord
@@ -144,7 +149,7 @@ export default async function RootLayout({
          target="_blank"
          rel="noopener noreferrer"
          title="@0xHarborFi on X"
-         className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 font-normal hover:bg-white/10 hover:text-white transition-colors"
+         className={`inline-flex items-center gap-2 rounded-md px-2 py-1.5 font-normal ${HARBOR_THEME_FOOTER_LINK_CLASS}`}
        >
          <SiX className="h-4 w-4 shrink-0" aria-hidden />
          0xHarborFi
