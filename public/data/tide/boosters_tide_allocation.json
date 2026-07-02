@@ -1,0 +1,293 @@
+{
+  "name": "boosters_tide_allocation",
+  "description": "35 boosters · 15M TIDE pro-rata by score (total score 3425). Partial wallet mapping — empty address until assigned.",
+  "poolTokens": 15000000,
+  "totalScore": 3425,
+  "recipientCount": 35,
+  "mappedAddressCount": 8,
+  "pendingAddressCount": 27,
+  "scoreGroups": [
+    {
+      "rankLabel": "1",
+      "score": 500,
+      "amountTokens": 2189793
+    },
+    {
+      "rankLabel": "2",
+      "score": 350,
+      "amountTokens": 1532846
+    },
+    {
+      "rankLabel": "3",
+      "score": 250,
+      "amountTokens": 1094890
+    },
+    {
+      "rankLabel": "4–5",
+      "score": 175,
+      "amountTokens": 766423
+    },
+    {
+      "rankLabel": "6–10",
+      "score": 125,
+      "amountTokens": 547445
+    },
+    {
+      "rankLabel": "11–20",
+      "score": 75,
+      "amountTokens": 328467
+    },
+    {
+      "rankLabel": "21–35",
+      "score": 40,
+      "amountTokens": 175182
+    }
+  ],
+  "allocations": [
+    {
+      "rank": 1,
+      "score": 500,
+      "address": "",
+      "amount": "2189781021897810218978113",
+      "amountTokens": 2189793
+    },
+    {
+      "rank": 2,
+      "score": 350,
+      "address": "0xf81Bc9C1e9EAD7C227fb359F07a5fceD0d071f47",
+      "amount": "1532846715328467153284671",
+      "amountTokens": 1532846
+    },
+    {
+      "rank": 3,
+      "score": 250,
+      "address": "",
+      "amount": "1094890510948905109489051",
+      "amountTokens": 1094890
+    },
+    {
+      "rank": 4,
+      "score": 175,
+      "address": "",
+      "amount": "766423357664233576642335",
+      "amountTokens": 766423
+    },
+    {
+      "rank": 5,
+      "score": 175,
+      "address": "0x49afcb12da7d59b5e74d4bb01f9855e02346b0c8",
+      "amount": "766423357664233576642335",
+      "amountTokens": 766423
+    },
+    {
+      "rank": 6,
+      "score": 125,
+      "address": "0xEE0C9542071B71BDCF8Ae61d457cF513e2017F44",
+      "amount": "547445255474452554744525",
+      "amountTokens": 547445
+    },
+    {
+      "rank": 7,
+      "score": 125,
+      "address": "0x930feae1b277ff60b836d2ce27f162555a5b98b9",
+      "amount": "547445255474452554744525",
+      "amountTokens": 547445
+    },
+    {
+      "rank": 8,
+      "score": 125,
+      "address": "",
+      "amount": "547445255474452554744525",
+      "amountTokens": 547445
+    },
+    {
+      "rank": 9,
+      "score": 125,
+      "address": "",
+      "amount": "547445255474452554744525",
+      "amountTokens": 547445
+    },
+    {
+      "rank": 10,
+      "score": 125,
+      "address": "",
+      "amount": "547445255474452554744525",
+      "amountTokens": 547445
+    },
+    {
+      "rank": 11,
+      "score": 75,
+      "address": "0x5747B578bbA1A390aA381da0ab7d0537828937e9",
+      "amount": "328467153284671532846715",
+      "amountTokens": 328467
+    },
+    {
+      "rank": 12,
+      "score": 75,
+      "address": "",
+      "amount": "328467153284671532846715",
+      "amountTokens": 328467
+    },
+    {
+      "rank": 13,
+      "score": 75,
+      "address": "0x23Ce5F344A5034a893bF69727a2B32b49Ed0E864",
+      "amount": "328467153284671532846715",
+      "amountTokens": 328467
+    },
+    {
+      "rank": 14,
+      "score": 75,
+      "address": "0x98e917437041f213472C02835cdDC39356086618",
+      "amount": "328467153284671532846715",
+      "amountTokens": 328467
+    },
+    {
+      "rank": 15,
+      "score": 75,
+      "address": "0x84afb4B60844F8759154d6Ff7B0580Daa2D4e37d",
+      "amount": "328467153284671532846715",
+      "amountTokens": 328467
+    },
+    {
+      "rank": 16,
+      "score": 75,
+      "address": "",
+      "amount": "328467153284671532846715",
+      "amountTokens": 328467
+    },
+    {
+      "rank": 17,
+      "score": 75,
+      "address": "",
+      "amount": "328467153284671532846715",
+      "amountTokens": 328467
+    },
+    {
+      "rank": 18,
+      "score": 75,
+      "address": "",
+      "amount": "328467153284671532846715",
+      "amountTokens": 328467
+    },
+    {
+      "rank": 19,
+      "score": 75,
+      "address": "",
+      "amount": "328467153284671532846715",
+      "amountTokens": 328467
+    },
+    {
+      "rank": 20,
+      "score": 75,
+      "address": "",
+      "amount": "328467153284671532846715",
+      "amountTokens": 328467
+    },
+    {
+      "rank": 21,
+      "score": 40,
+      "address": "",
+      "amount": "175182481751824817518248",
+      "amountTokens": 175182
+    },
+    {
+      "rank": 22,
+      "score": 40,
+      "address": "",
+      "amount": "175182481751824817518248",
+      "amountTokens": 175182
+    },
+    {
+      "rank": 23,
+      "score": 40,
+      "address": "",
+      "amount": "175182481751824817518248",
+      "amountTokens": 175182
+    },
+    {
+      "rank": 24,
+      "score": 40,
+      "address": "",
+      "amount": "175182481751824817518248",
+      "amountTokens": 175182
+    },
+    {
+      "rank": 25,
+      "score": 40,
+      "address": "",
+      "amount": "175182481751824817518248",
+      "amountTokens": 175182
+    },
+    {
+      "rank": 26,
+      "score": 40,
+      "address": "",
+      "amount": "175182481751824817518248",
+      "amountTokens": 175182
+    },
+    {
+      "rank": 27,
+      "score": 40,
+      "address": "",
+      "amount": "175182481751824817518248",
+      "amountTokens": 175182
+    },
+    {
+      "rank": 28,
+      "score": 40,
+      "address": "",
+      "amount": "175182481751824817518248",
+      "amountTokens": 175182
+    },
+    {
+      "rank": 29,
+      "score": 40,
+      "address": "",
+      "amount": "175182481751824817518248",
+      "amountTokens": 175182
+    },
+    {
+      "rank": 30,
+      "score": 40,
+      "address": "",
+      "amount": "175182481751824817518248",
+      "amountTokens": 175182
+    },
+    {
+      "rank": 31,
+      "score": 40,
+      "address": "",
+      "amount": "175182481751824817518248",
+      "amountTokens": 175182
+    },
+    {
+      "rank": 32,
+      "score": 40,
+      "address": "",
+      "amount": "175182481751824817518248",
+      "amountTokens": 175182
+    },
+    {
+      "rank": 33,
+      "score": 40,
+      "address": "",
+      "amount": "175182481751824817518248",
+      "amountTokens": 175182
+    },
+    {
+      "rank": 34,
+      "score": 40,
+      "address": "",
+      "amount": "175182481751824817518248",
+      "amountTokens": 175182
+    },
+    {
+      "rank": 35,
+      "score": 40,
+      "address": "",
+      "amount": "175182481751824817518248",
+      "amountTokens": 175182
+    }
+  ]
+}

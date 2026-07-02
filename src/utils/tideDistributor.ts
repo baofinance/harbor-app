@@ -175,11 +175,77 @@ export function formatTideClaimWindowFooter(
   return null;
 }
 
-export function formatTideAirdropMonthYear(timestampMs: number): string {
-  return new Date(timestampMs).toLocaleDateString(undefined, {
-    month: "long",
-    year: "numeric",
-  });
+export const ZERO_MERKLE_ROOT =
+  "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+export function normalizeMerkleRootHash(
+  root: string | undefined | null
+): string | null {
+  if (!root) return null;
+  let trimmed = root.trim().toLowerCase();
+  if (!trimmed.startsWith("0x")) trimmed = `0x${trimmed}`;
+  if (trimmed.length < 66) {
+    trimmed = `0x${trimmed.slice(2).padStart(64, "0")}`;
+  }
+  return trimmed;
+}
+
+export function merkleRootToHex(root: bigint | string | undefined | null): string | null {
+  if (root === undefined || root === null) return null;
+  if (typeof root === "bigint") {
+    return `0x${root.toString(16).padStart(64, "0")}`;
+  }
+  return normalizeMerkleRootHash(root);
+}
+
+export function isUnsetMerkleRoot(root: bigint | string | undefined | null): boolean {
+  const hex = merkleRootToHex(root);
+  return hex === null || hex === ZERO_MERKLE_ROOT;
+}
+
+export function merkleRootsMatch(
+  a: bigint | string | undefined | null,
+  b: string | undefined | null
+): boolean {
+  const left = merkleRootToHex(a);
+  const right = normalizeMerkleRootHash(b);
+  return left !== null && right !== null && left === right;
+}
+
+export function getStandardClaimBlockReason({
+  hasAllocation,
+  hasProof,
+  hasClaimed,
+  claimWindowStatus,
+  claimWindowMessage,
+  onChainRoot,
+  snapshotRoot,
+}: {
+  hasAllocation: boolean;
+  hasProof: boolean;
+  hasClaimed: boolean;
+  claimWindowStatus: TideClaimWindowStatus;
+  claimWindowMessage: string | null;
+  onChainRoot: bigint | string | undefined;
+  snapshotRoot: string | undefined;
+}): string | null {
+  if (!hasAllocation) return null;
+  if (hasClaimed) return "Already claimed";
+  if (isUnsetMerkleRoot(onChainRoot)) {
+    return "Standard allocation not live yet";
+  }
+  if (
+    snapshotRoot &&
+    !isUnsetMerkleRoot(onChainRoot) &&
+    !merkleRootsMatch(onChainRoot, snapshotRoot)
+  ) {
+    return "Standard allocation snapshot out of date — refresh the app";
+  }
+  if (claimWindowStatus !== "open") {
+    return claimWindowMessage ?? "Claim window is not open";
+  }
+  if (!hasProof) return "Missing merkle proof in snapshot";
+  return null;
 }
 
 export function parseTideClaimError(error: unknown): string {

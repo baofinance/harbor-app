@@ -4,6 +4,7 @@ import type {
   TideAirdropBucketKey,
   TideAirdropSnapshot,
   TideAllocationSnapshot,
+  TideBoostersSnapshot,
 } from "@/config/tide";
 import { TIDE_AIRDROP_BUCKETS } from "@/config/tide";
 
@@ -78,20 +79,56 @@ export function sumTideAirdropTokens(
   );
 }
 
+export function findTideBoosterAllocation(
+  snapshot: TideBoostersSnapshot | undefined,
+  wallet: string | undefined
+) {
+  if (!snapshot || !wallet) return null;
+  const key = wallet.toLowerCase();
+  return (
+    snapshot.allocations.find(
+      (row) => row.address && row.address.toLowerCase() === key
+    ) ?? null
+  );
+}
+
+export function mergeBoostersIntoAirdropBuckets(
+  buckets: Record<TideAirdropBucketKey, TideAirdropBucketAmount>,
+  booster: { amount: string; amountTokens: number } | null
+): Record<TideAirdropBucketKey, TideAirdropBucketAmount> {
+  if (!booster) return buckets;
+  return {
+    ...buckets,
+    boosters: {
+      amount: booster.amount,
+      amountTokens: booster.amountTokens,
+    },
+  };
+}
+
 export function findTideAirdropAllocation(
   snapshot: TideAirdropSnapshot | undefined,
-  wallet: string | undefined
+  wallet: string | undefined,
+  boostersSnapshot?: TideBoostersSnapshot
 ) {
   if (!snapshot || !wallet) return null;
   const key = wallet.toLowerCase();
   const row =
     snapshot.allocations.find((entry) => entry.address.toLowerCase() === key) ??
     null;
-  if (!row) return null;
-  const buckets = normalizeTideAirdropBuckets(row);
+
+  const boosterOnly = findTideBoosterAllocation(boostersSnapshot, wallet);
+  if (!row && !boosterOnly) return null;
+
+  const buckets = mergeBoostersIntoAirdropBuckets(
+    row ? normalizeTideAirdropBuckets(row) : emptyTideAirdropBuckets(),
+    boosterOnly
+  );
+
   return {
-    row,
+    row: row ?? { address: wallet, buckets },
     buckets,
     totalTokens: sumTideAirdropTokens(buckets),
+    boosterRank: boosterOnly?.rank,
   };
 }
