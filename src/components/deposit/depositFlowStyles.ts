@@ -17,4 +17,4 @@ export const DEPOSIT_PRIMARY_RETRY_CLASS = `${DEPOSIT_PRIMARY_BASE} border borde
 
 export const DEPOSIT_PRIMARY_DISABLED_CLASS = `${DEPOSIT_PRIMARY_BASE} cursor-not-allowed border border-[#1E4775]/15 bg-[#1E4775]/8 text-[#1E4775]/55`;
 
-export const DEPOSIT_CANCEL_BUTTON_CLASS = `w-full rounded-lg py-3 px-4 font-semibold ${HARBOR_BTN_GLASS_OUTLINE_LIGHT}`;
+export const DEPOSIT_CANCEL_BUTTON_CLASS = `rounded-lg py-3 px-5 font-semibold shrink-0 ${HARBOR_BTN_GLASS_OUTLINE_LIGHT}`;

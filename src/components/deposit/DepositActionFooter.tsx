@@ -24,23 +24,27 @@ export function DepositActionFooter({
   onCancel,
   showCancel = false,
 }: DepositActionFooterProps) {
-  const primaryClassName = layout === "modal" ? "flex-1" : undefined;
-
   return (
     <div className="mt-auto shrink-0 space-y-2.5 border-t border-[#1E4775]/8 pt-3">
       {feeFooter}
       <div className={layout === "modal" ? "flex gap-3" : undefined}>
         {showCancel && onCancel ? (
-          <button type="button" onClick={onCancel} className={DEPOSIT_CANCEL_BUTTON_CLASS}>
+          <button
+            type="button"
+            onClick={onCancel}
+            className={DEPOSIT_CANCEL_BUTTON_CLASS}
+          >
             Cancel
           </button>
         ) : null}
-        <DepositPrimaryButton
-          action={action}
-          onSubmit={onSubmit}
-          onRetry={onRetry}
-          className={primaryClassName}
-        />
+        <div className={layout === "modal" ? "min-w-0 flex-1" : undefined}>
+          <DepositPrimaryButton
+            action={action}
+            onSubmit={onSubmit}
+            onRetry={onRetry}
+            className={layout === "modal" ? "w-full" : undefined}
+          />
+        </div>
       </div>
     </div>
   );

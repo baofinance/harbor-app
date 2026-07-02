@@ -10408,16 +10408,8 @@ export const AnchorDepositWithdrawModal = ({
                         error,
                         capAtBalance: true,
                         onErrorClear: () => setError(null),
-                        balanceContent: (
-                          <>
-                            Balance:{" "}
-                            {selectedAssetBalance !== null
-                              ? (isUSDC ? formatUnits(selectedAssetBalance, 6) : formatEther(selectedAssetBalance))
-                              : (isUSDC ? formatUnits(collateralBalance, 6) : formatEther(collateralBalance))}
-                            {" "}
-                            {selectedDepositAsset || activeCollateralSymbol}
-                          </>
-                        ),
+                        balanceSymbol: selectedDepositAsset || activeCollateralSymbol,
+                        balanceMaxDecimals: 4,
                         amountInputOverlay: (
                           <div className="absolute right-20 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
                             {tempMaxWarning ? (

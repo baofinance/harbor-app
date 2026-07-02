@@ -78,7 +78,7 @@ export function DepositAmountCard({
   const balanceContent =
     balanceContentOverride ??
     (balanceSymbol ? (
-      <span className="text-[11px] text-[#1E4775]/60">
+      <span className="text-[11px] tabular-nums text-[#1E4775]/60">
         Balance:{" "}
         {formatBalance(balance ?? 0n, balanceSymbol, balanceMaxDecimals, decimals)}
       </span>
@@ -95,10 +95,7 @@ export function DepositAmountCard({
     <div className={DEPOSIT_AMOUNT_CARD_CLASS}>
       {showTokenRow ? (
         <div className="mb-3 space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <span className={DEPOSIT_SECTION_LABEL_CLASS}>{tokenRowLabel}</span>
-            {balanceContent}
-          </div>
+          <span className={DEPOSIT_SECTION_LABEL_CLASS}>{tokenRowLabel}</span>
           <TokenSelectorDropdown
             value={tokenSelector.value}
             onChange={tokenSelector.onChange}
@@ -118,9 +115,11 @@ export function DepositAmountCard({
             />
           ) : null}
         </div>
-      ) : (
-        <div className="mb-3 flex items-center justify-end">{balanceContent}</div>
-      )}
+      ) : null}
+
+      {balanceContent ? (
+        <div className="mb-2 flex items-center justify-end">{balanceContent}</div>
+      ) : null}
 
       {betweenTokenAndAmount ? (
         <div className="mb-2 text-xs text-[#1E4775]/70">{betweenTokenAndAmount}</div>
