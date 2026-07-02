@@ -10768,8 +10768,6 @@ export const AnchorDepositWithdrawModal = ({
                         action={step1PrimaryAction}
                         onSubmit={handleContinueStep1}
                         onRetry={handleContinueStep1}
-                        onCancel={handleClose}
-                        showCancel
                         feeFooter={
                           !isDirectPeggedDeposit && selectedDepositAsset ? (
                             <AnchorDepositFeeFooter>
