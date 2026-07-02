@@ -43,6 +43,9 @@ export const HARBOR_BTN_GLASS_MINT_LIGHT = `${BTN_BASE} ${BTN_DISABLED_LIGHT} ${
 /** Coral accent on light frosted panels. */
 export const HARBOR_BTN_GLASS_CORAL_LIGHT = `${BTN_BASE} ${BTN_DISABLED_LIGHT} ${HARBOR_BTN_GLASS_LIGHT_SURFACE} font-semibold text-harbor-coral border-harbor-coral/45 hover:border-harbor-coral/60 hover:bg-white/95`;
 
+/** Solid coral CTA — white label on harbor coral (Earn claim actions). */
+export const HARBOR_BTN_SOLID_CORAL_BASE = `${BTN_BASE} border border-harbor-coral bg-harbor-coral font-semibold text-white hover:border-[#FF6B5A] hover:bg-[#FF6B5A] disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none`;
+
 /** Secondary / cancel on light panels. */
 export const HARBOR_BTN_GLASS_OUTLINE_LIGHT = `${BTN_BASE} ${BTN_DISABLED_LIGHT} ${HARBOR_BTN_GLASS_LIGHT_SURFACE} border-[#1E4775]/30 font-semibold text-[#1E4775] hover:border-[#1E4775]/45 hover:bg-white/95`;
 
@@ -109,6 +112,13 @@ export const HARBOR_BTN_PRIMARY_RESPONSIVE_CLASS = `${HARBOR_BTN_PRIMARY_COMPACT
 
 /** Coral — Anchor withdrawal actions. */
 export const HARBOR_BTN_CORAL_DESKTOP_CLASS = `${HARBOR_BTN_GLASS_CORAL_LIGHT} min-w-[7rem] rounded-md px-4 py-2 text-xs`;
+
+/** Solid coral — Earn claim actions. */
+export const HARBOR_BTN_SOLID_CORAL_DESKTOP_CLASS = `${HARBOR_BTN_SOLID_CORAL_BASE} min-w-[7rem] rounded-md px-4 py-2 text-xs`;
+
+export const HARBOR_BTN_SOLID_CORAL_PILL_CLASS = `flex-1 rounded-full px-4 py-2 text-sm font-medium ${HARBOR_BTN_SOLID_CORAL_BASE}`;
+
+export const HARBOR_BTN_SOLID_CORAL_COMPACT_PILL_CLASS = `rounded-full px-3 py-1 text-xs font-medium ${HARBOR_BTN_SOLID_CORAL_BASE}`;
 
 /** Frosted secondary — View all, dashboard links. */
 export const HARBOR_BTN_SECONDARY_CLASS = `${HARBOR_BTN_GLASS_OUTLINE_LIGHT} shrink-0 gap-1 rounded-md px-2.5 py-1.5 text-[11px] sm:px-3 sm:text-xs`;

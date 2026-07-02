@@ -8,6 +8,7 @@ import {
 import { RewardTokensDisplay } from "@/components/anchor/RewardTokensDisplay";
 import { formatCompactUSD, formatAPR } from "@/utils/anchor";
 import { formatToken } from "@/utils/formatters";
+import { INDEX_EARN_CLAIM_BUTTON_CLASS_COMPACT } from "@/utils/indexPageManageButton";
 import type { AnchorContractReads, AnchorMarketTuple } from "@/types/anchor";
 
 export type AnchorEarningsSectionProps = {
@@ -478,7 +479,7 @@ export function AnchorEarningsSection(props: AnchorEarningsSectionProps) {
                                   }
                                 }}
                                 disabled={isClaimingAll || marketTotalUSD === 0}
-                                className="px-3 py-1 text-xs font-medium bg-white/85 backdrop-blur-sm text-[#1E4775] border border-white/40 hover:bg-white/90 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors rounded-full"
+                                className={INDEX_EARN_CLAIM_BUTTON_CLASS_COMPACT}
                               >
                                 Claim
                               </button>

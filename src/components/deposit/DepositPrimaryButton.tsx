@@ -13,6 +13,7 @@ import {
   DEPOSIT_PRIMARY_NAVY_CLASS,
   DEPOSIT_PRIMARY_RETRY_CLASS,
 } from "@/components/deposit/depositFlowStyles";
+import { cn } from "@/lib/utils";
 
 type DepositPrimaryButtonProps = {
   action: DepositPrimaryAction;
@@ -30,7 +31,7 @@ export function DepositPrimaryButton({
   if (action.kind === "connect") {
     return (
       <HarborConnectWalletCta
-        className={className ?? DEPOSIT_PRIMARY_MINT_CLASS}
+        className={cn(DEPOSIT_PRIMARY_MINT_CLASS, className)}
         label={depositPrimaryActionLabel(action)}
       />
     );
@@ -54,7 +55,7 @@ export function DepositPrimaryButton({
       type="button"
       onClick={action.kind === "retry" ? onRetry : onSubmit}
       disabled={disabled}
-      className={className ?? buttonClass}
+      className={cn(buttonClass, className)}
     >
       {label}
     </button>

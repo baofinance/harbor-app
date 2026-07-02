@@ -7,6 +7,7 @@ import { HarborWalletModal } from "@/components/Wallet";
 import {
   DEPOSIT_PRIMARY_MINT_CLASS,
 } from "@/components/deposit/depositFlowStyles";
+import { cn } from "@/lib/utils";
 
 type HarborConnectWalletCtaProps = {
   className?: string;
@@ -36,7 +37,7 @@ export function HarborConnectWalletCta({
           reset();
           setShowModal(true);
         }}
-        className={className ?? DEPOSIT_PRIMARY_MINT_CLASS}
+        className={cn(DEPOSIT_PRIMARY_MINT_CLASS, className)}
       >
         {label}
       </button>

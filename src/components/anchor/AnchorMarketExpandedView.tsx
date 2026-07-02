@@ -5,7 +5,7 @@ import { HARBOR_FROSTED_LIGHT_CARD_ROUNDED } from "@/components/shared/harborFro
 import {
   HARBOR_BTN_GLASS_PILL_DISABLED_CLASS,
   HARBOR_BTN_GLASS_PILL_NAVY_CLASS,
-  HARBOR_BTN_GLASS_PILL_OUTLINE_CLASS,
+  HARBOR_BTN_SOLID_CORAL_PILL_CLASS,
 } from "@/components/shared/harborButtonStyles";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { EtherscanLink as SharedEtherscanLink } from "@/components/shared";
@@ -615,7 +615,7 @@ export function AnchorMarketExpandedView({
                         isClaiming ||
                         isCompounding
                       }
-                      className={HARBOR_BTN_GLASS_PILL_OUTLINE_CLASS}
+                      className={HARBOR_BTN_SOLID_CORAL_PILL_CLASS}
                     >
                       Claim
                     </button>
@@ -731,7 +731,7 @@ export function AnchorMarketExpandedView({
                         isClaiming ||
                         isCompounding
                       }
-                      className={HARBOR_BTN_GLASS_PILL_OUTLINE_CLASS}
+                      className={HARBOR_BTN_SOLID_CORAL_PILL_CLASS}
                     >
                       Claim
                     </button>
