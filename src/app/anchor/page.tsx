@@ -96,7 +96,6 @@ import { AnchorMarketsSections } from "@/components/anchor/AnchorMarketsSections
 import { AnchorMarketGroupExpandedSection } from "@/components/anchor/AnchorMarketGroupExpandedSection";
 import { AnchorMarketsTableHeader } from "@/components/anchor/AnchorMarketsTableHeader";
 import { AnchorBasicMarketCardsGrid } from "@/components/anchor/AnchorBasicMarketCardsGrid";
-import { AnchorStatsStrip } from "@/components/anchor/AnchorStatsStrip";
 import { AnchorRewardsStrip } from "@/components/anchor/AnchorRewardsStrip";
 import { AnchorEarningsSection } from "@/components/anchor/AnchorEarningsSection";
 import { AnchorWalletPositionsSection } from "@/components/anchor/AnchorWalletPositionsSection";
@@ -473,8 +472,6 @@ export default function AnchorPage() {
       <HarborPageShell>
           {!anchorViewBasic && (
             <>
-              <AnchorStatsStrip anchorStats={anchorStats} />
-
               {ledgerMarksError && (
                 <IndexMarksSubgraphErrorBanner error={ledgerMarksError} />
               )}
