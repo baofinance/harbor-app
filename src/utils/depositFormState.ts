@@ -2,7 +2,7 @@ export type DepositPrimaryVariant = "mint" | "navy";
 
 export type DepositPrimaryAction =
   | { kind: "connect" }
-  | { kind: "enter_amount" }
+  | { kind: "enter_amount"; label?: string }
   | { kind: "exceeds_balance" }
   | { kind: "submit"; label: string; variant?: DepositPrimaryVariant }
   | { kind: "retry" };
@@ -12,7 +12,7 @@ export function depositPrimaryActionLabel(action: DepositPrimaryAction): string 
     case "connect":
       return "Connect wallet";
     case "enter_amount":
-      return "Enter an amount";
+      return action.label ?? "Enter an amount";
     case "exceeds_balance":
       return "Insufficient balance";
     case "submit":

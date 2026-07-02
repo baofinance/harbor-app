@@ -13,6 +13,7 @@ type DepositActionFooterProps = {
   onRetry: () => void;
   onCancel?: () => void;
   showCancel?: boolean;
+  cancelLabel?: string;
 };
 
 export function DepositActionFooter({
@@ -23,6 +24,7 @@ export function DepositActionFooter({
   onRetry,
   onCancel,
   showCancel = false,
+  cancelLabel = "Cancel",
 }: DepositActionFooterProps) {
   return (
     <div className="mt-auto shrink-0 space-y-2.5 border-t border-[#1E4775]/8 pt-3">
@@ -34,7 +36,7 @@ export function DepositActionFooter({
             onClick={onCancel}
             className={DEPOSIT_CANCEL_BUTTON_CLASS}
           >
-            Cancel
+            {cancelLabel}
           </button>
         ) : null}
         <div className={layout === "modal" ? "min-w-0 flex-1" : undefined}>
