@@ -6,6 +6,7 @@ import {
   type TideFlywheelStage,
 } from "@/config/tideFlywheel";
 import { useTideFlywheelOnChain } from "@/hooks/useTideFlywheelOnChain";
+import { useTidePolV4Ownership } from "@/hooks/useTidePolV4Ownership";
 import { useTideFlywheelRevenue } from "@/hooks/useTideFlywheelRevenue";
 import { supplyBurnedPct } from "@/utils/tidePolOwnership";
 import {
@@ -60,6 +61,7 @@ function resolveStaticBurnPct(totalSupply: bigint | null): number | null {
 export function useTideFlywheelMetrics(): TideFlywheelMetrics {
   const revenue = useTideFlywheelRevenue();
   const onChain = useTideFlywheelOnChain();
+  const polV4 = useTidePolV4Ownership();
 
   return useMemo(() => {
     const lifetimeRevenueUsd =
@@ -77,9 +79,14 @@ export function useTideFlywheelMetrics(): TideFlywheelMetrics {
     const treasuryTarget = TIDE_FLYWHEEL_CONFIG.targets.treasuryOwnershipPct;
     const polTarget = TIDE_FLYWHEEL_CONFIG.targets.polOwnershipPct;
 
+    const polOwnershipPct =
+      polV4.ownershipPct ?? onChain.polOwnershipPct;
+    const polLpConfigured =
+      polV4.configured || onChain.polLpConfigured;
+
     const activeStage = deriveFlywheelStage(
       onChain.treasuryOwnershipPct,
-      onChain.polOwnershipPct,
+      polOwnershipPct,
     );
 
     const burnSupplyPct =
@@ -100,19 +107,19 @@ export function useTideFlywheelMetrics(): TideFlywheelMetrics {
         targetReached: isTreasuryTargetReached(onChain.treasuryOwnershipPct),
       },
       pol: {
-        ownershipPct: onChain.polOwnershipPct,
+        ownershipPct: polOwnershipPct,
         targetPct: polTarget,
-        targetReached: isPolTargetReached(onChain.polOwnershipPct),
+        targetReached: isPolTargetReached(polOwnershipPct),
       },
       burn: {
         supplyBurnedPct: burnSupplyPct,
       },
       activeStage,
-      isLoading: revenue.isLoading || onChain.isLoading,
+      isLoading: revenue.isLoading || onChain.isLoading || polV4.isLoading,
       isEstimate: revenue.estimate?.isEstimate ?? true,
       tideTokenConfigured: onChain.tideTokenConfigured,
-      polLpConfigured: onChain.polLpConfigured,
+      polLpConfigured,
       burnConfigured: onChain.burnConfigured,
     };
-  }, [onChain, revenue.estimate, revenue.isLoading]);
+  }, [onChain, polV4, revenue.estimate, revenue.isLoading]);
 }
