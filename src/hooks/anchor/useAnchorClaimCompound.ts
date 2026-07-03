@@ -21,7 +21,10 @@ import { FeeInfo } from "@/components/CompoundConfirmationModal";
 import { PoolOption } from "@/components/CompoundPoolSelectionModal";
 import { useAnchorTransactions } from "@/hooks/anchor/useAnchorTransactions";
 import type { AnchorContractReads, AnchorMarketTuple } from "@/types/anchor";
-import { runAnchorBuyTideFlow } from "@/utils/anchorBuyTideFlow";
+import {
+  runAnchorBuyTideFlow,
+  type BuyTideResumeState,
+} from "@/utils/anchorBuyTideFlow";
 
 const minterABI = MINTER_ABI_EXTENDED;
 
@@ -97,7 +100,9 @@ export function useAnchorClaimCompound({
     title: string;
     steps: TransactionStep[];
     currentStepIndex: number;
+    onRetry?: () => void;
   } | null>(null);
+  const buyTideResumeRef = useRef<BuyTideResumeState | null>(null);
   const [compoundConfirmation, setCompoundConfirmation] = useState<{
     steps: TransactionStep[];
     fees: FeeInfo[];
@@ -1374,42 +1379,6 @@ export function useAnchorClaimCompound({
   // Claim all, compound all, and buy $TIDE handlers
   // handleClaimAll, handleCompoundAll are now provided by useAnchorTransactions hook
 
-  const handleBuyTide = async (
-    selectedPools: Array<{
-      marketId: string;
-      poolType: "collateral" | "sail";
-    }> = []
-  ) => {
-    if (!address || !publicClient || isClaimingAll) return;
-
-    try {
-      setIsClaimingAll(true);
-      setIsClaimAllModalOpen(false);
-
-      const result = await runAnchorBuyTideFlow({
-        address,
-        publicClient,
-        anchorMarkets,
-        selectedPools,
-        getPoolRewardTokens,
-        writeContractAsync,
-        sendTransactionAsync,
-        ensureAllowance,
-        setTransactionProgress,
-        updateProgressStep,
-        setCurrentStep,
-        isUserRejection,
-      });
-
-      if (result.ok) {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        await Promise.all([refetchReads(), refetchUserDeposits()]);
-      }
-    } finally {
-      setIsClaimingAll(false);
-    }
-  };
-
   const ensureAllowance = useCallback(
     async (token: `0x${string}`, spender: `0x${string}`, amount: bigint) => {
       if (!address || !publicClient) return;
@@ -1537,6 +1506,124 @@ export function useAnchorClaimCompound({
     },
     [allPoolRewards]
   );
+
+  const handleBuyTideRetryRef = useRef<() => void>(() => {});
+
+  const runBuyTideFlowWithRetry = useCallback(
+    async (input: {
+      selectedPools: Array<{
+        marketId: string;
+        poolType: "collateral" | "sail";
+      }>;
+      flowSource: "all" | "market";
+      resume?: BuyTideResumeState;
+    }) => {
+      if (!address || !publicClient) return;
+
+      const result = await runAnchorBuyTideFlow({
+        address,
+        publicClient,
+        anchorMarkets,
+        selectedPools: input.selectedPools,
+        getPoolRewardTokens,
+        writeContractAsync,
+        sendTransactionAsync,
+        ensureAllowance,
+        setTransactionProgress,
+        updateProgressStep,
+        setCurrentStep,
+        isUserRejection,
+        resume: input.resume,
+        flowSource: input.flowSource,
+      });
+
+      if (result.ok) {
+        buyTideResumeRef.current = null;
+        setTransactionProgress((prev) =>
+          prev ? { ...prev, onRetry: undefined } : prev
+        );
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await Promise.all([refetchReads(), refetchUserDeposits()]);
+        return;
+      }
+
+      if (result.resumeState) {
+        buyTideResumeRef.current = result.resumeState;
+        setTransactionProgress((prev) =>
+          prev
+            ? {
+                ...prev,
+                onRetry: () => {
+                  handleBuyTideRetryRef.current();
+                },
+              }
+            : prev
+        );
+      }
+    },
+    [
+      address,
+      publicClient,
+      anchorMarkets,
+      getPoolRewardTokens,
+      writeContractAsync,
+      sendTransactionAsync,
+      ensureAllowance,
+      setTransactionProgress,
+      updateProgressStep,
+      setCurrentStep,
+      isUserRejection,
+      refetchReads,
+      refetchUserDeposits,
+    ]
+  );
+
+  const handleBuyTideRetry = useCallback(async () => {
+    const resume = buyTideResumeRef.current;
+    if (!address || !publicClient || !resume) return;
+
+    const setBusy =
+      resume.source === "market" ? setIsClaiming : setIsClaimingAll;
+
+    try {
+      setBusy(true);
+      await runBuyTideFlowWithRetry({
+        selectedPools: resume.selectedPools,
+        flowSource: resume.source,
+        resume,
+      });
+    } finally {
+      setBusy(false);
+    }
+  }, [address, publicClient, runBuyTideFlowWithRetry]);
+
+  useEffect(() => {
+    handleBuyTideRetryRef.current = () => {
+      void handleBuyTideRetry();
+    };
+  }, [handleBuyTideRetry]);
+
+  const handleBuyTide = async (
+    selectedPools: Array<{
+      marketId: string;
+      poolType: "collateral" | "sail";
+    }> = []
+  ) => {
+    if (!address || !publicClient || isClaimingAll) return;
+
+    try {
+      buyTideResumeRef.current = null;
+      setIsClaimingAll(true);
+      setIsClaimAllModalOpen(false);
+
+      await runBuyTideFlowWithRetry({
+        selectedPools,
+        flowSource: "all",
+      });
+    } finally {
+      setIsClaimingAll(false);
+    }
+  };
 
   const formatTokenAmount = useCallback((amount: bigint): string => {
     const num = Number(amount) / 1e18;
@@ -3416,28 +3503,14 @@ export function useAnchorClaimCompound({
     }
 
     try {
+      buyTideResumeRef.current = null;
       setIsClaiming(true);
       setIsClaimMarketModalOpen(false);
 
-      const result = await runAnchorBuyTideFlow({
-        address,
-        publicClient,
-        anchorMarkets,
+      await runBuyTideFlowWithRetry({
         selectedPools,
-        getPoolRewardTokens,
-        writeContractAsync,
-        sendTransactionAsync,
-        ensureAllowance,
-        setTransactionProgress,
-        updateProgressStep,
-        setCurrentStep,
-        isUserRejection,
+        flowSource: "market",
       });
-
-      if (result.ok) {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        await Promise.all([refetchReads(), refetchUserDeposits()]);
-      }
     } finally {
       setIsClaiming(false);
     }
@@ -3513,6 +3586,7 @@ export function useAnchorClaimCompound({
     isUserRejection,
     handleCompoundConfirm,
     handleBuyTide,
+    handleBuyTideRetry,
     ensureAllowance,
     readErc20Balance,
     getSelectedPoolsByMarket,

@@ -28,6 +28,20 @@ export type AnchorRewardToken = {
   claimable: bigint;
 };
 
+export type BuyTideFlowSource = "all" | "market";
+
+export type BuyTideResumeState = {
+  source: BuyTideFlowSource;
+  selectedPools: AnchorBuyTidePoolSelection[];
+  steps: TransactionStep[];
+  stepIndex: number;
+  balanceBefore: Record<string, string>;
+  wstEthBefore: string;
+  poolsToClaim: AnchorBuyTidePoolSelection[];
+  swapTokens: AnchorRewardToken[];
+  needsPolSwap: boolean;
+};
+
 export type RunAnchorBuyTideFlowParams = {
   address: `0x${string}`;
   publicClient: PublicClient;
@@ -53,6 +67,8 @@ export type RunAnchorBuyTideFlowParams = {
   ) => void;
   setCurrentStep: (index: number) => void;
   isUserRejection: (error: unknown) => boolean;
+  resume?: BuyTideResumeState;
+  flowSource?: BuyTideFlowSource;
 };
 
 function asAddress(value: string): `0x${string}` {
@@ -139,6 +155,52 @@ function paraswapRouteHint(fromToken: string): string {
   return `${src}-${mid}-${dest}`;
 }
 
+function parseClaimStepId(stepId: string): {
+  marketId: string;
+  poolType: "collateral" | "sail";
+} | null {
+  if (!stepId.startsWith("claim-")) return null;
+  const rest = stepId.slice("claim-".length);
+  const poolTypeSep = rest.lastIndexOf("-");
+  if (poolTypeSep <= 0) return null;
+  const poolType = rest.slice(poolTypeSep + 1);
+  if (poolType !== "collateral" && poolType !== "sail") return null;
+  return {
+    marketId: rest.slice(0, poolTypeSep),
+    poolType,
+  };
+}
+
+function formatBuyTideFlowError(
+  error: unknown,
+  isUserRejection: (error: unknown) => boolean
+): string {
+  if (isUserRejection(error)) {
+    return "Transaction was rejected in your wallet.";
+  }
+
+  const message =
+    error instanceof Error ? error.message : String(error ?? "Unknown error");
+  const lower = message.toLowerCase();
+
+  if (
+    lower.includes("route unavailable") ||
+    lower.includes("could not find a swap route")
+  ) {
+    return message;
+  }
+
+  if (
+    lower.includes("revert") ||
+    lower.includes("execution reverted") ||
+    lower.includes("transaction failed")
+  ) {
+    return "The transaction failed on-chain. Please try again.";
+  }
+
+  return message || "Something went wrong. Please try again.";
+}
+
 async function executeParaswapSwap(input: {
   fromToken: `0x${string}`;
   amount: bigint;
@@ -185,9 +247,38 @@ async function executeParaswapSwap(input: {
   return hash;
 }
 
+function buildResumeState(input: {
+  source: BuyTideFlowSource;
+  selectedPools: AnchorBuyTidePoolSelection[];
+  steps: TransactionStep[];
+  stepIndex: number;
+  balanceBefore: Map<string, bigint>;
+  wstEthBefore: bigint;
+  poolsToClaim: AnchorBuyTidePoolSelection[];
+  swapTokens: AnchorRewardToken[];
+  needsPolSwap: boolean;
+}): BuyTideResumeState {
+  return {
+    source: input.source,
+    selectedPools: input.selectedPools,
+    steps: input.steps,
+    stepIndex: input.stepIndex,
+    balanceBefore: Object.fromEntries(
+      [...input.balanceBefore.entries()].map(([key, value]) => [
+        key,
+        value.toString(),
+      ])
+    ),
+    wstEthBefore: input.wstEthBefore.toString(),
+    poolsToClaim: input.poolsToClaim,
+    swapTokens: input.swapTokens,
+    needsPolSwap: input.needsPolSwap,
+  };
+}
+
 export async function runAnchorBuyTideFlow(
   params: RunAnchorBuyTideFlowParams
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; resumeState?: BuyTideResumeState }> {
   const {
     address,
     publicClient,
@@ -201,289 +292,381 @@ export async function runAnchorBuyTideFlow(
     updateProgressStep,
     setCurrentStep,
     isUserRejection,
+    resume,
+    flowSource = "all",
   } = params;
 
-  const poolsToClaim = poolsWithRewards(
-    selectedPools,
-    anchorMarkets,
-    getPoolRewardTokens
-  );
+  let steps: TransactionStep[];
+  let stepIndex: number;
+  let balanceBefore: Map<string, bigint>;
+  let wstEthBefore: bigint;
+  let poolsToClaim: AnchorBuyTidePoolSelection[];
+  let swapTokens: AnchorRewardToken[];
+  let needsPolSwap: boolean;
 
-  if (poolsToClaim.length === 0) {
-    return { ok: false, error: "No claimable rewards in the selected pools." };
-  }
+  if (resume) {
+    steps = resume.steps.map((step, index) =>
+      index >= resume.stepIndex
+        ? {
+            ...step,
+            status: "pending" as const,
+            error: undefined,
+            txHash: undefined,
+            details: undefined,
+          }
+        : step
+    );
+    stepIndex = resume.stepIndex;
+    balanceBefore = new Map(
+      Object.entries(resume.balanceBefore).map(([key, value]) => [
+        key,
+        BigInt(value),
+      ])
+    );
+    wstEthBefore = BigInt(resume.wstEthBefore);
+    poolsToClaim = resume.poolsToClaim;
+    swapTokens = resume.swapTokens;
+    needsPolSwap = resume.needsPolSwap;
 
-  const rewardTokens = aggregateRewardTokens(
-    poolsToClaim,
-    anchorMarkets,
-    getPoolRewardTokens
-  );
+    setTransactionProgress({
+      isOpen: true,
+      title: "Buy TIDE with Rewards",
+      steps,
+      currentStepIndex: stepIndex,
+    });
+  } else {
+    poolsToClaim = poolsWithRewards(
+      selectedPools,
+      anchorMarkets,
+      getPoolRewardTokens
+    );
 
-  const swapTokens = [...rewardTokens.values()].filter(
-    (t) => !isTideToken(t.address)
-  );
-
-  const needsPolSwap = swapTokens.some((t) => !isTideToken(t.address));
-
-  const claimSteps: TransactionStep[] = poolsToClaim.map(
-    ({ marketId, poolType }) => {
-      const market = anchorMarkets.find(([id]) => id === marketId)?.[1];
-      const marketSymbol =
-        (market as { peggedToken?: { symbol?: string } })?.peggedToken
-          ?.symbol || marketId;
+    if (poolsToClaim.length === 0) {
       return {
-        id: `claim-${marketId}-${poolType}`,
-        label: `Claim rewards from ${marketSymbol} ${poolType} pool`,
-        status: "pending" as const,
+        ok: false,
+        error: "No claimable rewards in the selected pools.",
       };
     }
-  );
 
-  const swapSteps: TransactionStep[] = swapTokens
-    .filter((t) => !isPolPairToken(t.address))
-    .map((token) => ({
-      id: `swap-${token.address.toLowerCase()}`,
-      label: `Swap ${token.symbol} for TIDE`,
-      status: "pending" as const,
-    }));
+    const rewardTokens = aggregateRewardTokens(
+      poolsToClaim,
+      anchorMarkets,
+      getPoolRewardTokens
+    );
 
-  const polStep: TransactionStep | null = needsPolSwap
-    ? {
-        id: "pol-tide",
-        label: "Swap wstETH for TIDE",
-        status: "pending",
+    swapTokens = [...rewardTokens.values()].filter(
+      (t) => !isTideToken(t.address)
+    );
+
+    needsPolSwap = swapTokens.some((t) => !isTideToken(t.address));
+
+    const claimSteps: TransactionStep[] = poolsToClaim.map(
+      ({ marketId, poolType }) => {
+        const market = anchorMarkets.find(([id]) => id === marketId)?.[1];
+        const marketSymbol =
+          (market as { peggedToken?: { symbol?: string } })?.peggedToken
+            ?.symbol || marketId;
+        return {
+          id: `claim-${marketId}-${poolType}`,
+          label: `Claim rewards from ${marketSymbol} ${poolType} pool`,
+          status: "pending" as const,
+        };
       }
-    : null;
+    );
 
-  const steps = [...claimSteps, ...swapSteps, ...(polStep ? [polStep] : [])];
+    const swapSteps: TransactionStep[] = swapTokens
+      .filter((t) => !isPolPairToken(t.address))
+      .map((token) => ({
+        id: `swap-${token.address.toLowerCase()}`,
+        label: `Swap ${token.symbol} for TIDE`,
+        status: "pending" as const,
+      }));
 
-  setTransactionProgress({
-    isOpen: true,
-    title: "Buy TIDE with Rewards",
-    steps,
-    currentStepIndex: 0,
-  });
+    const polStep: TransactionStep | null = needsPolSwap
+      ? {
+          id: "pol-tide",
+          label: "Swap wstETH for TIDE",
+          status: "pending",
+        }
+      : null;
 
-  const balanceBefore = new Map<string, bigint>();
-  for (const token of rewardTokens.values()) {
-    const bal = (await publicClient.readContract({
-      address: asAddress(token.address),
-      abi: ERC20_ABI,
-      functionName: "balanceOf",
-      args: [address],
-    })) as bigint;
-    balanceBefore.set(token.address.toLowerCase(), bal ?? 0n);
-  }
+    steps = [...claimSteps, ...swapSteps, ...(polStep ? [polStep] : [])];
 
-  const wstEthBefore =
-    balanceBefore.get(pairToken.toLowerCase()) ??
-    (await publicClient.readContract({
-      address: pairToken,
-      abi: ERC20_ABI,
-      functionName: "balanceOf",
-      args: [address],
-    }));
+    setTransactionProgress({
+      isOpen: true,
+      title: "Buy TIDE with Rewards",
+      steps,
+      currentStepIndex: 0,
+    });
 
-  let stepIndex = 0;
-
-  try {
-    for (const { marketId, poolType } of poolsToClaim) {
-      const stepId = `claim-${marketId}-${poolType}`;
-      setCurrentStep(stepIndex);
-      updateProgressStep(stepId, { status: "in_progress" });
-
-      const market = anchorMarkets.find(([id]) => id === marketId)?.[1];
-      const poolAddress = market
-        ? getPoolAddress(market as Record<string, unknown>, poolType)
-        : undefined;
-
-      if (!poolAddress) {
-        updateProgressStep(stepId, {
-          status: "error",
-          error: "Pool address not found",
-        });
-        return { ok: false, error: "Pool address not found" };
-      }
-
-      const hash = await writeContractAsync({
-        address: poolAddress,
-        abi: rewardsABI,
-        functionName: "claim",
-      });
-
-      updateProgressStep(stepId, {
-        status: "in_progress",
-        txHash: hash as string,
-        details: "Waiting for confirmation…",
-      });
-
-      await publicClient.waitForTransactionReceipt({ hash: hash as `0x${string}` });
-
-      updateProgressStep(stepId, {
-        status: "completed",
-        txHash: hash as string,
-      });
-      stepIndex++;
+    balanceBefore = new Map<string, bigint>();
+    for (const token of rewardTokens.values()) {
+      const bal = (await publicClient.readContract({
+        address: asAddress(token.address),
+        abi: ERC20_ABI,
+        functionName: "balanceOf",
+        args: [address],
+      })) as bigint;
+      balanceBefore.set(token.address.toLowerCase(), bal ?? 0n);
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    wstEthBefore =
+      balanceBefore.get(pairToken.toLowerCase()) ??
+      ((await publicClient.readContract({
+        address: pairToken,
+        abi: ERC20_ABI,
+        functionName: "balanceOf",
+        args: [address],
+      })) as bigint);
 
-    for (const token of swapTokens.filter((t) => !isPolPairToken(t.address))) {
-      const stepId = `swap-${token.address.toLowerCase()}`;
+    stepIndex = 0;
+  }
+
+  const makeResumeState = (): BuyTideResumeState =>
+    buildResumeState({
+      source: resume?.source ?? flowSource,
+      selectedPools: resume?.selectedPools ?? selectedPools,
+      steps,
+      stepIndex,
+      balanceBefore,
+      wstEthBefore,
+      poolsToClaim,
+      swapTokens,
+      needsPolSwap,
+    });
+
+  const swapTokenByAddress = new Map(
+    swapTokens.map((token) => [token.address.toLowerCase(), token])
+  );
+
+  try {
+    for (; stepIndex < steps.length; stepIndex++) {
+      const step = steps[stepIndex];
       setCurrentStep(stepIndex);
-      updateProgressStep(stepId, { status: "in_progress" });
+      updateProgressStep(step.id, { status: "in_progress" });
 
-      const tokenKey = token.address.toLowerCase();
-      const before = balanceBefore.get(tokenKey) ?? 0n;
-      const swapAmount = await readBalanceDelta(
-        publicClient,
-        asAddress(token.address),
-        address,
-        before
-      );
+      if (step.id.startsWith("claim-")) {
+        const parsed = parseClaimStepId(step.id);
+        if (!parsed) {
+          updateProgressStep(step.id, {
+            status: "error",
+            error: "Invalid claim step",
+          });
+          return { ok: false, error: "Invalid claim step", resumeState: makeResumeState() };
+        }
 
-      if (swapAmount <= 0n) {
-        updateProgressStep(stepId, {
-          status: "completed",
-          details: "No balance to swap",
+        const market = anchorMarkets.find(
+          ([id]) => id === parsed.marketId
+        )?.[1];
+        const poolAddress = market
+          ? getPoolAddress(market as Record<string, unknown>, parsed.poolType)
+          : undefined;
+
+        if (!poolAddress) {
+          updateProgressStep(step.id, {
+            status: "error",
+            error: "Pool address not found",
+          });
+          return {
+            ok: false,
+            error: "Pool address not found",
+            resumeState: makeResumeState(),
+          };
+        }
+
+        const hash = await writeContractAsync({
+          address: poolAddress,
+          abi: rewardsABI,
+          functionName: "claim",
         });
-        stepIndex++;
+
+        updateProgressStep(step.id, {
+          status: "in_progress",
+          txHash: hash as string,
+          details: "Waiting for confirmation…",
+        });
+
+        await publicClient.waitForTransactionReceipt({
+          hash: hash as `0x${string}`,
+        });
+
+        updateProgressStep(step.id, {
+          status: "completed",
+          txHash: hash as string,
+        });
         continue;
       }
 
-      const decimals = await fetchTokenDecimals(
-        asAddress(token.address),
-        publicClient
-      );
-      const routeHint = paraswapRouteHint(token.address);
+      if (step.id.startsWith("swap-")) {
+        if (stepIndex === steps.findIndex((s) => s.id.startsWith("swap-"))) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
 
-      updateProgressStep(stepId, {
-        details: "Finding Velora route to TIDE…",
-      });
+        const tokenKey = step.id.slice("swap-".length);
+        const token = swapTokenByAddress.get(tokenKey);
+        if (!token) {
+          updateProgressStep(step.id, {
+            status: "error",
+            error: "Reward token not found",
+          });
+          return {
+            ok: false,
+            error: "Reward token not found",
+            resumeState: makeResumeState(),
+          };
+        }
 
-      try {
-        const directHash = await executeParaswapSwap({
-          fromToken: asAddress(token.address),
-          amount: swapAmount,
-          decimals,
-          destToken: tideToken,
-          destDecimals: 18,
-          address,
-          routeHint,
-          ensureAllowance,
-          sendTransactionAsync,
+        const before = balanceBefore.get(tokenKey) ?? 0n;
+        const swapAmount = await readBalanceDelta(
           publicClient,
-        });
-
-        updateProgressStep(stepId, {
-          status: "completed",
-          txHash: directHash as string,
-          details: "Routed to TIDE via Velora",
-        });
-      } catch (directError) {
-        if (isUserRejection(directError)) throw directError;
-
-        updateProgressStep(stepId, {
-          details: "Direct TIDE route unavailable — swapping to wstETH…",
-        });
-
-        const wstEthHash = await executeParaswapSwap({
-          fromToken: asAddress(token.address),
-          amount: swapAmount,
-          decimals,
-          destToken: pairToken,
-          destDecimals: 18,
+          asAddress(token.address),
           address,
-          routeHint: `${token.address.toLowerCase()}-${pairToken.toLowerCase()}`,
-          ensureAllowance,
-          sendTransactionAsync,
-          publicClient,
+          before
+        );
+
+        if (swapAmount <= 0n) {
+          updateProgressStep(step.id, {
+            status: "completed",
+            details: "No balance to swap",
+          });
+          continue;
+        }
+
+        const decimals = await fetchTokenDecimals(
+          asAddress(token.address),
+          publicClient
+        );
+        const routeHint = paraswapRouteHint(token.address);
+
+        updateProgressStep(step.id, {
+          details: "Finding Velora route to TIDE…",
         });
 
-        updateProgressStep(stepId, {
-          status: "completed",
-          txHash: wstEthHash as string,
-          details: "Swapped to wstETH — final TIDE leg via POL pool next",
-        });
+        try {
+          const directHash = await executeParaswapSwap({
+            fromToken: asAddress(token.address),
+            amount: swapAmount,
+            decimals,
+            destToken: tideToken,
+            destDecimals: 18,
+            address,
+            routeHint,
+            ensureAllowance,
+            sendTransactionAsync,
+            publicClient,
+          });
+
+          updateProgressStep(step.id, {
+            status: "completed",
+            txHash: directHash as string,
+            details: "Routed to TIDE via Velora",
+          });
+        } catch (directError) {
+          if (isUserRejection(directError)) throw directError;
+
+          updateProgressStep(step.id, {
+            details: "Direct TIDE route unavailable — swapping to wstETH…",
+          });
+
+          try {
+            const wstEthHash = await executeParaswapSwap({
+              fromToken: asAddress(token.address),
+              amount: swapAmount,
+              decimals,
+              destToken: pairToken,
+              destDecimals: 18,
+              address,
+              routeHint: `${token.address.toLowerCase()}-${pairToken.toLowerCase()}`,
+              ensureAllowance,
+              sendTransactionAsync,
+              publicClient,
+            });
+
+            updateProgressStep(step.id, {
+              status: "completed",
+              txHash: wstEthHash as string,
+              details: "Swapped to wstETH — final TIDE leg via POL pool next",
+            });
+          } catch (fallbackError) {
+            if (isUserRejection(fallbackError)) throw fallbackError;
+
+            throw new Error(
+              `Could not find a swap route for ${token.symbol}. Your tokens are still in your wallet.`
+            );
+          }
+        }
+
+        continue;
       }
 
-      stepIndex++;
-    }
+      if (step.id === "pol-tide") {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
 
-    if (polStep) {
-      setCurrentStep(stepIndex);
-      updateProgressStep("pol-tide", { status: "in_progress" });
-
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      const wstEthToSwap = await readBalanceDelta(
-        publicClient,
-        pairToken,
-        address,
-        wstEthBefore
-      );
-
-      if (wstEthToSwap <= 0n) {
-        updateProgressStep("pol-tide", {
-          status: "completed",
-          details: "TIDE already received via Velora",
-        });
-        return { ok: true };
-      }
-
-      updateProgressStep("pol-tide", {
-        details: "Trying Velora wstETH → TIDE route…",
-      });
-
-      try {
-        const veloraHash = await executeParaswapSwap({
-          fromToken: pairToken,
-          amount: wstEthToSwap,
-          decimals: 18,
-          destToken: tideToken,
-          destDecimals: 18,
+        const wstEthToSwap = await readBalanceDelta(
+          publicClient,
+          pairToken,
           address,
-          routeHint: paraswapRouteHint(pairToken),
-          ensureAllowance,
-          sendTransactionAsync,
-          publicClient,
-        });
+          wstEthBefore
+        );
+
+        if (wstEthToSwap <= 0n) {
+          updateProgressStep("pol-tide", {
+            status: "completed",
+            details: "TIDE already received via Velora",
+          });
+          return { ok: true };
+        }
 
         updateProgressStep("pol-tide", {
-          status: "completed",
-          txHash: veloraHash as string,
-          details: "Routed to TIDE via Velora",
-        });
-      } catch (polError) {
-        if (isUserRejection(polError)) throw polError;
-
-        updateProgressStep("pol-tide", {
-          details: "Velora unavailable — swapping via Uniswap v4 POL pool…",
+          details: "Trying Velora wstETH → TIDE route…",
         });
 
-        const polHash = await swapWstEthToTideViaPolPool({
-          publicClient,
-          owner: address,
-          amountIn: wstEthToSwap,
-          writeContractAsync,
-          ensureErc20Allowance: ensureAllowance,
-        });
+        try {
+          const veloraHash = await executeParaswapSwap({
+            fromToken: pairToken,
+            amount: wstEthToSwap,
+            decimals: 18,
+            destToken: tideToken,
+            destDecimals: 18,
+            address,
+            routeHint: paraswapRouteHint(pairToken),
+            ensureAllowance,
+            sendTransactionAsync,
+            publicClient,
+          });
 
-        updateProgressStep("pol-tide", {
-          status: "completed",
-          txHash: polHash as string,
-          details: "Routed via Uniswap v4 POL pool",
-        });
+          updateProgressStep("pol-tide", {
+            status: "completed",
+            txHash: veloraHash as string,
+            details: "Routed to TIDE via Velora",
+          });
+        } catch (polError) {
+          if (isUserRejection(polError)) throw polError;
+
+          updateProgressStep("pol-tide", {
+            details: "Velora unavailable — swapping via Uniswap v4 POL pool…",
+          });
+
+          const polHash = await swapWstEthToTideViaPolPool({
+            publicClient,
+            owner: address,
+            amountIn: wstEthToSwap,
+            writeContractAsync,
+            ensureErc20Allowance: ensureAllowance,
+          });
+
+          updateProgressStep("pol-tide", {
+            status: "completed",
+            txHash: polHash as string,
+            details: "Routed via Uniswap v4 POL pool",
+          });
+        }
       }
     }
 
     return { ok: true };
   } catch (error: unknown) {
-    const message = isUserRejection(error)
-      ? "Transaction was rejected in your wallet."
-      : error instanceof Error
-        ? error.message
-        : "Transaction failed. Please try again.";
+    const message = formatBuyTideFlowError(error, isUserRejection);
 
     const activeStep = steps[stepIndex];
     if (activeStep) {
@@ -493,6 +676,6 @@ export async function runAnchorBuyTideFlow(
       });
     }
 
-    return { ok: false, error: message };
+    return { ok: false, error: message, resumeState: makeResumeState() };
   }
 }
