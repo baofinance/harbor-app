@@ -15,6 +15,7 @@ import {
   DASHBOARD_PRODUCT_HEADER_NAV_LINK_CLASS,
   DASHBOARD_PRODUCT_HEADER_NAV_STATIC_CLASS,
   DASHBOARD_PRODUCT_HEADER_ROW_CLASS,
+  DASHBOARD_PRODUCT_HEADER_SUMMARY_MOBILE_CLASS,
 } from "./dashboardStyles";
 import {
   PORTFOLIO_ACCORDION_BODY_CLASS,
@@ -130,22 +131,27 @@ export function DashboardProductCard({
               onClick={onToggle}
             >
               {showSummary ? (
-                <span className="flex min-w-0 flex-1 items-center justify-end truncate">
-                  <DashboardSectionSummaryText segments={summarySegments} />
-                </span>
+                <>
+                  <span className={DASHBOARD_PRODUCT_HEADER_SUMMARY_MOBILE_CLASS}>
+                    <DashboardSectionSummaryText segments={summarySegments} wrap />
+                  </span>
+                  <span className="hidden min-w-0 flex-1 items-center justify-end truncate sm:flex">
+                    <DashboardSectionSummaryText segments={summarySegments} />
+                  </span>
+                </>
               ) : (
-                <span className="flex-1" aria-hidden />
+                <span className="hidden flex-1 sm:block" aria-hidden />
               )}
               <ChevronDownIcon
-                className={`${PORTFOLIO_CHEVRON_CLASS} pointer-events-none shrink-0 ${
+                className={`${PORTFOLIO_CHEVRON_CLASS} pointer-events-none shrink-0 self-end sm:self-center ${
                   expanded ? DASHBOARD_CHEVRON_OPEN_CLASS : DASHBOARD_CHEVRON_CLOSED_CLASS
                 } ${expanded ? "rotate-180" : ""}`}
                 aria-hidden
               />
             </button>
           ) : showSummary ? (
-            <div className="flex min-w-0 flex-1 items-center justify-end truncate py-2 pr-3 -mr-3 sm:pr-4 sm:-mr-4">
-              <DashboardSectionSummaryText segments={summarySegments} />
+            <div className="flex min-w-0 w-full py-1 sm:justify-end sm:py-2 sm:pr-4 sm:-mr-4">
+              <DashboardSectionSummaryText segments={summarySegments} wrap />
             </div>
           ) : null}
         </div>

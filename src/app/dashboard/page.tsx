@@ -329,7 +329,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <HarborPageShell mainClassName="space-y-3">
+    <HarborPageShell mainClassName="space-y-3 max-sm:!px-3">
       <div className="relative flex items-start justify-end">
         <DashboardModuleLayoutControls
           order={moduleOrder}

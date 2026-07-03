@@ -184,7 +184,15 @@ const DASHBOARD_PRODUCT_HEADER_HIT_FOCUS_CLASS =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-white/30";
 
 export const DASHBOARD_PRODUCT_HEADER_ROW_CLASS =
-  "flex min-h-[2.75rem] w-full items-stretch";
+  "flex w-full flex-col gap-0 sm:min-h-[2.75rem] sm:flex-row sm:items-stretch";
+
+/** Title row — link + expand control on mobile; inline on sm+. */
+export const DASHBOARD_PRODUCT_HEADER_TITLE_ROW_CLASS =
+  "flex min-w-0 w-full items-stretch sm:contents";
+
+/** Expand control — stacks summary under title on mobile. */
+export const DASHBOARD_PRODUCT_HEADER_EXPAND_BTN_CLASS =
+  `flex min-w-0 w-full flex-col items-stretch gap-1 self-stretch py-2 pl-2 pr-3 -mr-3 text-left transition-colors duration-150 sm:w-auto sm:flex-1 sm:flex-row sm:items-center sm:justify-end sm:gap-2 sm:pr-4 sm:-mr-4 ${DASHBOARD_SECTION_HEADER_HOVER_CLASS} ${DASHBOARD_PRODUCT_HEADER_HIT_FOCUS_CLASS}`;
 
 export const DASHBOARD_PRODUCT_HEADER_NAV_LINK_CLASS =
   `inline-flex shrink-0 items-center gap-2.5 self-stretch py-2 pl-3 pr-2.5 -ml-3 transition-colors duration-150 sm:pl-4 sm:-ml-4 ${DASHBOARD_SECTION_HEADER_HOVER_CLASS} ${DASHBOARD_PRODUCT_HEADER_HIT_FOCUS_CLASS}`;
@@ -192,8 +200,8 @@ export const DASHBOARD_PRODUCT_HEADER_NAV_LINK_CLASS =
 export const DASHBOARD_PRODUCT_HEADER_NAV_STATIC_CLASS =
   "inline-flex shrink-0 items-center gap-2.5 self-stretch py-2 pl-3 pr-2.5 -ml-3 sm:pl-4 sm:-ml-4";
 
-export const DASHBOARD_PRODUCT_HEADER_EXPAND_BTN_CLASS =
-  `flex min-w-0 flex-1 items-center gap-2 self-stretch py-2 pl-2 pr-3 -mr-3 text-left transition-colors duration-150 sm:pr-4 sm:-mr-4 ${DASHBOARD_SECTION_HEADER_HOVER_CLASS} ${DASHBOARD_PRODUCT_HEADER_HIT_FOCUS_CLASS}`;
+export const DASHBOARD_PRODUCT_HEADER_SUMMARY_MOBILE_CLASS =
+  "min-w-0 w-full px-0.5 sm:hidden";
 
 export const DASHBOARD_PRODUCT_CARD_HEADER_ROW_CLASS =
   "flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5 sm:gap-x-2.5";
@@ -220,28 +228,31 @@ export const DASHBOARD_MV_PREVIEW_CLASS =
 export const DASHBOARD_HERO_GRID_CLASS =
   "grid grid-cols-1 gap-4 divide-y divide-white/[0.08] md:grid-cols-2 md:divide-y lg:grid-cols-[minmax(0,1fr)_minmax(0,2.35fr)_minmax(0,auto)] lg:items-center lg:gap-0 lg:divide-x lg:divide-y-0 lg:divide-white/[0.08]";
 
-/** Yield stats row — 3 columns on tablet; single flex group on desktop hero. */
+/** Yield stats row — 3-up on mobile; single flex group on desktop hero. */
 export const DASHBOARD_HERO_STATS_ROW_CLASS =
-  "md:col-span-2 md:grid md:grid-cols-3 md:items-center md:divide-x md:divide-white/[0.08] md:border-t md:border-white/[0.08] md:pt-4 lg:col-span-1 lg:flex lg:items-center lg:justify-end lg:self-center lg:border-t-0 lg:pt-0 lg:divide-x lg:divide-white/[0.08]";
+  "grid grid-cols-3 items-center divide-x divide-white/[0.08] md:col-span-2 md:border-t md:border-white/[0.08] md:pt-4 lg:col-span-1 lg:flex lg:justify-end lg:self-center lg:border-t-0 lg:pt-0 lg:divide-x lg:divide-white/[0.08]";
 
 export const DASHBOARD_HERO_COLUMN_CLASS =
   "min-w-0 py-3 first:pt-0 last:pb-0 lg:px-4 lg:py-0 lg:first:pl-0";
 
 /** Individual yield stat cell inside {@link DASHBOARD_HERO_STATS_ROW_CLASS}. */
 export const DASHBOARD_HERO_YIELD_STAT_CELL_CLASS =
-  "min-w-0 px-4 py-2 md:px-3 md:py-0 lg:px-5 lg:text-right";
+  "min-w-0 px-2 py-1 text-center sm:px-3 md:py-0 lg:px-5 lg:text-right";
 
 export const DASHBOARD_HERO_STAT_LABEL_CLASS =
-  "text-[10px] font-semibold uppercase tracking-wide text-white/50";
+  "text-[9px] font-semibold uppercase leading-tight tracking-wide text-white/50 sm:text-[10px]";
 
 export const DASHBOARD_HERO_STAT_CONTEXT_CLASS =
   "text-[9px] font-normal normal-case tracking-normal text-white/40";
 
 export const DASHBOARD_HERO_STAT_VALUE_CLASS =
-  "font-mono text-xl font-bold tabular-nums text-white sm:text-2xl";
+  "font-mono text-base font-bold tabular-nums text-white sm:text-xl lg:text-2xl";
 
 export const DASHBOARD_SECTION_SUMMARY_CLASS =
-  "min-w-0 truncate text-xs tabular-nums text-white/85 sm:text-sm";
+  "min-w-0 text-[11px] leading-snug tabular-nums text-white/85 sm:truncate sm:text-sm";
+
+export const DASHBOARD_SECTION_SUMMARY_WRAP_CLASS =
+  "min-w-0 text-[11px] leading-snug tabular-nums text-white/85 sm:text-sm";
 
 export const DASHBOARD_SECTION_SUMMARY_SEPARATOR_CLASS = "text-white/35";
 

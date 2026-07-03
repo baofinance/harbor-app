@@ -38,10 +38,11 @@ export const TIDE_FLYWHEEL_CONFIG = {
     usd: 0,
   },
   /**
-   * Burn sink for on-chain supply-burned reads (e.g. dead address).
-   * Set with tideTokenAddress to compute burned % live.
+   * Burn sink for on-chain supply-burned reads — TIDE sent here is treated as burned.
+   * Standard ERC20 burn destination on Ethereum mainnet.
    */
-  burnAddress: null as `0x${string}` | null,
+  burnAddress:
+    "0x0000000000000000000000000000000000000000" as `0x${string}`,
   /** Static until burn indexing exists. */
   staticBurn: {
     /** Whole-percent display when on-chain burn read is unavailable. */

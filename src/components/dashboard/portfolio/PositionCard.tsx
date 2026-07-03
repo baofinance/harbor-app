@@ -20,6 +20,7 @@ import {
   positionValueLabel,
 } from "./dashboardPortfolioUtils";
 import { DASHBOARD_INSET_MARKET_ICON_PX } from "../dashboardRowListStyles";
+import { DASHBOARD_POSITION_CARD_MOBILE_METRICS_CLASS } from "../dashboardRowListStyles";
 import {
   DASHBOARD_ARCHIVED_POSITION_ROW_CLASS,
   DASHBOARD_INSET_ROW_SUBGRID_CLASS,
@@ -148,13 +149,15 @@ export function PositionCard({
 
   if (onWithdraw) {
     return (
-      <div className={`${PORTFOLIO_POSITION_ROW_CLASS} ${DASHBOARD_ARCHIVED_POSITION_ROW_CLASS}`}>
+      <div
+        className={`${PORTFOLIO_POSITION_ROW_CLASS} ${DASHBOARD_ARCHIVED_POSITION_ROW_CLASS} grid grid-cols-1 gap-2 sm:grid-cols-subgrid sm:gap-x-5 sm:gap-y-0`}
+      >
         {marketCell}
         {valueCell}
-        <div className="flex justify-start pl-4 sm:justify-end sm:pl-8">
+        <div className="flex justify-stretch sm:justify-end sm:pl-8">
           <button
             type="button"
-            className={`${INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL} !min-w-[5.25rem] px-3 py-1.5 text-[10px] sm:!min-w-[5.75rem] sm:py-2 sm:text-xs`}
+            className={`${INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL} min-h-[44px] w-full !min-w-0 px-4 py-2.5 text-xs sm:w-auto sm:!min-w-[5.75rem] sm:py-2`}
             onClick={() => void onWithdraw(row)}
           >
             Withdraw
@@ -170,10 +173,12 @@ export function PositionCard({
       className={`${PORTFOLIO_POSITION_ROW_CLASS} ${DASHBOARD_INSET_ROW_SUBGRID_CLASS} grid grid-cols-1 items-center gap-2 sm:grid-cols-subgrid sm:gap-x-4`}
     >
       {marketCell}
-      {badgeCell}
-      {pnlCell}
-      {aprCell}
-      {valueCell}
+      <div className={DASHBOARD_POSITION_CARD_MOBILE_METRICS_CLASS}>
+        {badgeCell}
+        {pnlCell}
+        {aprCell}
+        {valueCell}
+      </div>
     </Link>
   );
 }

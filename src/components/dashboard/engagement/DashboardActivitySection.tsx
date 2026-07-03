@@ -38,7 +38,7 @@ export function DashboardActivitySection({
         {isConnected && hasMore ? (
           <button
             type="button"
-            className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-white/55 transition-colors hover:text-white/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/30"
+            className="inline-flex min-h-[44px] shrink-0 items-center gap-0.5 rounded-md px-2 text-xs font-medium text-white/55 transition-colors hover:text-white/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/30"
             aria-expanded={expanded}
             onClick={() => setExpanded((v) => !v)}
           >

@@ -46,19 +46,19 @@ export const DASHBOARD_ACTIVITY_TITLE_CLASS =
   "text-sm font-semibold leading-snug text-white/95";
 
 export const DASHBOARD_ACTIVITY_ROW_GRID_CLASS =
-  "grid w-full grid-cols-[auto_1fr_auto] grid-rows-[auto_auto] items-center gap-x-2 gap-y-1 sm:grid-cols-[4rem_auto_minmax(0,1fr)_auto] sm:grid-rows-1 sm:items-center sm:gap-x-3";
+  "grid w-full grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-[auto_auto_auto] items-start gap-x-2.5 gap-y-0.5 sm:grid-cols-[4rem_auto_minmax(0,1fr)_auto] sm:grid-rows-1 sm:items-center sm:gap-x-3 sm:gap-y-0";
 
 export const DASHBOARD_ACTIVITY_TIMESTAMP_CELL_CLASS =
-  "col-start-1 row-start-1 sm:row-start-auto";
+  "col-span-3 row-start-3 sm:col-span-1 sm:col-start-1 sm:row-start-1";
 
 export const DASHBOARD_ACTIVITY_ICON_CELL_CLASS =
-  "col-start-2 row-start-1 sm:col-start-2 sm:row-start-auto";
+  "col-start-1 row-start-1 mt-0.5 sm:col-start-2 sm:row-start-1 sm:mt-0";
 
 export const DASHBOARD_ACTIVITY_TEXT_CELL_CLASS =
-  "col-span-3 col-start-1 row-start-2 min-w-0 sm:col-span-1 sm:col-start-3 sm:row-start-1";
+  "col-start-2 row-start-1 min-w-0 sm:col-span-1 sm:col-start-3 sm:row-start-1";
 
 export const DASHBOARD_ACTIVITY_VALUE_CELL_CLASS =
-  "col-start-3 row-start-1 sm:col-start-4 sm:row-start-auto";
+  "col-start-3 row-start-1 shrink-0 self-start pt-0.5 sm:col-start-4 sm:row-start-1 sm:self-center sm:pt-0";
 
 export const DASHBOARD_ACTIVITY_VALUE_POSITIVE_CLASS =
   "font-mono text-sm tabular-nums text-harbor-mint";

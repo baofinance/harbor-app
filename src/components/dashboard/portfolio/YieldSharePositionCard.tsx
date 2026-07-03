@@ -19,6 +19,7 @@ import {
   DASHBOARD_POSITION_METRIC_CELL_CLASS,
   PORTFOLIO_POSITION_ROW_CLASS,
 } from "./portfolioStyles";
+import { DASHBOARD_POSITION_CARD_MOBILE_METRICS_CLASS } from "../dashboardRowListStyles";
 
 function InlineMetric({
   label,
@@ -71,54 +72,56 @@ export function YieldSharePositionCard({ row }: { row: FounderMetricRow }) {
         </p>
       </div>
 
-      <div className={DASHBOARD_POSITION_METRIC_CELL_CLASS}>
-        <InlineMetric
-          label="Pending"
-          value={
-            hasDeposit ? formatDashboardEarnedUsd(row.outstandingUSD) : "—"
-          }
-          valueClassName={
-            hasPending
-              ? `${DASHBOARD_POSITION_METRIC_VALUE_CLASS} font-semibold text-harbor-coral`
-              : NO_DEPOSIT_VALUE_CLASS
-          }
-        />
-      </div>
+      <div className={DASHBOARD_POSITION_CARD_MOBILE_METRICS_CLASS}>
+        <div className={DASHBOARD_POSITION_METRIC_CELL_CLASS}>
+          <InlineMetric
+            label="Pending"
+            value={
+              hasDeposit ? formatDashboardEarnedUsd(row.outstandingUSD) : "—"
+            }
+            valueClassName={
+              hasPending
+                ? `${DASHBOARD_POSITION_METRIC_VALUE_CLASS} font-semibold text-harbor-coral`
+                : NO_DEPOSIT_VALUE_CLASS
+            }
+          />
+        </div>
 
-      <div className={DASHBOARD_POSITION_METRIC_CELL_CLASS}>
-        <InlineMetric
-          label="Ownership"
-          value={
-            hasDeposit
-              ? formatPercent(row.ownershipSharePct, { decimals: 2 })
-              : "—"
-          }
-          valueClassName={hasDeposit ? undefined : NO_DEPOSIT_VALUE_CLASS}
-          title="Your share of this market's genesis deposit cap."
-        />
-      </div>
+        <div className={DASHBOARD_POSITION_METRIC_CELL_CLASS}>
+          <InlineMetric
+            label="Ownership"
+            value={
+              hasDeposit
+                ? formatPercent(row.ownershipSharePct, { decimals: 2 })
+                : "—"
+            }
+            valueClassName={hasDeposit ? undefined : NO_DEPOSIT_VALUE_CLASS}
+            title="Your share of this market's genesis deposit cap."
+          />
+        </div>
 
-      <div className={`${DASHBOARD_POSITION_METRIC_CELL_CLASS} sm:flex sm:justify-end`}>
-        <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap text-sm">
-          <span className={DASHBOARD_POSITION_METRIC_LABEL_CLASS}>Boost</span>
-          {hasDeposit ? (
-            <DashboardYieldBoostBadge multiplier={row.boostMultiplier} />
-          ) : (
-            <span className={NO_DEPOSIT_VALUE_CLASS}>—</span>
-          )}
-        </span>
-      </div>
+        <div className={`${DASHBOARD_POSITION_METRIC_CELL_CLASS} sm:flex sm:justify-end`}>
+          <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap text-sm">
+            <span className={DASHBOARD_POSITION_METRIC_LABEL_CLASS}>Boost</span>
+            {hasDeposit ? (
+              <DashboardYieldBoostBadge multiplier={row.boostMultiplier} />
+            ) : (
+              <span className={NO_DEPOSIT_VALUE_CLASS}>—</span>
+            )}
+          </span>
+        </div>
 
-      <div className={DASHBOARD_POSITION_METRIC_CELL_CLASS}>
-        <InlineMetric
-          label="Distributed"
-          value={hasDeposit ? formatUSD(row.paidUSD, { compact: false }) : "—"}
-          valueClassName={
-            hasDeposit && row.paidUSD > 0
-              ? `${DASHBOARD_POSITION_METRIC_VALUE_CLASS} font-semibold`
-              : NO_DEPOSIT_VALUE_CLASS
-          }
-        />
+        <div className={DASHBOARD_POSITION_METRIC_CELL_CLASS}>
+          <InlineMetric
+            label="Distributed"
+            value={hasDeposit ? formatUSD(row.paidUSD, { compact: false }) : "—"}
+            valueClassName={
+              hasDeposit && row.paidUSD > 0
+                ? `${DASHBOARD_POSITION_METRIC_VALUE_CLASS} font-semibold`
+                : NO_DEPOSIT_VALUE_CLASS
+            }
+          />
+        </div>
       </div>
     </Link>
   );

@@ -53,6 +53,10 @@ export const DASHBOARD_INDEX_ROW_MOBILE_METRIC_LABEL_CLASS = HARBOR_MOBILE_METRI
 export const DASHBOARD_INDEX_ROW_MOBILE_METRICS_GRID_CLASS =
   "grid grid-cols-2 gap-x-3 gap-y-2.5";
 
+/** Compact 2-up metric grid inside white position cards on narrow viewports. */
+export const DASHBOARD_POSITION_CARD_MOBILE_METRICS_CLASS =
+  "grid grid-cols-2 gap-x-3 gap-y-2 sm:contents";
+
 /** Column labels inside a frosted dashboard section. */
 export const DASHBOARD_TABLE_HEADER_WRAP_CLASS =
   "hidden lg:block py-1.5 px-2 border-b border-white/[0.08] mb-2 overflow-x-auto";

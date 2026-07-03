@@ -77,7 +77,7 @@ function ActivityEventRow({ event }: { event: TimelineEvent }) {
       <div className={DASHBOARD_ACTIVITY_TEXT_CELL_CLASS}>
         <p className={DASHBOARD_ACTIVITY_TITLE_CLASS}>{event.label}</p>
         {event.detail ? (
-          <p className={`truncate ${ENGAGEMENT_MUTED_CLASS}`}>{event.detail}</p>
+          <p className={`line-clamp-2 sm:truncate ${ENGAGEMENT_MUTED_CLASS}`}>{event.detail}</p>
         ) : null}
       </div>
       <div className={DASHBOARD_ACTIVITY_VALUE_CELL_CLASS}>
