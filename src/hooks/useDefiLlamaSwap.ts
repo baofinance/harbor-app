@@ -194,6 +194,11 @@ export function useDefiLlamaSwap(
 }
 
 // Helper to get swap transaction data for execution using ParaSwap
+export type ParaswapSwapOptions = {
+  /** Dash-separated token path hint (max 4 tokens). */
+  route?: string;
+};
+
 export async function getDefiLlamaSwapTx(
   fromToken: Address | "ETH",
   toToken: Address | "ETH",
@@ -201,7 +206,8 @@ export async function getDefiLlamaSwapTx(
   fromAddress: Address,
   slippage: number = 1.0,
   fromTokenDecimals: number = 18,
-  toTokenDecimals?: number
+  toTokenDecimals?: number,
+  options?: ParaswapSwapOptions
 ): Promise<{
   to: Address;
   data: `0x${string}`;
@@ -226,6 +232,10 @@ export async function getDefiLlamaSwapTx(
     side: "SELL",
     network: ETHEREUM_CHAIN_ID.toString(),
   });
+
+  if (options?.route) {
+    priceParams.set("route", options.route);
+  }
 
   console.log("[ParaSwap] Fetching price route for transaction:", {
     fromToken: fromTokenAddress,
@@ -295,5 +305,37 @@ export async function getDefiLlamaSwapTx(
     value: BigInt(txData.value || "0"),
     gas: BigInt(txData.gas || priceData.priceRoute.gasCost || "150000"),
   };
+}
+
+/** Returns null when ParaSwap has no route (e.g. TIDE v4 pool not indexed yet). */
+export async function tryGetParaswapSwapTx(
+  fromToken: Address | "ETH",
+  toToken: Address | "ETH",
+  amount: bigint,
+  fromAddress: Address,
+  slippage: number = 1.0,
+  fromTokenDecimals: number = 18,
+  toTokenDecimals?: number,
+  options?: ParaswapSwapOptions
+): Promise<{
+  to: Address;
+  data: `0x${string}`;
+  value: bigint;
+  gas: bigint;
+} | null> {
+  try {
+    return await getDefiLlamaSwapTx(
+      fromToken,
+      toToken,
+      amount,
+      fromAddress,
+      slippage,
+      fromTokenDecimals,
+      toTokenDecimals,
+      options
+    );
+  } catch {
+    return null;
+  }
 }
 

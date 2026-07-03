@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useSendTransaction, useWriteContract } from "wagmi";
 import { rewardsABI } from "@/abis/rewards";
 import {
   ERC20_ABI,
@@ -21,6 +21,7 @@ import { FeeInfo } from "@/components/CompoundConfirmationModal";
 import { PoolOption } from "@/components/CompoundPoolSelectionModal";
 import { useAnchorTransactions } from "@/hooks/anchor/useAnchorTransactions";
 import type { AnchorContractReads, AnchorMarketTuple } from "@/types/anchor";
+import { runAnchorBuyTideFlow } from "@/utils/anchorBuyTideFlow";
 
 const minterABI = MINTER_ABI_EXTENDED;
 
@@ -54,6 +55,7 @@ export function useAnchorClaimCompound({
 }: UseAnchorClaimCompoundParams) {
   const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
+  const { sendTransactionAsync } = useSendTransaction();
   const publicClient = usePublicClient();
 
   const [compoundModal, setCompoundModal] = useState<{
@@ -1378,12 +1380,34 @@ export function useAnchorClaimCompound({
       poolType: "collateral" | "sail";
     }> = []
   ) => {
-    // TODO: Implement Buy $TIDE functionality
-    // This would involve swapping rewards for $TIDE tokens
-    // Buy $TIDE functionality to be implemented
-    // For now, we'll just claim the rewards first
-    // In the future, this should swap rewards for $TIDE
-    await handleClaimAll(selectedPools);
+    if (!address || !publicClient || isClaimingAll) return;
+
+    try {
+      setIsClaimingAll(true);
+      setIsClaimAllModalOpen(false);
+
+      const result = await runAnchorBuyTideFlow({
+        address,
+        publicClient,
+        anchorMarkets,
+        selectedPools,
+        getPoolRewardTokens,
+        writeContractAsync,
+        sendTransactionAsync,
+        ensureAllowance,
+        setTransactionProgress,
+        updateProgressStep,
+        setCurrentStep,
+        isUserRejection,
+      });
+
+      if (result.ok) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await Promise.all([refetchReads(), refetchUserDeposits()]);
+      }
+    } finally {
+      setIsClaimingAll(false);
+    }
   };
 
   const ensureAllowance = useCallback(
@@ -3364,8 +3388,59 @@ export function useAnchorClaimCompound({
   };
 
   const handleClaimMarketBuyTide = async () => {
-    // TODO: Implement Buy $TIDE functionality for individual market
-    await handleClaimMarketBasicClaim();
+    if (!address || !publicClient || !selectedMarketForClaim || isClaiming) {
+      return;
+    }
+
+    const market = anchorMarkets.find(
+      ([id]) => id === selectedMarketForClaim
+    )?.[1];
+    if (!market) return;
+
+    const selectedPools: Array<{
+      marketId: string;
+      poolType: "collateral" | "sail";
+    }> = [];
+
+    if ((market as any).addresses?.stabilityPoolCollateral) {
+      selectedPools.push({
+        marketId: selectedMarketForClaim,
+        poolType: "collateral",
+      });
+    }
+    if ((market as any).addresses?.stabilityPoolLeveraged) {
+      selectedPools.push({
+        marketId: selectedMarketForClaim,
+        poolType: "sail",
+      });
+    }
+
+    try {
+      setIsClaiming(true);
+      setIsClaimMarketModalOpen(false);
+
+      const result = await runAnchorBuyTideFlow({
+        address,
+        publicClient,
+        anchorMarkets,
+        selectedPools,
+        getPoolRewardTokens,
+        writeContractAsync,
+        sendTransactionAsync,
+        ensureAllowance,
+        setTransactionProgress,
+        updateProgressStep,
+        setCurrentStep,
+        isUserRejection,
+      });
+
+      if (result.ok) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await Promise.all([refetchReads(), refetchUserDeposits()]);
+      }
+    } finally {
+      setIsClaiming(false);
+    }
   };
 
   const dropdownRef = useRef<HTMLDivElement>(null);
