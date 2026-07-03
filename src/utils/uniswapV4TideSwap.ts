@@ -16,10 +16,10 @@ import { TIDE_POL_SWAP_CONFIG } from "@/config/tidePolSwap";
 const { poolKey, universalRouter, permit2, v4Quoter, stateView, slippagePct } =
   TIDE_POL_SWAP_CONFIG;
 
-/** V4 periphery action bytes — SETTLE_ALL, SWAP_EXACT_IN_SINGLE, TAKE_ALL. */
+/** V4 periphery action bytes — SWAP, SETTLE_ALL, TAKE_ALL (flash-accounting order). */
 const V4_ACTIONS = encodePacked(
   ["uint8", "uint8", "uint8"],
-  [0x0c, 0x06, 0x0f]
+  [0x06, 0x0c, 0x0f]
 );
 
 const UNIVERSAL_ROUTER_V4_SWAP_COMMAND = "0x10" as `0x${string}`;
@@ -92,23 +92,31 @@ export function buildWstEthToTideUniversalRouterTx(input: {
   inputs: `0x${string}`[];
   deadline: bigint;
 } {
+  const amountIn128 = input.amountIn > (2n ** 128n - 1n)
+    ? (2n ** 128n - 1n)
+    : input.amountIn;
+  const minOut128 = input.amountOutMinimum > (2n ** 128n - 1n)
+    ? (2n ** 128n - 1n)
+    : input.amountOutMinimum;
+
   const swapParams = encodeAbiParameters(
     parseAbiParameters(
-      "(address currency0, address currency1, uint24 fee, int24 tickSpacing, address hooks), bool, uint128, uint128, uint256, bytes"
+      "((address currency0, address currency1, uint24 fee, int24 tickSpacing, address hooks) poolKey, bool zeroForOne, uint128 amountIn, uint128 amountOutMinimum, bytes hookData)"
     ),
     [
       {
-        currency0: poolKey.currency0,
-        currency1: poolKey.currency1,
-        fee: poolKey.fee,
-        tickSpacing: poolKey.tickSpacing,
-        hooks: poolKey.hooks,
+        poolKey: {
+          currency0: poolKey.currency0,
+          currency1: poolKey.currency1,
+          fee: poolKey.fee,
+          tickSpacing: poolKey.tickSpacing,
+          hooks: poolKey.hooks,
+        },
+        zeroForOne: true,
+        amountIn: amountIn128,
+        amountOutMinimum: minOut128,
+        hookData: "0x",
       },
-      true,
-      input.amountIn,
-      input.amountOutMinimum,
-      0n,
-      "0x",
     ]
   );
 
@@ -165,6 +173,7 @@ export async function ensurePermit2Allowance(input: {
 
   const [permitAmount, expiration] = allowance;
   const now = Math.floor(Date.now() / 1000);
+  const maxPermit2Amount = (2n ** 160n - 1n) as bigint;
   if (permitAmount >= amount && expiration > now + 60) return;
 
   const newExpiration = now + 60 * 60 * 24 * 30;
@@ -172,7 +181,8 @@ export async function ensurePermit2Allowance(input: {
     address: permit2,
     abi: PERMIT2_ABI,
     functionName: "approve",
-    args: [token, universalRouter, amount, newExpiration],
+    args: [token, universalRouter, maxPermit2Amount, newExpiration],
+    chainId: TIDE_POL_SWAP_CONFIG.chainId,
   });
   await publicClient.waitForTransactionReceipt({ hash });
 }
@@ -225,6 +235,7 @@ export async function swapWstEthToTideViaPolPool(input: {
     abi: UNIVERSAL_ROUTER_ABI,
     functionName: "execute",
     args: [tx.commands, tx.inputs, tx.deadline],
+    chainId: TIDE_POL_SWAP_CONFIG.chainId,
   });
 
   await publicClient.waitForTransactionReceipt({ hash });
