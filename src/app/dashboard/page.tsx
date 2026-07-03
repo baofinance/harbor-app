@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { DashboardConnectNotice } from "@/components/dashboard/DashboardConnectNotice";
+import { DashboardTideLiveBanner } from "@/components/dashboard/DashboardTideLiveBanner";
 import { DashboardPortfolioHero } from "@/components/dashboard/DashboardPortfolioHero";
 import { DashboardProductCard, useDashboardProductExpanded } from "@/components/dashboard/DashboardProductCard";
 import { DashboardPositionsList } from "@/components/dashboard/DashboardPositionsList";
@@ -335,6 +336,8 @@ export default function DashboardPage() {
           onOrderChange={setModuleOrder}
         />
       </div>
+
+      <DashboardTideLiveBanner />
 
       {!isConnected ? <DashboardConnectNotice /> : null}
 
