@@ -7,6 +7,7 @@ import { minterABI } from "@/abis/minter";
 import { getPriceFeedAddress, queryChainlinkPrice } from "@/utils/priceFeeds";
 import { CHAINLINK_FEEDS } from "@/config/chainlink";
 import { genesisParticipatesInMaidenVoyageTotals } from "@/config/markets";
+import { fetchTideFlywheelSnapshot } from "@/lib/tideFlywheelServer";
 
 export const runtime = "nodejs";
 
@@ -248,13 +249,17 @@ export async function GET(request: Request) {
       genesisParticipatesInMaidenVoyageTotals(m)
   );
 
-  const [coinGecko, chainlinkEth, chainlinkBtc, chainlinkEur, defillamaApys] =
+  const [coinGecko, chainlinkEth, chainlinkBtc, chainlinkEur, defillamaApys, tideFlywheel] =
     await Promise.all([
     fetchCoinGeckoPrices(),
     fetchChainlinkPrice(publicClient, CHAINLINK_FEEDS.ETH_USD),
     fetchChainlinkPrice(publicClient, CHAINLINK_FEEDS.BTC_USD),
     fetchChainlinkPrice(publicClient, CHAINLINK_FEEDS.EUR_USD),
     fetchDefiLlamaApys(),
+    fetchTideFlywheelSnapshot(publicClient).catch((error) => {
+      console.error("[api/landing/summary] tideFlywheel fetch failed:", error);
+      return null;
+    }),
   ]);
 
   const ethPrice = chainlinkEth ?? coinGecko["ethereum"];
@@ -519,6 +524,7 @@ export async function GET(request: Request) {
     anchorMarkets: anchorMarketSummaries,
     sailMarkets: sailMarketSummaries,
     maidenVoyages,
+    tideFlywheel,
   };
 
   cache.set("landing-summary", { timestampMs: now, data: payload });

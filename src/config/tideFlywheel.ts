@@ -6,8 +6,21 @@ export const MAIDEN_VOYAGE_YIELD_OWNER_SHARE_BPS = 500;
 
 export const TIDE_FLYWHEEL_CONFIG = {
   tideTokenAddress: TIDE_CONFIG.tideTokenAddress,
-  /** Set when treasury POL LP is known; null = POL card shows placeholder. */
+  /** Set when treasury POL LP is known (Uniswap V2 pair); null if using v4 POL config. */
   polLpAddress: null as `0x${string}` | null,
+  /** Uniswap v4 POL pool — treasury concentrated liquidity positions. */
+  polV4: {
+    poolId:
+      "0x7c2a7ae6e86055412f6e2663797fcf77d669b9671cd016fe7230883e1a627196" as `0x${string}`,
+    positionManagerAddress:
+      "0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e" as `0x${string}`,
+    stateViewAddress:
+      "0x7ffe42c4a5deea5b0fec41c94c136cf115597227" as `0x${string}`,
+    /** Scan from Uniswap v4 mainnet deployment block. */
+    positionScanFromBlock: 21_600_000,
+    uniswapPoolUrl:
+      "https://app.uniswap.org/explore/pools/ethereum/0x7c2a7ae6e86055412f6e2663797fcf77d669b9671cd016fe7230883e1a627196",
+  },
   treasuryAddress: TREASURY_SAFE_ADDRESS,
   tideDecimals: TIDE_CONFIG.tideDecimals,
   chainId: TIDE_CONFIG.chainId,
@@ -25,10 +38,11 @@ export const TIDE_FLYWHEEL_CONFIG = {
     usd: 0,
   },
   /**
-   * Burn sink for on-chain supply-burned reads (e.g. dead address).
-   * Set with tideTokenAddress to compute burned % live.
+   * Burn sink for on-chain supply-burned reads — TIDE sent here is treated as burned.
+   * Standard ERC20 burn destination on Ethereum mainnet.
    */
-  burnAddress: null as `0x${string}` | null,
+  burnAddress:
+    "0x0000000000000000000000000000000000000000" as `0x${string}`,
   /** Static until burn indexing exists. */
   staticBurn: {
     /** Whole-percent display when on-chain burn read is unavailable. */

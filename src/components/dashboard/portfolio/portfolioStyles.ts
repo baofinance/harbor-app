@@ -96,3 +96,10 @@ export const DASHBOARD_HERO_METRIC_TILE = `${MV_STAT_TILE} shrink-0 border-l-[3p
 
 export const DASHBOARD_HERO_ALLOCATION_TRACK =
   "h-3.5 overflow-hidden rounded-full bg-white/[0.06] shadow-[inset_0_1px_2px_rgba(0,0,0,0.15)]";
+
+/** Allocation legend — 2-up on narrow viewports; stacked list from sm+. */
+export const DASHBOARD_HERO_ALLOCATION_LEGEND_CLASS =
+  "mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 sm:flex sm:flex-col sm:gap-y-1";
+
+export const DASHBOARD_HERO_ALLOCATION_LEGEND_ITEM_CLASS =
+  "flex min-w-0 items-center gap-1.5 text-[10px] sm:text-[11px] md:text-xs";

@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { DashboardConnectNotice } from "@/components/dashboard/DashboardConnectNotice";
+import { DashboardTideLiveBanner } from "@/components/dashboard/DashboardTideLiveBanner";
 import { DashboardPortfolioHero } from "@/components/dashboard/DashboardPortfolioHero";
 import { DashboardProductCard, useDashboardProductExpanded } from "@/components/dashboard/DashboardProductCard";
 import { DashboardPositionsList } from "@/components/dashboard/DashboardPositionsList";
@@ -328,13 +329,15 @@ export default function DashboardPage() {
   };
 
   return (
-    <HarborPageShell mainClassName="space-y-3">
+    <HarborPageShell mainClassName="space-y-3 max-sm:!px-3">
       <div className="relative flex items-start justify-end">
         <DashboardModuleLayoutControls
           order={moduleOrder}
           onOrderChange={setModuleOrder}
         />
       </div>
+
+      <DashboardTideLiveBanner />
 
       {!isConnected ? <DashboardConnectNotice /> : null}
 

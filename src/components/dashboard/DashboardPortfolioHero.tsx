@@ -20,6 +20,8 @@ import {
   DASHBOARD_NUMERIC_HERO_CLASS,
 } from "./dashboardTypography";
 import {
+  DASHBOARD_HERO_ALLOCATION_LEGEND_CLASS,
+  DASHBOARD_HERO_ALLOCATION_LEGEND_ITEM_CLASS,
   DASHBOARD_HERO_ALLOCATION_TRACK,
   PORTFOLIO_MUTED_CLASS,
 } from "./portfolio/portfolioStyles";
@@ -76,16 +78,16 @@ function HeroAllocationColumn({ slices }: { slices: PortfolioAllocationSlice[] }
           );
         })}
       </div>
-      <div className="mt-2 flex flex-col gap-y-1">
+      <div className={DASHBOARD_HERO_ALLOCATION_LEGEND_CLASS}>
         {slices.map((slice) => (
-          <div key={slice.id} className="flex items-center gap-1.5 text-[11px] sm:text-xs">
+          <div key={slice.id} className={DASHBOARD_HERO_ALLOCATION_LEGEND_ITEM_CLASS}>
             <span
               className={`h-1.5 w-1.5 shrink-0 rounded-full ${slice.dotClass}`}
               aria-hidden
             />
-            <span className={`font-medium ${slice.accentClass}`}>{slice.label}</span>
-            <span className="tabular-nums text-white/80">{slice.pct.toFixed(0)}%</span>
-            <span className={`tabular-nums ${PORTFOLIO_MUTED_CLASS}`}>
+            <span className={`truncate font-medium ${slice.accentClass}`}>{slice.label}</span>
+            <span className="shrink-0 tabular-nums text-white/80">{slice.pct.toFixed(0)}%</span>
+            <span className={`hidden shrink-0 tabular-nums sm:inline ${PORTFOLIO_MUTED_CLASS}`}>
               · {formatUSD(slice.usd, { compact: false })}
             </span>
           </div>
@@ -164,7 +166,7 @@ export function DashboardPortfolioHero({
 
   return (
     <section
-      className={`relative ${MV_MAIN_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} ${DASHBOARD_HERO_BRAND_EDGE_CLASS} px-4 py-3.5 sm:px-5 sm:py-4`}
+      className={`relative ${MV_MAIN_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} ${DASHBOARD_HERO_BRAND_EDGE_CLASS} px-3 py-3.5 sm:px-5 sm:py-4`}
       aria-label="Portfolio value"
     >
       <div className={DASHBOARD_HERO_GRID_CLASS}>

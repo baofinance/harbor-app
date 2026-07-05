@@ -55,6 +55,7 @@ export function TideValueFlywheel() {
   const treasuryPct = metrics.treasury.ownershipPct ?? 0;
   const polPct = metrics.pol.ownershipPct ?? 0;
   const burnPct = metrics.burn.supplyBurnedPct ?? 0;
+  const polPoolUrl = TIDE_FLYWHEEL_CONFIG.polV4?.uniswapPoolUrl;
 
   return (
     <section className={TIDE_FLYWHEEL_SECTION_CLASS} aria-label="The TIDE Flywheel">
@@ -107,11 +108,34 @@ export function TideValueFlywheel() {
             title={copy.steps.pol.title}
             description={copy.steps.pol.description}
             statLabel={copy.steps.pol.statLabel}
-            statValue={metrics.isLoading ? "…" : formatPct(polPct)}
+            statValue={
+              metrics.isLoading
+                ? "…"
+                : metrics.polLpConfigured
+                  ? formatPct(polPct)
+                  : "—"
+            }
             footer={copy.steps.pol.targetLabel}
+            pendingFootnote={
+              !metrics.polLpConfigured && !metrics.isLoading
+                ? copy.steps.pol.pendingConfig
+                : undefined
+            }
             isActive={metrics.activeStage === "pol"}
-            progressPct={polPct}
+            progressPct={metrics.polLpConfigured ? polPct : null}
             progressTargetPct={metrics.pol.targetPct}
+            statSubValue={
+              metrics.polLpConfigured && polPoolUrl ? (
+                <a
+                  href={polPoolUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-harbor-coral/90 underline-offset-2 hover:text-harbor-coral hover:underline"
+                >
+                  View POL pool
+                </a>
+              ) : undefined
+            }
           />
 
           <StepArrow />

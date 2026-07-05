@@ -1721,6 +1721,7 @@ export default function AnchorPage() {
             title={transactionProgress.title}
             steps={transactionProgress.steps}
             currentStepIndex={transactionProgress.currentStepIndex}
+            onRetry={transactionProgress.onRetry}
             onCancel={() => {
               if (cancelOperationRef.current) {
                 // Call the cancel handler for claim all or compound

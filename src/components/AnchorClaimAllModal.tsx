@@ -351,27 +351,27 @@ export const AnchorClaimAllModal = ({
  ) : null}
  </div>
 
- {/* Buy $Tide */}
+ {/* Buy $TIDE */}
  <button
  onClick={() => {
  onBuyTide(selectedPoolsArray);
  onClose();
  }}
- disabled={true}
- className="w-full p-4 text-left rounded-md bg-white/85 backdrop-blur-sm border-2 border-gray-300 transition-colors flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed"
+ disabled={isLoading || selectedPoolsArray.length === 0}
+ className="w-full p-4 text-left rounded-md bg-white/85 backdrop-blur-sm border-2 border-[#1E4775] hover:bg-[#1E4775]/5 transition-colors flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed disabled:border-gray-300"
  >
  <div className="flex items-center gap-3">
  <div>
- <div className="font-semibold text-gray-500">
+ <div className="font-semibold text-[#1E4775]">
  Buy $TIDE
  </div>
- <p className="text-xs text-gray-400 mt-1">
- $TIDE token is not live yet
+ <p className="text-xs text-[#1E4775]/70 mt-1">
+ Claim rewards, swap via Velora, and buy TIDE through the Uniswap POL pool
  </p>
  </div>
  </div>
  <svg
- className="w-5 h-5 text-gray-400"
+ className="w-5 h-5 text-[#1E4775] group-hover:translate-x-1 transition-transform"
  fill="none"
  viewBox="0 0 24 24"
  stroke="currentColor"

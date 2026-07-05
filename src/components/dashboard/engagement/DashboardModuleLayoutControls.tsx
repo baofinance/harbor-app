@@ -45,7 +45,7 @@ export function DashboardModuleLayoutControls({
     <div className="flex justify-end">
       <button
         type="button"
-        className="inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-white/[0.06] px-2.5 py-1.5 text-[11px] font-medium text-white/80 transition hover:border-white/25 hover:bg-white/[0.1] sm:text-xs"
+        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-white/15 bg-white/[0.06] px-3 py-2 text-xs font-medium text-white/80 transition hover:border-white/25 hover:bg-white/[0.1] sm:px-2.5 sm:py-1.5 sm:text-xs"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >

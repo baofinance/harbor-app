@@ -124,7 +124,7 @@ export const AnchorClaimMarketModal = ({
  <div className="flex items-center gap-2">
  <span className="text-lg font-semibold text-[#1E4775]">Buy $TIDE</span>
  <InfoTooltip
- label="$TIDE token is not live yet. This feature will be available soon."
+ label="Claim rewards, swap to wstETH via Velora (ParaSwap), then buy TIDE through Harbor's Uniswap v4 POL pool."
  side="top"
  className="text-[#1E4775]/60"
  />
@@ -135,10 +135,14 @@ export const AnchorClaimMarketModal = ({
  onBuyTide();
  onClose();
  }}
- disabled={true}
- className="inline-flex items-center justify-center min-w-[7rem] px-4 py-2 text-xs font-medium rounded-md bg-gray-300 text-gray-500 cursor-not-allowed"
+ disabled={isLoading}
+ className={
+ isLoading
+ ? "inline-flex items-center justify-center min-w-[7rem] px-4 py-2 text-xs font-medium rounded-md bg-gray-300 text-gray-500 cursor-not-allowed"
+ : INDEX_EARN_CLAIM_BUTTON_CLASS_DESKTOP
+ }
  >
- Coming Soon
+ {isLoading ? "Processing..." : "Buy TIDE"}
  </button>
  </div>
  </div>
