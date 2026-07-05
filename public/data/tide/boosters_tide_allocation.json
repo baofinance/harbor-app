@@ -49,245 +49,282 @@
       "score": 500,
       "address": "",
       "amount": "2189781021897810218978113",
-      "amountTokens": 2189793
+      "amountTokens": 2189793,
+      "airdropSent": false
     },
     {
       "rank": 2,
       "score": 350,
       "address": "0xf81Bc9C1e9EAD7C227fb359F07a5fceD0d071f47",
       "amount": "1532846715328467153284671",
-      "amountTokens": 1532846
+      "amountTokens": 1532846,
+      "airdropSent": true
     },
     {
       "rank": 3,
       "score": 250,
       "address": "",
       "amount": "1094890510948905109489051",
-      "amountTokens": 1094890
+      "amountTokens": 1094890,
+      "airdropSent": false
     },
     {
       "rank": 4,
       "score": 175,
       "address": "",
       "amount": "766423357664233576642335",
-      "amountTokens": 766423
+      "amountTokens": 766423,
+      "airdropSent": false
     },
     {
       "rank": 5,
       "score": 175,
       "address": "0x49afcb12da7d59b5e74d4bb01f9855e02346b0c8",
       "amount": "766423357664233576642335",
-      "amountTokens": 766423
+      "amountTokens": 766423,
+      "airdropSent": true
     },
     {
       "rank": 6,
       "score": 125,
       "address": "0xEE0C9542071B71BDCF8Ae61d457cF513e2017F44",
       "amount": "547445255474452554744525",
-      "amountTokens": 547445
+      "amountTokens": 547445,
+      "airdropSent": true
     },
     {
       "rank": 7,
       "score": 125,
       "address": "0x930feae1b277ff60b836d2ce27f162555a5b98b9",
       "amount": "547445255474452554744525",
-      "amountTokens": 547445
+      "amountTokens": 547445,
+      "airdropSent": true
     },
     {
       "rank": 8,
       "score": 125,
       "address": "",
       "amount": "547445255474452554744525",
-      "amountTokens": 547445
+      "amountTokens": 547445,
+      "airdropSent": false
     },
     {
       "rank": 9,
       "score": 125,
       "address": "",
       "amount": "547445255474452554744525",
-      "amountTokens": 547445
+      "amountTokens": 547445,
+      "airdropSent": false
     },
     {
       "rank": 10,
       "score": 125,
       "address": "",
       "amount": "547445255474452554744525",
-      "amountTokens": 547445
+      "amountTokens": 547445,
+      "airdropSent": false
     },
     {
       "rank": 11,
       "score": 75,
       "address": "0x5747B578bbA1A390aA381da0ab7d0537828937e9",
       "amount": "328467153284671532846715",
-      "amountTokens": 328467
+      "amountTokens": 328467,
+      "airdropSent": true
     },
     {
       "rank": 12,
       "score": 75,
       "address": "",
       "amount": "328467153284671532846715",
-      "amountTokens": 328467
+      "amountTokens": 328467,
+      "airdropSent": false
     },
     {
       "rank": 13,
       "score": 75,
       "address": "0x23Ce5F344A5034a893bF69727a2B32b49Ed0E864",
       "amount": "328467153284671532846715",
-      "amountTokens": 328467
+      "amountTokens": 328467,
+      "airdropSent": true
     },
     {
       "rank": 14,
       "score": 75,
       "address": "0x98e917437041f213472C02835cdDC39356086618",
       "amount": "328467153284671532846715",
-      "amountTokens": 328467
+      "amountTokens": 328467,
+      "airdropSent": true
     },
     {
       "rank": 15,
       "score": 75,
       "address": "0x84afb4B60844F8759154d6Ff7B0580Daa2D4e37d",
       "amount": "328467153284671532846715",
-      "amountTokens": 328467
+      "amountTokens": 328467,
+      "airdropSent": true
     },
     {
       "rank": 16,
       "score": 75,
       "address": "",
       "amount": "328467153284671532846715",
-      "amountTokens": 328467
+      "amountTokens": 328467,
+      "airdropSent": false
     },
     {
       "rank": 17,
       "score": 75,
       "address": "",
       "amount": "328467153284671532846715",
-      "amountTokens": 328467
+      "amountTokens": 328467,
+      "airdropSent": false
     },
     {
       "rank": 18,
       "score": 75,
       "address": "",
       "amount": "328467153284671532846715",
-      "amountTokens": 328467
+      "amountTokens": 328467,
+      "airdropSent": false
     },
     {
       "rank": 19,
       "score": 75,
       "address": "",
       "amount": "328467153284671532846715",
-      "amountTokens": 328467
+      "amountTokens": 328467,
+      "airdropSent": false
     },
     {
       "rank": 20,
       "score": 75,
       "address": "",
       "amount": "328467153284671532846715",
-      "amountTokens": 328467
+      "amountTokens": 328467,
+      "airdropSent": false
     },
     {
       "rank": 21,
       "score": 40,
       "address": "",
       "amount": "175182481751824817518248",
-      "amountTokens": 175182
+      "amountTokens": 175182,
+      "airdropSent": false
     },
     {
       "rank": 22,
       "score": 40,
       "address": "",
       "amount": "175182481751824817518248",
-      "amountTokens": 175182
+      "amountTokens": 175182,
+      "airdropSent": false
     },
     {
       "rank": 23,
       "score": 40,
       "address": "",
       "amount": "175182481751824817518248",
-      "amountTokens": 175182
+      "amountTokens": 175182,
+      "airdropSent": false
     },
     {
       "rank": 24,
       "score": 40,
       "address": "",
       "amount": "175182481751824817518248",
-      "amountTokens": 175182
+      "amountTokens": 175182,
+      "airdropSent": false
     },
     {
       "rank": 25,
       "score": 40,
       "address": "",
       "amount": "175182481751824817518248",
-      "amountTokens": 175182
+      "amountTokens": 175182,
+      "airdropSent": false
     },
     {
       "rank": 26,
       "score": 40,
       "address": "",
       "amount": "175182481751824817518248",
-      "amountTokens": 175182
+      "amountTokens": 175182,
+      "airdropSent": false
     },
     {
       "rank": 27,
       "score": 40,
       "address": "",
       "amount": "175182481751824817518248",
-      "amountTokens": 175182
+      "amountTokens": 175182,
+      "airdropSent": false
     },
     {
       "rank": 28,
       "score": 40,
       "address": "",
       "amount": "175182481751824817518248",
-      "amountTokens": 175182
+      "amountTokens": 175182,
+      "airdropSent": false
     },
     {
       "rank": 29,
       "score": 40,
       "address": "",
       "amount": "175182481751824817518248",
-      "amountTokens": 175182
+      "amountTokens": 175182,
+      "airdropSent": false
     },
     {
       "rank": 30,
       "score": 40,
       "address": "",
       "amount": "175182481751824817518248",
-      "amountTokens": 175182
+      "amountTokens": 175182,
+      "airdropSent": false
     },
     {
       "rank": 31,
       "score": 40,
       "address": "",
       "amount": "175182481751824817518248",
-      "amountTokens": 175182
+      "amountTokens": 175182,
+      "airdropSent": false
     },
     {
       "rank": 32,
       "score": 40,
       "address": "",
       "amount": "175182481751824817518248",
-      "amountTokens": 175182
+      "amountTokens": 175182,
+      "airdropSent": false
     },
     {
       "rank": 33,
       "score": 40,
       "address": "",
       "amount": "175182481751824817518248",
-      "amountTokens": 175182
+      "amountTokens": 175182,
+      "airdropSent": false
     },
     {
       "rank": 34,
       "score": 40,
       "address": "",
       "amount": "175182481751824817518248",
-      "amountTokens": 175182
+      "amountTokens": 175182,
+      "airdropSent": false
     },
     {
       "rank": 35,
       "score": 40,
       "address": "",
       "amount": "175182481751824817518248",
-      "amountTokens": 175182
+      "amountTokens": 175182,
+      "airdropSent": false
     }
-  ]
+  ],
+  "airdropSentCount": 8,
+  "airdropPendingCount": 27
 }

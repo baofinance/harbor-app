@@ -25,7 +25,7 @@ export const TIDE_FLYWHEEL_HEADLINE_ACCENT = MV_ACCENT_GRADIENT;
 /** Shared white-glass shell for flywheel stat cards and the revenue pill. */
 export const TIDE_FLYWHEEL_LIGHT_CARD_SHELL = HARBOR_FROSTED_LIGHT_CARD_ELEVATED;
 
-export const TIDE_FLYWHEEL_CARD_BASE = `${TIDE_FLYWHEEL_LIGHT_CARD_SHELL} flex min-w-[220px] max-w-[280px] shrink-0 snap-center flex-col p-3 sm:min-w-[240px] sm:p-4 lg:min-h-0 lg:min-w-0 lg:max-w-none lg:w-full lg:shrink`;
+export const TIDE_FLYWHEEL_CARD_BASE = `${TIDE_FLYWHEEL_LIGHT_CARD_SHELL} flex w-full min-w-0 flex-col p-3 sm:p-4 lg:min-h-0 lg:shrink`;
 
 export const TIDE_FLYWHEEL_CARD_ACTIVE =
   "ring-2 ring-[#4A9784]/45 shadow-[0_0_24px_-8px_rgba(74,151,132,0.35)]";
@@ -53,12 +53,12 @@ export const TIDE_FLYWHEEL_STAT_SUB =
 export const TIDE_FLYWHEEL_ARROW =
   "hidden shrink-0 self-center text-[#1E4775]/25 lg:block lg:px-0.5";
 
-/** Mobile: horizontal scroll. lg+: equal-width grid so cards stay inside the shell. */
+/** Mobile: stacked cards. lg+: equal-width grid with step arrows. */
 export const TIDE_FLYWHEEL_SCROLL_ROW =
-  "min-w-0 flex overflow-x-auto pb-1 snap-x snap-mandatory lg:block lg:w-full lg:overflow-hidden lg:pb-0";
+  "min-w-0 flex flex-col gap-3 lg:block lg:w-full";
 
 export const TIDE_FLYWHEEL_DESKTOP_ROW =
-  "flex w-max min-w-full items-stretch gap-2 lg:grid lg:w-full lg:min-w-0 lg:max-w-full lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-x-0.5";
+  "flex flex-col gap-3 lg:grid lg:w-full lg:min-w-0 lg:max-w-full lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-stretch lg:gap-x-0.5";
 
 export const TIDE_FLYWHEEL_REVENUE_PILL = `${TIDE_DARK_GLASS_SHELL} inline-flex shrink-0 flex-col items-center gap-1 self-center p-3 text-center sm:min-w-[11rem] sm:self-auto sm:p-4`;
 

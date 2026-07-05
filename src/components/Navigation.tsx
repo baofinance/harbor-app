@@ -33,7 +33,7 @@ import { IMPERSONATION_ENABLED } from "@/config/impersonation";
 /** Desktop popover + mobile “More”: lower-traffic destinations only. */
 const MORE_NAV: ReadonlyArray<{ href: string; label: string }> = [
   { href: "/ledger-marks", label: "Leaderboard" },
-  { href: "/tide", label: "Tide" },
+  { href: "/hytoken", label: "Harbor Yield" },
   { href: "/dashboard", label: "Dashboard" },
 ];
 
@@ -119,11 +119,11 @@ export default function Example() {
                 Leverage
               </Link>
               <Link
-                href="/hytoken"
-                className={`${linkClass("/hytoken")} flex shrink-0 items-center justify-center`}
-                aria-current={isActive("/hytoken") ? "page" : undefined}
+                href="/tide"
+                className={`${linkClass("/tide")} flex shrink-0 items-center justify-center`}
+                aria-current={isActive("/tide") ? "page" : undefined}
               >
-                The Hold
+                Tide
               </Link>
               <Link
                 href="/transparency"
@@ -274,15 +274,15 @@ export default function Example() {
             </DisclosureButton>
             <DisclosureButton
               as={Link}
-              href="/hytoken"
+              href="/tide"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
-                isActive("/hytoken")
+                isActive("/tide")
                   ? HARBOR_NAV_LINK_ACTIVE_CLASS
                   : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
               }`}
-              aria-current={isActive("/hytoken") ? "page" : undefined}
+              aria-current={isActive("/tide") ? "page" : undefined}
             >
-              The Hold
+              Tide
             </DisclosureButton>
             <DisclosureButton
               as={Link}

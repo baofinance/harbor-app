@@ -95,7 +95,6 @@ import { AnchorMarketGroupCollapsedRow } from "@/components/anchor/AnchorMarketG
 import { AnchorMarketsSections } from "@/components/anchor/AnchorMarketsSections";
 import { AnchorMarketGroupExpandedSection } from "@/components/anchor/AnchorMarketGroupExpandedSection";
 import { AnchorMarketsTableHeader } from "@/components/anchor/AnchorMarketsTableHeader";
-import { AnchorBasicMarketCardsGrid } from "@/components/anchor/AnchorBasicMarketCardsGrid";
 import { AnchorRewardsStrip } from "@/components/anchor/AnchorRewardsStrip";
 import { AnchorEarningsSection } from "@/components/anchor/AnchorEarningsSection";
 import { AnchorWalletPositionsSection } from "@/components/anchor/AnchorWalletPositionsSection";
@@ -103,14 +102,9 @@ import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSub
 import { IndexMarketsLoadError } from "@/components/shared/IndexMarketsLoadError";
 import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
 import {
-  AnchorVaprTooltipContent,
-  type AnchorVaprPositionApr,
-} from "@/components/anchor/AnchorVaprTooltipContent";
-import {
   ANCHOR_MARKETS_WALLET_ROW_LG_CLASSNAME,
   ANCHOR_MARKETS_WALLET_ROW_MD_CLASSNAME,
 } from "@/components/anchor/anchorMarketsTableGrid";
-import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 import {
   LEDGER_MARKS_STRIP_SURFACE_ABOVE_TOOLBAR_CLASS,
 } from "@/components/shared/indexMarketsToolbarStyles";
@@ -222,8 +216,6 @@ export default function AnchorPage() {
     setMounted(true);
   }, []);
 
-  const { isBasic: anchorViewBasic } = usePageLayoutPreference();
-
   const {
     chainFilterSelected,
     setChainFilterSelected,
@@ -293,7 +285,7 @@ export default function AnchorPage() {
     allMarketsData,
     anchorStats,
     claimAllPositions,
-  } = useAnchorPageData(address, anchorViewBasic);
+  } = useAnchorPageData(address);
   const {
     compoundModal,
     setCompoundModal,
@@ -378,81 +370,6 @@ export default function AnchorPage() {
     return map;
   }, [allMarketsData]);
 
-  /** Same rule as the extended rewards strip: sum `claimableValue` per stability pool from `poolRewardsMap`. */
-  const anchorToolbarTotalClaimableUsd = useMemo(() => {
-    let total = 0;
-    for (const [, m] of anchorMarkets) {
-      const collateralAddr = (m as { addresses?: { stabilityPoolCollateral?: `0x${string}` } })
-        .addresses?.stabilityPoolCollateral;
-      const sailAddr = (m as { addresses?: { stabilityPoolLeveraged?: `0x${string}` } }).addresses
-        ?.stabilityPoolLeveraged;
-      if (collateralAddr) {
-        const pr = poolRewardsMap.get(collateralAddr);
-        if (pr && pr.claimableValue > 0) total += pr.claimableValue;
-      }
-      if (sailAddr) {
-        const pr = poolRewardsMap.get(sailAddr);
-        if (pr && pr.claimableValue > 0) total += pr.claimableValue;
-      }
-    }
-    return total;
-  }, [anchorMarkets, poolRewardsMap]);
-
-  const anchorToolbarYourTotalDepositUsd = useMemo(() => {
-    return Object.values(marketPositions).reduce(
-      (sum, pos) => sum + (pos.collateralPoolUSD || 0) + (pos.sailPoolUSD || 0),
-      0
-    );
-  }, [marketPositions]);
-
-  const anchorToolbarPositionAprs = useMemo(() => {
-    const positionAprs: AnchorVaprPositionApr[] = [];
-    for (const [marketId, market] of anchorMarkets) {
-      const position = marketPositions?.[marketId];
-      if (!position) continue;
-
-      const collateralPoolAddress = (market as { addresses?: { stabilityPoolCollateral?: `0x${string}` } })
-        .addresses?.stabilityPoolCollateral;
-      if (collateralPoolAddress && position.collateralPoolUSD > 0) {
-        const collateralApr = poolRewardsMap.get(collateralPoolAddress)?.totalRewardAPR || 0;
-        if (collateralApr > 0) {
-          positionAprs.push({
-            poolType: "collateral",
-            marketId,
-            depositUSD: position.collateralPoolUSD,
-            apr: collateralApr,
-          });
-        }
-      }
-
-      const sailPoolAddress = (market as { addresses?: { stabilityPoolLeveraged?: `0x${string}` } })
-        .addresses?.stabilityPoolLeveraged;
-      if (sailPoolAddress && position.sailPoolUSD > 0) {
-        const sailApr = poolRewardsMap.get(sailPoolAddress)?.totalRewardAPR || 0;
-        if (sailApr > 0) {
-          positionAprs.push({
-            poolType: "sail",
-            marketId,
-            depositUSD: position.sailPoolUSD,
-            apr: sailApr,
-          });
-        }
-      }
-    }
-
-    return positionAprs;
-  }, [anchorMarkets, marketPositions, poolRewardsMap]);
-
-  const anchorToolbarVapr = useMemo(() => {
-    let totalWeightedApr = 0;
-    let totalDepositUsd = 0;
-    for (const pos of anchorToolbarPositionAprs) {
-      totalWeightedApr += pos.depositUSD * pos.apr;
-      totalDepositUsd += pos.depositUSD;
-    }
-    return totalDepositUsd > 0 ? totalWeightedApr / totalDepositUsd : 0;
-  }, [anchorToolbarPositionAprs]);
-
   // Fetch collateral prices for all markets using the hook
   const collateralPriceOracleAddresses = useMemo(() => {
     return anchorMarkets.map(
@@ -470,11 +387,9 @@ export default function AnchorPage() {
   return (
     <>
       <HarborPageShell>
-          {!anchorViewBasic && (
-            <>
-              {ledgerMarksError && (
-                <IndexMarksSubgraphErrorBanner error={ledgerMarksError} />
-              )}
+          {ledgerMarksError && (
+            <IndexMarksSubgraphErrorBanner error={ledgerMarksError} />
+          )}
 
           {/* Rewards Bar - Under Title Boxes */}
           <AnchorRewardsStrip
@@ -508,8 +423,6 @@ export default function AnchorPage() {
             setSelectedMarketForClaim={setSelectedMarketForClaim}
             setIsClaimMarketModalOpen={setIsClaimMarketModalOpen}
           />
-            </>
-          )}
 
           {/* Earnings Section */}
           <AnchorEarningsSection
@@ -548,57 +461,6 @@ export default function AnchorPage() {
               chainFilterSelected,
               onChainFilterChange: setChainFilterSelected,
               onClearFilters: () => setChainFilterSelected([]),
-              ...(anchorViewBasic
-                ? {
-                    basicClaimToolbar: {
-                      claimableUsdDisplay:
-                        anchorToolbarTotalClaimableUsd > 0
-                          ? anchorToolbarTotalClaimableUsd.toFixed(2)
-                          : "0.00",
-                      leftMetrics: [
-                        {
-                          label: "TVL",
-                          value: formatCompactUSD(
-                            anchorStats?.yieldGeneratingTVLUSD || 0
-                          ),
-                        },
-                        {
-                          label: "Your Deposits",
-                          value: formatCompactUSD(anchorToolbarYourTotalDepositUsd),
-                        },
-                        {
-                          label: (
-                            <span className="inline-flex items-center gap-1">
-                              <span>VAPR</span>
-                              <InfoTooltip
-                                side="left"
-                                label={
-                                  <AnchorVaprTooltipContent
-                                    positionAPRs={anchorToolbarPositionAprs}
-                                    blendedAPR={anchorToolbarVapr}
-                                    showLiveAprLoading={showLiveAprLoading}
-                                    isErrorAllRewards={isErrorAllRewards}
-                                    projectedAPR={projectedAPR}
-                                  />
-                                }
-                              >
-                                <span className="text-white/50 cursor-help text-xs">
-                                  [?]
-                                </span>
-                              </InfoTooltip>
-                            </span>
-                          ),
-                          value:
-                            anchorToolbarVapr > 0
-                              ? `${anchorToolbarVapr.toFixed(2)}%`
-                              : "-",
-                        },
-                      ],
-                      onClaim: () => setIsClaimAllModalOpen(true),
-                      claimDisabled: isClaimingAll || isCompoundingAll,
-                    },
-                  }
-                : {}),
             }}
           >
             {/* Market Cards/Rows */}
@@ -644,9 +506,7 @@ export default function AnchorPage() {
                 const marketIndex = anchorMarkets.findIndex(([mid]) => mid === id);
                 if (marketIndex < 0) return;
                 const pegSymbol = m.peggedToken?.symbol || "UNKNOWN";
-                const groupKey = anchorViewBasic
-                  ? pegSymbol
-                  : `${pegSymbol}::${harborMarketChainKey(m)}`;
+                const groupKey = `${pegSymbol}::${harborMarketChainKey(m)}`;
                 if (!groups[groupKey]) {
                   groups[groupKey] = [];
                 }
@@ -656,37 +516,6 @@ export default function AnchorPage() {
                   marketIndex,
                 });
               });
-
-              // Process each group
-              if (anchorViewBasic) {
-                // Basic cards: show all peg groups from displayed markets (incl. preview /
-                // multichain). Do not require marketsDataMap — that map only has post-genesis
-                // TVL (see useAnchorMarketData), which hid haUSD and showed the single-chain
-                // placeholder instead of Ethereum + MegaETH footers.
-                const marketGroups = Object.entries(groups)
-                  .map(([groupKey, marketList]) => ({
-                    symbol: groupKey.split("::")[0] ?? groupKey,
-                    list: marketList,
-                  }))
-                  .filter(({ list }) => list.length > 0);
-                return (
-                  <AnchorBasicMarketCardsGrid
-                    marketGroups={marketGroups}
-                    getMarketsDataForGroup={(list) =>
-                      list
-                        .map(({ marketId }) => marketsDataMap.get(marketId))
-                        .filter(
-                          (m): m is NonNullable<typeof m> => m !== undefined
-                        )
-                    }
-                    showLiveAprLoading={showLiveAprLoading}
-                    isConnected={isConnected}
-                    onOpenManage={(payload) => {
-                      void openManageModal(payload);
-                    }}
-                  />
-                );
-              }
 
               return (
                 <>

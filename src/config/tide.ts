@@ -70,6 +70,8 @@ export type TideBoostersAllocationRow = {
   address: string;
   amount: string;
   amountTokens: number;
+  /** True once this rank has been included in a SAFE airdrop batch. */
+  airdropSent: boolean;
 };
 
 export type TideBoostersSnapshot = {
@@ -80,6 +82,8 @@ export type TideBoostersSnapshot = {
   recipientCount: number;
   mappedAddressCount: number;
   pendingAddressCount: number;
+  airdropSentCount?: number;
+  airdropPendingCount?: number;
   scoreGroups: TideBoostersScoreGroup[];
   allocations: TideBoostersAllocationRow[];
 };

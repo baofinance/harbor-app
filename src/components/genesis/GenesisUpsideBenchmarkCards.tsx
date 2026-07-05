@@ -120,13 +120,13 @@ export function GenesisUpsideBenchmarkCards({
 
   return (
     <div className="relative pt-1">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-x-1 sm:gap-x-1.5">
+      <div className="flex flex-col gap-2 sm:gap-2.5 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-stretch lg:gap-x-1.5">
         {benchmarks.map((row, index) => (
           <div key={row.tvlUsd} className="contents">
             <BenchmarkCard row={row} isUpdated={cardsUpdated} />
             {index < benchmarks.length - 1 ? (
               <div
-                className="flex items-center justify-center px-0.5 sm:px-1"
+                className="hidden items-center justify-center px-0.5 lg:flex sm:px-1"
                 aria-hidden
               >
                 <ChevronRightIcon className="h-3.5 w-3.5 shrink-0 text-[#1E4775]/25 sm:h-4 sm:w-4" />

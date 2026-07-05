@@ -35,7 +35,6 @@ import {
 } from "@/hooks/useDashboardPositions";
 import { useDashboardEarnClaimable } from "@/hooks/useDashboardEarnClaimable";
 import { useDashboardManageModals } from "@/hooks/useDashboardManageModals";
-import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 
 function sumRowsUsd(rows: DashboardPositionRow[]): number {
   return rows.reduce((s, r) => s + r.usd, 0);
@@ -136,7 +135,6 @@ function PositionProductCard({
 }
 
 export default function DashboardPage() {
-  const { isBasic: dashboardViewBasic } = usePageLayoutPreference();
   const { rows, isLoading, error, isConnected } = useFounderMetrics();
   const activeVoyage = useDashboardActiveVoyage();
   const {
@@ -277,7 +275,7 @@ export default function DashboardPage() {
             />
             <div className={DASHBOARD_GAP_CATEGORY}>
               <DashboardMaidenVoyageSection
-                compact={dashboardViewBasic}
+                compact={false}
                 isConnected={isConnected}
                 maidenRows={maidenVoyageRows}
                 maidenLoading={posLoading.maidenVoyage}
@@ -289,7 +287,7 @@ export default function DashboardPage() {
               <PositionProductCard
                 group={earnGroup}
                 productId="earn"
-                compact={dashboardViewBasic}
+                compact={false}
                 isConnected={isConnected}
                 earnClaimableUsd={earnClaimableUsd}
                 earnClaimableLoading={earnClaimableLoading}
@@ -297,14 +295,14 @@ export default function DashboardPage() {
               <PositionProductCard
                 group={sailGroup}
                 productId="sail"
-                compact={dashboardViewBasic}
+                compact={false}
                 isConnected={isConnected}
               />
               {archivedGroup ? (
                 <PositionProductCard
                   group={archivedGroup}
                   productId="archived"
-                  compact={dashboardViewBasic}
+                  compact={false}
                   isConnected={isConnected}
                   onManage={openPositionManage}
                   showWithdrawNotice

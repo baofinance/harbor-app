@@ -53,7 +53,6 @@ import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
 import { buildTokenPriceInput } from "@/utils/tokenPriceInput";
 import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
 import { useReadContract, useAccount } from "wagmi";
-import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 import { HarborPageShell } from "@/components/shared/HarborPageShell";
 import { HarborConfigBadge, type HarborConfigBadgeVariant } from "@/components/shared/HarborConfigBadge";
 import {
@@ -1417,7 +1416,6 @@ function ContractAddressItem({
 
 
 export default function TransparencyPage() {
- const { isBasic: isBasicLayout } = usePageLayoutPreference();
  const {
  markets,
  pools,
@@ -1682,7 +1680,7 @@ export default function TransparencyPage() {
 
         return (
             <HarborPageShell>
-                    {!isBasicLayout ? <TransparencyHeroIntroCards /> : null}
+                    <TransparencyHeroIntroCards />
 
                     <TransparencyMarketsShell>
                         <div className={INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}>
