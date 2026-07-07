@@ -63,6 +63,9 @@ export const JOURNEY_SPLIT_CHIP_ACTIVE_CLASS =
 export const JOURNEY_SPLIT_CHIP_INACTIVE_CLASS =
   "inline-flex items-center rounded-md border border-[#1E4775]/10 bg-[#1E4775]/[0.03] px-1.5 py-0.5 text-[10px] font-medium text-[#1E4775]/40";
 
+export const JOURNEY_SPLIT_CHIP_LOADING_CLASS =
+  "inline-flex animate-pulse items-center gap-1 rounded-md border border-dashed border-[#1E4775]/40 bg-white/40 px-1.5 py-0.5 text-[10px] font-semibold text-[#1E4775]/70";
+
 export const JOURNEY_SPLIT_CHIP_TIDE_CLASS =
   "inline-flex items-center rounded-md border border-harbor-coral/30 bg-harbor-coral/10 px-1.5 py-0.5 text-[10px] font-semibold text-harbor-coral";
 

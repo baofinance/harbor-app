@@ -64,7 +64,8 @@ export const TIDE_FLYWHEEL_CONFIG = {
         label: "Reinvest",
         description: "Reinvested as stability pool yield to grow markets",
         yieldLabel: "Yield for:",
-        activeMarkets: ["haETH", "haBTC", "haUSD"],
+        activeMarkets: ["haETH", "haBTC", "haEUR"],
+        loadingMarkets: ["haUSD"],
         inactiveMarkets: ["haGOLD", "haSILVER", "haOIL", "haSPX"],
       },
       strengthenTide: {

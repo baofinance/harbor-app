@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import { Fragment } from "react";
 import type { JourneyStageVisualState } from "@/utils/tideRevenueJourney";
 import {
   JOURNEY_REVENUE_BANNER_VALUE_CLASS,
@@ -16,6 +17,7 @@ import {
   JOURNEY_SPLIT_BRANCHES_CLASS,
   JOURNEY_SPLIT_CHIP_ACTIVE_CLASS,
   JOURNEY_SPLIT_CHIP_INACTIVE_CLASS,
+  JOURNEY_SPLIT_CHIP_LOADING_CLASS,
   JOURNEY_SPLIT_CHIPS_LABEL_CLASS,
   JOURNEY_SPLIT_CHIPS_ROW_CLASS,
   JOURNEY_SPLIT_CONNECTOR_CLASS,
@@ -33,6 +35,7 @@ export type JourneyRevenueSplitBranch = {
   description: string;
   yieldLabel?: string;
   activeMarkets?: readonly string[];
+  loadingMarkets?: readonly string[];
   inactiveMarkets?: readonly string[];
   destinations?: readonly string[];
 };
@@ -108,6 +111,7 @@ export function JourneyRevenueSplitDiagram({
               {reinvest.description}
             </p>
             {reinvest.activeMarkets?.length ||
+            reinvest.loadingMarkets?.length ||
             reinvest.inactiveMarkets?.length ? (
               <div className={JOURNEY_SPLIT_CHIPS_ROW_CLASS}>
                 {reinvest.yieldLabel ? (
@@ -117,6 +121,15 @@ export function JourneyRevenueSplitDiagram({
                 ) : null}
                 {reinvest.activeMarkets?.map((market) => (
                   <span key={market} className={JOURNEY_SPLIT_CHIP_ACTIVE_CLASS}>
+                    {market}
+                  </span>
+                ))}
+                {reinvest.loadingMarkets?.map((market) => (
+                  <span key={market} className={JOURNEY_SPLIT_CHIP_LOADING_CLASS}>
+                    <span
+                      className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[#1E4775]/50"
+                      aria-hidden
+                    />
                     {market}
                   </span>
                 ))}
@@ -146,13 +159,18 @@ export function JourneyRevenueSplitDiagram({
             </p>
             {tideDestinations?.length ? (
               <div className={JOURNEY_SPLIT_CHIPS_ROW_CLASS}>
-                {tideDestinations.map((destination) => (
-                  <span
-                    key={destination.label}
-                    className={tideDestChipClass(destination.state)}
-                  >
-                    {destination.label}
-                  </span>
+                {tideDestinations.map((destination, index) => (
+                  <Fragment key={destination.label}>
+                    {index > 0 ? (
+                      <ChevronRightIcon
+                        className="h-3 w-3 shrink-0 text-harbor-coral/50"
+                        aria-hidden
+                      />
+                    ) : null}
+                    <span className={tideDestChipClass(destination.state)}>
+                      {destination.label}
+                    </span>
+                  </Fragment>
                 ))}
               </div>
             ) : null}
