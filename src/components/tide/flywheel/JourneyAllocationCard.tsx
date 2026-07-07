@@ -9,6 +9,7 @@ import {
   JOURNEY_ALLOCATION_TITLE_CLASS,
   JOURNEY_ALLOCATION_VALUE_CLASS,
 } from "./revenueJourneyStyles";
+import { TIDE_META_TEXT } from "@/components/tide/tideCardStyles";
 
 export type JourneyAllocationCardProps = {
   title: string;
@@ -42,7 +43,7 @@ export function JourneyAllocationCard({
         {allocation.futureLabel ? (
           <div className="sm:text-right">
             <p className={JOURNEY_ALLOCATION_LABEL_CLASS}>{futureLabel}</p>
-            <p className="text-sm text-white/55">{allocation.futureLabel}</p>
+            <p className={TIDE_META_TEXT}>{allocation.futureLabel}</p>
           </div>
         ) : null}
       </div>

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import type { JourneyStageVisualState } from "@/utils/tideRevenueJourney";
 import { JourneyConnector } from "./JourneyConnector";
 import {
+  JOURNEY_TIMELINE_CARD_SLOT_CLASS,
   JOURNEY_TIMELINE_ENTRY_CLASS,
   JOURNEY_TIMELINE_ITEM_CLASS,
   JOURNEY_TIMELINE_LIST_CLASS,
@@ -34,7 +35,7 @@ export function JourneyTimeline({ entryLabel, stages }: JourneyTimelineProps) {
 
           return (
             <li key={stage.id} className={JOURNEY_TIMELINE_ITEM_CLASS}>
-              <div className="min-w-0 flex-1">{stage.card}</div>
+              <div className={JOURNEY_TIMELINE_CARD_SLOT_CLASS}>{stage.card}</div>
               {!isLast ? <JourneyConnector isActivePath={pathActive} /> : null}
             </li>
           );

@@ -16,8 +16,11 @@ import {
   JOURNEY_STAGE_CARD_BASE,
   JOURNEY_STAGE_CARD_FUTURE,
   JOURNEY_STAGE_DESC_CLASS,
+  JOURNEY_STAGE_FOOTER_SLOT_CLASS,
   JOURNEY_STAGE_ICON_BADGE,
   JOURNEY_STAGE_ICON_PULSE,
+  JOURNEY_STAGE_METRICS_SLOT_CLASS,
+  JOURNEY_STAGE_PROGRESS_SLOT_CLASS,
   JOURNEY_STAGE_STAT_LABEL_CLASS,
   JOURNEY_STAGE_STAT_SUB_CLASS,
   JOURNEY_STAGE_STAT_VALUE_CLASS,
@@ -109,64 +112,68 @@ export function JourneyStageCard({
         <p className={JOURNEY_STAGE_DESC_CLASS}>{description}</p>
       </div>
 
-      <div className="mt-4 flex flex-1 flex-col items-center text-center">
-        {metricLabel ? (
-          <>
-            <p className={JOURNEY_STAGE_STAT_LABEL_CLASS}>{metricLabel}</p>
-            <p className={JOURNEY_STAGE_STAT_VALUE_CLASS}>{metricValue}</p>
-            {metricSubValue ? (
-              <p className={`mt-0.5 ${JOURNEY_STAGE_STAT_SUB_CLASS}`}>
-                {metricSubValue}
-              </p>
-            ) : null}
-          </>
-        ) : null}
+      <div className="flex flex-1 flex-col">
+        <div className={JOURNEY_STAGE_METRICS_SLOT_CLASS}>
+          {metricLabel ? (
+            <>
+              <p className={JOURNEY_STAGE_STAT_LABEL_CLASS}>{metricLabel}</p>
+              <p className={JOURNEY_STAGE_STAT_VALUE_CLASS}>{metricValue}</p>
+              {metricSubValue ? (
+                <p className={`mt-0.5 ${JOURNEY_STAGE_STAT_SUB_CLASS}`}>
+                  {metricSubValue}
+                </p>
+              ) : null}
+            </>
+          ) : null}
 
-        {showMetricPair ? (
-          <div className="mt-1 flex w-full justify-center gap-8">
-            <div>
-              <p className={JOURNEY_STAGE_STAT_LABEL_CLASS}>{currentLabel}</p>
-              <p className={JOURNEY_STAGE_STAT_VALUE_CLASS}>{currentValue}</p>
+          {showMetricPair ? (
+            <div className="mt-1 flex w-full justify-center gap-8">
+              <div>
+                <p className={JOURNEY_STAGE_STAT_LABEL_CLASS}>{currentLabel}</p>
+                <p className={JOURNEY_STAGE_STAT_VALUE_CLASS}>{currentValue}</p>
+              </div>
+              <div>
+                <p className={JOURNEY_STAGE_STAT_LABEL_CLASS}>{targetLabel}</p>
+                <p className={JOURNEY_STAGE_STAT_VALUE_CLASS}>{targetValue}</p>
+              </div>
             </div>
-            <div>
-              <p className={JOURNEY_STAGE_STAT_LABEL_CLASS}>{targetLabel}</p>
-              <p className={JOURNEY_STAGE_STAT_VALUE_CLASS}>{targetValue}</p>
-            </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
 
-        {showProgress ? (
-          <div
-            className="relative mt-4 w-full"
-            role="progressbar"
-            aria-valuenow={Math.round(clampedProgress)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={`${title} progress`}
-          >
-            <div className={JOURNEY_PROGRESS_TRACK}>
-              <div
-                className={
-                  progressComplete
-                    ? `${JOURNEY_PROGRESS_FILL_COMPLETE} h-full rounded-full`
-                    : `${JOURNEY_PROGRESS_FILL} h-full rounded-full`
-                }
-                style={{ width: `${clampedProgress}%` }}
-              />
+        <div className={JOURNEY_STAGE_PROGRESS_SLOT_CLASS}>
+          {showProgress ? (
+            <div
+              className="w-full"
+              role="progressbar"
+              aria-valuenow={Math.round(clampedProgress)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`${title} progress`}
+            >
+              <div className={JOURNEY_PROGRESS_TRACK}>
+                <div
+                  className={
+                    progressComplete
+                      ? `${JOURNEY_PROGRESS_FILL_COMPLETE} h-full rounded-full`
+                      : `${JOURNEY_PROGRESS_FILL} h-full rounded-full`
+                  }
+                  style={{ width: `${clampedProgress}%` }}
+                />
+              </div>
             </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
 
-        {badgeText ? (
-          <div className="mt-3">
+        <div className={JOURNEY_STAGE_FOOTER_SLOT_CLASS}>
+          {badgeText ? (
             <span className={statusBadgeClass(visualState)}>
               {visualState === "complete" ? "✓ " : null}
               {badgeText}
             </span>
-          </div>
-        ) : null}
+          ) : null}
 
-        {footer ? <div className="mt-3">{footer}</div> : null}
+          {footer ? <div className="mt-3">{footer}</div> : null}
+        </div>
       </div>
     </article>
   );

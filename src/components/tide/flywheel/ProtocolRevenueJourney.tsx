@@ -24,6 +24,8 @@ import { JourneyStageCard } from "./JourneyStageCard";
 import { JourneyTimeline } from "./JourneyTimeline";
 import {
   JOURNEY_CONTENT_CLASS,
+  JOURNEY_HEADER_ROW_CLASS,
+  JOURNEY_HEADER_TEXT_CLASS,
   JOURNEY_SECTION_CLASS,
   JOURNEY_SUBTITLE_CLASS,
   JOURNEY_TITLE_CLASS,
@@ -206,17 +208,19 @@ export function ProtocolRevenueJourney() {
       aria-label={copy.sectionTitle}
     >
       <div className={JOURNEY_CONTENT_CLASS}>
-        <header>
-          <h2 className={JOURNEY_TITLE_CLASS}>{copy.sectionTitle}</h2>
-          <p className={JOURNEY_SUBTITLE_CLASS}>{copy.sectionSubtitle}</p>
-        </header>
+        <div className={JOURNEY_HEADER_ROW_CLASS}>
+          <header className={JOURNEY_HEADER_TEXT_CLASS}>
+            <h2 className={JOURNEY_TITLE_CLASS}>{copy.sectionTitle}</h2>
+            <p className={JOURNEY_SUBTITLE_CLASS}>{copy.sectionSubtitle}</p>
+          </header>
 
-        <JourneyRevenueHero
-          label={copy.revenueHero.label}
-          tagline={copy.revenueHero.tagline}
-          revenueUsd={metrics.lifetimeRevenueUsd}
-          isLoading={metrics.isLoading}
-        />
+          <JourneyRevenueHero
+            label={copy.revenueHero.label}
+            tagline={copy.revenueHero.tagline}
+            revenueUsd={metrics.lifetimeRevenueUsd}
+            isLoading={metrics.isLoading}
+          />
+        </div>
 
         <JourneyTimeline entryLabel={copy.timelineEntryLabel} stages={stages} />
 
