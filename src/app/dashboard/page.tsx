@@ -328,6 +328,8 @@ export default function DashboardPage() {
 
   return (
     <HarborPageShell mainClassName="space-y-3 max-sm:!px-3">
+      <DashboardTideLiveBanner />
+
       {!isConnected ? (
         <DashboardConnectNotice />
       ) : (
@@ -338,8 +340,6 @@ export default function DashboardPage() {
               onOrderChange={setModuleOrder}
             />
           </div>
-
-          <DashboardTideLiveBanner />
 
           <div className="space-y-4">
             {moduleOrder.map((moduleId) => renderModule(moduleId))}
