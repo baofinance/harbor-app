@@ -328,20 +328,24 @@ export default function DashboardPage() {
 
   return (
     <HarborPageShell mainClassName="space-y-3 max-sm:!px-3">
-      <div className="relative flex items-start justify-end">
-        <DashboardModuleLayoutControls
-          order={moduleOrder}
-          onOrderChange={setModuleOrder}
-        />
-      </div>
+      {!isConnected ? (
+        <DashboardConnectNotice />
+      ) : (
+        <>
+          <div className="relative flex items-start justify-end">
+            <DashboardModuleLayoutControls
+              order={moduleOrder}
+              onOrderChange={setModuleOrder}
+            />
+          </div>
 
-      <DashboardTideLiveBanner />
+          <DashboardTideLiveBanner />
 
-      {!isConnected ? <DashboardConnectNotice /> : null}
-
-      <div className="space-y-4">
-        {moduleOrder.map((moduleId) => renderModule(moduleId))}
-      </div>
+          <div className="space-y-4">
+            {moduleOrder.map((moduleId) => renderModule(moduleId))}
+          </div>
+        </>
+      )}
       {modals}
     </HarborPageShell>
   );

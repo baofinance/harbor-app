@@ -34,7 +34,7 @@ import { IMPERSONATION_ENABLED } from "@/config/impersonation";
 const MORE_NAV: ReadonlyArray<{ href: string; label: string }> = [
   { href: "/ledger-marks", label: "Leaderboard" },
   { href: "/hytoken", label: "Harbor Yield" },
-  { href: "/dashboard", label: "Dashboard" },
+  { href: "/transparency", label: "Transparency" },
 ];
 
 export default function Example() {
@@ -87,7 +87,14 @@ export default function Example() {
                 priority
               />
             </a>
-            <div className="hidden min-w-0 flex-1 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-1.5 sm:gap-y-1 md:gap-x-2 lg:gap-x-3">
+            <div className="hidden min-w-0 flex-1 sm:flex sm:items-center sm:gap-x-1.5 md:gap-x-2 lg:gap-x-3">
+              <Link
+                href="/dashboard"
+                className={`${linkClass("/dashboard")} flex shrink-0 items-center justify-center`}
+                aria-current={isActive("/dashboard") ? "page" : undefined}
+              >
+                Dashboard
+              </Link>
               <Link
                 href="/genesis"
                 className={`${linkClass("/genesis")} inline-flex min-w-0 shrink-0 items-center justify-center gap-1`}
@@ -105,33 +112,32 @@ export default function Example() {
                 </span>
               </Link>
               <Link
-                href="/anchor"
-                className={`${linkClass("/anchor")} flex shrink-0 items-center justify-center`}
-                aria-current={isActive("/anchor") ? "page" : undefined}
-              >
-                Earn
-              </Link>
-              <Link
-                href="/sail"
-                className={`${linkClass("/sail")} flex shrink-0 items-center justify-center`}
-                aria-current={isActive("/sail") ? "page" : undefined}
-              >
-                Leverage
-              </Link>
-              <Link
                 href="/tide"
                 className={`${linkClass("/tide")} flex shrink-0 items-center justify-center`}
                 aria-current={isActive("/tide") ? "page" : undefined}
               >
                 Tide
               </Link>
-              <Link
-                href="/transparency"
-                className={`${linkClass("/transparency")} flex shrink-0 items-center justify-center`}
-                aria-current={isActive("/transparency") ? "page" : undefined}
-              >
-                Transparency
-              </Link>
+              <div className="ml-auto flex shrink-0 items-center gap-x-1.5 md:gap-x-2 lg:gap-x-3">
+                <span
+                  aria-hidden="true"
+                  className="h-5 w-px shrink-0 bg-white/20"
+                />
+                <Link
+                  href="/anchor"
+                  className={`${linkClass("/anchor")} flex shrink-0 items-center justify-center`}
+                  aria-current={isActive("/anchor") ? "page" : undefined}
+                >
+                  Earn
+                </Link>
+                <Link
+                  href="/sail"
+                  className={`${linkClass("/sail")} flex shrink-0 items-center justify-center`}
+                  aria-current={isActive("/sail") ? "page" : undefined}
+                >
+                  Leverage
+                </Link>
+              </div>
             </div>
           </div>
           <div className="hidden shrink-0 sm:flex sm:items-center sm:gap-2 lg:gap-3">
@@ -227,6 +233,18 @@ export default function Example() {
           <div className="flex flex-col w-full items-stretch justify-center space-y-2.5 py-2">
             <DisclosureButton
               as={Link}
+              href="/dashboard"
+              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+                isActive("/dashboard")
+                  ? HARBOR_NAV_LINK_ACTIVE_CLASS
+                  : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
+              }`}
+              aria-current={isActive("/dashboard") ? "page" : undefined}
+            >
+              Dashboard
+            </DisclosureButton>
+            <DisclosureButton
+              as={Link}
               href="/genesis"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/genesis")
@@ -250,6 +268,19 @@ export default function Example() {
             </DisclosureButton>
             <DisclosureButton
               as={Link}
+              href="/tide"
+              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+                isActive("/tide")
+                  ? HARBOR_NAV_LINK_ACTIVE_CLASS
+                  : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
+              }`}
+              aria-current={isActive("/tide") ? "page" : undefined}
+            >
+              Tide
+            </DisclosureButton>
+            <div className="my-1 w-full max-w-sm mx-auto border-t border-white/15" />
+            <DisclosureButton
+              as={Link}
               href="/anchor"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/anchor")
@@ -271,30 +302,6 @@ export default function Example() {
               aria-current={isActive("/sail") ? "page" : undefined}
             >
               Leverage
-            </DisclosureButton>
-            <DisclosureButton
-              as={Link}
-              href="/tide"
-              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
-                isActive("/tide")
-                  ? HARBOR_NAV_LINK_ACTIVE_CLASS
-                  : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
-              }`}
-              aria-current={isActive("/tide") ? "page" : undefined}
-            >
-              Tide
-            </DisclosureButton>
-            <DisclosureButton
-              as={Link}
-              href="/transparency"
-              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
-                isActive("/transparency")
-                  ? HARBOR_NAV_LINK_ACTIVE_CLASS
-                  : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
-              }`}
-              aria-current={isActive("/transparency") ? "page" : undefined}
-            >
-              Transparency
             </DisclosureButton>
             <div className="mt-6 w-full max-w-sm mx-auto border-t border-white/20 pt-6">
               <p className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-white/50">
