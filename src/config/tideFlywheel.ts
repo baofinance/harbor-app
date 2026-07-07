@@ -59,17 +59,15 @@ export const TIDE_FLYWHEEL_CONFIG = {
       tagline: "Every dollar strengthens TIDE with BUYBACKS",
     },
     revenueSplit: {
-      sourceLabel: "Source",
-      sourceTitle: "Protocol Revenue",
       reinvest: {
         pct: 75,
         label: "Reinvest",
-        description: "Revenue reinvested into markets",
+        description: "Reinvested as stability pool yield to grow markets",
       },
       strengthenTide: {
         pct: 25,
         label: "Strengthen TIDE",
-        description: "Strengthens TIDE",
+        description: "Strengthen TIDE with buybacks",
       },
     },
     timelineEntryLabel: "Revenue",

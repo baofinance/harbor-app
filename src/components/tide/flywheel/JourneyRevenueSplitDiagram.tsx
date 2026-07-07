@@ -1,16 +1,22 @@
 "use client";
 
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import {
-  JOURNEY_REVENUE_SPLIT_BRANCH_CLASS,
-  JOURNEY_REVENUE_SPLIT_BRANCH_DESC_CLASS,
-  JOURNEY_REVENUE_SPLIT_BRANCH_LABEL_CLASS,
-  JOURNEY_REVENUE_SPLIT_BRANCH_PCT_CLASS,
-  JOURNEY_REVENUE_SPLIT_BRANCHES_CLASS,
-  JOURNEY_REVENUE_SPLIT_CONNECTOR_CLASS,
-  JOURNEY_REVENUE_SPLIT_DIAGRAM_CLASS,
-  JOURNEY_REVENUE_SPLIT_SOURCE_CLASS,
-  JOURNEY_REVENUE_SPLIT_SOURCE_LABEL_CLASS,
-  JOURNEY_REVENUE_SPLIT_SOURCE_TITLE_CLASS,
+  JOURNEY_REVENUE_BANNER_VALUE_CLASS,
+  JOURNEY_REVENUE_LABEL_CLASS,
+  JOURNEY_REVENUE_TAGLINE_CLASS,
+  JOURNEY_SPLIT_BRANCH_BODY_CLASS,
+  JOURNEY_SPLIT_BRANCH_DESC_CLASS,
+  JOURNEY_SPLIT_BRANCH_LABEL_CLASS,
+  JOURNEY_SPLIT_BRANCH_PCT_REINVEST_CLASS,
+  JOURNEY_SPLIT_BRANCH_PCT_TIDE_CLASS,
+  JOURNEY_SPLIT_BRANCH_REINVEST_CLASS,
+  JOURNEY_SPLIT_BRANCH_TIDE_CLASS,
+  JOURNEY_SPLIT_BRANCHES_CLASS,
+  JOURNEY_SPLIT_CONNECTOR_CLASS,
+  JOURNEY_SPLIT_CONNECTOR_MOBILE_CLASS,
+  JOURNEY_SPLIT_DIAGRAM_CLASS,
+  JOURNEY_SPLIT_SOURCE_CLASS,
 } from "./revenueJourneyStyles";
 
 export type JourneyRevenueSplitBranch = {
@@ -21,49 +27,76 @@ export type JourneyRevenueSplitBranch = {
 
 export type JourneyRevenueSplitDiagramProps = {
   sourceLabel: string;
-  sourceTitle: string;
-  branches: [JourneyRevenueSplitBranch, JourneyRevenueSplitBranch];
+  sourceValue: string;
+  sourceTagline?: string;
+  /** Top branch — reinvested revenue. */
+  reinvest: JourneyRevenueSplitBranch;
+  /** Bottom branch — strengthens TIDE, feeds the stages below. */
+  strengthenTide: JourneyRevenueSplitBranch;
 };
 
 export function JourneyRevenueSplitDiagram({
   sourceLabel,
-  sourceTitle,
-  branches,
+  sourceValue,
+  sourceTagline,
+  reinvest,
+  strengthenTide,
 }: JourneyRevenueSplitDiagramProps) {
-  const [leftBranch, rightBranch] = branches;
-
   return (
-    <div className={JOURNEY_REVENUE_SPLIT_DIAGRAM_CLASS}>
-      <div className={JOURNEY_REVENUE_SPLIT_SOURCE_CLASS}>
-        <p className={JOURNEY_REVENUE_SPLIT_SOURCE_LABEL_CLASS}>{sourceLabel}</p>
-        <p className={JOURNEY_REVENUE_SPLIT_SOURCE_TITLE_CLASS}>{sourceTitle}</p>
+    <div className={JOURNEY_SPLIT_DIAGRAM_CLASS}>
+      <div className={JOURNEY_SPLIT_SOURCE_CLASS}>
+        <p className={JOURNEY_REVENUE_LABEL_CLASS}>{sourceLabel}</p>
+        <p className={JOURNEY_REVENUE_BANNER_VALUE_CLASS}>{sourceValue}</p>
+        {sourceTagline ? (
+          <p className={JOURNEY_REVENUE_TAGLINE_CLASS}>{sourceTagline}</p>
+        ) : null}
       </div>
 
       <svg
-        className={JOURNEY_REVENUE_SPLIT_CONNECTOR_CLASS}
-        viewBox="0 0 240 32"
+        className={JOURNEY_SPLIT_CONNECTOR_CLASS}
+        viewBox="0 0 56 100"
         fill="none"
+        preserveAspectRatio="none"
         aria-hidden
       >
         <path
-          d="M120 0V10M30 10H210M30 10V32M210 10V32"
+          d="M0 50 H28 M28 25 V75 M28 25 H56 M28 75 H56"
           stroke="currentColor"
-          strokeOpacity="0.35"
           strokeWidth="1.5"
           strokeLinecap="round"
         />
       </svg>
 
-      <div className={JOURNEY_REVENUE_SPLIT_BRANCHES_CLASS}>
-        {[leftBranch, rightBranch].map((branch) => (
-          <div key={branch.label} className={JOURNEY_REVENUE_SPLIT_BRANCH_CLASS}>
-            <p className={JOURNEY_REVENUE_SPLIT_BRANCH_PCT_CLASS}>{branch.pct}%</p>
-            <p className={JOURNEY_REVENUE_SPLIT_BRANCH_LABEL_CLASS}>{branch.label}</p>
-            <p className={JOURNEY_REVENUE_SPLIT_BRANCH_DESC_CLASS}>
-              {branch.description}
+      <div className={JOURNEY_SPLIT_CONNECTOR_MOBILE_CLASS} aria-hidden>
+        <ChevronDownIcon className="h-5 w-5" />
+      </div>
+
+      <div className={JOURNEY_SPLIT_BRANCHES_CLASS}>
+        <div className={JOURNEY_SPLIT_BRANCH_REINVEST_CLASS}>
+          <span className={JOURNEY_SPLIT_BRANCH_PCT_REINVEST_CLASS}>
+            {reinvest.pct}%
+          </span>
+          <div className={JOURNEY_SPLIT_BRANCH_BODY_CLASS}>
+            <p className={JOURNEY_SPLIT_BRANCH_LABEL_CLASS}>{reinvest.label}</p>
+            <p className={JOURNEY_SPLIT_BRANCH_DESC_CLASS}>
+              {reinvest.description}
             </p>
           </div>
-        ))}
+        </div>
+
+        <div className={JOURNEY_SPLIT_BRANCH_TIDE_CLASS}>
+          <span className={JOURNEY_SPLIT_BRANCH_PCT_TIDE_CLASS}>
+            {strengthenTide.pct}%
+          </span>
+          <div className={JOURNEY_SPLIT_BRANCH_BODY_CLASS}>
+            <p className={JOURNEY_SPLIT_BRANCH_LABEL_CLASS}>
+              {strengthenTide.label}
+            </p>
+            <p className={JOURNEY_SPLIT_BRANCH_DESC_CLASS}>
+              {strengthenTide.description}
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

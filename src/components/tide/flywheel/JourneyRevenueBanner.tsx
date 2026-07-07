@@ -6,23 +6,15 @@ import {
   JourneyRevenueSplitDiagram,
   type JourneyRevenueSplitBranch,
 } from "./JourneyRevenueSplitDiagram";
-import {
-  JOURNEY_REVENUE_BANNER_CLASS,
-  JOURNEY_REVENUE_BANNER_PRIMARY_CLASS,
-  JOURNEY_REVENUE_BANNER_SPLIT_PANEL_CLASS,
-  JOURNEY_REVENUE_BANNER_VALUE_CLASS,
-  JOURNEY_REVENUE_LABEL_CLASS,
-  JOURNEY_REVENUE_TAGLINE_CLASS,
-} from "./revenueJourneyStyles";
+import { JOURNEY_REVENUE_BANNER_CLASS } from "./revenueJourneyStyles";
 
 export type JourneyRevenueBannerProps = {
   label: string;
   tagline: string;
   revenueUsd: number | null;
   isLoading?: boolean;
-  splitSourceLabel: string;
-  splitSourceTitle: string;
-  splitBranches: [JourneyRevenueSplitBranch, JourneyRevenueSplitBranch];
+  reinvest: JourneyRevenueSplitBranch;
+  strengthenTide: JourneyRevenueSplitBranch;
 };
 
 export function JourneyRevenueBanner({
@@ -30,32 +22,23 @@ export function JourneyRevenueBanner({
   tagline,
   revenueUsd,
   isLoading = false,
-  splitSourceLabel,
-  splitSourceTitle,
-  splitBranches,
+  reinvest,
+  strengthenTide,
 }: JourneyRevenueBannerProps) {
   const target = revenueUsd ?? 0;
   const animated = useAnimatedNumber(target, { disabled: isLoading });
 
-  const display = isLoading
-    ? "…"
-    : formatUSD(animated, { compact: false });
+  const display = isLoading ? "…" : formatUSD(animated, { compact: false });
 
   return (
     <div className={JOURNEY_REVENUE_BANNER_CLASS}>
-      <div className={JOURNEY_REVENUE_BANNER_PRIMARY_CLASS}>
-        <p className={JOURNEY_REVENUE_LABEL_CLASS}>{label}</p>
-        <p className={JOURNEY_REVENUE_BANNER_VALUE_CLASS}>{display}</p>
-        <p className={JOURNEY_REVENUE_TAGLINE_CLASS}>{tagline}</p>
-      </div>
-
-      <div className={JOURNEY_REVENUE_BANNER_SPLIT_PANEL_CLASS}>
-        <JourneyRevenueSplitDiagram
-          sourceLabel={splitSourceLabel}
-          sourceTitle={splitSourceTitle}
-          branches={splitBranches}
-        />
-      </div>
+      <JourneyRevenueSplitDiagram
+        sourceLabel={label}
+        sourceValue={display}
+        sourceTagline={tagline}
+        reinvest={reinvest}
+        strengthenTide={strengthenTide}
+      />
     </div>
   );
 }

@@ -173,12 +173,8 @@ export function ProtocolRevenueJourney() {
             tagline={copy.revenueHero.tagline}
             revenueUsd={metrics.lifetimeRevenueUsd}
             isLoading={metrics.isLoading}
-            splitSourceLabel={copy.revenueSplit.sourceLabel}
-            splitSourceTitle={copy.revenueSplit.sourceTitle}
-            splitBranches={[
-              copy.revenueSplit.reinvest,
-              copy.revenueSplit.strengthenTide,
-            ]}
+            reinvest={copy.revenueSplit.reinvest}
+            strengthenTide={copy.revenueSplit.strengthenTide}
           />
 
           <JourneyTimeline stages={stages} />

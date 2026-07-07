@@ -30,58 +30,46 @@ export const JOURNEY_SUBTITLE_CLASS =
 export const JOURNEY_FLOW_CLASS = "flex min-w-0 flex-col gap-0";
 
 export const JOURNEY_REVENUE_BANNER_CLASS =
-  `${JOURNEY_LIGHT_PANEL_CLASS} flex w-full flex-col gap-4 px-5 py-4 text-[#1E4775] lg:flex-row lg:items-stretch lg:gap-5 lg:px-6 lg:py-5`;
+  `${JOURNEY_LIGHT_PANEL_CLASS} w-full px-5 py-5 text-[#1E4775] sm:px-6 sm:py-6`;
 
-export const JOURNEY_REVENUE_BANNER_PRIMARY_CLASS =
-  "flex min-w-0 flex-1 flex-col justify-center text-left";
+/** Horizontal split flow: source on the left, two stacked branches on the right. */
+export const JOURNEY_SPLIT_DIAGRAM_CLASS =
+  "flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-0";
 
-export const JOURNEY_REVENUE_BANNER_SPLIT_PANEL_CLASS =
-  "min-w-0 flex-1 rounded-xl bg-[#122a47] px-4 py-4 text-white sm:px-5 sm:py-5";
+export const JOURNEY_SPLIT_SOURCE_CLASS =
+  "flex flex-col justify-center text-left lg:w-[15rem] lg:shrink-0 lg:pr-2";
 
-export const JOURNEY_REVENUE_SPLIT_DIAGRAM_CLASS =
-  "flex h-full min-w-0 flex-col items-center justify-center";
+export const JOURNEY_SPLIT_CONNECTOR_CLASS =
+  "hidden text-[#1E4775]/30 lg:block lg:w-14 lg:shrink-0 lg:self-stretch";
 
-export const JOURNEY_REVENUE_SPLIT_SOURCE_CLASS =
-  "w-full max-w-[15rem] rounded-lg border border-white/15 bg-white/[0.08] px-4 py-3 text-center";
+export const JOURNEY_SPLIT_CONNECTOR_MOBILE_CLASS =
+  "flex justify-center text-[#1E4775]/30 lg:hidden";
 
-export const JOURNEY_REVENUE_SPLIT_SOURCE_LABEL_CLASS =
-  "text-[10px] font-semibold uppercase tracking-wider text-white/45";
+export const JOURNEY_SPLIT_BRANCHES_CLASS =
+  "flex min-w-0 flex-1 flex-col justify-center gap-3";
 
-export const JOURNEY_REVENUE_SPLIT_SOURCE_TITLE_CLASS =
-  "mt-1 text-base font-bold text-white sm:text-lg";
+export const JOURNEY_SPLIT_BRANCH_BASE_CLASS =
+  "flex items-center gap-4 rounded-xl border px-4 py-3";
 
-export const JOURNEY_REVENUE_SPLIT_CONNECTOR_CLASS =
-  "mt-1 h-8 w-full max-w-[15rem] text-white";
+export const JOURNEY_SPLIT_BRANCH_REINVEST_CLASS =
+  `${JOURNEY_SPLIT_BRANCH_BASE_CLASS} border-[#1E4775]/15 bg-[#1E4775]/[0.04]`;
 
-export const JOURNEY_REVENUE_SPLIT_BRANCHES_CLASS =
-  "grid w-full max-w-[18rem] grid-cols-2 gap-3 sm:gap-4";
+export const JOURNEY_SPLIT_BRANCH_TIDE_CLASS =
+  `${JOURNEY_SPLIT_BRANCH_BASE_CLASS} border-harbor-coral/40 bg-harbor-coral/[0.08]`;
 
-export const JOURNEY_REVENUE_SPLIT_BRANCH_CLASS = "text-center";
+export const JOURNEY_SPLIT_BRANCH_PCT_REINVEST_CLASS =
+  "shrink-0 font-mono text-2xl font-bold tabular-nums text-[#1E4775] sm:text-3xl";
 
-export const JOURNEY_REVENUE_SPLIT_BRANCH_PCT_CLASS =
-  "font-mono text-2xl font-bold tabular-nums text-white sm:text-3xl";
+export const JOURNEY_SPLIT_BRANCH_PCT_TIDE_CLASS =
+  "shrink-0 font-mono text-2xl font-bold tabular-nums text-harbor-coral sm:text-3xl";
 
-export const JOURNEY_REVENUE_SPLIT_BRANCH_LABEL_CLASS =
-  "mt-1 text-[10px] font-semibold uppercase tracking-wider text-white/45";
+export const JOURNEY_SPLIT_BRANCH_BODY_CLASS = "min-w-0 flex-1";
 
-export const JOURNEY_REVENUE_SPLIT_BRANCH_DESC_CLASS =
-  "mt-1 text-[11px] leading-snug text-white/60 sm:text-xs";
+export const JOURNEY_SPLIT_BRANCH_LABEL_CLASS =
+  "text-xs font-semibold uppercase tracking-wide text-[#1E4775]";
 
-/** @deprecated Use JOURNEY_REVENUE_BANNER_SPLIT_PANEL_CLASS */
-export const JOURNEY_REVENUE_BANNER_DIVIDER_CLASS =
-  "hidden shrink-0 border-[#1E4775]/10 sm:block sm:w-px sm:self-stretch sm:border-l";
-
-/** @deprecated Replaced by revenue split diagram */
-export const JOURNEY_REVENUE_BANNER_BUYBACK_CLASS =
-  "min-w-0 flex-1 sm:pl-6";
-
-/** @deprecated Replaced by revenue split diagram */
-export const JOURNEY_REVENUE_BANNER_BUYBACK_TITLE_CLASS =
-  "text-sm font-semibold leading-tight text-[#1E4775] sm:text-base";
-
-/** @deprecated Replaced by revenue split diagram */
-export const JOURNEY_REVENUE_BANNER_BUYBACK_DESC_CLASS =
-  "mt-1 text-xs leading-relaxed text-[#1E4775]/65";
+export const JOURNEY_SPLIT_BRANCH_DESC_CLASS =
+  "mt-0.5 text-[11px] leading-snug text-[#1E4775]/60 sm:text-xs";
 
 export const JOURNEY_REVENUE_LABEL_CLASS =
   "text-[10px] font-semibold uppercase tracking-wider text-[#1E4775]/55";
