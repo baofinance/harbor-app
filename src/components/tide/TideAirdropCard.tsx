@@ -2,11 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Gift } from "lucide-react";
-import {
-  TIDE_AIRDROP_BUCKETS,
-  TIDE_BOOSTERS,
-  type TideAirdropBucketKey,
-} from "@/config/tide";
+import { TIDE_AIRDROP_BUCKETS, type TideAirdropBucketKey } from "@/config/tide";
 import { useTideAirdropEligibility } from "@/hooks/useTideAirdropEligibility";
 import { formatTideAirdropScheduleFooter } from "@/utils/tideDistributor";
 import { formatTideTokenAmount } from "@/utils/tideSnapshot";
@@ -49,7 +45,8 @@ function AirdropBucketRow({
 }
 
 export function TideAirdropCard() {
-  const { isLoading, buckets, totalTokens } = useTideAirdropEligibility();
+  const { isLoading, buckets, totalTokens, boostersPending } =
+    useTideAirdropEligibility();
   const theme = TIDE_THEME.coral;
 
   return (
@@ -85,7 +82,7 @@ export function TideAirdropCard() {
                 label={label}
                 amountTokens={buckets[key as TideAirdropBucketKey].amountTokens}
                 amountAdornment={
-                  key === "boosters" && TIDE_BOOSTERS.pending ? (
+                  key === "boosters" && boostersPending ? (
                     <TideBoostersPendingHint />
                   ) : undefined
                 }

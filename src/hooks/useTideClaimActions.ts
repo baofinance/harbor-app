@@ -19,6 +19,7 @@ import { useTideClaimSnapshots } from "@/hooks/useTideAllocationSnapshot";
 import { useTideDistributorWindow } from "@/hooks/useTideDistributorWindow";
 import { runHarborTransactionFlow } from "@/utils/harborTransactionFlow";
 import {
+  getStandardClaimBlockReason,
   getVeBaoClaimBlocker,
   parseTideClaimError,
 } from "@/utils/tideDistributor";
@@ -85,6 +86,18 @@ export function useTideClaimActions() {
       query: { enabled: Boolean(address) && !isWrongChain },
     });
 
+  const {
+    data: standardMerkleRoot,
+    isLoading: isLoadingStandardRoot,
+    refetch: refetchStandardRoot,
+  } = useReadContract({
+    address: distributor,
+    abi: HARBOR_TIDE_DISTRIBUTOR_ABI,
+    functionName: "standardMerkleRoot",
+    chainId: TIDE_CONFIG.chainId,
+    query: { enabled: !isWrongChain },
+  });
+
   const { data: veClaimStatusRaw, refetch: refetchVeStatus } = useReadContract({
     address: distributor,
     abi: HARBOR_TIDE_DISTRIBUTOR_ABI,
@@ -117,6 +130,7 @@ export function useTideClaimActions() {
 
   const isSnapshotLoading =
     veBaoSnapshot.isLoading || standardSnapshot.isLoading;
+  const isStandardChainLoading = isChainLoading || isLoadingStandardRoot;
 
   const veBaoBlocker = useMemo(() => {
     if (isWrongChain) {
@@ -160,18 +174,24 @@ export function useTideClaimActions() {
 
   const standardBlockReason = useMemo(() => {
     if (isWrongChain) return resolvedClaimWindowMessage;
-    if (!standardSnapshot.hasAllocation) return null;
-    if (hasClaimedStandard) return "Already claimed";
-    if (claimWindowStatus !== "open") return resolvedClaimWindowMessage;
-    if (!standardSnapshot.hasProof) return "Missing merkle proof in snapshot";
-    return null;
+    return getStandardClaimBlockReason({
+      hasAllocation: standardSnapshot.hasAllocation,
+      hasProof: standardSnapshot.hasProof,
+      hasClaimed: Boolean(hasClaimedStandard),
+      claimWindowStatus,
+      claimWindowMessage: resolvedClaimWindowMessage,
+      onChainRoot: standardMerkleRoot as bigint | string | undefined,
+      snapshotRoot: standardSnapshot.snapshot?.merkleRoot,
+    });
   }, [
     isWrongChain,
     resolvedClaimWindowMessage,
     standardSnapshot.hasAllocation,
     standardSnapshot.hasProof,
+    standardSnapshot.snapshot?.merkleRoot,
     hasClaimedStandard,
     claimWindowStatus,
+    standardMerkleRoot,
   ]);
 
   const submitClaim = useCallback(
@@ -213,6 +233,7 @@ export function useTideClaimActions() {
           await Promise.all([
             refetchVeBaoClaimed(),
             refetchStandardClaimed(),
+            refetchStandardRoot(),
             refetchVeStatus(),
           ]);
         },
@@ -257,6 +278,7 @@ export function useTideClaimActions() {
       writeContractAsync,
       refetchVeBaoClaimed,
       refetchStandardClaimed,
+      refetchStandardRoot,
       refetchVeStatus,
       txModal,
     ]
@@ -351,7 +373,7 @@ export function useTideClaimActions() {
     isConnected,
     isWrongChain,
     isSnapshotLoading,
-    isChainLoading,
+    isChainLoading: isStandardChainLoading,
     claimWindowStatus,
     claimWindowMessage: resolvedClaimWindowMessage,
     claimWindowFooter: resolvedClaimWindowFooter,

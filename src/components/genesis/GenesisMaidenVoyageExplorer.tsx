@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
 import { BellIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { HARBOR_BTN_SECONDARY_CLASS } from "@/components/shared/harborButtonStyles";
@@ -143,14 +143,7 @@ export type GenesisMaidenVoyageExplorerProps = {
     initialTab?: "deposit" | "withdraw",
   ) => void;
   defaultArchivedExpanded?: boolean;
-  /** Basic (UI): Ongoing / Upcoming filters only; no archived block. */
-  viewBasic?: boolean;
 };
-
-const BASIC_STATUS_FILTERS = new Set<MaidenVoyageStatusFilter>([
-  "ongoing",
-  "upcoming",
-]);
 
 function resolveDisplayName(mkt: GenesisMarketConfig): string {
   const rowLeveragedSymbol = mkt.leveragedToken?.symbol;
@@ -192,20 +185,11 @@ export function GenesisMaidenVoyageExplorer({
   onClaim,
   onManage,
   defaultArchivedExpanded = false,
-  viewBasic = false,
 }: GenesisMaidenVoyageExplorerProps) {
-  const [tab, setTab] = useState<MaidenVoyageStatusFilter>(
-    viewBasic ? "ongoing" : "all",
-  );
+  const [tab, setTab] = useState<MaidenVoyageStatusFilter>("all");
   const [archivedExpanded, setArchivedExpanded] = useState(
     defaultArchivedExpanded,
   );
-
-  useEffect(() => {
-    if (viewBasic && !BASIC_STATUS_FILTERS.has(tab)) {
-      setTab("ongoing");
-    }
-  }, [viewBasic, tab]);
 
   const statusFilter = tab;
 
@@ -297,7 +281,6 @@ export function GenesisMaidenVoyageExplorer({
   const explorerBody = (
     <>
       <GenesisMaidenVoyageToolbar
-        viewBasic={viewBasic}
         statusFilter={tab}
         onStatusFilterChange={setTab}
         archivedCount={archivedMarkets.length}
@@ -340,7 +323,7 @@ export function GenesisMaidenVoyageExplorer({
         </div>
       </div>
 
-      {!viewBasic && hasArchivedMarkets ? (
+      {hasArchivedMarkets ? (
         <ArchivedMarketsListSection
           sectionId="maiden-voyage-archived"
           heading="Archived voyages"
@@ -381,30 +364,18 @@ export function GenesisMaidenVoyageExplorer({
     </>
   );
 
-  if (!viewBasic) {
-    return (
-      <HarborSectionCard
-        id="maiden-voyage-explorer"
-        title="All voyages"
-        icon={SparklesIcon}
-        accentBarClass={HARBOR_SECTION_ACCENT_MV_CLASS}
-        iconBadgeClass={HARBOR_SECTION_ICON_MV_CLASS}
-        className="mb-8 scroll-mt-24 space-y-2"
-        ariaLabel="Maiden Voyage markets"
-      >
-        {explorerBody}
-      </HarborSectionCard>
-    );
-  }
-
   return (
-    <section
+    <HarborSectionCard
       id="maiden-voyage-explorer"
-      className="mb-8 scroll-mt-24"
-      aria-label="Maiden Voyage markets"
+      title="All voyages"
+      icon={SparklesIcon}
+      accentBarClass={HARBOR_SECTION_ACCENT_MV_CLASS}
+      iconBadgeClass={HARBOR_SECTION_ICON_MV_CLASS}
+      className="mb-8 scroll-mt-24 space-y-2"
+      ariaLabel="Maiden Voyage markets"
     >
       {explorerBody}
-    </section>
+    </HarborSectionCard>
   );
 }
 

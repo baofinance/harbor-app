@@ -8,13 +8,8 @@ import { useSailPageData } from "@/hooks/useSailPageData";
 import { useSailSelectedMarket } from "@/hooks/useSailSelectedMarket";
 import { SailManageModal } from "@/components/SailManageModal";
 import { MarksBoostBadge } from "@/components/MarksBoostBadge";
-import {
-  SailMarksSubgraphErrorBanner,
-  SailMarketsSections,
-  SailBasicMarketCardsGrid,
-} from "@/components/sail";
+import { SailMarksSubgraphErrorBanner } from "@/components/sail";
 import { SailAdvancedLayout } from "@/components/sail/advanced/SailAdvancedLayout";
-import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 import {
   isMarketArchived,
   markets as marketsConfig,
@@ -35,8 +30,6 @@ export default function SailPage() {
   const connectedChainId = useChainId();
   const { switchChain } = useSwitchChain();
 
-  const { isBasic: sailViewBasic } = usePageLayoutPreference();
-
   const { price: sailPageEthPrice, isLoading: isEthPriceLoading } =
     useCoinGeckoPrice("ethereum", 120000);
   const { price: sailPageWstETHPrice, isLoading: isWstETHPriceLoading } =
@@ -49,21 +42,11 @@ export default function SailPage() {
 
   const {
     isConnected,
-    longFilterSelected,
-    setLongFilterSelected,
-    shortFilterSelected,
-    setShortFilterSelected,
-    chainFilterSelected,
-    setChainFilterSelected,
-    clearFilters,
     sailMarksError,
     sailPnLSummary,
     totalSailMarks,
     isLoadingSailMarks,
     sailMarketIdToIndex,
-    sailChainOptions,
-    uniqueLongSides,
-    uniqueShortSides,
     reads,
     isLoadingReads,
     isReadsError,
@@ -79,10 +62,9 @@ export default function SailPage() {
     sailUserStats,
     pnlFromMarkets,
     activeSailBoostEndTimestamp,
-    activeMarkets,
     displayedArchivedSailMarkets,
     tableMarkets,
-  } = useSailPageData(sailViewBasic);
+  } = useSailPageData();
 
   const readsReady = !isLoadingReads && !isReadsError && !!reads;
 
@@ -91,7 +73,6 @@ export default function SailPage() {
     setSelectedMarketId,
     selectedMarket,
     selectedMetrics,
-    tvlByMarketId,
   } = useSailSelectedMarket({
     markets: tableMarkets,
     readsReady,
@@ -141,13 +122,6 @@ export default function SailPage() {
 
   const queryClient = useQueryClient();
 
-  const handleManageMarketOpen = useCallback(
-    (marketId: string, m: DefinedMarket) => {
-      void openManageModal(marketId, m, "mint");
-    },
-    [openManageModal]
-  );
-
   const refetchAfterManage = useCallback(async () => {
     await Promise.all([
       refetchReads(),
@@ -182,24 +156,10 @@ export default function SailPage() {
     );
   }, [selectedMarketId, selectedUserDeposit, tokenPricesByMarket]);
 
-  const toolbarProps = {
-    sailChainOptions,
-    showNetworkFilter: sailChainOptions.length > 1,
-    chainFilterSelected,
-    setChainFilterSelected,
-    uniqueLongSides,
-    uniqueShortSides,
-    longFilterSelected,
-    setLongFilterSelected,
-    shortFilterSelected,
-    setShortFilterSelected,
-    onClearFilters: clearFilters,
-  };
-
   return (
     <>
       <HarborPageShell>
-        {!sailViewBasic && activeSailBoostEndTimestamp != null ? (
+        {activeSailBoostEndTimestamp != null ? (
           <div className="mb-2">
             <MarksBoostBadge
               multiplier={2}
@@ -208,26 +168,12 @@ export default function SailPage() {
           </div>
         ) : null}
 
-        {!sailViewBasic && sailMarksError ? (
+        {sailMarksError ? (
           <SailMarksSubgraphErrorBanner error={sailMarksError} />
         ) : null}
 
         {isLoadingReads ? null : isReadsError ? (
           <IndexMarketsLoadError onRetry={() => refetchReads()} />
-        ) : sailViewBasic ? (
-          <SailMarketsSections toolbarProps={toolbarProps}>
-            <SailBasicMarketCardsGrid
-              activeMarkets={activeMarkets}
-              sailMarketIdToIndex={sailMarketIdToIndex}
-              marketOffsets={marketOffsets}
-              reads={reads}
-              minterConfigByMarketId={minterConfigByMarketId}
-              isConnected={isConnected}
-              onExploreMarket={handleManageMarketOpen}
-              userDepositMap={userDepositMap}
-              tokenPricesByMarket={tokenPricesByMarket}
-            />
-          </SailMarketsSections>
         ) : (
           <SailAdvancedLayout
             selectedMarketId={selectedMarketId}

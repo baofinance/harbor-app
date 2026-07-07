@@ -24,7 +24,9 @@ export const TIDE_CONFIG = {
     /** Path 2 — veBAO merkle claim (claimVeBao). */
     veBaoAllocation: "/data/tide/vebao_tide_allocation.json",
     /** Path 3 — standard merkle claim (claimStandard): veFXN & liquid wrapper. */
-    standardAllocation: "/data/tide/fxn_tide_allocation.json",
+    standardAllocation: "/data/tide/vefxn_tide_allocation.json",
+    /** Boosters bucket — score-weighted 15M TIDE (wallet mapping partial). */
+    boosters: "/data/tide/boosters_tide_allocation.json",
   },
 } as const;
 
@@ -56,75 +58,35 @@ export const TIDE_AIRDROP_BUCKETS = [
 
 export type TideAirdropBucketKey = (typeof TIDE_AIRDROP_BUCKETS)[number]["key"];
 
-/** Boosters bucket — ranks and TIDE amounts known; wallet mapping pending. */
-export const TIDE_BOOSTERS_RANK_ALLOCATIONS = [
-  2_189_781,
-  1_532_846,
-  1_094_890,
-  766_423,
-  766_423,
-  547_445,
-  547_445,
-  547_445,
-  547_445,
-  547_445,
-  328_467,
-  328_467,
-  328_467,
-  328_467,
-  328_467,
-  328_467,
-  328_467,
-  328_467,
-  328_467,
-  328_467,
-  175_182,
-  175_182,
-  175_182,
-  175_182,
-  175_182,
-  175_182,
-  175_182,
-  175_182,
-  175_182,
-  175_182,
-  175_182,
-  175_182,
-  175_182,
-  175_182,
-  175_182,
-] as const;
+export type TideBoostersScoreGroup = {
+  rankLabel: string;
+  score: number;
+  amountTokens: number;
+};
 
-/** Grouped for tooltip display (consecutive ranks share the same amount). */
-export const TIDE_BOOSTERS_RANK_GROUPS = [
-  { rankLabel: "1", amountTokens: 2_189_781 },
-  { rankLabel: "2", amountTokens: 1_532_846 },
-  { rankLabel: "3", amountTokens: 1_094_890 },
-  { rankLabel: "4–5", amountTokens: 766_423 },
-  { rankLabel: "6–10", amountTokens: 547_445 },
-  { rankLabel: "11–20", amountTokens: 328_467 },
-  { rankLabel: "21–35", amountTokens: 175_182 },
-] as const;
+export type TideBoostersAllocationRow = {
+  rank: number;
+  score: number;
+  address: string;
+  amount: string;
+  amountTokens: number;
+  /** True once this rank has been included in a SAFE airdrop batch. */
+  airdropSent: boolean;
+};
 
-export const TIDE_BOOSTERS = {
-  /** Set false once booster wallet addresses are in tide_airdrop.json. */
-  pending: true,
-  poolTokens: 15_000_000,
-  recipientCount: TIDE_BOOSTERS_RANK_ALLOCATIONS.length,
-} as const;
-
-export function tideBoostersTotalTokens(): number {
-  return TIDE_BOOSTERS.poolTokens;
-}
-
-export function tideBoostersAverageTokens(): number {
-  return TIDE_BOOSTERS.poolTokens / TIDE_BOOSTERS.recipientCount;
-}
-
-export function tideBoostersAmountForRank(rank: number): number | undefined {
-  if (rank < 1 || rank > TIDE_BOOSTERS_RANK_ALLOCATIONS.length) return undefined;
-  return TIDE_BOOSTERS_RANK_ALLOCATIONS[rank - 1];
-}
+export type TideBoostersSnapshot = {
+  name?: string;
+  description?: string;
+  poolTokens: number;
+  totalScore: number;
+  recipientCount: number;
+  mappedAddressCount: number;
+  pendingAddressCount: number;
+  airdropSentCount?: number;
+  airdropPendingCount?: number;
+  scoreGroups: TideBoostersScoreGroup[];
+  allocations: TideBoostersAllocationRow[];
+};
 
 export type TideAirdropBucketAmount = {
   /** Optional wei string when known; UI uses amountTokens. */

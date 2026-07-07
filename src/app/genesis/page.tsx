@@ -51,16 +51,12 @@ import {
 } from "@/utils/activeVoyageStatus";
 import { formatGenesisMarketDisplayName } from "@/utils/genesisDisplay";
 import { readContractRowResult } from "@/components/genesis/readContractRow";
-import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 import { HarborPageShell } from "@/components/shared/HarborPageShell";
 
 const SHOW_MAIDEN_VOYAGE_COMING_SOON =
   process.env.NEXT_PUBLIC_SHOW_MAIDEN_VOYAGE_COMING_SOON === "true";
 
 export default function GenesisIndexPage() {
-  /** Nav toggle: Basic (UI) = hero + sidebar + ongoing/upcoming filters; Extended (UI+) = full page. */
-  const { isBasic: genesisViewBasic } = usePageLayoutPreference();
-
   const { address, isConnected } = useAccount();
   const connectedChainId = useChainId();
   const { switchChain } = useSwitchChain();
@@ -509,7 +505,7 @@ export default function GenesisIndexPage() {
             markets={marketsWithOraclePricingError.map(getMarketName)}
           />
         ) : null}
-        {!genesisViewBasic && marksError ? (
+        {marksError ? (
           <div className="mb-4">
             <GenesisErrorBanner
               tone="danger"
@@ -519,9 +515,7 @@ export default function GenesisIndexPage() {
           </div>
         ) : null}
 
-        {!genesisViewBasic ? (
-          <GenesisMaidenVoyageStatsBar stats={statsBarData} />
-        ) : null}
+        <GenesisMaidenVoyageStatsBar stats={statsBarData} />
 
         <GenesisMaidenVoyageFeaturedSection
           yieldRevSharePct={activeMarketData?.yieldRevSharePct ?? null}
@@ -565,7 +559,6 @@ export default function GenesisIndexPage() {
         />
 
         <GenesisMaidenVoyageExplorer
-          viewBasic={genesisViewBasic}
           genesisMarkets={genesisMarkets as Array<[string, GenesisMarketConfig]>}
           comingSoonMarkets={
             comingSoonMarkets as Array<[string, GenesisMarketConfig]>
@@ -581,14 +574,11 @@ export default function GenesisIndexPage() {
           chainlinkBtcPrice={null}
           onClaim={claimMarket}
           onManage={handleOpenManageModal}
-          defaultArchivedExpanded={
-            genesisViewBasic ? false : hasArchivedUserDeposit
-          }
+          defaultArchivedExpanded={hasArchivedUserDeposit}
         />
 
-        {!genesisViewBasic ? <GenesisVoyageFooterNotice /> : null}
+        <GenesisVoyageFooterNotice />
 
-        {!genesisViewBasic ? (
         <section
           id="maiden-voyage-learn"
           className="mt-10 border-t border-white/10 pt-8"
@@ -625,7 +615,6 @@ export default function GenesisIndexPage() {
             </div>
           </details>
         </section>
-        ) : null}
     </HarborPageShell>
 
       {manageModal ? (

@@ -182,7 +182,7 @@ export function TideClaimCard() {
       subtitleClass={theme.subtitle}
       badge="Snapshot"
       badgeVariant={theme.badgeVariant}
-      footer="Eligibility from vebao_tide_allocation.json & fxn_tide_allocation.json"
+      footer="Eligibility from vebao_tide_allocation.json & vefxn_tide_allocation.json"
       footerExtra={claim.claimWindowFooter ?? undefined}
       footerExtraClassName={TIDE_FOOTER_EXTRA_MINT_CLASS}
     >
