@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { MaidenVoyageStatsBarData } from "@/utils/maidenVoyageStatsBar";
+import { HARBOR_BTN_GLASS_SEGMENT_ACTIVE_DARK } from "@/components/shared/harborButtonStyles";
 
 export type GenesisMaidenVoyageStatsBarProps = {
   stats: MaidenVoyageStatsBarData;
@@ -54,7 +54,7 @@ export function GenesisMaidenVoyageStatsBar({
                 onClick={() => handleViewChange(option.id)}
                 className={`rounded px-3 py-1 text-xs font-semibold transition ${
                   active
-                    ? "bg-[#FF8A7A] text-[#1a0f0d]"
+                    ? HARBOR_BTN_GLASS_SEGMENT_ACTIVE_DARK
                     : "text-white/60 hover:text-white/80"
                 }`}
                 aria-pressed={active}

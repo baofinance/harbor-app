@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { formatEther } from "viem";
 import {
   markets,
-  isAnchorActiveForBasicUi,
   isAnchorActiveForExtendedUi,
 } from "@/config/markets";
 import { partitionMarketsByArchived } from "@/utils/marketPartitions";
@@ -35,10 +34,7 @@ import {
  * Composes Anchor index data reads + derived market state (Phase 2–3 refactor).
  * Includes protocol-level `anchorStats` for the strip; keeps [`page.tsx`](../../app/anchor/page.tsx) thinner over time.
  */
-export function useAnchorPageData(
-  address: `0x${string}` | undefined,
-  layoutIsBasic: boolean
-) {
+export function useAnchorPageData(address: `0x${string}` | undefined) {
   const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
 
   const anchorMarkets = useMemo(
@@ -56,10 +52,10 @@ export function useAnchorPageData(
   const { active: displayedAnchorMarkets, archived: displayedArchivedAnchorMarkets } =
     useMemo(() => {
       const visibilityFiltered = chainFilteredAnchorMarkets.filter(([, m]) =>
-        layoutIsBasic ? isAnchorActiveForBasicUi(m) : isAnchorActiveForExtendedUi(m)
+        isAnchorActiveForExtendedUi(m)
       );
       return partitionMarketsByArchived(visibilityFiltered);
-    }, [chainFilteredAnchorMarkets, layoutIsBasic]);
+    }, [chainFilteredAnchorMarkets]);
 
   const anchorChainOptions = useMemo(
     () => buildNetworkFilterOptions(anchorMarkets, ([, m]) => m),

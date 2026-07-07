@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import type { ActiveVoyageStatus } from "@/utils/activeVoyageStatus";
 import { MV_STAGE_ACTIVE_TEXT, MV_TEXT_ON_GLASS } from "./maidenVoyageLayoutStyles";
 
@@ -63,6 +64,53 @@ export type GenesisMaidenVoyageStageStripProps = {
   showHeading?: boolean;
 };
 
+const STAGE_STRIP_GRID_CLASS =
+  "grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-x-0.5 sm:gap-x-1";
+
+function StageChevron() {
+  return (
+    <div
+      className="flex items-center justify-center self-start px-0.5 pt-1 sm:px-1 sm:pt-1.5"
+      aria-hidden
+    >
+      <ChevronRightIcon className="h-3 w-3 shrink-0 text-white/25 sm:h-3.5 sm:w-3.5" />
+    </div>
+  );
+}
+
+function StageStripItem({
+  stage,
+  isActive,
+}: {
+  stage: (typeof STAGES)[number];
+  isActive: boolean;
+}) {
+  return (
+    <div
+      role="listitem"
+      aria-current={isActive ? "step" : undefined}
+      className="flex min-w-0 flex-col items-center gap-1.5"
+    >
+      <span
+        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold tabular-nums sm:h-6 sm:w-6 sm:text-[11px] ${
+          isActive
+            ? "bg-white/90 backdrop-blur-sm text-[#0a1628] shadow-sm"
+            : "bg-black text-white/75 ring-1 ring-white/15"
+        }`}
+      >
+        {stage.order}
+      </span>
+      <span
+        className={`w-full px-0.5 text-center text-[9px] font-medium leading-tight tracking-wide sm:text-[10px] ${
+          isActive ? "text-white" : "text-white/50"
+        }`}
+      >
+        {stage.label}
+      </span>
+    </div>
+  );
+}
+
 export function GenesisMaidenVoyageStageStrip({
   status,
   showHeading = true,
@@ -74,39 +122,16 @@ export function GenesisMaidenVoyageStageStrip({
       {showHeading ? <GenesisMaidenVoyageStageLabel status={status} /> : null}
 
       <div
-        className={
-          showHeading
-            ? "mt-3 grid w-full grid-cols-5 gap-1 sm:gap-2"
-            : "grid w-full grid-cols-5 gap-1 sm:gap-2"
-        }
+        className={showHeading ? `mt-3 ${STAGE_STRIP_GRID_CLASS}` : STAGE_STRIP_GRID_CLASS}
         role="list"
         aria-label="Voyage stages"
       >
-        {STAGES.map((stage) => {
+        {STAGES.map((stage, index) => {
           const isActive = stage.order === activeOrder;
           return (
-            <div
-              key={stage.key}
-              role="listitem"
-              aria-current={isActive ? "step" : undefined}
-              className="flex min-w-0 flex-col items-center gap-1.5"
-            >
-              <span
-                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold tabular-nums sm:h-6 sm:w-6 sm:text-[11px] ${
-                  isActive
-                    ? "bg-white text-[#0a1628]"
-                    : "bg-black text-white/75 ring-1 ring-white/15"
-                }`}
-              >
-                {stage.order}
-              </span>
-              <span
-                className={`w-full px-0.5 text-center text-[9px] font-medium leading-tight tracking-wide sm:text-[10px] ${
-                  isActive ? "text-white" : "text-white/50"
-                }`}
-              >
-                {stage.label}
-              </span>
+            <div key={stage.key} className="contents">
+              <StageStripItem stage={stage} isActive={isActive} />
+              {index < STAGES.length - 1 ? <StageChevron /> : null}
             </div>
           );
         })}

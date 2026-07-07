@@ -15,7 +15,6 @@ import {
   filterSailTableMarkets,
 } from "@/utils/sailActiveMarkets";
 import {
-  isSailActiveForBasicUi,
   isSailActiveForExtendedUi,
 } from "@/config/markets";
 import { getLongSide, getShortSide } from "@/utils/marketSideLabels";
@@ -30,7 +29,7 @@ import { partitionMarketsByArchived } from "@/utils/marketPartitions";
  * On-chain reads live in `useSailContractReads`.
  * UI-only state (modal, expanded rows, layout toggle) stays in `page.tsx`.
  */
-export function useSailPageData(layoutIsBasic: boolean) {
+export function useSailPageData() {
   const { address, isConnected } = useHarborAccount();
 
   const [longFilterSelected, setLongFilterSelected] = useState<string[]>([]);
@@ -128,10 +127,10 @@ export function useSailPageData(layoutIsBasic: boolean) {
   const { active: displayedSailMarkets, archived: displayedArchivedSailMarkets } =
     useMemo(() => {
       const visibilityFiltered = chainFilteredSailMarkets.filter(([, m]) =>
-        layoutIsBasic ? isSailActiveForBasicUi(m) : isSailActiveForExtendedUi(m)
+        isSailActiveForExtendedUi(m)
       );
       return partitionMarketsByArchived(visibilityFiltered);
-    }, [chainFilteredSailMarkets, layoutIsBasic]);
+    }, [chainFilteredSailMarkets]);
 
   const sailChainOptions = useMemo(
     () => buildNetworkFilterOptions(sailMarkets, ([, m]) => m),

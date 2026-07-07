@@ -3,16 +3,19 @@ import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: "TIDE",
-  description: "TIDE treasury and protocol revenue flow. Coming soon.",
+  description:
+    "Preview your TIDE snapshot allocation, merkle claims, and BAO swap eligibility.",
   openGraph: {
     title: "TIDE",
-    description: "TIDE treasury and protocol revenue flow. Coming soon.",
+    description:
+      "Preview your TIDE snapshot allocation, merkle claims, and BAO swap eligibility.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "TIDE",
-    description: "TIDE treasury and protocol revenue flow. Coming soon.",
+    description:
+      "Preview your TIDE snapshot allocation, merkle claims, and BAO swap eligibility.",
   },
 };
 

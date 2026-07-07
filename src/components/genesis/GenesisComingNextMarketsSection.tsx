@@ -6,6 +6,11 @@ import { TokenLogo } from "@/components/shared";
 import { INDEX_CORAL_INFO_TAG_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
 import type { GenesisMarketConfig } from "@/types/genesisMarket";
 import { resolveGenesisUnderlyingApr } from "@/utils/genesisAprDerived";
+import {
+  GENESIS_TABLE_HEADER_CELL_CLASSNAME,
+  GENESIS_TABLE_HEADER_SHELL_CLASS,
+  GENESIS_TABLE_ROW_SHELL_CLASS,
+} from "./genesisActiveTableStyles";
 
 function getLongSide(market: { leveragedToken?: { description?: string; name?: string; symbol?: string } }): string {
   const desc = market.leveragedToken?.description || "";
@@ -59,14 +64,16 @@ export function GenesisComingNextMarketsSection({
           <span className={INDEX_CORAL_INFO_TAG_CLASS}>Metals</span>
         </div>
       </div>
-      <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0 rounded-md">
+      <div className={GENESIS_TABLE_HEADER_SHELL_CLASS}>
         <div className="grid lg:grid-cols-[32px_1.5fr_80px_0.9fr_1fr_0.9fr] md:grid-cols-[32px_120px_80px_100px_1fr_90px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
           <div className="min-w-0" aria-label="Network" />
-          <div className="min-w-0 text-center">Market</div>
-          <div className="text-center min-w-0 whitespace-nowrap">Proj. SP APR</div>
-          <div className="text-center min-w-0">Anchor Token</div>
-          <div className="text-center min-w-0">Sail Token</div>
-          <div className="text-center min-w-0">Status</div>
+          <div className={GENESIS_TABLE_HEADER_CELL_CLASSNAME}>Market</div>
+          <div className={`${GENESIS_TABLE_HEADER_CELL_CLASSNAME} whitespace-nowrap`}>
+            Proj. SP APR
+          </div>
+          <div className={GENESIS_TABLE_HEADER_CELL_CLASSNAME}>Anchor Token</div>
+          <div className={GENESIS_TABLE_HEADER_CELL_CLASSNAME}>Sail Token</div>
+          <div className={GENESIS_TABLE_HEADER_CELL_CLASSNAME}>Status</div>
         </div>
       </div>
       <div className="space-y-2">
@@ -85,7 +92,7 @@ export function GenesisComingNextMarketsSection({
           const marketName = `${collateralSymbol}-${mkt.pegTarget?.toUpperCase() || "TOKEN"}`;
 
           return (
-            <div key={id} className="bg-white py-2.5 px-2 rounded-md border border-white/10">
+            <div key={id} className={GENESIS_TABLE_ROW_SHELL_CLASS}>
               <div className="hidden md:grid lg:grid-cols-[32px_1.5fr_80px_0.9fr_1fr_0.9fr] md:grid-cols-[32px_120px_80px_100px_1fr_110px] gap-4 items-center">
                 <div className="flex items-center justify-center">
                   <NetworkIconCell

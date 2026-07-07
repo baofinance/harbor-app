@@ -15,11 +15,16 @@ import {
   type AnchorVaprPositionApr,
 } from "@/components/anchor/AnchorVaprTooltipContent";
 import {
-  LEDGER_MARKS_STRIP_SURFACE_ABOVE_TOOLBAR_CLASS,
-} from "@/components/shared/indexMarketsToolbarStyles";
+  HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS,
+  HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS,
+  HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS,
+  HARBOR_STAT_TILE_INTRO_STRIP_GRID_6_CLASS,
+  HARBOR_STAT_TILE_INTRO_STRIP_SHELL_CLASS,
+  HARBOR_STAT_TILE_INTRO_TITLE_CLASS,
+} from "@/components/shared/harborStatTileStyles";
 import {
+  INDEX_EARN_CLAIM_BUTTON_CLASS_DESKTOP,
   INDEX_MANAGE_BUTTON_CLASS_DESKTOP,
-  INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL,
 } from "@/utils/indexPageManageButton";
 
 const ANCHOR_MARKS_ENABLED = true;
@@ -626,187 +631,172 @@ export function AnchorRewardsStrip(props: AnchorRewardsStripProps) {
             const blendedAPRForBar =
               totalDepositUSD > 0 ? totalWeightedAPR / totalDepositUSD : 0;
 
+            const marksPerDayText = !ANCHOR_MARKS_ENABLED
+              ? "0 marks/day"
+              : !mounted || isLoadingLedgerMarks
+                ? ""
+                : totalAnchorLedgerMarksPerDay > 0
+                  ? `${totalAnchorLedgerMarksPerDay.toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })} marks/day`
+                  : "0 marks/day";
+
+            const ledgerMarksDisplay = !ANCHOR_MARKS_ENABLED
+              ? "0"
+              : !mounted || isLoadingLedgerMarks
+                ? "-"
+                : totalAnchorLedgerMarks > 0
+                  ? totalAnchorLedgerMarks.toLocaleString(undefined, {
+                      minimumFractionDigits:
+                        totalAnchorLedgerMarks < 100 ? 2 : 0,
+                      maximumFractionDigits:
+                        totalAnchorLedgerMarks < 100 ? 2 : 0,
+                    })
+                  : "0";
+
             return (
               <div className="mb-2">
-                <div className={LEDGER_MARKS_STRIP_SURFACE_ABOVE_TOOLBAR_CLASS}>
-                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 lg:divide-x lg:divide-white/20">
-                    {/* Rewards Header */}
-                    <div className="px-3 py-1 min-h-[60px] flex items-center justify-center gap-2">
-                      <h2 className="font-bold font-mono text-white text-lg leading-none text-center">
-                      Rewards
-                    </h2>
-                    <InfoTooltip
-                      label={
-                        <div className="space-y-3">
-                          <div>
-                            <h3 className="font-bold text-lg mb-2">
-                              Anchor Ledger Marks
-                            </h3>
-                            <p className="text-white/90 leading-relaxed">
-                              Anchor Ledger Marks are earned by holding anchor
-                              tokens and depositing into stability pools.
-                            </p>
-                          </div>
+                <div className={HARBOR_STAT_TILE_INTRO_STRIP_SHELL_CLASS}>
+                  <div className={HARBOR_STAT_TILE_INTRO_STRIP_GRID_6_CLASS}>
+                    <div
+                      className={`${HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS} col-span-2 sm:col-span-1`}
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <h2 className={HARBOR_STAT_TILE_INTRO_TITLE_CLASS}>
+                          Rewards
+                        </h2>
+                        <InfoTooltip
+                          label={
+                            <div className="space-y-3">
+                              <div>
+                                <h3 className="mb-2 text-lg font-bold">
+                                  Anchor Ledger Marks
+                                </h3>
+                                <p className="leading-relaxed text-white/90">
+                                  Anchor Ledger Marks are earned by holding anchor
+                                  tokens and depositing into stability pools.
+                                </p>
+                              </div>
 
-                          <div className="border-t border-white/20 pt-3">
-                            <p className="text-white/90 leading-relaxed mb-2">
-                              Each mark represents your contribution to
-                                stabilizing Harbor markets through token
-                                holdings and pool deposits.
-                            </p>
-                          </div>
+                              <div className="border-t border-white/20 pt-3">
+                                <p className="mb-2 leading-relaxed text-white/90">
+                                  Each mark represents your contribution to
+                                  stabilizing Harbor markets through token holdings
+                                  and pool deposits.
+                                </p>
+                              </div>
 
-                          <div className="space-y-2">
-                            <div className="flex items-start gap-2">
-                              <span className="text-white/70 mt-0.5">•</span>
-                              <p className="text-white/90 leading-relaxed">
-                                  The more you contribute, the deeper your mark
-                                  on the ledger.
-                              </p>
+                              <div className="space-y-2">
+                                <div className="flex items-start gap-2">
+                                  <span className="mt-0.5 text-white/70">•</span>
+                                  <p className="leading-relaxed text-white/90">
+                                    The more you contribute, the deeper your mark on
+                                    the ledger.
+                                  </p>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                  <span className="mt-0.5 text-white/70">•</span>
+                                  <p className="leading-relaxed text-white/90">
+                                    When $TIDE surfaces, these marks will convert
+                                    into your share of rewards and governance power.
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="border-t border-white/20 pt-3">
+                                <p className="italic leading-relaxed text-white/80">
+                                  Think of them as a record of your journey — every
+                                  mark, a line in Harbor&apos;s logbook.
+                                </p>
+                              </div>
                             </div>
-                            <div className="flex items-start gap-2">
-                              <span className="text-white/70 mt-0.5">•</span>
-                              <p className="text-white/90 leading-relaxed">
-                                When $TIDE surfaces, these marks will convert
-                                  into your share of rewards and governance
-                                  power.
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="border-t border-white/20 pt-3">
-                            <p className="text-white/80 italic leading-relaxed">
-                                Think of them as a record of your journey —
-                                every mark, a line in Harbor's logbook.
-                            </p>
-                          </div>
-                        </div>
-                      }
-                      side="right"
-                      />
-                  </div>
-
-                    {/* Combined metrics */}
-                    <div className="px-3 pt-0 pb-0 sm:p-3 md:col-span-1 lg:col-span-2 flex items-center justify-center">
-                      <div className="grid grid-cols-2 sm:grid-cols-4 w-full grid-rows-[auto_1fr_auto_1fr] sm:grid-rows-none">
-                        <div className="col-span-2 border-t border-white/15 sm:hidden -mx-3 h-px" />
-                        {/* Total Deposits */}
-                        <div className="flex flex-col items-center justify-center text-center px-2 pt-1 pb-1 sm:py-0 h-full min-h-[60px] sm:border-r sm:border-white/15">
-                          <div className="text-[11px] text-white/80 uppercase tracking-widest">
-                            Total Deposits
-                          </div>
-                          <div className="text-sm font-semibold text-white font-mono mt-1">
-                            {totalStabilityPoolDepositsUSD > 0
-                              ? formatCompactUSD(totalStabilityPoolDepositsUSD)
-                              : "$0.00"}
-                          </div>
-                        </div>
-
-                        {/* Claimable Value */}
-                        <div className="flex flex-col items-center justify-center text-center px-2 pt-1 pb-1 sm:py-0 h-full min-h-[60px]">
-                          <div className="text-[11px] text-white/80 uppercase tracking-widest">
-                          Claimable Value
-                        </div>
-                          <div className="text-sm font-semibold text-white font-mono mt-1">
-                          $
-                          {totalRewardsForBar > 0
-                            ? totalRewardsForBar.toFixed(2)
-                            : "0.00"}
-                        </div>
-                      </div>
-
-                      <div className="col-span-2 border-t border-white/15 sm:hidden -mx-3 h-px" />
-
-                      {/* vAPR */}
-                        <div className="flex flex-col items-center justify-center text-center px-2 pt-1 pb-0 sm:py-0 h-full min-h-[60px] sm:border-l sm:border-white/15">
-                          <div className="text-[11px] text-white/80 uppercase tracking-widest font-medium flex items-center justify-center gap-1">
-                          vAPR
-                          <InfoTooltip
-                            side="left"
-                            label={
-                              <AnchorVaprTooltipContent
-                                positionAPRs={positionAPRs}
-                                blendedAPR={blendedAPRForBar}
-                                showLiveAprLoading={showLiveAprLoading}
-                                isErrorAllRewards={isErrorAllRewards}
-                                projectedAPR={projectedAPR}
-                              />
-                            }
-                          >
-                            <span className="text-white/50 cursor-help text-xs">
-                              [?]
-                            </span>
-                          </InfoTooltip>
-                        </div>
-                          <div className="text-sm font-semibold text-white font-mono mt-1">
-                          {blendedAPRForBar > 0
-                            ? `${blendedAPRForBar.toFixed(2)}%`
-                            : "-"}
-                        </div>
-                      </div>
-
-                        {/* Claim */}
-                        <div className="flex flex-col items-center justify-center text-center px-2 pt-1 pb-0 sm:py-0 h-full min-h-[60px] sm:border-l sm:border-white/15">
-                        <button
-                          onClick={onClaimAll}
-                          disabled={isClaimingAll || isCompoundingAll}
-                          className={INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL}
-                        >
-                          Claim
-                        </button>
+                          }
+                          side="right"
+                        />
                       </div>
                     </div>
-                  </div>
 
-                    {/* Anchor Ledger Marks */}
-                    <div className="p-3 min-h-[60px] flex flex-col justify-center border-t border-white/15 md:border-t-0">
-                      <div className="text-[11px] text-white/80 uppercase tracking-widest mb-0.5 text-center">
+                    <div className={HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS}>
+                      <div className={HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS}>
+                        Total Deposits
+                      </div>
+                      <div className={HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS}>
+                        {totalStabilityPoolDepositsUSD > 0
+                          ? formatCompactUSD(totalStabilityPoolDepositsUSD)
+                          : "$0.00"}
+                      </div>
+                    </div>
+
+                    <div className={HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS}>
+                      <div className={HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS}>
+                        Claimable Value
+                      </div>
+                      <div className={HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS}>
+                        $
+                        {totalRewardsForBar > 0
+                          ? totalRewardsForBar.toFixed(2)
+                          : "0.00"}
+                      </div>
+                    </div>
+
+                    <div className={HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS}>
+                      <div
+                        className={`${HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS} flex items-center justify-center gap-1`}
+                      >
+                        vAPR
+                        <InfoTooltip
+                          side="left"
+                          label={
+                            <AnchorVaprTooltipContent
+                              positionAPRs={positionAPRs}
+                              blendedAPR={blendedAPRForBar}
+                              showLiveAprLoading={showLiveAprLoading}
+                              isErrorAllRewards={isErrorAllRewards}
+                              projectedAPR={projectedAPR}
+                            />
+                          }
+                        >
+                          <span className="cursor-help text-xs text-white/50">
+                            [?]
+                          </span>
+                        </InfoTooltip>
+                      </div>
+                      <div className={HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS}>
+                        {blendedAPRForBar > 0
+                          ? `${blendedAPRForBar.toFixed(2)}%`
+                          : "-"}
+                      </div>
+                    </div>
+
+                    <div className={HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS}>
+                      <button
+                        onClick={onClaimAll}
+                        disabled={isClaimingAll || isCompoundingAll}
+                        className={INDEX_EARN_CLAIM_BUTTON_CLASS_DESKTOP}
+                      >
+                        Claim
+                      </button>
+                    </div>
+
+                    <div className={HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS}>
+                      <div className={HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS}>
                         Anchor Ledger Marks
                       </div>
-                      <div className="flex items-baseline justify-center gap-2 text-sm font-bold text-white font-mono tabular-nums">
-                        <span>
-                      {!ANCHOR_MARKS_ENABLED ? (
-                        "0"
-                      ) : !mounted || isLoadingLedgerMarks ? (
-                        <span className="text-white/50">-</span>
-                      ) : totalAnchorLedgerMarks > 0 ? (
-                        totalAnchorLedgerMarks.toLocaleString(undefined, {
-                          minimumFractionDigits:
-                            totalAnchorLedgerMarks < 100 ? 2 : 0,
-                          maximumFractionDigits:
-                            totalAnchorLedgerMarks < 100 ? 2 : 0,
-                        })
-                      ) : (
-                        "0"
-                      )}
+                      <div className="mt-1 flex flex-wrap items-baseline justify-center gap-2">
+                        <span
+                          className={`${HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS} mt-0`}
+                        >
+                          {ledgerMarksDisplay}
                         </span>
-
-                        {(() => {
-                          const marksPerDayText = !ANCHOR_MARKS_ENABLED
-                        ? "0 marks/day"
-                        : !mounted || isLoadingLedgerMarks
-                        ? ""
-                        : totalAnchorLedgerMarksPerDay > 0
-                            ? `${totalAnchorLedgerMarksPerDay.toLocaleString(
-                                undefined,
-                                {
-                            maximumFractionDigits: 2,
-                                }
-                              )} marks/day`
-                            : "0 marks/day";
-
-                          if (!marksPerDayText) return null;
-
-                          return (
-                            <span className="text-[10px] font-medium text-white/60">
-                              {marksPerDayText}
-                            </span>
-                          );
-                        })()}
+                        {marksPerDayText ? (
+                          <span className="text-[10px] font-medium text-white/60">
+                            {marksPerDayText}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 </div>
-                  </div>
               </div>
             );
 }

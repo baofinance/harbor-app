@@ -1,6 +1,15 @@
 /**
  * Shared layout for Genesis / Sail / Anchor index filter rows — keep padding in sync.
  */
+import {
+  HARBOR_STAT_TILE_INTRO_BODY_CLASS,
+  HARBOR_STAT_TILE_INTRO_CLASS,
+  HARBOR_STAT_TILE_INTRO_ICON_CLASS,
+  HARBOR_STAT_TILE_INTRO_RING_ACCENT_CLASS,
+  HARBOR_STAT_TILE_INTRO_RING_ACCENT_STRONG_CLASS,
+  HARBOR_STAT_TILE_INTRO_TITLE_CLASS,
+} from "./harborStatTileStyles";
+
 export const INDEX_MARKETS_TOOLBAR_ROW_CLASS =
   "pt-3 pb-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 flex-wrap lg:flex-nowrap";
 
@@ -16,27 +25,25 @@ export const INDEX_MARKETS_TOOLBAR_FILTERS_ROW_CLASS =
   "flex flex-col gap-2 sm:flex-row sm:flex-nowrap sm:items-center";
 
 /**
- * Feature tiles under index titles — matches origin/yield-share Genesis heroes
- * (rounded-lg, py-2.5, border-white/10, subtle blur, centered column layout).
+ * @deprecated Use {@link HARBOR_STAT_TILE_INTRO_CLASS} from harborStatTileStyles.
  */
-export const INDEX_HERO_INTRO_CARD_CLASS =
-  "bg-black/[0.10] backdrop-blur-sm rounded-lg border border-white/10 overflow-hidden px-3 py-2.5 flex flex-col items-center justify-center text-center relative";
+export const INDEX_HERO_INTRO_CARD_CLASS = HARBOR_STAT_TILE_INTRO_CLASS;
 
-export const INDEX_HERO_INTRO_ICON_CLASS = "w-5 h-5 shrink-0 text-[#FF8A7A]";
+/** @deprecated Use {@link HARBOR_STAT_TILE_INTRO_ICON_CLASS}. */
+export const INDEX_HERO_INTRO_ICON_CLASS = HARBOR_STAT_TILE_INTRO_ICON_CLASS;
 
-export const INDEX_HERO_INTRO_TITLE_CLASS = "font-bold text-white text-base";
+/** @deprecated Use {@link HARBOR_STAT_TILE_INTRO_TITLE_CLASS}. */
+export const INDEX_HERO_INTRO_TITLE_CLASS = HARBOR_STAT_TILE_INTRO_TITLE_CLASS;
 
-export const INDEX_HERO_INTRO_BODY_CLASS = "text-xs text-white/80 leading-relaxed";
+/** @deprecated Use {@link HARBOR_STAT_TILE_INTRO_BODY_CLASS}. */
+export const INDEX_HERO_INTRO_BODY_CLASS = HARBOR_STAT_TILE_INTRO_BODY_CLASS;
 
-/**
- * Standard accent ring (`ring-1`) — center card on 3-up rows, both inner cards on 4-up,
- * and flanking highlights (positions 2 & 4) on 5-up rows.
- */
-export const INDEX_HERO_INTRO_CARD_RING_ACCENT_CLASS = "ring-1 ring-[#FF8A7A]/25";
+/** @deprecated Use {@link HARBOR_STAT_TILE_INTRO_RING_ACCENT_CLASS}. */
+export const INDEX_HERO_INTRO_CARD_RING_ACCENT_CLASS = HARBOR_STAT_TILE_INTRO_RING_ACCENT_CLASS;
 
-/** Stronger ring (`ring-2`) — center card only on 5-up intro rows (Sail). */
+/** @deprecated Use {@link HARBOR_STAT_TILE_INTRO_RING_ACCENT_STRONG_CLASS}. */
 export const INDEX_HERO_INTRO_CARD_RING_ACCENT_STRONG_CLASS =
-  "ring-2 ring-[#FF8A7A]/35";
+  HARBOR_STAT_TILE_INTRO_RING_ACCENT_STRONG_CLASS;
 
 /**
  * Coral informational tags on dark blue toolbars (campaign name, etc.).

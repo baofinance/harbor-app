@@ -1,6 +1,7 @@
 "use client";
 
 import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { HARBOR_FROSTED_ACTIVE_PILL } from "@/components/shared/harborFrostedSurfaceStyles";
 
 function shortenAddress(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
@@ -28,7 +29,7 @@ export function ImpersonationBanner() {
       <button
         type="button"
         onClick={clearImpersonation}
-        className="ml-2 inline-flex rounded-md bg-white/80 px-2 py-0.5 text-xs font-semibold text-[#1E4775] ring-1 ring-[#1E4775]/20 hover:bg-white"
+        className={`ml-2 inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${HARBOR_FROSTED_ACTIVE_PILL} ring-1 ring-[#1E4775]/20 hover:bg-white`}
       >
         Exit
       </button>

@@ -5,6 +5,11 @@
  * @see SailMarketsTableHeader — same pattern
  */
 
+import {
+  HARBOR_TABLE_HEADER_LABEL_CLASS,
+  HARBOR_TABLE_HEADER_WRAP_CLASS,
+} from "@/components/shared/harborDataRowStyles";
+
 /** lg+: Network | Token | Deposit Assets | APR | Earnings | Reward Assets | Position | Actions */
 export const ANCHOR_MARKETS_TABLE_ROW_LG_CLASSNAME =
   "hidden lg:grid grid-cols-[32px_minmax(0,1.15fr)_minmax(0,1.32fr)_minmax(0,0.88fr)_minmax(0,0.88fr)_minmax(0,1.02fr)_minmax(0,1fr)_minmax(0,0.78fr)] gap-3 lg:gap-3.5 items-center text-sm";
@@ -15,16 +20,16 @@ export const ANCHOR_MARKETS_TABLE_ROW_MD_CLASSNAME =
 
 /** Desktop table header shell (scroll on narrow viewports; rounded like Sail). */
 export const ANCHOR_MARKETS_TABLE_HEADER_LG_WRAP_CLASSNAME =
-  "hidden lg:block bg-white py-1.5 px-2 overflow-x-auto mb-0 rounded-md border border-[#1E4775]/15 shadow-sm";
+  `hidden lg:block ${HARBOR_TABLE_HEADER_WRAP_CLASS}`;
 
 export const ANCHOR_MARKETS_TABLE_HEADER_LG_GRID_CLASSNAME =
-  "grid grid-cols-[32px_minmax(0,1.15fr)_minmax(0,1.32fr)_minmax(0,0.88fr)_minmax(0,0.88fr)_minmax(0,1.02fr)_minmax(0,1fr)_minmax(0,0.78fr)] gap-3 lg:gap-3.5 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold";
+  `grid grid-cols-[32px_minmax(0,1.15fr)_minmax(0,1.32fr)_minmax(0,0.88fr)_minmax(0,0.88fr)_minmax(0,1.02fr)_minmax(0,1fr)_minmax(0,0.78fr)] gap-3 lg:gap-3.5 items-center ${HARBOR_TABLE_HEADER_LABEL_CLASS}`;
 
 export const ANCHOR_MARKETS_TABLE_HEADER_MD_WRAP_CLASSNAME =
-  "hidden md:block lg:hidden bg-white py-1.5 px-2 overflow-x-auto mb-0 rounded-md border border-[#1E4775]/15 shadow-sm";
+  `hidden md:block lg:hidden ${HARBOR_TABLE_HEADER_WRAP_CLASS}`;
 
 export const ANCHOR_MARKETS_TABLE_HEADER_MD_GRID_CLASSNAME =
-  "grid grid-cols-[32px_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.85fr)_minmax(0,auto)] gap-3 md:gap-3.5 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-semibold";
+  `grid grid-cols-[32px_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.85fr)_minmax(0,auto)] gap-3 md:gap-3.5 items-center ${HARBOR_TABLE_HEADER_LABEL_CLASS}`;
 
 /** Wallet “not earning yield” rows: align with the same column tracks as market rows. */
 export const ANCHOR_MARKETS_WALLET_ROW_LG_CLASSNAME =

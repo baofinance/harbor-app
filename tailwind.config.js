@@ -16,6 +16,9 @@ module.exports = {
         "harbor-blue-dark": "#17395F", // Slightly darker for boxes
         "harbor-coral": "#FF8A7A",
         "harbor-mint": "#B8EBD5",
+        "harbor-gold": "#F5D76E",
+        "harbor-purple": "#C4B5FD",
+        "harbor-glass": "#122a47",
         "harbor-charcoal": "#111213",
         // Legacy support (mapped to new colors)
         "custom-green": "#B8EBD5",

@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useMemo, useState, useEffect, useRef } from "react";
+import { HARBOR_FROSTED_INDEX_SURFACE, HARBOR_FROSTED_LIGHT_CARD_ROUNDED } from "@/components/shared/harborFrostedSurfaceStyles";
 import { useQuery } from "@tanstack/react-query";
 import { useAccount, usePublicClient } from "wagmi";
 import Image from "next/image";
 import {
+  ArrowDownTrayIcon,
   WalletIcon,
 } from "@heroicons/react/24/outline";
 import { markets } from "@/config/markets";
@@ -15,11 +17,12 @@ import {
 } from "@/hooks/useAnchorLedgerMarks";
 import { useMarketBoostWindows } from "@/hooks/useMarketBoostWindows";
 import { CONTRACTS } from "@/config/contracts";
+import { HarborPageShell } from "@/components/shared/HarborPageShell";
 import { IndexPageTitleSection } from "@/components/shared/IndexPageTitleSection";
 import { INDEX_MARKETS_TOOLBAR_ROW_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
 import { FilterSingleSelectDropdown } from "@/components/FilterSingleSelectDropdown";
-import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 import { AnchorLedgerMarksHero } from "@/components/anchor/AnchorLedgerMarksHero";
+import { downloadLedgerMarksLeaderboardJson } from "@/utils/ledgerMarksLeaderboardExport";
 
 /** Match Navigation / index rows: horizontal scroll without visible scrollbar. */
 const SCROLLBAR_HIDE_X =
@@ -296,7 +299,6 @@ function getContractType(
 
 export default function LedgerMarksLeaderboard() {
  /** UI+ = extended: show “What are Ledger Marks?” hero (matches Anchor). */
- const { isBasic: ledgerMarksViewBasic } = usePageLayoutPreference();
  const graphUrl = getGraphUrl();
  const { address, isConnected } = useAccount();
  const publicClient = usePublicClient();
@@ -1028,13 +1030,34 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
   leaderboardTab === "campaigns" ? campaignLeaderboardData : anchorSailLeaderboardData;
  const leaderboardData = leaderboardRows;
 
+ const handleDownloadLeaderboard = () => {
+  if (leaderboardData.length === 0) return;
+
+  if (leaderboardTab === "campaigns") {
+    downloadLedgerMarksLeaderboardJson({
+      tab: "campaigns",
+      campaignId: campaignTab,
+      sortBy: campaignSortBy,
+      sortDirection: campaignSortDirection,
+      rows: campaignLeaderboardData,
+    });
+    return;
+  }
+
+  downloadLedgerMarksLeaderboardJson({
+    tab: "anchor-sail",
+    sortBy: anchorSailSortBy,
+    sortDirection: anchorSailSortDirection,
+    rows: anchorSailLeaderboardData,
+  });
+ };
+
  return (
- <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
- <main className="container mx-auto px-4 sm:px-10 pb-6 pt-2 sm:pt-4">
+ <HarborPageShell>
         <div className="mb-2">
           <IndexPageTitleSection title="Ledger Marks" subtitle="Leaderboard" />
         </div>
-        {!ledgerMarksViewBasic && <AnchorLedgerMarksHero />}
+        <AnchorLedgerMarksHero />
         {/* Same rhythm as Sail (title → full-width divider → toolbar) */}
         <div className="border-t border-white/10 my-3" aria-hidden />
 
@@ -1120,7 +1143,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
                 aria-pressed={leaderboardTab === "campaigns"}
                 className={`whitespace-nowrap rounded px-3 py-2 text-sm font-medium tabular-nums tracking-tight transition-colors ${
                   leaderboardTab === "campaigns"
-                    ? "bg-white text-[#1E4775] shadow-sm"
+                    ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
                     : "text-white hover:bg-white/20"
                 }`}
               >
@@ -1143,7 +1166,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
                 aria-pressed={leaderboardTab === "anchor-sail"}
                 className={`whitespace-nowrap rounded px-3 py-2 text-sm font-medium tabular-nums tracking-tight transition-colors ${
                   leaderboardTab === "anchor-sail"
-                    ? "bg-white text-[#1E4775] shadow-sm"
+                    ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
                     : "text-white hover:bg-white/20"
                 }`}
               >
@@ -1167,6 +1190,16 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
               minWidthClass="min-w-[235px]"
             />
           </div>
+          <button
+            type="button"
+            onClick={handleDownloadLeaderboard}
+            disabled={isLoading || leaderboardData.length === 0}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+            title="Download leaderboard JSON with full wallet addresses"
+          >
+            <ArrowDownTrayIcon className="h-4 w-4" aria-hidden />
+            Download JSON
+          </button>
         </div>
 
         {/* Ledger Marks Summary */}
@@ -1188,7 +1221,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
                     </p>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-                      <div className="bg-white p-2 rounded-lg">
+                      <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-2`}>
                         <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
                           {activeCampaign.label} marks
                         </div>
@@ -1206,7 +1239,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
                           </div>
                         </div>
                       </div>
-                      <div className="bg-white p-2 rounded-lg">
+                      <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-2`}>
                         <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
                           Marks per Day
                         </div>
@@ -1224,7 +1257,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
                           </div>
                         </div>
                       </div>
-                      <div className="bg-white p-2 rounded-lg">
+                      <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-2`}>
                         <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
                           Bonus at End
                         </div>
@@ -1250,7 +1283,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
                   </p>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-                    <div className="bg-white p-2 rounded-lg">
+                    <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-2`}>
                       <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
                         Anchor Marks per Day
                       </div>
@@ -1265,7 +1298,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
                         </div>
                       </div>
                     </div>
-                    <div className="bg-white p-2 rounded-lg">
+                    <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-2`}>
                       <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
                         Anchor Ledger Marks
                       </div>
@@ -1280,7 +1313,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
                         </div>
                       </div>
                     </div>
-                    <div className="bg-white p-2 rounded-lg">
+                    <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-2`}>
                       <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
                         Sail Marks per Day
                       </div>
@@ -1295,7 +1328,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
                         </div>
                       </div>
                     </div>
-                    <div className="bg-white p-2 rounded-lg">
+                    <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-2`}>
                       <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
                         Total Marks per Day
                       </div>
@@ -1323,7 +1356,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
         {/* Mobile Header Row */}
         {leaderboardTab === "campaigns" ? (
           <div
-            className={`md:hidden bg-white py-1.5 px-2 mb-0 rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
+            className={`md:hidden ${HARBOR_FROSTED_INDEX_SURFACE} py-1.5 px-2 mb-0 rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
           >
             <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-semibold">
               <div className="min-w-0 text-center pl-2">Rank</div>
@@ -1365,7 +1398,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
           </div>
         ) : (
           <div
-            className={`md:hidden bg-white py-1.5 px-2 mb-0 rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
+            className={`md:hidden ${HARBOR_FROSTED_INDEX_SURFACE} py-1.5 px-2 mb-0 rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
           >
             <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-2 sm:gap-4 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-semibold">
               <div className="min-w-0 text-center pl-2">Rank</div>
@@ -1399,7 +1432,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
         {/* Desktop Header Row */}
         {leaderboardTab === "campaigns" ? (
           <div
-            className={`hidden md:block bg-white py-1.5 px-2 mb-0 rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
+            className={`hidden md:block ${HARBOR_FROSTED_INDEX_SURFACE} py-1.5 px-2 mb-0 rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
           >
             <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
               <div className="min-w-0 text-center pl-6">Rank</div>
@@ -1441,7 +1474,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
           </div>
         ) : (
           <div
-            className={`hidden md:block bg-white py-1.5 px-2 mb-0 rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
+            className={`hidden md:block ${HARBOR_FROSTED_INDEX_SURFACE} py-1.5 px-2 mb-0 rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
           >
             <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
               <div className="min-w-0 text-center pl-6">Rank</div>
@@ -1496,16 +1529,16 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
 
  {/* Leaderboard Rows */}
  {isLoading ? (
- <div className="bg-white p-8 text-center text-gray-500 rounded-lg">
+ <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-8 text-center text-gray-500 rounded-lg`}>
  Loading leaderboard...
  </div>
  ) : error ? (
- <div className="bg-white p-8 text-center text-red-500 rounded-lg">
+ <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-8 text-center text-red-500 rounded-lg`}>
  Error loading leaderboard:{" "}
  {error instanceof Error ? error.message :"Unknown error"}
  </div>
  ) : leaderboardData.length === 0 ? (
- <div className="bg-white p-8 text-center rounded-lg">
+ <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-8 text-center rounded-lg`}>
  {hasAnyErrors || hasIndexerErrors ? (
    <div className="space-y-3">
      <div className="text-[#FF8A7A] font-semibold text-sm">
@@ -1530,7 +1563,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
  leaderboardData.map((user, index) => (
  <div
  key={`${user.address.toLowerCase()}-${index}`}
- className={`bg-white p-2 sm:p-3 rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
+ className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-2 sm:p-3 rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
  >
  {/* Mobile Row */}
  {leaderboardTab === "campaigns" ? (
@@ -1685,7 +1718,6 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
  ))
  )}
  </section>
- </main>
- </div>
+ </HarborPageShell>
  );
 }

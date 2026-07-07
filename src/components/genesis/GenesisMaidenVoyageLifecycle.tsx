@@ -4,6 +4,7 @@ import {
   MAIDEN_VOYAGE_DOCS_LINKS,
   MAIDEN_VOYAGE_LIFECYCLE_STEPS,
 } from "@/config/maidenVoyageEducation";
+import { MV_ICON_BADGE_LG } from "./maidenVoyageLayoutStyles";
 
 export function GenesisMaidenVoyageLifecycle() {
   return (
@@ -30,7 +31,9 @@ export function GenesisMaidenVoyageLifecycle() {
             key={step}
             className="relative rounded-xl border border-white/10 bg-white/5 px-4 py-4 sm:border-l-0 lg:border-l lg:first:border-l-0"
           >
-            <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#FF8A7A]/35 bg-[#FF8A7A]/10 font-mono text-xs font-bold text-[#FFE8E2]">
+            <span
+              className={`mb-2 font-mono text-xs font-bold tabular-nums ${MV_ICON_BADGE_LG}`}
+            >
               {step}
             </span>
             <h3 className="text-sm font-semibold text-white/90">{title}</h3>

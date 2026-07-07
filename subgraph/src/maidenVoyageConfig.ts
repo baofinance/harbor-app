@@ -6,9 +6,11 @@ const ZERO_ADDR = Address.fromString("0x0000000000000000000000000000000000000000
  * Default USD maiden ownership cap (live policy). Unknown genesis falls back here until
  * explicitly listed in `getMaidenVoyageCapUSD`.
  *
- * **Must stay aligned** with `MAIDEN_VOYAGE_CAP_USD_DEFAULT` in `src/config/maidenVoyageCap.ts`.
+ * **Must stay aligned** with `MAIDEN_VOYAGE_CAP_USD_DEFAULT` / `MAIDEN_VOYAGE_CAP_USD_LEGACY`
+ * in `src/config/maidenVoyageCap.ts`.
  */
-const DEFAULT_CAP_USD = BigDecimal.fromString("100000");
+const NEW_MARKET_CAP_USD = BigDecimal.fromString("50000");
+const LEGACY_CAP_USD = BigDecimal.fromString("100000");
 
 /**
  * Default max ve-style boost (e.g. 5 => 1x at 0% retention … 5x at 100%).
@@ -33,6 +35,8 @@ export const GEN_ETH_FXUSD_T2 = Address.fromString("0x5f4398e1d3e33f93e3d7ee710d
 export const GEN_BTC_FXUSD_T2 = Address.fromString("0x288c61c3b3684ff21adf38d878c81457b19bd2fe");
 export const GEN_BTC_STETH_T2 = Address.fromString("0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0");
 export const GEN_ETH_FXUSD_ALT = Address.fromString("0x1454707877cdb966e29cea8a190c2169eeca4b8c");
+export const GEN_STETH_USD = Address.fromString("0x40ff767ff4055d53b1bc1b0141221a37b25905fd");
+export const GEN_STETH_USD_MEGA = Address.fromString("0x004c7091051bbd43dd1c26e3e37c85f869a987e7");
 
 // Minters
 export const MINT_ETH_FXUSD = Address.fromString("0xd6E2F8e57b4aFB51C6fA4cbC012e1cE6aEad989F");
@@ -73,7 +77,9 @@ export const HS_STETH_SILVER = Address.fromString("0x5bb5672be4553e648c1d20f0938
  * (same USD for every known genesis today; vary per branch here when a market needs a different cap).
  */
 export function getMaidenVoyageCapUSD(genesis: Address): BigDecimal {
-  if (isKnownMaidenVoyageGenesis(genesis)) return DEFAULT_CAP_USD;
+  if (genesis.equals(GEN_STETH_USD)) return NEW_MARKET_CAP_USD;
+  if (genesis.equals(GEN_STETH_USD_MEGA)) return NEW_MARKET_CAP_USD;
+  if (isLegacyMaidenVoyageGenesis(genesis)) return LEGACY_CAP_USD;
   return BigDecimal.fromString("0");
 }
 
@@ -104,6 +110,8 @@ export function getMaidenVoyageYieldOwnerShareBps(genesis: Address): BigInt {
   if (genesis.equals(GEN_BTC_FXUSD_T2)) return BigInt.fromI32(500);
   if (genesis.equals(GEN_BTC_STETH_T2)) return BigInt.fromI32(500);
   if (genesis.equals(GEN_ETH_FXUSD_ALT)) return BigInt.fromI32(500);
+  if (genesis.equals(GEN_STETH_USD)) return BigInt.fromI32(500);
+  if (genesis.equals(GEN_STETH_USD_MEGA)) return BigInt.fromI32(500);
   return BigInt.fromI32(0);
 }
 
@@ -142,7 +150,7 @@ export function minterUsesSpmHarvestEvents(minter: Address): boolean {
   return false;
 }
 
-export function isKnownMaidenVoyageGenesis(genesis: Address): boolean {
+export function isLegacyMaidenVoyageGenesis(genesis: Address): boolean {
   const g = genesis.toHexString().toLowerCase();
   if (g == GEN_ETH_FXUSD.toHexString().toLowerCase()) return true;
   if (g == GEN_BTC_FXUSD.toHexString().toLowerCase()) return true;
@@ -157,6 +165,14 @@ export function isKnownMaidenVoyageGenesis(genesis: Address): boolean {
   if (g == GEN_BTC_FXUSD_T2.toHexString().toLowerCase()) return true;
   if (g == GEN_BTC_STETH_T2.toHexString().toLowerCase()) return true;
   if (g == GEN_ETH_FXUSD_ALT.toHexString().toLowerCase()) return true;
+  return false;
+}
+
+export function isKnownMaidenVoyageGenesis(genesis: Address): boolean {
+  if (isLegacyMaidenVoyageGenesis(genesis)) return true;
+  const g = genesis.toHexString().toLowerCase();
+  if (g == GEN_STETH_USD.toHexString().toLowerCase()) return true;
+  if (g == GEN_STETH_USD_MEGA.toHexString().toLowerCase()) return true;
   return false;
 }
 

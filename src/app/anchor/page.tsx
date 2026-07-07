@@ -14,6 +14,7 @@ import {
   useSwitchChain,
 } from "wagmi";
 import { useHarborAccount } from "@/hooks/useHarborAccount";
+import { HARBOR_FROSTED_LIGHT_CARD_ROUNDED, HARBOR_FROSTED_MODAL_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 import { formatEther, parseEther } from "viem";
 import {
   isAnchorSoonUi,
@@ -22,7 +23,7 @@ import {
   markets as marketsConfig,
   type DefinedMarket,
 } from "@/config/markets";
-import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
+import { HarborPageShell } from "@/components/shared/HarborPageShell";
 import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
 import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
 import { POLLING_INTERVALS } from "@/config/polling";
@@ -94,27 +95,26 @@ import { AnchorMarketGroupCollapsedRow } from "@/components/anchor/AnchorMarketG
 import { AnchorMarketsSections } from "@/components/anchor/AnchorMarketsSections";
 import { AnchorMarketGroupExpandedSection } from "@/components/anchor/AnchorMarketGroupExpandedSection";
 import { AnchorMarketsTableHeader } from "@/components/anchor/AnchorMarketsTableHeader";
-import { AnchorBasicMarketCardsGrid } from "@/components/anchor/AnchorBasicMarketCardsGrid";
-import { AnchorPageTitleSection } from "@/components/anchor/AnchorPageTitleSection";
-import { AnchorHeroIntroCards } from "@/components/anchor/AnchorHeroIntroCards";
-import { AnchorStatsStrip } from "@/components/anchor/AnchorStatsStrip";
 import { AnchorRewardsStrip } from "@/components/anchor/AnchorRewardsStrip";
 import { AnchorEarningsSection } from "@/components/anchor/AnchorEarningsSection";
 import { AnchorWalletPositionsSection } from "@/components/anchor/AnchorWalletPositionsSection";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
 import { IndexMarketsLoadError } from "@/components/shared/IndexMarketsLoadError";
-import {
-  AnchorVaprTooltipContent,
-  type AnchorVaprPositionApr,
-} from "@/components/anchor/AnchorVaprTooltipContent";
+import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
 import {
   ANCHOR_MARKETS_WALLET_ROW_LG_CLASSNAME,
   ANCHOR_MARKETS_WALLET_ROW_MD_CLASSNAME,
 } from "@/components/anchor/anchorMarketsTableGrid";
-import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 import {
   LEDGER_MARKS_STRIP_SURFACE_ABOVE_TOOLBAR_CLASS,
 } from "@/components/shared/indexMarketsToolbarStyles";
+import {
+  HARBOR_BTN_GLASS_COMPACT_CORAL_CLASS,
+  HARBOR_BTN_GLASS_MAX_CHIP_ROUND_CLASS,
+  HARBOR_BTN_GLASS_PILL_CORAL_CLASS,
+  HARBOR_BTN_GLASS_PILL_NAVY_CLASS,
+  HARBOR_BTN_GLASS_PILL_OUTLINE_CLASS,
+} from "@/components/shared/harborButtonStyles";
 import {
   INDEX_MANAGE_BUTTON_CLASS_DESKTOP,
   INDEX_MODAL_CANCEL_BUTTON_CLASS_DESKTOP,
@@ -216,8 +216,6 @@ export default function AnchorPage() {
     setMounted(true);
   }, []);
 
-  const { isBasic: anchorViewBasic } = usePageLayoutPreference();
-
   const {
     chainFilterSelected,
     setChainFilterSelected,
@@ -287,7 +285,7 @@ export default function AnchorPage() {
     allMarketsData,
     anchorStats,
     claimAllPositions,
-  } = useAnchorPageData(address, anchorViewBasic);
+  } = useAnchorPageData(address);
   const {
     compoundModal,
     setCompoundModal,
@@ -372,81 +370,6 @@ export default function AnchorPage() {
     return map;
   }, [allMarketsData]);
 
-  /** Same rule as the extended rewards strip: sum `claimableValue` per stability pool from `poolRewardsMap`. */
-  const anchorToolbarTotalClaimableUsd = useMemo(() => {
-    let total = 0;
-    for (const [, m] of anchorMarkets) {
-      const collateralAddr = (m as { addresses?: { stabilityPoolCollateral?: `0x${string}` } })
-        .addresses?.stabilityPoolCollateral;
-      const sailAddr = (m as { addresses?: { stabilityPoolLeveraged?: `0x${string}` } }).addresses
-        ?.stabilityPoolLeveraged;
-      if (collateralAddr) {
-        const pr = poolRewardsMap.get(collateralAddr);
-        if (pr && pr.claimableValue > 0) total += pr.claimableValue;
-      }
-      if (sailAddr) {
-        const pr = poolRewardsMap.get(sailAddr);
-        if (pr && pr.claimableValue > 0) total += pr.claimableValue;
-      }
-    }
-    return total;
-  }, [anchorMarkets, poolRewardsMap]);
-
-  const anchorToolbarYourTotalDepositUsd = useMemo(() => {
-    return Object.values(marketPositions).reduce(
-      (sum, pos) => sum + (pos.collateralPoolUSD || 0) + (pos.sailPoolUSD || 0),
-      0
-    );
-  }, [marketPositions]);
-
-  const anchorToolbarPositionAprs = useMemo(() => {
-    const positionAprs: AnchorVaprPositionApr[] = [];
-    for (const [marketId, market] of anchorMarkets) {
-      const position = marketPositions?.[marketId];
-      if (!position) continue;
-
-      const collateralPoolAddress = (market as { addresses?: { stabilityPoolCollateral?: `0x${string}` } })
-        .addresses?.stabilityPoolCollateral;
-      if (collateralPoolAddress && position.collateralPoolUSD > 0) {
-        const collateralApr = poolRewardsMap.get(collateralPoolAddress)?.totalRewardAPR || 0;
-        if (collateralApr > 0) {
-          positionAprs.push({
-            poolType: "collateral",
-            marketId,
-            depositUSD: position.collateralPoolUSD,
-            apr: collateralApr,
-          });
-        }
-      }
-
-      const sailPoolAddress = (market as { addresses?: { stabilityPoolLeveraged?: `0x${string}` } })
-        .addresses?.stabilityPoolLeveraged;
-      if (sailPoolAddress && position.sailPoolUSD > 0) {
-        const sailApr = poolRewardsMap.get(sailPoolAddress)?.totalRewardAPR || 0;
-        if (sailApr > 0) {
-          positionAprs.push({
-            poolType: "sail",
-            marketId,
-            depositUSD: position.sailPoolUSD,
-            apr: sailApr,
-          });
-        }
-      }
-    }
-
-    return positionAprs;
-  }, [anchorMarkets, marketPositions, poolRewardsMap]);
-
-  const anchorToolbarVapr = useMemo(() => {
-    let totalWeightedApr = 0;
-    let totalDepositUsd = 0;
-    for (const pos of anchorToolbarPositionAprs) {
-      totalWeightedApr += pos.depositUSD * pos.apr;
-      totalDepositUsd += pos.depositUSD;
-    }
-    return totalDepositUsd > 0 ? totalWeightedApr / totalDepositUsd : 0;
-  }, [anchorToolbarPositionAprs]);
-
   // Fetch collateral prices for all markets using the hook
   const collateralPriceOracleAddresses = useMemo(() => {
     return anchorMarkets.map(
@@ -463,19 +386,10 @@ export default function AnchorPage() {
 
   return (
     <>
-      <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
-        <main className="container mx-auto px-4 sm:px-10 pb-6 pt-2 sm:pt-4">
-          <AnchorPageTitleSection />
-          {!anchorViewBasic && (
-            <>
-              <AnchorHeroIntroCards />
-              <div className="mt-2">
-                <AnchorStatsStrip anchorStats={anchorStats} />
-              </div>
-
-              {ledgerMarksError && (
-                <IndexMarksSubgraphErrorBanner error={ledgerMarksError} />
-              )}
+      <HarborPageShell>
+          {ledgerMarksError && (
+            <IndexMarksSubgraphErrorBanner error={ledgerMarksError} />
+          )}
 
           {/* Rewards Bar - Under Title Boxes */}
           <AnchorRewardsStrip
@@ -509,8 +423,6 @@ export default function AnchorPage() {
             setSelectedMarketForClaim={setSelectedMarketForClaim}
             setIsClaimMarketModalOpen={setIsClaimMarketModalOpen}
           />
-            </>
-          )}
 
           {/* Earnings Section */}
           <AnchorEarningsSection
@@ -549,57 +461,6 @@ export default function AnchorPage() {
               chainFilterSelected,
               onChainFilterChange: setChainFilterSelected,
               onClearFilters: () => setChainFilterSelected([]),
-              ...(anchorViewBasic
-                ? {
-                    basicClaimToolbar: {
-                      claimableUsdDisplay:
-                        anchorToolbarTotalClaimableUsd > 0
-                          ? anchorToolbarTotalClaimableUsd.toFixed(2)
-                          : "0.00",
-                      leftMetrics: [
-                        {
-                          label: "TVL",
-                          value: formatCompactUSD(
-                            anchorStats?.yieldGeneratingTVLUSD || 0
-                          ),
-                        },
-                        {
-                          label: "Your Deposits",
-                          value: formatCompactUSD(anchorToolbarYourTotalDepositUsd),
-                        },
-                        {
-                          label: (
-                            <span className="inline-flex items-center gap-1">
-                              <span>VAPR</span>
-                              <InfoTooltip
-                                side="left"
-                                label={
-                                  <AnchorVaprTooltipContent
-                                    positionAPRs={anchorToolbarPositionAprs}
-                                    blendedAPR={anchorToolbarVapr}
-                                    showLiveAprLoading={showLiveAprLoading}
-                                    isErrorAllRewards={isErrorAllRewards}
-                                    projectedAPR={projectedAPR}
-                                  />
-                                }
-                              >
-                                <span className="text-white/50 cursor-help text-xs">
-                                  [?]
-                                </span>
-                              </InfoTooltip>
-                            </span>
-                          ),
-                          value:
-                            anchorToolbarVapr > 0
-                              ? `${anchorToolbarVapr.toFixed(2)}%`
-                              : "-",
-                        },
-                      ],
-                      onClaim: () => setIsClaimAllModalOpen(true),
-                      claimDisabled: isClaimingAll || isCompoundingAll,
-                    },
-                  }
-                : {}),
             }}
           >
             {/* Market Cards/Rows */}
@@ -623,7 +484,7 @@ export default function AnchorPage() {
                     </p>
                     <button
                       onClick={() => refetchReads()}
-                      className="px-4 py-2 bg-[#FF8A7A] text-white rounded hover:bg-[#FF6B5A] transition-colors"
+                      className={HARBOR_BTN_GLASS_COMPACT_CORAL_CLASS}
                     >
                       Try again
                     </button>
@@ -645,9 +506,7 @@ export default function AnchorPage() {
                 const marketIndex = anchorMarkets.findIndex(([mid]) => mid === id);
                 if (marketIndex < 0) return;
                 const pegSymbol = m.peggedToken?.symbol || "UNKNOWN";
-                const groupKey = anchorViewBasic
-                  ? pegSymbol
-                  : `${pegSymbol}::${harborMarketChainKey(m)}`;
+                const groupKey = `${pegSymbol}::${harborMarketChainKey(m)}`;
                 if (!groups[groupKey]) {
                   groups[groupKey] = [];
                 }
@@ -657,37 +516,6 @@ export default function AnchorPage() {
                   marketIndex,
                 });
               });
-
-              // Process each group
-              if (anchorViewBasic) {
-                // Basic cards: show all peg groups from displayed markets (incl. preview /
-                // multichain). Do not require marketsDataMap — that map only has post-genesis
-                // TVL (see useAnchorMarketData), which hid haUSD and showed the single-chain
-                // placeholder instead of Ethereum + MegaETH footers.
-                const marketGroups = Object.entries(groups)
-                  .map(([groupKey, marketList]) => ({
-                    symbol: groupKey.split("::")[0] ?? groupKey,
-                    list: marketList,
-                  }))
-                  .filter(({ list }) => list.length > 0);
-                return (
-                  <AnchorBasicMarketCardsGrid
-                    marketGroups={marketGroups}
-                    getMarketsDataForGroup={(list) =>
-                      list
-                        .map(({ marketId }) => marketsDataMap.get(marketId))
-                        .filter(
-                          (m): m is NonNullable<typeof m> => m !== undefined
-                        )
-                    }
-                    showLiveAprLoading={showLiveAprLoading}
-                    isConnected={isConnected}
-                    onOpenManage={(payload) => {
-                      void openManageModal(payload);
-                    }}
-                  />
-                );
-              }
 
               return (
                 <>
@@ -984,7 +812,7 @@ export default function AnchorPage() {
               });
             }}
           />
-        </main>
+      </HarborPageShell>
 
         {manageModal && (
           <AnchorDepositWithdrawModal
@@ -1527,7 +1355,7 @@ export default function AnchorPage() {
         {/* Early withdraw confirmation */}
         {earlyWithdrawModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-            <div className="bg-white shadow-xl max-w-md w-full p-4 rounded-lg border border-[#1E4775]/10">
+            <div className={`${HARBOR_FROSTED_MODAL_SHELL} shadow-xl max-w-md w-full p-4 rounded-lg`}>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-[#1E4775] font-semibold">
                   Withdraw early?
@@ -1593,7 +1421,7 @@ export default function AnchorPage() {
 
         {withdrawAmountModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-            <div className="bg-white shadow-2xl max-w-lg w-full p-6 space-y-4">
+            <div className={`${HARBOR_FROSTED_MODAL_SHELL} max-w-lg w-full p-6 space-y-4`}>
               <div className="flex items-center justify-between">
                 <h3 className="text-[#1E4775] font-semibold text-lg">
                   {withdrawAmountModal.useEarly
@@ -1633,7 +1461,7 @@ export default function AnchorPage() {
                     }}
                     type="text"
                     placeholder="0.0"
-                    className={`w-full h-14 px-4 pr-24 bg-white text-[#1E4775] border-2 ${
+                    className={`w-full h-14 px-4 pr-24 bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 ${
                       withdrawAmountError
                         ? "border-red-500"
                         : "border-[#1E4775]/30"
@@ -1648,7 +1476,7 @@ export default function AnchorPage() {
                       );
                       setWithdrawAmountError(null);
                     }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full font-medium"
+                    className={HARBOR_BTN_GLASS_MAX_CHIP_ROUND_CLASS}
                   >
                     MAX
                   </button>
@@ -1667,7 +1495,7 @@ export default function AnchorPage() {
                     setWithdrawAmountInput("");
                     setWithdrawAmountError(null);
                   }}
-                  className="flex-1 py-3 px-4 rounded-full border-2 border-[#1E4775]/30 text-[#1E4775] font-semibold hover:bg-[#1E4775]/5 transition-colors"
+                  className={HARBOR_BTN_GLASS_PILL_OUTLINE_CLASS}
                 >
                   Cancel
                 </button>
@@ -1699,11 +1527,11 @@ export default function AnchorPage() {
                     setWithdrawAmountInput("");
                     setWithdrawAmountError(null);
                   }}
-                  className={`flex-1 py-3 px-4 rounded-full font-semibold text-white transition-colors ${
+                  className={
                     withdrawAmountModal.useEarly
-                      ? "bg-orange-500 hover:bg-orange-600"
-                      : "bg-[#1E4775] hover:bg-[#17395F]"
-                  }`}
+                      ? HARBOR_BTN_GLASS_PILL_CORAL_CLASS
+                      : HARBOR_BTN_GLASS_PILL_NAVY_CLASS
+                  }
                 >
                   Confirm Withdraw
                 </button>
@@ -1722,6 +1550,7 @@ export default function AnchorPage() {
             title={transactionProgress.title}
             steps={transactionProgress.steps}
             currentStepIndex={transactionProgress.currentStepIndex}
+            onRetry={transactionProgress.onRetry}
             onCancel={() => {
               if (cancelOperationRef.current) {
                 // Call the cancel handler for claim all or compound
@@ -1742,7 +1571,7 @@ export default function AnchorPage() {
             onClick={() => setContractAddressesModal(null)}
           >
             <div
-              className="bg-white p-6 max-w-md w-full mx-4 rounded-lg border border-[#1E4775]/10 shadow-xl"
+              className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-6 max-w-md w-full mx-4`}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
@@ -1832,7 +1661,6 @@ export default function AnchorPage() {
             </div>
           </div>
         )}
-      </div>
     </>
   );
 }

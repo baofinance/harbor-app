@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import { HARBOR_FROSTED_ACTIVE_PILL } from "@/components/shared/harborFrostedSurfaceStyles";
+
 
 export interface DepositModalTabHeaderProps {
   /** Tab labels and values */
@@ -32,7 +34,7 @@ export function DepositModalTabHeader({
           disabled={disabled || tabDisabled?.[value]}
           className={`flex-1 rounded-md py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors touch-target ${
             activeTab === value
-              ? "bg-white text-[#1E4775] shadow-sm"
+              ? HARBOR_FROSTED_ACTIVE_PILL
               : "text-white hover:bg-white/20"
           } disabled:opacity-50 disabled:cursor-not-allowed`}
         >

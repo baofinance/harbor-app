@@ -30,7 +30,7 @@ export function CustomTokenAddressInput({
         value={value}
         onChange={(e) => onChange(e.target.value.trim())}
         placeholder="0x..."
-        className="w-full h-10 px-3 bg-white text-[#1E4775] border border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-sm font-mono"
+        className="w-full h-10 px-3 bg-white/85 backdrop-blur-sm text-[#1E4775] border border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-sm font-mono"
         disabled={disabled}
       />
       {isInvalid && (

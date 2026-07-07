@@ -8,6 +8,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { AnchorHowToGuide } from "@/components/anchor/AnchorHowToGuide";
 import { AnchorStabilityPools } from "@/components/anchor/AnchorStabilityPools";
+import { HARBOR_FROSTED_LIGHT_CARD_ELEVATED } from "@/components/shared/harborFrostedSurfaceStyles";
 import { getLogoPath } from "@/lib/logos";
 
 export type AnchorTokenLandingProps = {
@@ -21,13 +22,13 @@ const shellClass =
 
 // Genesis / index-card style surfaces (white card on dark background)
 const GENESIS_CARD_SHELL =
-  "rounded-xl bg-white text-[#1E4775] shadow-[0_16px_40px_-30px_rgba(0,0,0,0.55)] ring-1 ring-black/5";
+  `${HARBOR_FROSTED_LIGHT_CARD_ELEVATED} text-[#1E4775] shadow-[0_16px_40px_-30px_rgba(0,0,0,0.55)]`;
 const GENESIS_CARD_BODY = "px-5 py-5";
 const GENESIS_CARD_HEADER = "text-sm font-semibold uppercase tracking-wider text-[#1E4775]";
 const GENESIS_CARD_SUBTEXT = "mt-2 text-sm leading-relaxed text-[#1E4775]/80";
 
 const FAQ_ROW_SHELL =
-  "w-full rounded-xl bg-white text-[#1E4775] shadow-[0_16px_40px_-34px_rgba(0,0,0,0.5)] ring-1 ring-black/5";
+  `w-full ${HARBOR_FROSTED_LIGHT_CARD_ELEVATED} text-[#1E4775] shadow-[0_16px_40px_-34px_rgba(0,0,0,0.5)]`;
 const FAQ_ROW_HOVER = "transition";
 
 export function AnchorTokenLanding({
@@ -43,7 +44,7 @@ export function AnchorTokenLanding({
       <main className="container mx-auto px-4 pb-10 sm:px-10">
         <header className="relative mb-8 mt-2">
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
-            <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-md ring-1 ring-black/5 sm:h-24 sm:w-24 md:h-28 md:w-28">
+            <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/90 backdrop-blur-sm shadow-md ring-1 ring-black/5 sm:h-24 sm:w-24 md:h-28 md:w-28">
               <Image
                 src={heroIcon}
                 alt={`${tokenSymbol} logo`}

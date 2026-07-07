@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
+import { HARBOR_FROSTED_SURFACE, HARBOR_FROSTED_SURFACE_HOVER, HARBOR_FROSTED_SURFACE_SELECTED } from "@/components/shared/harborFrostedSurfaceStyles";
 import Image from "next/image";
 import {
   ArrowPathIcon,
@@ -148,8 +149,8 @@ function AnchorMarketGroupCollapsedRowInner(
     isComingSoonRow ? "opacity-90 saturate-[0.78]" : ""
   } ${
     isExpanded
-      ? "bg-[rgb(var(--surface-selected-rgb))]"
-      : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
+      ? `${HARBOR_FROSTED_SURFACE_SELECTED}`
+      : `${HARBOR_FROSTED_SURFACE} ${HARBOR_FROSTED_SURFACE_HOVER}`
   }`}
   onClick={(e) => {
     const target = e.target as HTMLElement;

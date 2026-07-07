@@ -15,7 +15,6 @@ import {
   GenesisMaidenVoyageFaq,
   GenesisMaidenVoyageFeaturedSection,
   GenesisMaidenVoyageLifecycle,
-  GenesisMaidenVoyagePageHeader,
   GenesisMaidenVoyageStatsBar,
   GenesisRevenueShareSection,
   GenesisVoyageFooterNotice,
@@ -52,15 +51,12 @@ import {
 } from "@/utils/activeVoyageStatus";
 import { formatGenesisMarketDisplayName } from "@/utils/genesisDisplay";
 import { readContractRowResult } from "@/components/genesis/readContractRow";
-import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
+import { HarborPageShell } from "@/components/shared/HarborPageShell";
 
 const SHOW_MAIDEN_VOYAGE_COMING_SOON =
   process.env.NEXT_PUBLIC_SHOW_MAIDEN_VOYAGE_COMING_SOON === "true";
 
 export default function GenesisIndexPage() {
-  /** Nav toggle: Basic (UI) = hero + sidebar + ongoing/upcoming filters; Extended (UI+) = full page. */
-  const { isBasic: genesisViewBasic } = usePageLayoutPreference();
-
   const { address, isConnected } = useAccount();
   const connectedChainId = useChainId();
   const { switchChain } = useSwitchChain();
@@ -379,9 +375,13 @@ export default function GenesisIndexPage() {
     const userDeposit = isConnected
       ? readContractRowResult<bigint>(reads, baseOffset + 1)
       : undefined;
-    const userDepositDisplay =
+    const userDepositUsd =
       userDeposit && userDeposit > 0n && collateralPriceUSD > 0
-        ? formatUSD(Number(formatEther(userDeposit)) * collateralPriceUSD)
+        ? Number(formatEther(userDeposit)) * collateralPriceUSD
+        : null;
+    const userDepositDisplay =
+      userDepositUsd != null && userDepositUsd > 0
+        ? formatUSD(userDepositUsd)
         : userDeposit && userDeposit > 0n
           ? `${formatToken(userDeposit)} ${collateralSymbol}`
           : undefined;
@@ -400,6 +400,7 @@ export default function GenesisIndexPage() {
       capUnavailable: capResolve.isUnavailable,
       voyageStatus,
       userDepositDisplay,
+      userDepositUsd,
       displayMarketName,
       peggedNoPrefix,
       genesisAddress,
@@ -478,10 +479,8 @@ export default function GenesisIndexPage() {
   }
 
   return (
-    <div className="relative mx-auto flex min-h-0 w-full max-w-[1300px] flex-1 flex-col font-sans text-white">
-      <main className="container mx-auto px-4 pb-6 pt-2 sm:px-10 sm:pt-4">
-        <GenesisMaidenVoyagePageHeader />
-
+    <>
+    <HarborPageShell>
         {combinedHasIndexerErrors ? (
           <GenesisErrorBanner
             tone="warning"
@@ -506,7 +505,7 @@ export default function GenesisIndexPage() {
             markets={marketsWithOraclePricingError.map(getMarketName)}
           />
         ) : null}
-        {!genesisViewBasic && marksError ? (
+        {marksError ? (
           <div className="mb-4">
             <GenesisErrorBanner
               tone="danger"
@@ -516,9 +515,7 @@ export default function GenesisIndexPage() {
           </div>
         ) : null}
 
-        {!genesisViewBasic ? (
-          <GenesisMaidenVoyageStatsBar stats={statsBarData} />
-        ) : null}
+        <GenesisMaidenVoyageStatsBar stats={statsBarData} />
 
         <GenesisMaidenVoyageFeaturedSection
           yieldRevSharePct={activeMarketData?.yieldRevSharePct ?? null}
@@ -536,6 +533,7 @@ export default function GenesisIndexPage() {
                   yieldRevSharePct: activeMarketData.yieldRevSharePct,
                   genesisAddress: activeMarketData.genesisAddress,
                   userDepositDisplay: activeMarketData.userDepositDisplay,
+                  userDepositUsd: activeMarketData.userDepositUsd,
                   isConnected,
                   isClaiming: claimingMarket === activeMarketData.marketId,
                   onDeposit: () =>
@@ -561,7 +559,6 @@ export default function GenesisIndexPage() {
         />
 
         <GenesisMaidenVoyageExplorer
-          viewBasic={genesisViewBasic}
           genesisMarkets={genesisMarkets as Array<[string, GenesisMarketConfig]>}
           comingSoonMarkets={
             comingSoonMarkets as Array<[string, GenesisMarketConfig]>
@@ -577,14 +574,11 @@ export default function GenesisIndexPage() {
           chainlinkBtcPrice={null}
           onClaim={claimMarket}
           onManage={handleOpenManageModal}
-          defaultArchivedExpanded={
-            genesisViewBasic ? false : hasArchivedUserDeposit
-          }
+          defaultArchivedExpanded={hasArchivedUserDeposit}
         />
 
-        {!genesisViewBasic ? <GenesisVoyageFooterNotice /> : null}
+        <GenesisVoyageFooterNotice />
 
-        {!genesisViewBasic ? (
         <section
           id="maiden-voyage-learn"
           className="mt-10 border-t border-white/10 pt-8"
@@ -621,8 +615,7 @@ export default function GenesisIndexPage() {
             </div>
           </details>
         </section>
-        ) : null}
-      </main>
+    </HarborPageShell>
 
       {manageModal ? (
         <GenesisManageModal
@@ -654,6 +647,6 @@ export default function GenesisIndexPage() {
             : undefined
         }
       />
-    </div>
+    </>
   );
 }

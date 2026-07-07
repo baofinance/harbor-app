@@ -5,7 +5,7 @@ import { useAccount } from "wagmi";
 import { isAddress, type Address } from "viem";
 import { markets } from "@/config/markets";
 import { getGraphHeaders, getGraphUrl } from "@/config/graph";
-import { deriveFounderWalletMetric, type FounderParticipant } from "@/utils/founderMetrics";
+import { deriveFounderWalletMetric, founderMetricRowHasRevenueShare, type FounderParticipant } from "@/utils/founderMetrics";
 
 type FounderGraphResponse = {
   maidenVoyageYieldGlobals?: Array<{ cumulativeYieldUSD?: string }>;
@@ -19,6 +19,7 @@ export type FounderMetricRow = {
   ownershipSharePct: number;
   /** Maiden Voyage retention multiplier from subgraph; null if no user row. */
   boostMultiplier: number | null;
+  depositCountedUsd: number;
   yieldSharePct: number;
   totalEarnedUSD: number;
   paidUSD: number;
@@ -40,6 +41,7 @@ const FOUNDER_QUERY = `
       user
       finalMaidenVoyageOwnershipShare
       maidenVoyageBoostMultiplier
+      maidenVoyageDepositCountedUSD
     }
   }
 `;
@@ -160,14 +162,7 @@ export function useFounderMetrics() {
             ...derived,
           };
         })
-        .filter(
-          (r) =>
-            r.ownershipSharePct > 0 ||
-            r.yieldSharePct > 0 ||
-            r.totalEarnedUSD > 0 ||
-            Math.abs(r.outstandingUSD) > 0 ||
-            r.paidUSD > 0
-        )
+        .filter(founderMetricRowHasRevenueShare)
         .sort((a, b) => b.outstandingUSD - a.outstandingUSD);
 
       setRows(nextRows);

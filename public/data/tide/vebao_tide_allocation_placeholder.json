@@ -1,0 +1,19 @@
+{
+  "name": "vebao_tide_allocation_placeholder",
+  "description": "Dev placeholder for veBao TIDE claims. Production snapshot: vebao_tide_allocation.json",
+  "amountFormula": "baoToTide(lockedAmount)",
+  "contract": "HarborTideDistributor_v1",
+  "snapshotBlock": 25000000,
+  "allocations": [
+    {
+      "address": "0xf1674fe69b2920b4de51e909cbf060dd78724cd8",
+      "amount": "1000000000000000000000",
+      "amountTokens": 1000
+    },
+    {
+      "address": "0xb9ab9578a34a05c86124c399735fde44dec80e7f",
+      "amount": "1000000000000000000000",
+      "amountTokens": 1000
+    }
+  ]
+}

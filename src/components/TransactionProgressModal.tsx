@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { HARBOR_FROSTED_MODAL_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 import { GenesisTransactionProgressSteps } from "./GenesisTransactionProgressSteps";
 import { CompactTransactionProgressRail } from "./CompactTransactionProgressRail";
 import { TransactionProgressLayoutToggleIcon } from "./TransactionProgressLayoutToggleIcon";
+import { HARBOR_DISCORD_URL } from "@/config/support";
 import {
   INDEX_MANAGE_BUTTON_CLASS_DESKTOP,
   INDEX_MODAL_CANCEL_BUTTON_CLASS_DESKTOP,
@@ -54,6 +56,7 @@ interface TransactionProgressModalProps {
   onRetry?: () => void; // Callback for"Try Again" button on error
   retryButtonLabel?: string; // Custom label for retry button (default: "Try Again")
   errorMessage?: string; // Optional error message to display
+  supportDiscordUrl?: string;
   renderSuccessContent?: () => React.ReactNode; // Optional extra content when all steps completed
 }
 
@@ -214,6 +217,7 @@ export const TransactionProgressModal = ({
   onRetry,
   retryButtonLabel = "Try Again",
   errorMessage,
+  supportDiscordUrl = HARBOR_DISCORD_URL,
   renderSuccessContent,
 }: TransactionProgressModalProps) => {
   const manySteps = steps.length > 3;
@@ -231,6 +235,12 @@ export const TransactionProgressModal = ({
   const allCompleted = steps.every((s) => s.status === "completed");
 
   const currentStepLabel = steps[currentStepIndex]?.label ?? "";
+  const failedStep = steps.find((s) => s.status === "error");
+  const hasStepError = Boolean(failedStep);
+  const displayErrorMessage =
+    errorMessage ??
+    failedStep?.error ??
+    "Something went wrong. Please try again or contact support if the issue persists.";
 
   // If we're showing fee info, show confirmation screen
   if (showFeeInfo && onConfirmFee) {
@@ -243,7 +253,7 @@ export const TransactionProgressModal = ({
           className="absolute inset-0 bg-black/40 backdrop-blur-sm"
           onClick={onCancel || onClose}
         />
-        <div className="relative isolate mx-4 flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl border border-[#1E4775]/10 bg-white shadow-2xl animate-in fade-in-0 scale-in-95 duration-200">
+        <div className={`relative isolate mx-4 flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl ${HARBOR_FROSTED_MODAL_SHELL} animate-in fade-in-0 scale-in-95 duration-200`}>
           <div className="flex shrink-0 items-center justify-between border-b border-[#1E4775]/20 p-6">
             <h2 className="text-2xl font-bold text-[#1E4775]">{title}</h2>
             <button
@@ -395,7 +405,7 @@ export const TransactionProgressModal = ({
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative isolate mx-4 flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl border border-[#1E4775]/10 bg-white shadow-2xl animate-in fade-in-0 scale-in-95 duration-200">
+      <div className={`relative isolate mx-4 flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl ${HARBOR_FROSTED_MODAL_SHELL} animate-in fade-in-0 scale-in-95 duration-200`}>
         <div className="flex shrink-0 items-start justify-between gap-2 border-b border-[#1E4775]/20 p-6">
           <div className="min-w-0 flex-1">
             <h2 className="text-2xl font-bold text-[#1E4775]">{title}</h2>
@@ -484,21 +494,32 @@ export const TransactionProgressModal = ({
             </div>
           )}
 
-          {steps.some((s) => s.status === "error") && (
+          {hasStepError && (
             <div className="mt-6 rounded-md border border-red-200 bg-red-50 p-4">
               <p className="text-center text-sm font-medium text-red-800">
-                {errorMessage ||
-                  "Transaction failed. Please try again or contact support if the issue persists."}
+                {displayErrorMessage}
               </p>
-              {onRetry && (
-                <div className="mt-4 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={onRetry}
-                    className={INDEX_MANAGE_BUTTON_CLASS_DESKTOP}
-                  >
-                    {retryButtonLabel}
-                  </button>
+              {(onRetry || supportDiscordUrl) && (
+                <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                  {onRetry && (
+                    <button
+                      type="button"
+                      onClick={onRetry}
+                      className={INDEX_MANAGE_BUTTON_CLASS_DESKTOP}
+                    >
+                      {retryButtonLabel}
+                    </button>
+                  )}
+                  {supportDiscordUrl && (
+                    <a
+                      href={supportDiscordUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-[#1E4775] underline hover:text-[#1E4775]/80"
+                    >
+                      Get help on Discord
+                    </a>
+                  )}
                 </div>
               )}
             </div>

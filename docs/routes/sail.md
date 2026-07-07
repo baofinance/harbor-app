@@ -1,22 +1,25 @@
 # Sail (`/sail`)
 
-Client index for variable-leverage Sail tokens: batched minter/oracle reads, subgraph PnL, manage modal, and Ledger Marks. **`?view=basic`** (UI−) shows title + leverage list only; full layout adds hero cards, user stats, subgraph banner, and Sail Marks bar — same **`isBasicPageLayout`** / nav toggle pattern as Genesis. **Route data:** [`useSailPageData`](../../src/hooks/useSailPageData.ts) (filters, PnL, marks, aggregates) + [`useSailContractReads`](../../src/hooks/useSailContractReads.ts) (wagmi batches, prices, deposits). **Detail route:** there is no `app/sail/[id]/page.tsx` yet — parity with [`genesis/[id]`](../../src/app/genesis/[id]/page.tsx) (claim/detail flows) is roadmap, not shipped here. See **[`docs/INDEX_PAGE_PATTERN.md`](../INDEX_PAGE_PATTERN.md)** for the full port checklist.
+Client index for variable-leverage Sail tokens: batched minter/oracle reads, subgraph PnL, manage modal, and Ledger Marks. **`?view=basic`** (UI−) shows title + basic card grid + manage modal; **UI+** (default) is a single-market dashboard: header dropdown, metrics | chart | Mint/Redeem panel, other-markets strip, and footer — default market is highest TVL; **`?market=<id>`** deep-links selection (e.g. from Flow). Same **`isBasicPageLayout`** / nav toggle pattern as Genesis. **Route data:** [`useSailPageData`](../../src/hooks/useSailPageData.ts) + [`useSailContractReads`](../../src/hooks/useSailContractReads.ts) + [`useSailSelectedMarket`](../../src/hooks/useSailSelectedMarket.ts). See **[`docs/INDEX_PAGE_PATTERN.md`](../INDEX_PAGE_PATTERN.md)** §3.3a.
 
-**UI modules:** [`src/components/sail/`](../../src/components/sail/) — `SailPageTitleSection`, `SailExtendedHero` (boost + `SailHeroIntroCards`), `SailUserStatsCards`, `SailMarksSubgraphErrorBanner`, `SailLedgerMarksBar`, **`SailMarketsToolbar`**, **`SailMarketsTableHeader`**, **`SailMarketsSections`** (toolbar + table body; see Genesis `GenesisMarketsSections`). Barrel: [`index.ts`](../../src/components/sail/index.ts).
+**UI modules:** [`src/components/sail/`](../../src/components/sail/) — **`SailAdvancedLayout`** ([`advanced/`](../../src/components/sail/advanced/)), basic cards grid (UI−), archived section. Barrel: [`index.ts`](../../src/components/sail/index.ts).
 
 **Audit extras (performance & polish):** batched `minter.config` + `rebalanceThreshold` reads (vs per-row `useContractRead`), O(1) market id → index map, `React.memo` on rows with stable callbacks, App Router `metadata` in `layout.tsx`, Genesis §7 radius parity (`rounded-md`), modal `onSuccess` refetch + React Query invalidation for subgraph PnL, optional `next/dynamic` for `PriceChart`. Shared long/short parsing lives in [`src/utils/marketSideLabels.ts`](../../src/utils/marketSideLabels.ts).
 
 ---
 
-## Architecture (page + table)
+## Architecture (UI+ dashboard)
 
 | Layer | Role |
 |-------|------|
-| [`page.tsx`](../../src/app/sail/page.tsx) | Layout, `useSailPageData`, filters, expanded-row state, `SailManageModal`, `SailMarketRow` list only (~250 lines). |
-| [`SailMarketRow`](../../src/components/sail/SailMarketRow.tsx) | One leverage row: mobile strip + desktop grid, fee tooltips, PnL hook, expanded panel. |
-| [`SailMarketExpandedView`](../../src/components/sail/SailMarketExpandedView.tsx) | Expanded block: copy, TVL, stats, `PriceChart` (dynamic). |
-| [`useSailContractReads`](../../src/hooks/useSailContractReads.ts) | `sailMarkets` tuples, batched reads, offsets, minter config maps, deposits. |
-| [`useSailPageData`](../../src/hooks/useSailPageData.ts) | Composes reads + filters + `filterSailActiveMarkets` + marks/PnL aggregates. |
+| [`page.tsx`](../../src/app/sail/page.tsx) | `useSailPageData`, `useSailSelectedMarket`, UI+ `SailAdvancedLayout` or UI− card grid + modal. |
+| [`SailAdvancedLayout`](../../src/components/sail/advanced/SailAdvancedLayout.tsx) | Header + dropdown, 3-col grid, other markets strip, footer. |
+| [`SailMarketActionPanel`](../../src/components/sail/advanced/SailMarketActionPanel.tsx) | Position summary + embedded `SailManageModal` (Mint \| Redeem). |
+| [`useSailSelectedMarket`](../../src/hooks/useSailSelectedMarket.ts) | Selected market id, max-TVL default, `?market=` sync. |
+| [`sailMarketMetrics.ts`](../../src/utils/sailMarketMetrics.ts) | TVL math, detail metrics, default-market picker. |
+| [`useSailContractReads`](../../src/hooks/useSailContractReads.ts) | Batched reads, offsets, minter config maps, deposits. |
+
+**Legacy table (still in repo for reference / basic tooling):** [`SailMarketRow`](../../src/components/sail/SailMarketRow.tsx), [`SailMarketExpandedView`](../../src/components/sail/SailMarketExpandedView.tsx) — no longer rendered on UI+ `/sail`.
 
 **Fee UI (extracted):**
 

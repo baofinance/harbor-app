@@ -47,7 +47,7 @@ export const AmountInputBlock = ({
           placeholder="0.0"
           className={
             inputClassName ||
-            `w-full rounded-md px-3 pr-20 py-2 bg-white text-[#1E4775] border ${
+            `w-full rounded-md px-3 pr-20 py-2 bg-white/85 backdrop-blur-sm text-[#1E4775] border ${
               error || exceedsBalance ? "border-red-500" : "border-[#1E4775]/30"
             } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`
           }

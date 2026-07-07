@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import "./globals.css";
 import ContextProvider from "@/contexts";
-import { PageLayoutPreferenceProvider } from "@/contexts/PageLayoutPreferenceContext";
 import { AppBackgroundProvider } from "@/contexts/AppBackgroundContext";
 import { headers } from "next/headers";
 import Navigation from "@/components/Navigation";
@@ -90,8 +89,7 @@ export default async function RootLayout({
  <div className="relative z-10 flex flex-1 flex-col min-h-0">
  <ContextProvider cookies={cookies}>
  <Suspense fallback={null}>
-            <PageLayoutPreferenceProvider>
-              <AppBackgroundProvider>
+            <AppBackgroundProvider>
                 <Navigation />
                 <FadeContent
                   blur={false}
@@ -103,7 +101,6 @@ export default async function RootLayout({
                   {children}
                 </FadeContent>
               </AppBackgroundProvider>
-            </PageLayoutPreferenceProvider>
  </Suspense>
  <footer className="mt-auto flex-shrink-0 border-t border-white/20">
    <div className="w-full max-w-[1300px] mx-auto px-4 sm:px-10 py-6">

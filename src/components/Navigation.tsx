@@ -1,6 +1,16 @@
 "use client";
 import { Suspense, useState } from "react";
 import {
+  HARBOR_NAV_DROPDOWN_ITEM_ACTIVE_CLASS,
+  HARBOR_NAV_DROPDOWN_ITEM_IDLE_CLASS,
+  HARBOR_NAV_ICON_BUTTON_CLASS,
+  HARBOR_NAV_LINK_ACTIVE_CLASS,
+  HARBOR_NAV_LINK_IDLE_CLASS,
+  HARBOR_NAV_MOBILE_LINK_IDLE_CLASS,
+  HARBOR_NAV_MOBILE_MENU_BUTTON_CLASS,
+  HARBOR_NAV_POPOVER_SHELL_CLASS,
+} from "@/components/shared/harborNavStyles";
+import {
   Disclosure,
   DisclosureButton,
   DisclosurePanel,
@@ -23,7 +33,8 @@ import { IMPERSONATION_ENABLED } from "@/config/impersonation";
 /** Desktop popover + mobile “More”: lower-traffic destinations only. */
 const MORE_NAV: ReadonlyArray<{ href: string; label: string }> = [
   { href: "/ledger-marks", label: "Leaderboard" },
-  { href: "/tide", label: "Tide" },
+  { href: "/hytoken", label: "Harbor Yield" },
+  { href: "/transparency", label: "Transparency" },
 ];
 
 export default function Example() {
@@ -40,10 +51,8 @@ export default function Example() {
   };
 
   const linkClass = (href: string) =>
-    `shrink-0 whitespace-nowrap rounded-md px-2 sm:px-2.5 py-2 text-sm font-medium ${
-      isActive(href)
-        ? "text-[#1E4775] bg-white"
-        : "text-white hover:bg-white/20 hover:text-white"
+    `shrink-0 whitespace-nowrap rounded-md px-2 py-2 text-sm font-medium transition-colors sm:px-2.5 ${
+      isActive(href) ? HARBOR_NAV_LINK_ACTIVE_CLASS : HARBOR_NAV_LINK_IDLE_CLASS
     }`;
 
   return (
@@ -63,137 +72,141 @@ export default function Example() {
     >
       {/* Match index pages: `max-w-[1300px]` + `px-4 sm:px-10` on main */}
       <div className="w-full px-4 sm:px-10">
-        <div className="flex h-16 items-center justify-between gap-3">
-          <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-5">
-            <a
-              href="https://harborfinance.io"
-              className="relative mr-0 h-10 w-auto shrink-0 sm:mr-0"
+        <div className="grid h-16 grid-cols-[auto_1fr_auto] items-center gap-x-3 sm:gap-x-5">
+          <a
+            href="https://harborfinance.io"
+            className="relative h-10 w-auto shrink-0"
+          >
+            <Image
+              src="/logo.svg"
+              alt="Logo"
+              width={100}
+              height={40}
+              className="object-contain h-full w-auto"
+              priority
+            />
+          </a>
+          <div className="hidden min-w-0 sm:flex sm:items-center sm:justify-center sm:gap-x-1.5 md:gap-x-2 lg:gap-x-3">
+            <Link
+              href="/anchor"
+              className={`${linkClass("/anchor")} flex shrink-0 items-center justify-center`}
+              aria-current={isActive("/anchor") ? "page" : undefined}
             >
-              <Image
-                src="/logo.svg"
-                alt="Logo"
-                width={100}
-                height={40}
-                className="object-contain h-full w-auto"
-                priority
-              />
-            </a>
-            <div className="hidden min-w-0 flex-1 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-1.5 sm:gap-y-1 md:gap-x-2 lg:gap-x-3">
-              <Link
-                href="/genesis"
-                className={`${linkClass("/genesis")} inline-flex min-w-0 shrink-0 items-center justify-center gap-1`}
-                aria-current={isActive("/genesis") ? "page" : undefined}
+              Earn
+            </Link>
+            <Link
+              href="/sail"
+              className={`${linkClass("/sail")} flex shrink-0 items-center justify-center`}
+              aria-current={isActive("/sail") ? "page" : undefined}
+            >
+              Leverage
+            </Link>
+            <span
+              aria-hidden="true"
+              className="mx-0.5 h-5 w-px shrink-0 bg-white/20"
+            />
+            <Link
+              href="/dashboard"
+              className={`${linkClass("/dashboard")} flex shrink-0 items-center justify-center`}
+              aria-current={isActive("/dashboard") ? "page" : undefined}
+            >
+              Dashboard
+            </Link>
+            <Link
+              href="/genesis"
+              className={`${linkClass("/genesis")} inline-flex min-w-0 shrink-0 items-center justify-center gap-1`}
+              aria-current={isActive("/genesis") ? "page" : undefined}
+            >
+              <span>Maiden Voyage</span>
+              <span
+                className={`shrink-0 rounded border px-1 py-0.5 text-[10px] font-bold leading-none font-mono ${
+                  isActive("/genesis")
+                    ? "border-[#1E4775]/25 bg-[#1E4775]/10 text-[#1E4775]"
+                    : "border-white/40 bg-white/10 text-white"
+                }`}
               >
-                <span>Maiden Voyage</span>
-                <span
-                  className={`shrink-0 rounded px-1 py-0.5 text-[10px] font-bold leading-none font-mono border ${
-                    isActive("/genesis")
-                      ? "border-[#1E4775]/30 bg-[#1E4775] text-white"
-                      : "border-white/40 bg-white/10 text-white"
-                  }`}
+                2.0
+              </span>
+            </Link>
+            <Link
+              href="/tide"
+              className={`${linkClass("/tide")} flex shrink-0 items-center justify-center`}
+              aria-current={isActive("/tide") ? "page" : undefined}
+            >
+              Tide
+            </Link>
+          </div>
+          <div className="flex items-center justify-end gap-2 lg:gap-3">
+            <div className="hidden items-center gap-2 sm:flex lg:gap-3">
+              <Suspense fallback={null}>
+                <PageLayoutToggle />
+              </Suspense>
+              <ConnectWallet />
+              <Popover className="relative">
+                <PopoverButton
+                  className={HARBOR_NAV_ICON_BUTTON_CLASS}
+                  aria-label="More navigation"
                 >
-                  2.0
-                </span>
-              </Link>
-              <Link
-                href="/anchor"
-                className={`${linkClass("/anchor")} flex shrink-0 items-center justify-center`}
-                aria-current={isActive("/anchor") ? "page" : undefined}
-              >
-                Earn
-              </Link>
-              <Link
-                href="/sail"
-                className={`${linkClass("/sail")} flex shrink-0 items-center justify-center`}
-                aria-current={isActive("/sail") ? "page" : undefined}
-              >
-                Leverage
-              </Link>
-              <Link
-                href="/hytoken"
-                className={`${linkClass("/hytoken")} flex shrink-0 items-center justify-center`}
-                aria-current={isActive("/hytoken") ? "page" : undefined}
-              >
-                The Hold
-              </Link>
-              <Link
-                href="/transparency"
-                className={`${linkClass("/transparency")} flex shrink-0 items-center justify-center`}
-                aria-current={isActive("/transparency") ? "page" : undefined}
-              >
-                Transparency
-              </Link>
-            </div>
-          </div>
-          <div className="hidden shrink-0 sm:flex sm:items-center sm:gap-2 lg:gap-3">
-            <Suspense fallback={null}>
-              <PageLayoutToggle />
-            </Suspense>
-            <ConnectWallet />
-            <Popover className="relative">
-              <PopoverButton
-                className="group relative inline-flex items-center justify-center rounded-md p-2 text-white hover:bg-white/20 focus:outline-2 focus:-outline-offset-1 focus:outline-white/40"
-                aria-label="More navigation"
-              >
-                <Bars3Icon aria-hidden="true" className="size-6" />
-              </PopoverButton>
-              <PopoverPanel
-                transition
-                anchor={{ to: "bottom end", gap: 8 }}
-                className="z-[100] w-56 origin-top-right rounded-lg bg-white py-1 shadow-lg ring-1 ring-black/5 outline-none transition data-closed:scale-95 data-closed:opacity-0"
-              >
-                {MORE_NAV.map(({ href, label }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={`block px-4 py-2.5 text-sm font-medium ${
-                      isActive(href)
-                        ? "bg-[#1E4775]/10 text-[#1E4775]"
-                        : "text-[#1E4775] hover:bg-gray-100"
-                    }`}
-                    aria-current={isActive(href) ? "page" : undefined}
-                  >
-                    {label}
-                  </Link>
-                ))}
-                {IMPERSONATION_ENABLED ? (
-                  <>
-                    <div className="my-1 border-t border-[#1E4775]/10" />
-                    <button
-                      type="button"
-                      onClick={() => setImpersonateOpen(true)}
-                      className={`block w-full px-4 py-2.5 text-left text-sm font-medium ${
-                        isImpersonating
-                          ? "bg-[#FF8A7A]/10 text-[#1E4775]"
-                          : "text-[#1E4775] hover:bg-gray-100"
+                  <Bars3Icon aria-hidden="true" className="size-6" />
+                </PopoverButton>
+                <PopoverPanel
+                  transition
+                  anchor={{ to: "bottom end", gap: 8 }}
+                  className={`z-[100] w-56 origin-top-right overflow-hidden rounded-lg py-1 outline-none transition data-closed:scale-95 data-closed:opacity-0 ${HARBOR_NAV_POPOVER_SHELL_CLASS}`}
+                >
+                  {MORE_NAV.map(({ href, label }) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
+                        isActive(href)
+                          ? HARBOR_NAV_DROPDOWN_ITEM_ACTIVE_CLASS
+                          : HARBOR_NAV_DROPDOWN_ITEM_IDLE_CLASS
                       }`}
+                      aria-current={isActive(href) ? "page" : undefined}
                     >
-                      Impersonate
-                      {isImpersonating ? (
-                        <span className="ml-1 text-xs font-normal text-[#1E4775]/60">
-                          (active)
-                        </span>
-                      ) : null}
-                    </button>
-                  </>
-                ) : null}
-              </PopoverPanel>
-            </Popover>
-          </div>
-          <div className="-mr-2 flex sm:hidden">
-            {/* Mobile menu button */}
-            <DisclosureButton className="group relative inline-flex items-center justify-center p-2 text-gray-200 hover:bg-[#FF8A7A]/20 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-[#FF8A7A]">
-              <span className="absolute -inset-0.5" />
-              <span className="sr-only">Open main menu</span>
-              <Bars3Icon
-                aria-hidden="true"
-                className="block size-6 group-data-open:hidden"
-              />
-              <XMarkIcon
-                aria-hidden="true"
-                className="hidden size-6 group-data-open:block"
-              />
-            </DisclosureButton>
+                      {label}
+                    </Link>
+                  ))}
+                  {IMPERSONATION_ENABLED ? (
+                    <>
+                      <div className="my-1 border-t border-[#1E4775]/10" />
+                      <button
+                        type="button"
+                        onClick={() => setImpersonateOpen(true)}
+                        className={`block w-full px-4 py-2.5 text-left text-sm font-medium transition-colors ${
+                          isImpersonating
+                            ? HARBOR_NAV_DROPDOWN_ITEM_ACTIVE_CLASS
+                            : HARBOR_NAV_DROPDOWN_ITEM_IDLE_CLASS
+                        }`}
+                      >
+                        Impersonate
+                        {isImpersonating ? (
+                          <span className="ml-1 text-xs font-normal text-[#1E4775]/60">
+                            (active)
+                          </span>
+                        ) : null}
+                      </button>
+                    </>
+                  ) : null}
+                </PopoverPanel>
+              </Popover>
+            </div>
+            <div className="-mr-2 flex sm:hidden">
+              {/* Mobile menu button */}
+              <DisclosureButton className={`group relative inline-flex items-center justify-center ${HARBOR_NAV_MOBILE_MENU_BUTTON_CLASS}`}>
+                <span className="absolute -inset-0.5" />
+                <span className="sr-only">Open main menu</span>
+                <Bars3Icon
+                  aria-hidden="true"
+                  className="block size-6 group-data-open:hidden"
+                />
+                <XMarkIcon
+                  aria-hidden="true"
+                  className="hidden size-6 group-data-open:block"
+                />
+              </DisclosureButton>
+            </div>
           </div>
         </div>
       </div>
@@ -201,7 +214,7 @@ export default function Example() {
       <DisclosurePanel className={`sm:hidden fixed inset-0 z-50 ${navBgClass} overflow-y-auto`} style={{ height: '100dvh', maxHeight: '100dvh' }}>
         <div className="flex flex-col min-h-full px-6 py-4 pb-24 space-y-2">
           <div className="flex justify-end mb-2 flex-shrink-0">
-            <DisclosureButton className="inline-flex items-center justify-center p-2 text-gray-200 hover:bg-[#FF8A7A]/20 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-[#FF8A7A] rounded-full">
+            <DisclosureButton className={`inline-flex items-center justify-center rounded-full ${HARBOR_NAV_MOBILE_MENU_BUTTON_CLASS}`}>
               <span className="sr-only">Close main menu</span>
               <XMarkIcon
                 aria-hidden="true"
@@ -218,34 +231,11 @@ export default function Example() {
           <div className="flex flex-col w-full items-stretch justify-center space-y-2.5 py-2">
             <DisclosureButton
               as={Link}
-              href="/genesis"
-              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
-                isActive("/genesis")
-                  ? "text-[#1E4775] bg-white"
-                  : "text-white bg-white/10 hover:bg-white/20"
-              }`}
-              aria-current={isActive("/genesis") ? "page" : undefined}
-            >
-              <span className="inline-flex items-center justify-center gap-2">
-                <span>Maiden Voyage</span>
-                <span
-                  className={`rounded px-1.5 py-0.5 text-xs font-bold font-mono border ${
-                    isActive("/genesis")
-                      ? "border-[#1E4775]/30 bg-[#1E4775] text-white"
-                      : "border-white/40 bg-white/10 text-white"
-                  }`}
-                >
-                  2.0
-                </span>
-              </span>
-            </DisclosureButton>
-            <DisclosureButton
-              as={Link}
               href="/anchor"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/anchor")
-                  ? "text-[#1E4775] bg-white"
-                  : "text-white bg-white/10 hover:bg-white/20"
+                  ? HARBOR_NAV_LINK_ACTIVE_CLASS
+                  : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
               }`}
               aria-current={isActive("/anchor") ? "page" : undefined}
             >
@@ -256,36 +246,60 @@ export default function Example() {
               href="/sail"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/sail")
-                  ? "text-[#1E4775] bg-white"
-                  : "text-white bg-white/10 hover:bg-white/20"
+                  ? HARBOR_NAV_LINK_ACTIVE_CLASS
+                  : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
               }`}
               aria-current={isActive("/sail") ? "page" : undefined}
             >
               Leverage
             </DisclosureButton>
+            <div className="my-1 w-full max-w-sm mx-auto border-t border-white/15" />
             <DisclosureButton
               as={Link}
-              href="/hytoken"
+              href="/dashboard"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
-                isActive("/hytoken")
-                  ? "text-[#1E4775] bg-white"
-                  : "text-white bg-white/10 hover:bg-white/20"
+                isActive("/dashboard")
+                  ? HARBOR_NAV_LINK_ACTIVE_CLASS
+                  : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
               }`}
-              aria-current={isActive("/hytoken") ? "page" : undefined}
+              aria-current={isActive("/dashboard") ? "page" : undefined}
             >
-              The Hold
+              Dashboard
             </DisclosureButton>
             <DisclosureButton
               as={Link}
-              href="/transparency"
+              href="/genesis"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
-                isActive("/transparency")
-                  ? "text-[#1E4775] bg-white"
-                  : "text-white bg-white/10 hover:bg-white/20"
+                isActive("/genesis")
+                  ? HARBOR_NAV_LINK_ACTIVE_CLASS
+                  : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
               }`}
-              aria-current={isActive("/transparency") ? "page" : undefined}
+              aria-current={isActive("/genesis") ? "page" : undefined}
             >
-              Transparency
+              <span className="inline-flex items-center justify-center gap-2">
+                <span>Maiden Voyage</span>
+                <span
+                  className={`rounded border px-1.5 py-0.5 text-xs font-bold font-mono ${
+                    isActive("/genesis")
+                      ? "border-[#1E4775]/25 bg-[#1E4775]/10 text-[#1E4775]"
+                      : "border-white/40 bg-white/10 text-white"
+                  }`}
+                >
+                  2.0
+                </span>
+              </span>
+            </DisclosureButton>
+            <DisclosureButton
+              as={Link}
+              href="/tide"
+              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+                isActive("/tide")
+                  ? HARBOR_NAV_LINK_ACTIVE_CLASS
+                  : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
+              }`}
+              aria-current={isActive("/tide") ? "page" : undefined}
+            >
+              Tide
             </DisclosureButton>
             <div className="mt-6 w-full max-w-sm mx-auto border-t border-white/20 pt-6">
               <p className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-white/50">
@@ -299,8 +313,8 @@ export default function Example() {
                     href={href}
                     className={`block w-full px-6 py-3.5 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                       isActive(href)
-                        ? "text-[#1E4775] bg-white"
-                        : "text-white bg-white/10 hover:bg-white/20"
+                        ? HARBOR_NAV_LINK_ACTIVE_CLASS
+                        : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
                     }`}
                     aria-current={isActive(href) ? "page" : undefined}
                   >
@@ -314,8 +328,8 @@ export default function Example() {
                     onClick={() => setImpersonateOpen(true)}
                     className={`block w-full px-6 py-3.5 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                       isImpersonating
-                        ? "text-[#1E4775] bg-[#FF8A7A]/30"
-                        : "text-white bg-white/10 hover:bg-white/20"
+                        ? HARBOR_NAV_LINK_ACTIVE_CLASS
+                        : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
                     }`}
                   >
                     Impersonate

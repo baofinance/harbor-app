@@ -55,7 +55,7 @@ export function GenesisVoyageBenefitsWithLayout({
           {BENEFITS.map(({ title, description, icon: Icon }) => (
             <li key={title} className="flex items-start gap-2.5">
               <span className={MV_ICON_BADGE_SM}>
-                <Icon className="h-4 w-4" aria-hidden />
+                <Icon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div>
                 <p className="text-sm font-semibold text-white/90">{title}</p>
@@ -76,7 +76,7 @@ export function GenesisVoyageBenefitsWithLayout({
           {BENEFITS.map(({ title, description, icon: Icon }) => (
             <li key={title} className="flex items-start gap-2.5">
               <span className={MV_ICON_BADGE_SM}>
-                <Icon className="h-4 w-4" aria-hidden />
+                <Icon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div>
                 <p className="text-sm font-semibold text-white/90">{title}</p>
@@ -99,7 +99,7 @@ export function GenesisVoyageBenefitsWithLayout({
             className="flex flex-col items-center text-center"
           >
             <span className={MV_ICON_BADGE}>
-              <Icon className="h-5 w-5" aria-hidden />
+              <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             </span>
             <p className="mt-2 text-sm font-semibold text-white/90">{title}</p>
             <p className={`mt-0.5 ${MV_CAPTION_TEXT}`}>{description}</p>

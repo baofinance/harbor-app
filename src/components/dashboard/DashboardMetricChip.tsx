@@ -1,42 +1,41 @@
 "use client";
 
+import { HarborStatTile } from "@/components/shared/HarborStatTile";
 import {
-  DASHBOARD_METRIC_CHIP_CLASS,
-  DASHBOARD_METRIC_CHIP_INLINE_CLASS,
-  DASHBOARD_METRIC_CHIP_LABEL_CLASS,
-  DASHBOARD_METRIC_CHIP_VALUE_CLASS,
-} from "./dashboardStyles";
+  HARBOR_STAT_TILE_GLASS_CHIP_LABEL_CLASS,
+  HARBOR_STAT_TILE_GLASS_CHIP_VALUE_CLASS,
+} from "@/components/shared/harborStatTileStyles";
 
 export type DashboardMetricChipProps = {
   label: string;
   value: string;
   valueClassName?: string;
-  /** Compact chips for the section header row beside the title. */
+  /** Compact chips for the page-level stat strip. */
   inline?: boolean;
 };
 
 export function DashboardMetricChip({
   label,
   value,
-  valueClassName = DASHBOARD_METRIC_CHIP_VALUE_CLASS,
+  valueClassName = HARBOR_STAT_TILE_GLASS_CHIP_VALUE_CLASS,
   inline = false,
 }: DashboardMetricChipProps) {
-  const shellClass = inline ? DASHBOARD_METRIC_CHIP_INLINE_CLASS : DASHBOARD_METRIC_CHIP_CLASS;
-
   return (
-    <div className={shellClass}>
+    <HarborStatTile variant={inline ? "glassChipInline" : "glassChip"}>
       <p
-        className={`w-full ${DASHBOARD_METRIC_CHIP_LABEL_CLASS} ${
-          inline ? "text-[9px] sm:text-[10px]" : "text-[10px]"
+        className={`w-full ${HARBOR_STAT_TILE_GLASS_CHIP_LABEL_CLASS} ${
+          inline ? "text-xs md:text-[11px] lg:text-xs xl:text-sm" : "text-sm"
         }`}
       >
         {label}
       </p>
       <p
-        className={`mt-1 w-full truncate font-mono tabular-nums text-sm font-semibold ${valueClassName}`}
+        className={`mt-0.5 w-full truncate font-mono tabular-nums font-semibold ${valueClassName} ${
+          inline ? "text-sm md:text-xs lg:text-sm xl:text-base" : ""
+        }`}
       >
         {value}
       </p>
-    </div>
+    </HarborStatTile>
   );
 }

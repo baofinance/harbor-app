@@ -45,7 +45,7 @@ export function CompactTransactionProgressRail({
   const currentErr = cur?.status === "error";
   const currentDone = cur?.status === "completed";
 
-  let centerClass = "border-[#1E4775]/30 bg-white";
+  let centerClass = "border-[#1E4775]/30 bg-white/90 backdrop-blur-sm";
   let centerInner: React.ReactNode = null;
 
   if (currentErr) {
@@ -63,7 +63,7 @@ export function CompactTransactionProgressRail({
       </span>
     );
   } else if (cur?.status === "pending") {
-    centerClass = "border-[#1E4775]/30 bg-white";
+    centerClass = "border-[#1E4775]/30 bg-white/90 backdrop-blur-sm";
     centerInner = (
       <span className="absolute inset-0 flex items-center justify-center">
         <span className="h-1.5 w-1.5 rounded-full bg-[#1E4775]/40" />
@@ -73,11 +73,11 @@ export function CompactTransactionProgressRail({
 
   const startClass = chainStarted
     ? "border-green-500 bg-green-500"
-    : "border-[#1E4775]/30 bg-white";
+    : "border-[#1E4775]/30 bg-white/90 backdrop-blur-sm";
 
   const endClass = allDone
     ? "border-green-500 bg-green-500"
-    : "border-[#1E4775]/30 bg-white";
+    : "border-[#1E4775]/30 bg-white/90 backdrop-blur-sm";
 
   const solidLineClass = chainStarted ? "bg-green-500" : "bg-[#1E4775]/20";
 

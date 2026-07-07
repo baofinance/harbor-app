@@ -2,6 +2,8 @@ import {
   BASIC_MARKET_DIRECTION_LONG_CHIP_CLASS,
   BASIC_MARKET_DIRECTION_SHORT_CHIP_CLASS,
 } from "@/components/market-cards/harborBasicMarketTokens";
+import { HARBOR_FROSTED_LIGHT_CARD_ELEVATED, HARBOR_FROSTED_LIGHT_ICON_BADGE_BASE } from "@/components/shared/harborFrostedSurfaceStyles";
+import { HARBOR_BTN_GLASS_CORAL_DARK } from "@/components/shared/harborButtonStyles";
 
 /** Shared Maiden Voyage 2.0 landing layout tokens (dark campaign theme). */
 
@@ -45,8 +47,24 @@ export const MV_STATS_BAND =
   "border-y border-white/[0.08] bg-[#0a1929]/40 backdrop-blur-lg";
 
 /** Active voyage card stage strip — darker inset at card bottom. */
+export const MV_FOOTER_PANEL_SURFACE =
+  "border-white/[0.08] bg-[#0a1929]/55 backdrop-blur-md";
+
 export const MV_FOOTER_PANEL =
-  "border-t border-white/[0.08] bg-[#0a1929]/55 backdrop-blur-md";
+  `border-t ${MV_FOOTER_PANEL_SURFACE}`;
+
+/** Coming soon preview — frosted veil over the active voyage card (dark theme). */
+export const MV_COMING_SOON_VEIL_CLASS =
+  "pointer-events-none absolute inset-0 z-[1] rounded-[inherit] bg-[#0a1628]/55 backdrop-blur-[2px]";
+
+export const MV_COMING_SOON_OVERLAY_CLASS =
+  "absolute inset-0 z-[2] flex cursor-not-allowed items-center justify-center";
+
+export const MV_COMING_SOON_LABEL_CLASS =
+  "rounded-full border border-white/20 bg-[#0a1628]/85 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-white/90 shadow-lg backdrop-blur-sm";
+
+export const MV_COMING_SOON_CONTENT_DIM_CLASS =
+  "relative z-0 flex min-h-0 flex-1 flex-col saturate-[0.78] brightness-[0.88]";
 
 export const MV_MUTED_TEXT = "text-white/75";
 
@@ -106,8 +124,7 @@ export const MV_PROGRESS_FILL =
 export const MV_PROGRESS_FILL_COMPLETE =
   "h-full rounded-full bg-[#4A9784] transition-[width]";
 
-export const MV_PRIMARY_CTA =
-  "w-full rounded-xl bg-gradient-to-r from-[#FF8A7A] to-[#ffb4a8] px-4 py-3 text-sm font-semibold text-[#1a0f0d] shadow-[0_8px_24px_-12px_rgba(255,138,122,0.65)] transition hover:brightness-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8A7A]/40 disabled:cursor-not-allowed disabled:opacity-45";
+export const MV_PRIMARY_CTA = `w-full rounded-xl px-4 py-3 text-sm ${HARBOR_BTN_GLASS_CORAL_DARK}`;
 
 export const MV_OUTLINE_BUTTON =
   "inline-flex items-center gap-1.5 rounded-full border border-white/22 bg-white/[0.06] px-4 py-2 text-sm font-semibold text-white/90 backdrop-blur-sm transition hover:border-white/35 hover:bg-white/[0.1]";
@@ -129,16 +146,29 @@ export const MV_ARCHIVED_PILL = `${MV_LIFECYCLE_PILL_BASE} ${BASIC_MARKET_DIRECT
 /** Uniform vertical gap between right-rail cards (steps, why join, rewards). */
 export const MV_SIDEBAR_STACK = "flex flex-col gap-4 lg:gap-6";
 
-/** Step icon circles (Deposit, Market Launch, Claim & Earn). */
-export const MV_ICON_BADGE =
-  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[#0a1929]/55 text-[#FF8A7A] backdrop-blur-md";
+/** Icon badge shells — match TIDE feature cards and flywheel (dashboard product tokens). */
+const MV_ICON_BADGE_BASE =
+  "flex shrink-0 items-center justify-center rounded-full border bg-[#0a1929]/55 backdrop-blur-md";
 
-export const MV_ICON_BADGE_LG =
-  "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[#0a1929]/55 text-[#FF8A7A] backdrop-blur-md";
+/** Primary MV coral badge (TIDE `DASHBOARD_PRODUCT_ICON_MV_CLASS`). */
+export const MV_ICON_BADGE = `${MV_ICON_BADGE_BASE} h-8 w-8 border-harbor-coral/25 text-harbor-coral`;
+
+/** Step / header icons — flywheel-sized shell (TIDE `TIDE_FLYWHEEL_ICON_BADGE` dimensions, MV coral). */
+export const MV_ICON_BADGE_LG = `${MV_ICON_BADGE_BASE} h-9 w-9 border-harbor-coral/25 text-harbor-coral`;
 
 /** Compact list-row benefit icons (What you receive). */
-export const MV_ICON_BADGE_SM =
-  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[#0a1929]/55 text-[#FF8A7A] backdrop-blur-md";
+export const MV_ICON_BADGE_SM = `${MV_ICON_BADGE_BASE} h-7 w-7 border-harbor-coral/25 text-harbor-coral`;
+
+/** Earn / checklist badges (TIDE `DASHBOARD_PRODUCT_ICON_EARN_CLASS`). */
+export const MV_ICON_BADGE_EARN = `${MV_ICON_BADGE_BASE} h-8 w-8 border-harbor-mint/25 bg-harbor-mint/8 text-harbor-mint`;
+
+export const MV_ICON_BADGE_EARN_SM = `${MV_ICON_BADGE_BASE} h-7 w-7 border-harbor-mint/25 bg-harbor-mint/8 text-harbor-mint`;
+
+/** Neutral footer / explainer badges (TIDE archived tone). */
+export const MV_ICON_BADGE_NEUTRAL = `${MV_ICON_BADGE_BASE} h-8 w-8 border-white/10 text-white/40`;
+
+/** Benchmark card icon shell — light frosted tile (Tide flywheel style). */
+export const MV_ICON_BADGE_BENCHMARK = `${HARBOR_FROSTED_LIGHT_ICON_BADGE_BASE} h-8 w-8 sm:h-9 sm:w-9`;
 
 export const MV_DETAILS_PANEL = MV_POSITION_ROW;
 
@@ -153,13 +183,117 @@ export const MV_EXPLORER_TABS =
   "inline-flex rounded-full border border-white/12 bg-white/[0.08] p-0.5 backdrop-blur-md";
 
 export const MV_EXPLORER_TAB_ACTIVE =
-  "rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#1E4775]";
+  "rounded-full bg-white/90 backdrop-blur-sm px-3 py-1.5 text-xs font-semibold text-[#1E4775] shadow-sm";
 
 export const MV_EXPLORER_TAB_INACTIVE =
   "rounded-full px-3 py-1.5 text-xs font-semibold text-white/55 transition hover:text-white/80";
 
 export const MV_UPCOMING_BADGE =
   "inline-flex items-center rounded-full border border-[#5B8FD4]/40 bg-[#5B8FD4]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#9EC5F5]";
+
+/** Explore the Upside — ownership focal panel glow. */
+export const MV_UPSIDE_OWNERSHIP_GLOW =
+  "shadow-[0_0_40px_-12px_rgba(255,138,122,0.35)]";
+
+/** Explore the Upside — elevated ownership shell (horizontal bar). */
+export const MV_UPSIDE_OWNERSHIP_PANEL =
+  "relative overflow-hidden rounded-xl border border-[#FF8A7A]/25 bg-gradient-to-r from-[#FF8A7A]/[0.06] via-[#122a47]/55 to-[#0a1929]/40 backdrop-blur-md";
+
+/** Ownership bar sparkle icon tile. */
+export const MV_UPSIDE_OWNERSHIP_ICON = MV_ICON_BADGE_LG;
+
+/** White frosted shell for upside benchmark tiles. */
+export const MV_UPSIDE_LIGHT_CARD_SHELL = HARBOR_FROSTED_LIGHT_CARD_ELEVATED;
+
+/** Deposit row shell — dark stat tile glass (Explore the Upside). */
+export const MV_UPSIDE_DEPOSIT_PANEL = `${MV_STAT_TILE} px-3 py-3 sm:px-4 sm:py-4`;
+
+/** Labels on dark upside deposit panel. */
+export const MV_UPSIDE_DEPOSIT_LABEL = MV_SECTION_LABEL;
+
+/** Labels on white upside benchmark cards. */
+export const MV_UPSIDE_LIGHT_LABEL =
+  "text-xs font-medium tracking-wide text-[#1E4775]/65";
+
+/** Growth-stage benchmark themes (Launch / Growth / Scale) — light card variants. */
+export const MV_UPSIDE_STAGE_LAUNCH = {
+  badge:
+    "border-[#4A9784]/40 bg-[#4A9784]/12 text-[#2d6b5c]",
+  earnings: "text-[#2d6b5c]",
+  icon: "border-[#4A9784]/25 text-[#4A9784]",
+  iconBenchmark: "border-[#4A9784]/25 text-[#4A9784]",
+  hover: "hover:border-[#4A9784]/30",
+  accentBar: "border-l-[3px] border-l-[#4A9784]",
+} as const;
+
+export const MV_UPSIDE_STAGE_GROWTH = {
+  badge:
+    "border-[#7C3AED]/35 bg-[#7C3AED]/10 text-[#5b21b6]",
+  earnings: "text-[#5b21b6]",
+  icon: "border-harbor-purple/25 text-harbor-purple",
+  iconBenchmark: "border-harbor-purple/25 text-harbor-purple",
+  hover: "hover:border-[#7C3AED]/30",
+  accentBar: "border-l-[3px] border-l-[#7C3AED]",
+} as const;
+
+export const MV_UPSIDE_STAGE_SCALE = {
+  badge:
+    "border-[#1E4775]/30 bg-[#1E4775]/8 text-[#1E4775]",
+  earnings: "text-[#1E4775]",
+  icon: "border-harbor-blue/25 text-harbor-blue",
+  iconBenchmark: "border-harbor-blue/25 text-harbor-blue",
+  hover: "hover:border-[#5B8FD4]/30",
+  accentBar: "border-l-[3px] border-l-[#5B8FD4]",
+} as const;
+
+export type UpsideGrowthStageId = "launch" | "growth" | "scale";
+
+export const MV_UPSIDE_STAGE_BY_ID: Record<
+  UpsideGrowthStageId,
+  typeof MV_UPSIDE_STAGE_LAUNCH
+> = {
+  launch: MV_UPSIDE_STAGE_LAUNCH,
+  growth: MV_UPSIDE_STAGE_GROWTH,
+  scale: MV_UPSIDE_STAGE_SCALE,
+};
+
+/** Explainer footer icon tile. */
+export const MV_UPSIDE_EXPLAINER_ICON = MV_ICON_BADGE_NEUTRAL;
+
+/** Revenue share % — same accent gradient as hero headlines. */
+export const MV_UPSIDE_OWNERSHIP_TEXT = MV_ACCENT_GRADIENT;
+
+/** Potential earnings estimates in benchmark cards. */
+export const MV_UPSIDE_EARNINGS_TEXT = "text-[#B8EBD5]";
+
+/** TVL, revenue range, and other tertiary upside metadata. */
+export const MV_UPSIDE_NEUTRAL_META =
+  "text-[10px] font-medium uppercase tracking-wide text-white/45";
+
+/** Deposit input focus — ties deposit row to ownership panel. */
+export const MV_UPSIDE_DEPOSIT_INPUT_FOCUS =
+  "focus:border-[#FF8A7A]/30 focus:ring-[#FF8A7A]/20";
+
+/** Quick-select deposit preset chips. */
+export const MV_UPSIDE_DEPOSIT_CHIP =
+  "shrink-0 rounded-lg border border-white/12 bg-white/[0.04] px-2 py-1 text-[11px] font-semibold tabular-nums text-white/75 transition-colors hover:border-[#FF8A7A]/30 hover:bg-[#FF8A7A]/[0.08] hover:text-white/90";
+
+export const MV_UPSIDE_DEPOSIT_CHIP_ACTIVE =
+  "border-[#FF8A7A]/45 bg-[#FF8A7A]/[0.14] text-white shadow-[0_0_16px_-8px_rgba(255,138,122,0.45)]";
+
+/** Brief highlight when ownership recalculates. */
+export const MV_UPSIDE_OWNERSHIP_FLASH =
+  "ring-1 ring-[#FF8A7A]/40 shadow-[0_0_48px_-10px_rgba(255,138,122,0.45)]";
+
+/** Benchmark outcome tiles — white frosted glass (matches Your deposit row). */
+export const MV_UPSIDE_BENCHMARK_TILE = `${MV_UPSIDE_LIGHT_CARD_SHELL} transition-all duration-200 hover:-translate-y-px hover:shadow-md`;
+
+export const MV_UPSIDE_BENCHMARK_TILE_UPDATED =
+  "ring-1 ring-harbor-mint/30 shadow-[0_0_24px_-12px_rgba(74,151,132,0.45)]";
+
+/** Final growth-stage benchmark tile accent. */
+export const MV_UPSIDE_BENCHMARK_TILE_DESTINATION =
+  "border-[#B8EBD5]/15";
 
 /** Frosted veil over preview maiden voyage deposit cards (`genesisActive: "soon"`). */
 export const MV_PREVIEW_SOON_VEIL_CLASS =

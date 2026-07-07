@@ -1,3 +1,20 @@
+import { markets } from "@/config/markets";
+
+export function chainFromMarketId(marketId?: string): {
+  chainName: string;
+  chainLogo: string;
+} {
+  const m = marketId
+    ? (markets as Record<string, { chain?: { name?: string; logo?: string } }>)[
+        marketId
+      ]
+    : undefined;
+  return {
+    chainName: m?.chain?.name ?? "Ethereum",
+    chainLogo: m?.chain?.logo ?? "icons/eth.png",
+  };
+}
+
 /** Fallback when market config does not expose a token symbol. */
 export function iconSymbolFromMarketLabel(marketLabel: string): string {
   const trimmed = marketLabel.trim();

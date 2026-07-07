@@ -1,0 +1,464 @@
+{
+  "contract": "0xa21136acd34cbbc2b795da091de6a254ba1f6b40",
+  "chainId": 1,
+  "totalDepositedWei": "121939764308",
+  "totalDepositedUSDC": "121939.764308",
+  "fetchedAt": "2026-06-25T22:40:01.924Z",
+  "requestedEntryCount": 46,
+  "uniqueAddressCount": 35,
+  "entries": [
+    {
+      "index": 1,
+      "address": "0xb957DccaA1CCFB1eB78B495B499801D591d8a403",
+      "depositWei": "0",
+      "depositUSDC": "0"
+    },
+    {
+      "index": 2,
+      "address": "0xb957DccaA1CCFB1eB78B495B499801D591d8a403",
+      "depositWei": "0",
+      "depositUSDC": "0"
+    },
+    {
+      "index": 3,
+      "address": "0x64B7fcC8C17540139BDd84d00c7261035602Cb66",
+      "depositWei": "0",
+      "depositUSDC": "0"
+    },
+    {
+      "index": 4,
+      "address": "0x4Bb7fba588B4254536DE4316e8FB346bbe275EcB",
+      "depositWei": "10000214017",
+      "depositUSDC": "10000.214017"
+    },
+    {
+      "index": 5,
+      "address": "0x4Bb7fba588B4254536DE4316e8FB346bbe275EcB",
+      "depositWei": "10000214017",
+      "depositUSDC": "10000.214017"
+    },
+    {
+      "index": 6,
+      "address": "0x2cCB1Cb25695aF8F4FF38352C2696A0Af8297D01",
+      "depositWei": "10000000000",
+      "depositUSDC": "10000"
+    },
+    {
+      "index": 7,
+      "address": "0xb85083177705EBB1a9d5719F51ABc4ddE8526137",
+      "depositWei": "161610541",
+      "depositUSDC": "161.610541"
+    },
+    {
+      "index": 8,
+      "address": "0x192e29C7E4333F98373cD3e3679625Cf8Fe654BB",
+      "depositWei": "300000000",
+      "depositUSDC": "300"
+    },
+    {
+      "index": 9,
+      "address": "0xA01Ad5f0b5C521266d1dd3f926dA92f2CD9661e2",
+      "depositWei": "500000000",
+      "depositUSDC": "500"
+    },
+    {
+      "index": 10,
+      "address": "0xA01Ad5f0b5C521266d1dd3f926dA92f2CD9661e2",
+      "depositWei": "500000000",
+      "depositUSDC": "500"
+    },
+    {
+      "index": 11,
+      "address": "0x68863699Ae0BE79DB4591F38295672D1bc6f5112",
+      "depositWei": "715088373",
+      "depositUSDC": "715.088373"
+    },
+    {
+      "index": 12,
+      "address": "0xb9ab9578a34a05c86124c399735fdE44dEc80E7F",
+      "depositWei": "10110000000",
+      "depositUSDC": "10110"
+    },
+    {
+      "index": 13,
+      "address": "0x56887fb677FF722297b32180f8c305918BE47f1E",
+      "depositWei": "261933785",
+      "depositUSDC": "261.933785"
+    },
+    {
+      "index": 14,
+      "address": "0x4abF2d9b5c48D740bA439Ab6329699888f182B71",
+      "depositWei": "1451179700",
+      "depositUSDC": "1451.1797"
+    },
+    {
+      "index": 15,
+      "address": "0x40e7573575eD2eB406c94ADd635659309dC50065",
+      "depositWei": "99593497",
+      "depositUSDC": "99.593497"
+    },
+    {
+      "index": 16,
+      "address": "0xA60AAdf62907bF06Dd714781d44Bbd4C2d783259",
+      "depositWei": "1476000000",
+      "depositUSDC": "1476"
+    },
+    {
+      "index": 17,
+      "address": "0xb9ab9578a34a05c86124c399735fdE44dEc80E7F",
+      "depositWei": "10110000000",
+      "depositUSDC": "10110"
+    },
+    {
+      "index": 18,
+      "address": "0xDa95dD702845FA6Ca2192EF5C4EA6A523375BF52",
+      "depositWei": "811582282",
+      "depositUSDC": "811.582282"
+    },
+    {
+      "index": 19,
+      "address": "0x3e04F61A589210DbDfCDaa77ede41bAC9AF137Bd",
+      "depositWei": "1000000000",
+      "depositUSDC": "1000"
+    },
+    {
+      "index": 20,
+      "address": "0xA01Ad5f0b5C521266d1dd3f926dA92f2CD9661e2",
+      "depositWei": "500000000",
+      "depositUSDC": "500"
+    },
+    {
+      "index": 21,
+      "address": "0x955c8206361F77b78A4A74555761Da1Fd770e801",
+      "depositWei": "9052000000",
+      "depositUSDC": "9052"
+    },
+    {
+      "index": 22,
+      "address": "0x80350a8fBCd9B95c5EfAB7da4286f125ceD0167e",
+      "depositWei": "9051000000",
+      "depositUSDC": "9051"
+    },
+    {
+      "index": 23,
+      "address": "0xBf4070B1aCE411f5c2ce76F688C39966E19E6A9e",
+      "depositWei": "597000000",
+      "depositUSDC": "597"
+    },
+    {
+      "index": 24,
+      "address": "0x2c86d7a672D3298A3f89116DD73757D969C71956",
+      "depositWei": "9166000006",
+      "depositUSDC": "9166.000006"
+    },
+    {
+      "index": 25,
+      "address": "0xE81003515B5c537Cd4EE57A41dbEcF01FF429135",
+      "depositWei": "10514000000",
+      "depositUSDC": "10514"
+    },
+    {
+      "index": 26,
+      "address": "0x68863699Ae0BE79DB4591F38295672D1bc6f5112",
+      "depositWei": "715088373",
+      "depositUSDC": "715.088373"
+    },
+    {
+      "index": 27,
+      "address": "0x98D37196230E61b45784cfDcfb7ffD4dAAAf0e7c",
+      "depositWei": "243249378",
+      "depositUSDC": "243.249378"
+    },
+    {
+      "index": 28,
+      "address": "0xEE517179cef2e52aF9D52667C7C9a43a5093F775",
+      "depositWei": "10493000000",
+      "depositUSDC": "10493"
+    },
+    {
+      "index": 29,
+      "address": "0xc52fD3cD06D41020F91C31f84519247D06AC8598",
+      "depositWei": "9057000000",
+      "depositUSDC": "9057"
+    },
+    {
+      "index": 30,
+      "address": "0x787A7dA17544bCc3a0FebCd2c24C831ea55ae83f",
+      "depositWei": "9183000000",
+      "depositUSDC": "9183"
+    },
+    {
+      "index": 31,
+      "address": "0xc240Df49A7550C781ED935BC5898448aedAa33dC",
+      "depositWei": "13458000000",
+      "depositUSDC": "13458"
+    },
+    {
+      "index": 32,
+      "address": "0xEd821545E7A8719813736620B0017Fd6BA6A9C5a",
+      "depositWei": "97093759",
+      "depositUSDC": "97.093759"
+    },
+    {
+      "index": 33,
+      "address": "0x82b8b659A4A98f69cB7899e1A07089EA3B90a894",
+      "depositWei": "1063872826",
+      "depositUSDC": "1063.872826"
+    },
+    {
+      "index": 34,
+      "address": "0x2f5E08Ef5A99a98336519E54F58D503F550BD9AC",
+      "depositWei": "1000000000",
+      "depositUSDC": "1000"
+    },
+    {
+      "index": 35,
+      "address": "0x98D37196230E61b45784cfDcfb7ffD4dAAAf0e7c",
+      "depositWei": "243249378",
+      "depositUSDC": "243.249378"
+    },
+    {
+      "index": 36,
+      "address": "0x518832E61536567C07a5e8cB0cdcC1E922290172",
+      "depositWei": "134474451",
+      "depositUSDC": "134.474451"
+    },
+    {
+      "index": 37,
+      "address": "0x0d51D069eCF91B13DB666708f3e1610af79B9Eed",
+      "depositWei": "191860000",
+      "depositUSDC": "191.86"
+    },
+    {
+      "index": 38,
+      "address": "0xc32cdA7871b667cCc2a3Cc678219B72796e98b11",
+      "depositWei": "100000000",
+      "depositUSDC": "100"
+    },
+    {
+      "index": 39,
+      "address": "0x30a2837F3D319A3e1984DE5a32C0DF310e2496B7",
+      "depositWei": "180000000",
+      "depositUSDC": "180"
+    },
+    {
+      "index": 40,
+      "address": "0xb85083177705EBB1a9d5719F51ABc4ddE8526137",
+      "depositWei": "161610541",
+      "depositUSDC": "161.610541"
+    },
+    {
+      "index": 41,
+      "address": "0xb9ab9578a34a05c86124c399735fdE44dEc80E7F",
+      "depositWei": "10110000000",
+      "depositUSDC": "10110"
+    },
+    {
+      "index": 42,
+      "address": "0x7C1A143abbe4603FDB125615A9209944b7f4234F",
+      "depositWei": "43770095",
+      "depositUSDC": "43.770095"
+    },
+    {
+      "index": 43,
+      "address": "0xDa95dD702845FA6Ca2192EF5C4EA6A523375BF52",
+      "depositWei": "811582282",
+      "depositUSDC": "811.582282"
+    },
+    {
+      "index": 44,
+      "address": "0x55267Bc6A0a1fdCe935D482607A2e65903ef46ac",
+      "depositWei": "1427241598",
+      "depositUSDC": "1427.241598"
+    },
+    {
+      "index": 45,
+      "address": "0xb9ab9578a34a05c86124c399735fdE44dEc80E7F",
+      "depositWei": "10110000000",
+      "depositUSDC": "10110"
+    },
+    {
+      "index": 46,
+      "address": "0x2F1567c4A651ED93dB0FC6D9Df1EA9196054f63e",
+      "depositWei": "0",
+      "depositUSDC": "0"
+    }
+  ],
+  "byAddress": [
+    {
+      "address": "0xc240Df49A7550C781ED935BC5898448aedAa33dC",
+      "depositWei": "13458000000",
+      "depositUSDC": "13458"
+    },
+    {
+      "address": "0xE81003515B5c537Cd4EE57A41dbEcF01FF429135",
+      "depositWei": "10514000000",
+      "depositUSDC": "10514"
+    },
+    {
+      "address": "0xEE517179cef2e52aF9D52667C7C9a43a5093F775",
+      "depositWei": "10493000000",
+      "depositUSDC": "10493"
+    },
+    {
+      "address": "0xb9ab9578a34a05c86124c399735fdE44dEc80E7F",
+      "depositWei": "10110000000",
+      "depositUSDC": "10110"
+    },
+    {
+      "address": "0x4Bb7fba588B4254536DE4316e8FB346bbe275EcB",
+      "depositWei": "10000214017",
+      "depositUSDC": "10000.214017"
+    },
+    {
+      "address": "0x2cCB1Cb25695aF8F4FF38352C2696A0Af8297D01",
+      "depositWei": "10000000000",
+      "depositUSDC": "10000"
+    },
+    {
+      "address": "0x787A7dA17544bCc3a0FebCd2c24C831ea55ae83f",
+      "depositWei": "9183000000",
+      "depositUSDC": "9183"
+    },
+    {
+      "address": "0x2c86d7a672D3298A3f89116DD73757D969C71956",
+      "depositWei": "9166000006",
+      "depositUSDC": "9166.000006"
+    },
+    {
+      "address": "0xc52fD3cD06D41020F91C31f84519247D06AC8598",
+      "depositWei": "9057000000",
+      "depositUSDC": "9057"
+    },
+    {
+      "address": "0x955c8206361F77b78A4A74555761Da1Fd770e801",
+      "depositWei": "9052000000",
+      "depositUSDC": "9052"
+    },
+    {
+      "address": "0x80350a8fBCd9B95c5EfAB7da4286f125ceD0167e",
+      "depositWei": "9051000000",
+      "depositUSDC": "9051"
+    },
+    {
+      "address": "0xA60AAdf62907bF06Dd714781d44Bbd4C2d783259",
+      "depositWei": "1476000000",
+      "depositUSDC": "1476"
+    },
+    {
+      "address": "0x4abF2d9b5c48D740bA439Ab6329699888f182B71",
+      "depositWei": "1451179700",
+      "depositUSDC": "1451.1797"
+    },
+    {
+      "address": "0x55267Bc6A0a1fdCe935D482607A2e65903ef46ac",
+      "depositWei": "1427241598",
+      "depositUSDC": "1427.241598"
+    },
+    {
+      "address": "0x82b8b659A4A98f69cB7899e1A07089EA3B90a894",
+      "depositWei": "1063872826",
+      "depositUSDC": "1063.872826"
+    },
+    {
+      "address": "0x3e04F61A589210DbDfCDaa77ede41bAC9AF137Bd",
+      "depositWei": "1000000000",
+      "depositUSDC": "1000"
+    },
+    {
+      "address": "0x2f5E08Ef5A99a98336519E54F58D503F550BD9AC",
+      "depositWei": "1000000000",
+      "depositUSDC": "1000"
+    },
+    {
+      "address": "0xDa95dD702845FA6Ca2192EF5C4EA6A523375BF52",
+      "depositWei": "811582282",
+      "depositUSDC": "811.582282"
+    },
+    {
+      "address": "0x68863699Ae0BE79DB4591F38295672D1bc6f5112",
+      "depositWei": "715088373",
+      "depositUSDC": "715.088373"
+    },
+    {
+      "address": "0xBf4070B1aCE411f5c2ce76F688C39966E19E6A9e",
+      "depositWei": "597000000",
+      "depositUSDC": "597"
+    },
+    {
+      "address": "0xA01Ad5f0b5C521266d1dd3f926dA92f2CD9661e2",
+      "depositWei": "500000000",
+      "depositUSDC": "500"
+    },
+    {
+      "address": "0x192e29C7E4333F98373cD3e3679625Cf8Fe654BB",
+      "depositWei": "300000000",
+      "depositUSDC": "300"
+    },
+    {
+      "address": "0x56887fb677FF722297b32180f8c305918BE47f1E",
+      "depositWei": "261933785",
+      "depositUSDC": "261.933785"
+    },
+    {
+      "address": "0x98D37196230E61b45784cfDcfb7ffD4dAAAf0e7c",
+      "depositWei": "243249378",
+      "depositUSDC": "243.249378"
+    },
+    {
+      "address": "0x0d51D069eCF91B13DB666708f3e1610af79B9Eed",
+      "depositWei": "191860000",
+      "depositUSDC": "191.86"
+    },
+    {
+      "address": "0x30a2837F3D319A3e1984DE5a32C0DF310e2496B7",
+      "depositWei": "180000000",
+      "depositUSDC": "180"
+    },
+    {
+      "address": "0xb85083177705EBB1a9d5719F51ABc4ddE8526137",
+      "depositWei": "161610541",
+      "depositUSDC": "161.610541"
+    },
+    {
+      "address": "0x518832E61536567C07a5e8cB0cdcC1E922290172",
+      "depositWei": "134474451",
+      "depositUSDC": "134.474451"
+    },
+    {
+      "address": "0xc32cdA7871b667cCc2a3Cc678219B72796e98b11",
+      "depositWei": "100000000",
+      "depositUSDC": "100"
+    },
+    {
+      "address": "0x40e7573575eD2eB406c94ADd635659309dC50065",
+      "depositWei": "99593497",
+      "depositUSDC": "99.593497"
+    },
+    {
+      "address": "0xEd821545E7A8719813736620B0017Fd6BA6A9C5a",
+      "depositWei": "97093759",
+      "depositUSDC": "97.093759"
+    },
+    {
+      "address": "0x7C1A143abbe4603FDB125615A9209944b7f4234F",
+      "depositWei": "43770095",
+      "depositUSDC": "43.770095"
+    },
+    {
+      "address": "0xb957DccaA1CCFB1eB78B495B499801D591d8a403",
+      "depositWei": "0",
+      "depositUSDC": "0"
+    },
+    {
+      "address": "0x64B7fcC8C17540139BDd84d00c7261035602Cb66",
+      "depositWei": "0",
+      "depositUSDC": "0"
+    },
+    {
+      "address": "0x2F1567c4A651ED93dB0FC6D9Df1EA9196054f63e",
+      "depositWei": "0",
+      "depositUSDC": "0"
+    }
+  ]
+}

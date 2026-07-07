@@ -1,66 +1,142 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo } from "react";
+import { DashboardConnectNotice } from "@/components/dashboard/DashboardConnectNotice";
+import { DashboardTideLiveBanner } from "@/components/dashboard/DashboardTideLiveBanner";
+import { DashboardPortfolioHero } from "@/components/dashboard/DashboardPortfolioHero";
+import { DashboardProductCard, useDashboardProductExpanded } from "@/components/dashboard/DashboardProductCard";
+import { DashboardPositionsList } from "@/components/dashboard/DashboardPositionsList";
+import { DASHBOARD_PRODUCT_META } from "@/components/dashboard/dashboardProductMeta";
+import { DASHBOARD_GAP_CATEGORY } from "@/components/dashboard/dashboardDensity";
 import {
-  ChartBarIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
-  InformationCircleIcon,
-  WalletIcon,
-} from "@heroicons/react/24/outline";
-import { DashboardPageTitleSection } from "@/components/dashboard/DashboardPageTitleSection";
-import {
-  DashboardPositionsGrouped,
+  DASHBOARD_EMPTY_STATES,
   type DashboardPositionGroup,
-} from "@/components/dashboard/DashboardPositionsGrouped";
-import { DashboardSummaryCards } from "@/components/dashboard/DashboardSummaryCards";
-import { DashboardHeaderMetricsSlot } from "@/components/dashboard/DashboardSummaryStrip";
-import { DashboardYieldSummaryCards } from "@/components/dashboard/DashboardYieldSummaryCards";
-import { DashboardYieldShareList } from "@/components/dashboard/DashboardYieldShareList";
+} from "@/components/dashboard/dashboardPositionGroup";
+import { DashboardActivitySection } from "@/components/dashboard/engagement/DashboardActivitySection";
 import {
-  DASHBOARD_SECTION_BODY_CLASS,
-  DASHBOARD_SECTION_CLASS,
-  DASHBOARD_SECTION_CHEVRON_CLASS,
-  DASHBOARD_SECTION_HEADER_ACTIONS_CELL_CLASS,
-  DASHBOARD_SECTION_HEADER_EXPANDED_CLASS,
-  DASHBOARD_SECTION_HEADER_INNER_CLASS,
-  DASHBOARD_SECTION_HEADER_METRICS_CELL_CLASS,
-  DASHBOARD_SECTION_HEADER_TITLE_CELL_CLASS,
-  DASHBOARD_SECTION_ICON_CLASS,
-  DASHBOARD_SECTION_TITLE_BTN_CLASS,
-  DASHBOARD_SECTION_TITLE_CLASS,
-  DASHBOARD_SECTION_ACTION_BTN_CLASS,
-  DASHBOARD_INFO_ICON_CLASS,
-  DASHBOARD_LINK_CLASS,
-} from "@/components/dashboard/dashboardStyles";
+  DashboardModuleLayoutControls,
+  useDashboardModuleLayout,
+} from "@/components/dashboard/engagement/DashboardModuleLayoutControls";
+import type { DashboardModuleId } from "@/components/dashboard/engagement/dashboardModuleLayout";
+import { useDashboardEngagement } from "@/components/dashboard/engagement/useDashboardEngagement";
+import {
+  buildEarnSummaryMetrics,
+  buildPortfolioAllocation,
+  buildPositionSummaryMetrics,
+} from "@/components/dashboard/portfolio/dashboardPortfolioUtils";
+import { DashboardMaidenVoyageSection } from "@/components/dashboard/portfolio/DashboardMaidenVoyageSection";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
-import SimpleTooltip from "@/components/SimpleTooltip";
+import { HarborPageShell } from "@/components/shared/HarborPageShell";
+import { useDashboardActiveVoyage } from "@/hooks/useDashboardActiveVoyage";
 import { useFounderMetrics } from "@/hooks/useFounderMetrics";
 import {
   useDashboardPositions,
   type DashboardPositionRow,
 } from "@/hooks/useDashboardPositions";
+import { useDashboardEarnClaimable } from "@/hooks/useDashboardEarnClaimable";
+import { useDashboardManageModals } from "@/hooks/useDashboardManageModals";
+
 function sumRowsUsd(rows: DashboardPositionRow[]): number {
   return rows.reduce((s, r) => s + r.usd, 0);
 }
 
-const POSITIONS_DATA_SOURCE_TOOLTIP =
-  "From Harbor marks and Sail subgraphs. USD is indexer-reported; use Manage for full detail.";
+function defaultPositionExpanded(
+  compact: boolean,
+  rows: DashboardPositionRow[],
+  loading: boolean,
+): boolean {
+  if (compact) return false;
+  return rows.length > 0 || loading;
+}
 
-function emptyHintWithLink(message: string, href: string, linkLabel: string): ReactNode {
+type PositionProductCardProps = {
+  group: DashboardPositionGroup;
+  productId: "maiden" | "earn" | "sail" | "archived";
+  compact: boolean;
+  isConnected: boolean;
+  earnClaimableUsd?: number;
+  earnClaimableLoading?: boolean;
+  onManage?: (row: DashboardPositionRow) => void;
+  showWithdrawNotice?: boolean;
+};
+
+function PositionProductCard({
+  group,
+  productId,
+  compact,
+  isConnected,
+  earnClaimableUsd = 0,
+  earnClaimableLoading = false,
+  onManage,
+  showWithdrawNotice = false,
+}: PositionProductCardProps) {
+  const defaultExpanded =
+    productId === "archived"
+      ? !compact && group.rows.length > 0
+      : defaultPositionExpanded(compact, group.rows, group.loading);
+  const [expanded, setExpanded] = useDashboardProductExpanded(defaultExpanded);
+  const totalUsd = useMemo(
+    () => group.rows.reduce((sum, row) => sum + row.usd, 0),
+    [group.rows],
+  );
+
+  const summaryMetrics = useMemo(() => {
+    if (productId === "earn") {
+      return buildEarnSummaryMetrics({
+        isConnected,
+        loading: group.loading,
+        valueUsd: totalUsd,
+        positionCount: group.rows.length,
+        earnedUsd: earnClaimableUsd,
+        earnedLoading: earnClaimableLoading,
+      });
+    }
+    return buildPositionSummaryMetrics({
+      isConnected,
+      loading: group.loading,
+      valueUsd: totalUsd,
+      positionCount: group.rows.length,
+    });
+  }, [
+    productId,
+    isConnected,
+    group.loading,
+    group.rows.length,
+    totalUsd,
+    earnClaimableUsd,
+    earnClaimableLoading,
+  ]);
+
   return (
-    <>
-      {message}{" "}
-      <Link href={href} className={DASHBOARD_LINK_CLASS}>
-        {linkLabel}
-      </Link>
-    </>
+    <DashboardProductCard
+      meta={DASHBOARD_PRODUCT_META[productId]}
+      expanded={expanded}
+      onToggle={() => setExpanded((v) => !v)}
+      isConnected={isConnected}
+      summaryMetrics={summaryMetrics}
+      loading={group.loading}
+    >
+      {group.error ? (
+        <IndexMarksSubgraphErrorBanner error={new Error(group.error)} />
+      ) : null}
+      <DashboardPositionsList
+        rows={group.rows}
+        loading={isConnected && group.loading}
+        error={null}
+        emptyState={group.emptyState}
+        loadingSkeletonCount={group.rows.length === 0 ? 1 : 3}
+        onManage={onManage}
+        showWithdrawNotice={showWithdrawNotice}
+        showPnLColumn={productId === "sail"}
+        showAprColumn={productId === "earn"}
+      />
+    </DashboardProductCard>
   );
 }
 
 export default function DashboardPage() {
   const { rows, isLoading, error, isConnected } = useFounderMetrics();
+  const activeVoyage = useDashboardActiveVoyage();
   const {
     maidenVoyageRows,
     archivedMaidenVoyageRows,
@@ -69,11 +145,10 @@ export default function DashboardPage() {
     isLoading: posLoading,
     errors: posErrors,
   } = useDashboardPositions();
-
-  const [positionsExpanded, setPositionsExpanded] = useState(true);
-  const [yieldShareExpanded, setYieldShareExpanded] = useState(false);
-
-  const userToggledYield = useRef(false);
+  const { earnClaimableUsd, isLoading: earnClaimableLoading } =
+    useDashboardEarnClaimable();
+  const { openPositionManage, modals } = useDashboardManageModals();
+  const { order: moduleOrder, setOrder: setModuleOrder } = useDashboardModuleLayout();
 
   const positionTotals = useMemo(() => {
     const maiden = sumRowsUsd(maidenVoyageRows);
@@ -83,33 +158,47 @@ export default function DashboardPage() {
     return { maiden, archived, earn, sail };
   }, [maidenVoyageRows, archivedMaidenVoyageRows, earnRows, leverageRows]);
 
+  const totalPortfolioValue = useMemo(
+    () =>
+      positionTotals.maiden +
+      positionTotals.earn +
+      positionTotals.sail +
+      positionTotals.archived,
+    [positionTotals],
+  );
+
+  const allPositionRows = useMemo(
+    () => [
+      ...maidenVoyageRows,
+      ...earnRows,
+      ...leverageRows,
+      ...archivedMaidenVoyageRows,
+    ],
+    [maidenVoyageRows, earnRows, leverageRows, archivedMaidenVoyageRows],
+  );
+
+  const allocationSlices = useMemo(
+    () =>
+      buildPortfolioAllocation({
+        maidenUsd: positionTotals.maiden,
+        earnUsd: positionTotals.earn,
+        sailUsd: positionTotals.sail,
+        archivedUsd: positionTotals.archived,
+      }),
+    [positionTotals],
+  );
+
   const hasArchived = archivedMaidenVoyageRows.length > 0;
 
   const positionGroups = useMemo((): DashboardPositionGroup[] => {
     const groups: DashboardPositionGroup[] = [
-      {
-        id: "maiden",
-        title: "Maiden Voyage",
-        rows: maidenVoyageRows,
-        loading: posLoading.maidenVoyage,
-        error: posErrors.maidenVoyage,
-        emptyHint: emptyHintWithLink(
-          "No active genesis deposits for this wallet.",
-          "/genesis",
-          "Open Maiden voyage"
-        ),
-      },
       {
         id: "earn",
         title: "Earn",
         rows: earnRows,
         loading: posLoading.anchor,
         error: posErrors.anchor,
-        emptyHint: emptyHintWithLink(
-          "No ha tokens or stability pool balances in the indexer.",
-          "/anchor",
-          "Open Anchor"
-        ),
+        emptyState: DASHBOARD_EMPTY_STATES.earn,
       },
       {
         id: "sail",
@@ -117,11 +206,7 @@ export default function DashboardPage() {
         rows: leverageRows,
         loading: posLoading.leverage,
         error: posErrors.leverage,
-        emptyHint: emptyHintWithLink(
-          "No Sail positions in the Sail subgraph or Sail token marks in the indexer.",
-          "/sail",
-          "Open Sail"
-        ),
+        emptyState: DASHBOARD_EMPTY_STATES.sail,
       },
     ];
 
@@ -132,17 +217,12 @@ export default function DashboardPage() {
         rows: archivedMaidenVoyageRows,
         loading: posLoading.maidenVoyage,
         error: posErrors.maidenVoyage,
-        emptyHint: emptyHintWithLink(
-          "No archived genesis deposits for this wallet.",
-          "/genesis",
-          "Open Maiden voyage"
-        ),
+        emptyState: DASHBOARD_EMPTY_STATES.archived,
       });
     }
 
     return groups;
   }, [
-    maidenVoyageRows,
     earnRows,
     leverageRows,
     archivedMaidenVoyageRows,
@@ -151,165 +231,122 @@ export default function DashboardPage() {
     posErrors,
   ]);
 
-  useEffect(() => {
-    if (userToggledYield.current) return;
-    if (isConnected && rows.length > 0) {
-      setYieldShareExpanded(true);
-    }
-  }, [isConnected, rows.length]);
-
-  const totalOutstanding = rows.reduce((sum, row) => sum + row.outstandingUSD, 0);
   const totalEarned = useMemo(
     () => rows.reduce((s, r) => s + r.totalEarnedUSD, 0),
-    [rows]
+    [rows],
   );
 
-  return (
-    <div className="min-h-0 flex-1 text-white max-w-[1300px] mx-auto font-sans relative w-full">
-      <main className="container mx-auto px-4 sm:px-10 pb-6 pt-2 sm:pt-4 space-y-4">
-        <DashboardPageTitleSection />
+  const portfolioLoading =
+    isConnected &&
+    (isLoading ||
+      posLoading.anchor ||
+      posLoading.maidenVoyage ||
+      posLoading.leverage);
 
-        {!isConnected ? (
-          <div className="rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/70">
-            Connect your wallet to view positions and yield share.
-          </div>
-        ) : null}
+  const engagement = useDashboardEngagement({
+    yieldRows: rows,
+    maidenRows: maidenVoyageRows,
+    archivedRows: archivedMaidenVoyageRows,
+    allPositionRows,
+    activeVoyage,
+    positionTotals,
+    totalEarned,
+    totalOutstanding: rows.reduce((sum, row) => sum + row.outstandingUSD, 0),
+  });
 
-        <section className={DASHBOARD_SECTION_CLASS}>
-          <div
-            className={`${DASHBOARD_SECTION_HEADER_INNER_CLASS} ${
-              positionsExpanded && isConnected ? DASHBOARD_SECTION_HEADER_EXPANDED_CLASS : ""
-            }`}
-          >
-            <button
-              type="button"
-              className={`${DASHBOARD_SECTION_HEADER_TITLE_CELL_CLASS} ${DASHBOARD_SECTION_TITLE_BTN_CLASS}`}
-              aria-expanded={positionsExpanded}
-              onClick={() => setPositionsExpanded((v) => !v)}
-            >
-              <WalletIcon className={DASHBOARD_SECTION_ICON_CLASS} aria-hidden />
-              <h2 className={DASHBOARD_SECTION_TITLE_CLASS}>Your positions</h2>
-              <span
-                className="shrink-0"
-                onClick={(e) => e.stopPropagation()}
-                onKeyDown={(e) => e.stopPropagation()}
-              >
-                <SimpleTooltip
-                  label={POSITIONS_DATA_SOURCE_TOOLTIP}
-                  className="cursor-help"
-                >
-                  <InformationCircleIcon
-                    className={DASHBOARD_INFO_ICON_CLASS}
-                    aria-label="About position data"
-                  />
-                </SimpleTooltip>
-              </span>
-            </button>
-            {isConnected ? (
-              <div className={DASHBOARD_SECTION_HEADER_METRICS_CELL_CLASS}>
-                <DashboardHeaderMetricsSlot>
-                  <DashboardSummaryCards
-                    maidenUsd={positionTotals.maiden}
-                    earnUsd={positionTotals.earn}
-                    sailUsd={positionTotals.sail}
-                    archivedUsd={positionTotals.archived}
-                    showArchived={hasArchived}
-                    isConnected={isConnected}
-                  />
-                </DashboardHeaderMetricsSlot>
-              </div>
-            ) : null}
-            <div className={DASHBOARD_SECTION_HEADER_ACTIONS_CELL_CLASS}>
-              <button
-                type="button"
-                className={DASHBOARD_SECTION_ACTION_BTN_CLASS}
-                aria-expanded={positionsExpanded}
-                aria-label={
-                  positionsExpanded ? "Collapse positions" : "Expand positions"
-                }
-                onClick={() => setPositionsExpanded((v) => !v)}
-              >
-                {positionsExpanded ? (
-                  <ChevronUpIcon className={DASHBOARD_SECTION_CHEVRON_CLASS} aria-hidden />
-                ) : (
-                  <ChevronDownIcon className={DASHBOARD_SECTION_CHEVRON_CLASS} aria-hidden />
-                )}
-              </button>
-            </div>
-          </div>
+  const earnGroup = positionGroups.find((g) => g.id === "earn")!;
+  const sailGroup = positionGroups.find((g) => g.id === "sail")!;
+  const archivedGroup = positionGroups.find((g) => g.id === "archived");
 
-          {positionsExpanded && isConnected ? (
-            <div className={DASHBOARD_SECTION_BODY_CLASS}>
-              <DashboardPositionsGrouped groups={positionGroups} />
-            </div>
-          ) : null}
-        </section>
-
-        <section className={DASHBOARD_SECTION_CLASS}>
-          <div
-            className={`${DASHBOARD_SECTION_HEADER_INNER_CLASS} ${
-              yieldShareExpanded && isConnected ? DASHBOARD_SECTION_HEADER_EXPANDED_CLASS : ""
-            }`}
-          >
-            <button
-              type="button"
-              className={`${DASHBOARD_SECTION_HEADER_TITLE_CELL_CLASS} ${DASHBOARD_SECTION_TITLE_BTN_CLASS}`}
-              aria-expanded={yieldShareExpanded}
-              onClick={() => {
-                userToggledYield.current = true;
-                setYieldShareExpanded((v) => !v);
-              }}
-            >
-              <ChartBarIcon className={DASHBOARD_SECTION_ICON_CLASS} aria-hidden />
-              <h2 className={DASHBOARD_SECTION_TITLE_CLASS}>Yield share</h2>
-            </button>
-            {isConnected ? (
-              <div className={DASHBOARD_SECTION_HEADER_METRICS_CELL_CLASS}>
-                <DashboardHeaderMetricsSlot>
-                  <DashboardYieldSummaryCards
-                    totalEarned={totalEarned}
-                    totalOutstanding={totalOutstanding}
-                    isConnected={isConnected}
-                  />
-                </DashboardHeaderMetricsSlot>
-              </div>
-            ) : null}
-            <div className={DASHBOARD_SECTION_HEADER_ACTIONS_CELL_CLASS}>
-              <button
-                type="button"
-                className={DASHBOARD_SECTION_ACTION_BTN_CLASS}
-                aria-expanded={yieldShareExpanded}
-                aria-label={
-                  yieldShareExpanded ? "Collapse yield share" : "Expand yield share"
-                }
-                onClick={() => {
-                  userToggledYield.current = true;
-                  setYieldShareExpanded((v) => !v);
-                }}
-              >
-                {yieldShareExpanded ? (
-                  <ChevronUpIcon className={DASHBOARD_SECTION_CHEVRON_CLASS} aria-hidden />
-                ) : (
-                  <ChevronDownIcon className={DASHBOARD_SECTION_CHEVRON_CLASS} aria-hidden />
-                )}
-              </button>
-            </div>
-          </div>
-
-          {yieldShareExpanded && isConnected ? (
-            <div className={DASHBOARD_SECTION_BODY_CLASS}>
-              {error ? (
-                <IndexMarksSubgraphErrorBanner error={new Error(error)} />
-              ) : null}
-              <DashboardYieldShareList
-                rows={rows}
-                isLoading={isLoading}
-                error={null}
+  const renderModule = (id: DashboardModuleId) => {
+    switch (id) {
+      case "portfolio":
+        return (
+          <div key="portfolio" className="space-y-3">
+            <DashboardPortfolioHero
+              totalPositionValue={totalPortfolioValue}
+              activePositionCount={allPositionRows.length}
+              allocationSlices={allocationSlices}
+              revenueShareYieldUsd={totalEarned}
+              earnYieldUsd={earnClaimableUsd}
+              isConnected={isConnected}
+              isLoading={portfolioLoading}
+              isEarnLoading={earnClaimableLoading}
+            />
+            <div className={DASHBOARD_GAP_CATEGORY}>
+              <DashboardMaidenVoyageSection
+                compact={false}
+                isConnected={isConnected}
+                maidenRows={maidenVoyageRows}
+                maidenLoading={posLoading.maidenVoyage}
+                maidenError={posErrors.maidenVoyage}
+                yieldRows={rows}
+                yieldLoading={isLoading}
+                yieldError={error}
               />
+              <PositionProductCard
+                group={earnGroup}
+                productId="earn"
+                compact={false}
+                isConnected={isConnected}
+                earnClaimableUsd={earnClaimableUsd}
+                earnClaimableLoading={earnClaimableLoading}
+              />
+              <PositionProductCard
+                group={sailGroup}
+                productId="sail"
+                compact={false}
+                isConnected={isConnected}
+              />
+              {archivedGroup ? (
+                <PositionProductCard
+                  group={archivedGroup}
+                  productId="archived"
+                  compact={false}
+                  isConnected={isConnected}
+                  onManage={openPositionManage}
+                  showWithdrawNotice
+                />
+              ) : null}
             </div>
-          ) : null}
-        </section>
-      </main>
-    </div>
+          </div>
+        );
+
+      case "activity":
+        return (
+          <DashboardActivitySection
+            key="activity"
+            events={engagement.timeline}
+            isConnected={isConnected}
+          />
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <HarborPageShell mainClassName="space-y-3 max-sm:!px-3">
+      <DashboardTideLiveBanner />
+
+      {!isConnected ? (
+        <DashboardConnectNotice />
+      ) : (
+        <>
+          <div className="relative flex items-start justify-end">
+            <DashboardModuleLayoutControls
+              order={moduleOrder}
+              onOrderChange={setModuleOrder}
+            />
+          </div>
+
+          <div className="space-y-4">
+            {moduleOrder.map((moduleId) => renderModule(moduleId))}
+          </div>
+        </>
+      )}
+      {modals}
+    </HarborPageShell>
   );
 }
