@@ -2,9 +2,6 @@
 
 import { useMemo } from "react";
 import {
-  ArrowPathIcon,
-} from "@heroicons/react/24/outline";
-import {
   FireIcon,
   ShieldCheckIcon,
 } from "@heroicons/react/24/solid";
@@ -17,12 +14,12 @@ import {
   progressTowardTarget,
 } from "@/utils/tideRevenueJourney";
 import { JourneyEducation } from "./JourneyEducation";
-import { JourneyRevenueHero } from "./JourneyRevenueHero";
+import { JourneyRevenueBanner } from "./JourneyRevenueBanner";
 import { JourneyStageCard } from "./JourneyStageCard";
 import { JourneyTimeline } from "./JourneyTimeline";
 import {
   JOURNEY_CONTENT_CLASS,
-  JOURNEY_HEADER_ROW_CLASS,
+  JOURNEY_FLOW_CLASS,
   JOURNEY_HEADER_TEXT_CLASS,
   JOURNEY_SECTION_CLASS,
   JOURNEY_SUBTITLE_CLASS,
@@ -59,41 +56,11 @@ export function ProtocolRevenueJourney() {
   const burnPct = metrics.burn.supplyBurnedPct ?? 0;
   const polPoolUrl = TIDE_FLYWHEEL_CONFIG.polV4?.uniswapPoolUrl;
 
-  const buybackVisual = visualById.buyback ?? "active";
   const treasuryVisual = visualById.treasury ?? "future";
   const polVisual = visualById.pol ?? "future";
   const burnVisual = visualById.burn ?? "future";
 
   const stages = [
-    {
-      id: "buyback",
-      visualState: buybackVisual,
-      card: (
-        <JourneyStageCard
-          stageId="buyback"
-          visualState={buybackVisual}
-          icon={<ArrowPathIcon className="h-5 w-5" strokeWidth={2} />}
-          title={copy.stages.buyback.title}
-          description={copy.stages.buyback.description}
-          statusLabel={
-            buybackVisual === "complete"
-              ? copy.stages.buyback.statusComplete
-              : copy.stages.buyback.statusActive
-          }
-          metricLabel={copy.stages.buyback.statLabel}
-          metricValue={
-            metrics.isLoading
-              ? "…"
-              : formatTideTokens(metrics.buyback.tideTokens)
-          }
-          metricSubValue={
-            metrics.isLoading
-              ? undefined
-              : `(${formatUSD(metrics.buyback.usd, { compact: false })})`
-          }
-        />
-      ),
-    },
     {
       id: "treasury",
       visualState: treasuryVisual,
@@ -201,21 +168,34 @@ export function ProtocolRevenueJourney() {
       aria-label={copy.sectionTitle}
     >
       <div className={JOURNEY_CONTENT_CLASS}>
-        <div className={JOURNEY_HEADER_ROW_CLASS}>
-          <header className={JOURNEY_HEADER_TEXT_CLASS}>
-            <h2 className={JOURNEY_TITLE_CLASS}>{copy.sectionTitle}</h2>
-            <p className={JOURNEY_SUBTITLE_CLASS}>{copy.sectionSubtitle}</p>
-          </header>
+        <header className={JOURNEY_HEADER_TEXT_CLASS}>
+          <h2 className={JOURNEY_TITLE_CLASS}>{copy.sectionTitle}</h2>
+          <p className={JOURNEY_SUBTITLE_CLASS}>{copy.sectionSubtitle}</p>
+        </header>
 
-          <JourneyRevenueHero
+        <div className={JOURNEY_FLOW_CLASS}>
+          <JourneyRevenueBanner
             label={copy.revenueHero.label}
             tagline={copy.revenueHero.tagline}
             revenueUsd={metrics.lifetimeRevenueUsd}
             isLoading={metrics.isLoading}
+            buybackTitle={copy.stages.buyback.title}
+            buybackDescription={copy.stages.buyback.description}
+            buybackStatLabel={copy.stages.buyback.statLabel}
+            buybackTideAmount={
+              metrics.isLoading
+                ? "…"
+                : formatTideTokens(metrics.buyback.tideTokens)
+            }
+            buybackUsdAmount={
+              metrics.isLoading
+                ? ""
+                : `(${formatUSD(metrics.buyback.usd, { compact: false })})`
+            }
           />
-        </div>
 
-        <JourneyTimeline entryLabel={copy.timelineEntryLabel} stages={stages} />
+          <JourneyTimeline stages={stages} />
+        </div>
 
         <JourneyEducation
           howRevenueFlows={copy.education.howRevenueFlows}

@@ -76,7 +76,13 @@ export function JourneyStageCard({
   footer,
 }: JourneyStageCardProps) {
   const derivedStatus = deriveStageStatusLabel(stageId, visualState);
-  const badgeText = statusLabel ?? derivedStatus;
+  const footerBadgeText =
+    visualState === "future"
+      ? statusLabel ?? derivedStatus
+      : visualState === "complete"
+        ? statusLabel
+        : null;
+  const showFooterBadge = Boolean(footerBadgeText);
   const showProgress = progressPct != null;
   const clampedProgress = showProgress
     ? Math.min(100, Math.max(0, progressPct))
@@ -99,9 +105,11 @@ export function JourneyStageCard({
         <span className={JOURNEY_STAGE_ACTIVE_ACCENT_CLASS} aria-hidden />
       ) : null}
 
-      {visualState === "active" && badgeText ? (
+      {visualState === "active" && (statusLabel ?? derivedStatus) ? (
         <span className={JOURNEY_STAGE_ACTIVE_BADGE_CLASS}>
-          <span className={JOURNEY_STATUS_BADGE_ACTIVE}>{badgeText}</span>
+          <span className={JOURNEY_STATUS_BADGE_ACTIVE}>
+            {statusLabel ?? derivedStatus}
+          </span>
         </span>
       ) : null}
 
@@ -177,11 +185,8 @@ export function JourneyStageCard({
         </div>
 
         <div className={JOURNEY_STAGE_FOOTER_SLOT_CLASS}>
-          {badgeText && visualState !== "active" ? (
-            <span className={statusBadgeClass(visualState)}>
-              {visualState === "complete" ? "✓ " : null}
-              {badgeText}
-            </span>
+          {showFooterBadge ? (
+            <span className={statusBadgeClass(visualState)}>{footerBadgeText}</span>
           ) : null}
 
           {footer ? <div className="mt-3">{footer}</div> : null}

@@ -27,29 +27,57 @@ export const JOURNEY_TITLE_CLASS =
 export const JOURNEY_SUBTITLE_CLASS =
   "mt-2 text-sm leading-relaxed text-white/65 sm:text-base";
 
-export const JOURNEY_REVENUE_HERO_CLASS =
-  `${JOURNEY_LIGHT_PANEL_CLASS} w-full shrink-0 px-4 py-3 text-left text-[#1E4775] sm:w-auto sm:min-w-[11rem] sm:max-w-[13.5rem]`;
+export const JOURNEY_FLOW_CLASS = "flex min-w-0 flex-col gap-0";
+
+export const JOURNEY_REVENUE_BANNER_CLASS =
+  `${JOURNEY_LIGHT_PANEL_CLASS} flex w-full flex-col gap-4 px-5 py-4 text-[#1E4775] sm:flex-row sm:items-stretch sm:gap-0 sm:px-6 sm:py-5`;
+
+export const JOURNEY_REVENUE_BANNER_PRIMARY_CLASS =
+  "min-w-0 flex-1 text-left sm:pr-6";
+
+export const JOURNEY_REVENUE_BANNER_DIVIDER_CLASS =
+  "hidden shrink-0 border-[#1E4775]/10 sm:block sm:w-px sm:self-stretch sm:border-l";
+
+export const JOURNEY_REVENUE_BANNER_BUYBACK_CLASS =
+  "min-w-0 flex-1 sm:pl-6";
+
+export const JOURNEY_REVENUE_BANNER_BUYBACK_TITLE_CLASS =
+  "text-sm font-semibold leading-tight text-[#1E4775] sm:text-base";
+
+export const JOURNEY_REVENUE_BANNER_BUYBACK_DESC_CLASS =
+  "mt-1 text-xs leading-relaxed text-[#1E4775]/65";
 
 export const JOURNEY_REVENUE_LABEL_CLASS =
   "text-[10px] font-semibold uppercase tracking-wider text-[#1E4775]/55";
 
-export const JOURNEY_REVENUE_VALUE_CLASS =
-  "mt-0.5 font-mono text-xl font-bold tabular-nums text-[#1E4775] sm:text-2xl";
+export const JOURNEY_REVENUE_BANNER_VALUE_CLASS =
+  "mt-0.5 font-mono text-2xl font-bold tabular-nums text-[#1E4775] sm:text-3xl";
 
 export const JOURNEY_REVENUE_TAGLINE_CLASS =
   "mt-1 text-[11px] leading-snug text-[#1E4775]/55 sm:text-xs";
 
+/** @deprecated Use JOURNEY_REVENUE_BANNER_CLASS */
+export const JOURNEY_REVENUE_HERO_CLASS =
+  `${JOURNEY_LIGHT_PANEL_CLASS} w-full shrink-0 px-4 py-3 text-left text-[#1E4775] sm:w-auto sm:min-w-[11rem] sm:max-w-[13.5rem]`;
+
+/** @deprecated Use JOURNEY_REVENUE_BANNER_VALUE_CLASS */
+export const JOURNEY_REVENUE_VALUE_CLASS = JOURNEY_REVENUE_BANNER_VALUE_CLASS;
+
+export const JOURNEY_STAGE_GRID_CLASS =
+  "m-0 mt-2 grid list-none grid-cols-1 gap-0 p-0 lg:mt-3 lg:grid-cols-3 lg:gap-4";
+
+export const JOURNEY_STAGE_COLUMN_CLASS =
+  "flex min-w-0 flex-col";
+
+export const JOURNEY_DOWN_CHEVRON_SLOT_CLASS =
+  "flex items-center justify-center py-2 lg:py-3";
+
+export const JOURNEY_DOWN_CHEVRON_CLASS = "h-5 w-5 text-white/25";
+
+export const JOURNEY_DOWN_CHEVRON_ACTIVE_CLASS = "h-5 w-5 text-harbor-coral";
+
 export const JOURNEY_TIMELINE_ENTRY_CLASS =
   "text-center text-xs font-semibold uppercase tracking-wider text-white/45 lg:text-left";
-
-export const JOURNEY_TIMELINE_LIST_CLASS =
-  "m-0 flex list-none flex-col gap-0 p-0 lg:flex-row lg:items-stretch";
-
-export const JOURNEY_TIMELINE_ITEM_CLASS =
-  "flex min-w-0 w-full flex-col lg:flex-1 lg:basis-0";
-
-export const JOURNEY_TIMELINE_CONNECTOR_ITEM_CLASS =
-  "flex shrink-0 flex-col items-center self-center lg:flex-row";
 
 export const JOURNEY_TIMELINE_CARD_SLOT_CLASS =
   "flex h-full min-h-0 w-full min-w-0 flex-1";
@@ -101,7 +129,7 @@ export const JOURNEY_STAGE_FOOTER_SLOT_CLASS =
   "mt-auto flex w-full flex-col items-center pt-3 text-center";
 
 export const JOURNEY_STATUS_BADGE_COMPLETE =
-  "inline-flex items-center gap-1 rounded-full bg-harbor-mint/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-harbor-mint";
+  "inline-flex items-center gap-1 rounded-full border border-[#2A7A5E]/25 bg-harbor-mint/35 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#1A5C45]";
 
 export const JOURNEY_STATUS_BADGE_ACTIVE =
   "inline-flex items-center gap-1 rounded-full bg-harbor-coral px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-[0_4px_14px_-4px_rgba(255,138,122,0.8)]";
