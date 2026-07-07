@@ -43,7 +43,7 @@ export const JOURNEY_SPLIT_TOP_ROW_CLASS =
 export const JOURNEY_REVENUE_COLUMN_CLASS = "w-full shrink-0 lg:w-[15rem]";
 
 export const JOURNEY_REVENUE_SOURCE_BOX_CLASS =
-  "flex h-full flex-col justify-center rounded-xl border border-[#1E4775]/15 bg-[#1E4775]/[0.05] px-4 py-4 text-left";
+  "flex h-full flex-col items-center justify-center rounded-xl border border-[#1E4775]/15 bg-[#1E4775]/[0.05] px-4 py-4 text-center";
 
 /** Horizontal connector between revenue and Reinvest (desktop): line + arrowhead. */
 export const JOURNEY_SPLIT_RIGHT_CONNECTOR_CLASS =
@@ -106,7 +106,7 @@ export const JOURNEY_SPLIT_BRANCHES_CLASS =
   "flex min-w-0 flex-1 flex-col justify-center gap-3";
 
 export const JOURNEY_SPLIT_BRANCH_BASE_CLASS =
-  "flex items-start gap-4 rounded-xl border px-4 py-3";
+  "flex items-center gap-4 rounded-xl border px-4 py-3";
 
 export const JOURNEY_SPLIT_CHIPS_ROW_CLASS =
   "mt-2 flex flex-wrap items-center gap-1.5";
