@@ -11,6 +11,7 @@ import {
   HARBOR_TIDE_DISTRIBUTOR_ABI,
   normalizeVeClaimStatus,
 } from "@/abis/harborTideDistributor";
+import { VOTING_ESCROW_ABI } from "@/abis/votingEscrow";
 import { TIDE_CONFIG } from "@/config/tide";
 import { useTideTransaction } from "@/contexts/TideTransactionContext";
 import { useHarborAccount } from "@/hooks/useHarborAccount";
@@ -23,6 +24,10 @@ import {
   parseTideClaimError,
 } from "@/utils/tideDistributor";
 import { getTideAmountWei, normalizeMerkleProof } from "@/utils/tideClaim";
+import {
+  getVeBaoMaxUnlockTime,
+  parseVeBaoLockError,
+} from "@/utils/veBaoLock";
 
 type ClaimPath = "veBao" | "standard";
 
@@ -53,6 +58,7 @@ export function useTideClaimActions() {
   const address = veBaoSnapshot.address;
 
   const [claimingPath, setClaimingPath] = useState<ClaimPath | null>(null);
+  const [isMaxLocking, setIsMaxLocking] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
 
   const distributor = TIDE_CONFIG.distributorAddress;
@@ -281,6 +287,88 @@ export function useTideClaimActions() {
   const claimVeBao = useCallback(() => submitClaim("veBao"), [submitClaim]);
   const claimStandard = useCallback(() => submitClaim("standard"), [submitClaim]);
 
+  const canMaxLockVeBao =
+    walletConnected &&
+    !isImpersonating &&
+    !isWrongChain &&
+    veBaoBlocker?.kind === "extend_lock";
+
+  const maxLockVeBao = useCallback(async () => {
+    if (!walletAddress) {
+      setClaimError("Connect your wallet to max-lock veBAO");
+      return;
+    }
+
+    if (isImpersonating) {
+      setClaimError("Connect your wallet to max-lock — impersonation is read-only");
+      return;
+    }
+
+    if (isWrongChain) {
+      setClaimError("Switch to Ethereum mainnet to max-lock veBAO");
+      return;
+    }
+
+    if (veBaoBlocker?.kind !== "extend_lock") {
+      return;
+    }
+
+    setClaimError(null);
+    setIsMaxLocking(true);
+
+    const unlockTime = getVeBaoMaxUnlockTime();
+
+    const result = await runHarborTransactionFlow({
+      txModal,
+      publicClient,
+      parseError: parseVeBaoLockError,
+      errorTitle: "Max-lock failed",
+      successTitle: "veBAO max-locked",
+      successMessage: () =>
+        "Your veBAO lock has been extended to the maximum duration. You can now claim TIDE.",
+      onComplete: async () => {
+        await refetchVeStatus();
+      },
+      steps: [
+        {
+          title: "Max-lock veBAO",
+          simulate: async () => {
+            await publicClient?.simulateContract({
+              address: TIDE_CONFIG.veBaoAddress,
+              abi: VOTING_ESCROW_ABI,
+              functionName: "increase_unlock_time",
+              args: [unlockTime],
+              account: walletAddress,
+            });
+          },
+          execute: () =>
+            writeContractAsync({
+              address: TIDE_CONFIG.veBaoAddress,
+              abi: VOTING_ESCROW_ABI,
+              functionName: "increase_unlock_time",
+              args: [unlockTime],
+              chainId: TIDE_CONFIG.chainId,
+            }),
+        },
+      ],
+    });
+
+    if (!result.ok) {
+      setClaimError(result.message);
+    }
+
+    setIsMaxLocking(false);
+  }, [
+    walletAddress,
+    isImpersonating,
+    isWrongChain,
+    veBaoBlocker?.kind,
+    txModal,
+    publicClient,
+    writeContractAsync,
+    refetchVeStatus,
+  ]);
+
   return {
     isConnected,
     isWrongChain,
@@ -301,6 +389,9 @@ export function useTideClaimActions() {
     claimError,
     claimVeBao,
     claimStandard,
+    maxLockVeBao,
+    isMaxLocking,
+    canMaxLockVeBao,
     canClaimVeBao:
       walletConnected &&
       !isImpersonating &&

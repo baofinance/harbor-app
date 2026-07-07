@@ -20,12 +20,40 @@ import {
 
 function ClaimBlockerMessage({
   blocker,
+  canMaxLock,
+  isMaxLocking,
+  onMaxLock,
 }: {
   blocker: VeBaoClaimBlocker;
+  canMaxLock?: boolean;
+  isMaxLocking?: boolean;
+  onMaxLock?: () => void;
 }) {
   if (blocker.kind === "extend_lock") {
     return (
       <div className="mt-3 space-y-2 rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2.5">
+        <p className="text-sm font-semibold text-[#1E4775]">{blocker.title}</p>
+        <p className={`${TIDE_META_TEXT} text-[#1E4775]/75`}>{blocker.message}</p>
+        {blocker.detail ? (
+          <p className="text-[11px] leading-snug text-[#1E4775]/60">{blocker.detail}</p>
+        ) : null}
+        {canMaxLock && onMaxLock ? (
+          <button
+            type="button"
+            onClick={onMaxLock}
+            disabled={isMaxLocking}
+            className={`mt-1 w-full ${TIDE_PRIMARY_BUTTON_CLASS}`}
+          >
+            {isMaxLocking ? "Max-locking…" : "Max-lock veBAO (4 years)"}
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (blocker.kind === "lock_expired") {
+    return (
+      <div className="mt-3 space-y-2 rounded-md border border-[#1E4775]/15 bg-[#1E4775]/[0.04] px-3 py-2.5">
         <p className="text-sm font-semibold text-[#1E4775]">{blocker.title}</p>
         <p className={`${TIDE_META_TEXT} text-[#1E4775]/75`}>{blocker.message}</p>
         {blocker.detail ? (
@@ -38,7 +66,7 @@ function ClaimBlockerMessage({
             rel="noopener noreferrer"
             className="inline-flex text-xs font-semibold text-[#4A9784] underline underline-offset-2 hover:text-[#3f8576]"
           >
-            {blocker.ctaLabel ?? "Extend lock on veBAO"}
+            {blocker.ctaLabel ?? "Withdraw on BAO Finance"}
           </a>
         ) : null}
       </div>
@@ -59,6 +87,9 @@ function ClaimBucket({
   canClaim,
   isClaiming,
   onClaim,
+  canMaxLock,
+  isMaxLocking,
+  onMaxLock,
 }: {
   label: string;
   methodLabel: string;
@@ -70,6 +101,9 @@ function ClaimBucket({
   canClaim: boolean;
   isClaiming: boolean;
   onClaim: () => void;
+  canMaxLock?: boolean;
+  isMaxLocking?: boolean;
+  onMaxLock?: () => void;
 }) {
   const hasBalance = amountTokens > 0;
   const showBlocker = hasBalance && !alreadyClaimed && blocker;
@@ -100,7 +134,14 @@ function ClaimBucket({
             {hasBalance && alreadyClaimed ? (
               <p className="mt-3 text-sm font-medium text-[#4A9784]">Claimed</p>
             ) : null}
-            {showBlocker ? <ClaimBlockerMessage blocker={blocker} /> : null}
+            {showBlocker ? (
+              <ClaimBlockerMessage
+                blocker={blocker}
+                canMaxLock={canMaxLock}
+                isMaxLocking={isMaxLocking}
+                onMaxLock={onMaxLock}
+              />
+            ) : null}
             {showPlainReason ? (
               <p className={`mt-3 ${TIDE_META_TEXT}`}>{blockReason}</p>
             ) : null}
@@ -108,7 +149,7 @@ function ClaimBucket({
               <button
                 type="button"
                 onClick={onClaim}
-                disabled={!canClaim || isClaiming || !hasBalance}
+                disabled={!canClaim || isClaiming || isMaxLocking || !hasBalance}
                 className={`mt-3 ${TIDE_PRIMARY_BUTTON_CLASS}`}
                 title={
                   methodLabel === "claimVeBao"
@@ -162,6 +203,9 @@ export function TideClaimCard() {
             canClaim={claim.canClaimVeBao}
             isClaiming={claim.claimingPath === "veBao"}
             onClaim={claim.claimVeBao}
+            canMaxLock={claim.canMaxLockVeBao}
+            isMaxLocking={claim.isMaxLocking}
+            onMaxLock={claim.maxLockVeBao}
           />
           <ClaimBucket
             label="veFXN & liquid wrapper"
