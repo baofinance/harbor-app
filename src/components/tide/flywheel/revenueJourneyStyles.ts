@@ -103,13 +103,33 @@ export const JOURNEY_REVENUE_HERO_CLASS =
 export const JOURNEY_REVENUE_VALUE_CLASS = JOURNEY_REVENUE_BANNER_VALUE_CLASS;
 
 export const JOURNEY_STAGE_GRID_CLASS =
-  "m-0 mt-2 grid list-none grid-cols-1 gap-0 p-0 lg:mt-3 lg:grid-cols-3 lg:gap-4";
+  "m-0 mt-0 grid list-none grid-cols-1 gap-0 p-0 lg:grid-cols-3 lg:gap-4";
 
 export const JOURNEY_STAGE_COLUMN_CLASS =
   "flex min-w-0 flex-col";
 
-export const JOURNEY_DOWN_CHEVRON_SLOT_CLASS =
-  "flex items-center justify-center py-2 lg:py-3";
+export const JOURNEY_DESTINATION_CHIP_SLOT_CLASS =
+  "flex justify-center pt-2 lg:pt-3";
+
+export const JOURNEY_DESTINATION_CHIP_BASE_CLASS =
+  "inline-flex items-center rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide";
+
+export const JOURNEY_DESTINATION_CHIP_ACTIVE_CLASS =
+  `${JOURNEY_DESTINATION_CHIP_BASE_CLASS} border-harbor-coral/40 bg-harbor-coral/15 text-harbor-coral shadow-[0_4px_14px_-6px_rgba(255,138,122,0.55)]`;
+
+export const JOURNEY_DESTINATION_CHIP_COMPLETE_CLASS =
+  `${JOURNEY_DESTINATION_CHIP_BASE_CLASS} border-[#2A7A5E]/25 bg-harbor-mint/25 text-[#1A5C45]`;
+
+export const JOURNEY_DESTINATION_CHIP_FUTURE_CLASS =
+  `${JOURNEY_DESTINATION_CHIP_BASE_CLASS} border-white/15 bg-white/[0.04] text-white/40`;
+
+export const JOURNEY_DESTINATION_FEED_CLASS =
+  "flex flex-col items-center py-1 lg:py-1.5";
+
+export const JOURNEY_DESTINATION_FEED_LINE_CLASS = "h-3 w-px bg-white/20";
+
+export const JOURNEY_DESTINATION_FEED_LINE_ACTIVE_CLASS =
+  "h-3 w-px bg-harbor-coral/70";
 
 export const JOURNEY_DOWN_CHEVRON_CLASS = "h-5 w-5 text-white/25";
 

@@ -15,7 +15,6 @@ import {
   JOURNEY_SPLIT_BRANCHES_CLASS,
   JOURNEY_SPLIT_CHIP_ACTIVE_CLASS,
   JOURNEY_SPLIT_CHIP_INACTIVE_CLASS,
-  JOURNEY_SPLIT_CHIP_TIDE_CLASS,
   JOURNEY_SPLIT_CHIPS_LABEL_CLASS,
   JOURNEY_SPLIT_CHIPS_ROW_CLASS,
   JOURNEY_SPLIT_CONNECTOR_CLASS,
@@ -127,18 +126,6 @@ export function JourneyRevenueSplitDiagram({
             <p className={JOURNEY_SPLIT_BRANCH_DESC_CLASS}>
               {strengthenTide.description}
             </p>
-            {strengthenTide.destinations?.length ? (
-              <div className={JOURNEY_SPLIT_CHIPS_ROW_CLASS}>
-                {strengthenTide.destinations.map((destination) => (
-                  <span
-                    key={destination}
-                    className={JOURNEY_SPLIT_CHIP_TIDE_CLASS}
-                  >
-                    {destination}
-                  </span>
-                ))}
-              </div>
-            ) : null}
           </div>
         </div>
       </div>
