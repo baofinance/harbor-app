@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import {
   JOURNEY_MARKET_BOX_ACTIVE_CLASS,
   JOURNEY_MARKET_BOX_INACTIVE_CLASS,
@@ -21,15 +20,12 @@ import {
   JOURNEY_SPLIT_BRANCH_REINVEST_CLASS,
   JOURNEY_SPLIT_BRANCH_TIDE_CLASS,
   JOURNEY_SPLIT_CHIPS_LABEL_CLASS,
-  JOURNEY_SPLIT_CONNECTOR_MOBILE_CHEVRON_CLASS,
   JOURNEY_SPLIT_CONNECTOR_MOBILE_CLASS,
   JOURNEY_SPLIT_CONNECTOR_MOBILE_LINE_CLASS,
   JOURNEY_SPLIT_CONNECTOR_MOBILE_LINE_TIDE_CLASS,
   JOURNEY_SPLIT_DIAGRAM_CLASS,
-  JOURNEY_SPLIT_DOWN_CHEVRON_ICON_CLASS,
   JOURNEY_SPLIT_DOWN_CONNECTOR_CLASS,
   JOURNEY_SPLIT_DOWN_LINE_CLASS,
-  JOURNEY_SPLIT_RIGHT_CHEVRON_CLASS,
   JOURNEY_SPLIT_RIGHT_CONNECTOR_CLASS,
   JOURNEY_SPLIT_RIGHT_LINE_CLASS,
   JOURNEY_SPLIT_TOP_ROW_CLASS,
@@ -88,14 +84,10 @@ export function JourneyRevenueSplitDiagram({
 
         <div className={JOURNEY_SPLIT_RIGHT_CONNECTOR_CLASS} aria-hidden>
           <div className={JOURNEY_SPLIT_RIGHT_LINE_CLASS} />
-          <ChevronRightIcon className={JOURNEY_SPLIT_RIGHT_CHEVRON_CLASS} />
         </div>
 
         <div className={JOURNEY_SPLIT_CONNECTOR_MOBILE_CLASS} aria-hidden>
           <div className={JOURNEY_SPLIT_CONNECTOR_MOBILE_LINE_CLASS} />
-          <ChevronDownIcon
-            className={`${JOURNEY_SPLIT_CONNECTOR_MOBILE_CHEVRON_CLASS} text-[#1E4775]/55`}
-          />
         </div>
 
         <div className={JOURNEY_SPLIT_BRANCH_REINVEST_CLASS}>
@@ -152,14 +144,10 @@ export function JourneyRevenueSplitDiagram({
 
       <div className={JOURNEY_SPLIT_DOWN_CONNECTOR_CLASS} aria-hidden>
         <div className={JOURNEY_SPLIT_DOWN_LINE_CLASS} />
-        <ChevronDownIcon className={JOURNEY_SPLIT_DOWN_CHEVRON_ICON_CLASS} />
       </div>
 
       <div className={JOURNEY_SPLIT_CONNECTOR_MOBILE_CLASS} aria-hidden>
         <div className={JOURNEY_SPLIT_CONNECTOR_MOBILE_LINE_TIDE_CLASS} />
-        <ChevronDownIcon
-          className={`${JOURNEY_SPLIT_CONNECTOR_MOBILE_CHEVRON_CLASS} text-harbor-coral`}
-        />
       </div>
 
       <div className={JOURNEY_SPLIT_BOTTOM_ROW_CLASS}>
