@@ -58,11 +58,14 @@ export const JOURNEY_STAGE_CARD_BASE =
   `relative flex h-full w-full min-w-0 flex-col p-4 text-[#1E4775] transition-[transform,box-shadow,opacity] duration-500 sm:p-5 ${JOURNEY_LIGHT_PANEL_CLASS}`;
 
 export const JOURNEY_STAGE_CARD_ACTIVE =
-  "z-[1] border-2 border-harbor-coral ring-2 ring-harbor-coral/25 shadow-[0_12px_40px_-10px_rgba(255,138,122,0.28)]";
+  "z-[2] overflow-hidden border-[3px] border-harbor-coral bg-harbor-coral/[0.08] shadow-[0_0_0_4px_rgba(255,138,122,0.3),0_20px_56px_-16px_rgba(255,138,122,0.55)] ring-4 ring-harbor-coral/35";
 
 export const JOURNEY_STAGE_CARD_COMPLETE = "";
 
 export const JOURNEY_STAGE_CARD_FUTURE = "opacity-50";
+
+export const JOURNEY_STAGE_ACTIVE_ACCENT_CLASS =
+  "pointer-events-none absolute inset-x-0 top-0 h-1.5 rounded-t-xl bg-harbor-coral";
 
 export const JOURNEY_STAGE_ACTIVE_BADGE_CLASS =
   "absolute left-3 top-3 z-[2]";
@@ -71,7 +74,7 @@ export const JOURNEY_STAGE_ICON_BADGE =
   `${HARBOR_FROSTED_LIGHT_ICON_BADGE_BASE} h-10 w-10 text-harbor-coral`;
 
 export const JOURNEY_STAGE_ICON_PULSE =
-  "absolute -inset-1 rounded-full bg-harbor-coral/20 animate-pulse motion-reduce:animate-none";
+  "absolute -inset-2 rounded-full bg-harbor-coral/30 animate-pulse motion-reduce:animate-none";
 
 export const JOURNEY_STAGE_TITLE_CLASS =
   "text-sm font-semibold leading-tight text-balance text-[#1E4775] sm:text-base";
@@ -101,7 +104,7 @@ export const JOURNEY_STATUS_BADGE_COMPLETE =
   "inline-flex items-center gap-1 rounded-full bg-harbor-mint/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-harbor-mint";
 
 export const JOURNEY_STATUS_BADGE_ACTIVE =
-  "inline-flex items-center gap-1 rounded-full bg-harbor-coral/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-harbor-coral";
+  "inline-flex items-center gap-1 rounded-full bg-harbor-coral px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-[0_4px_14px_-4px_rgba(255,138,122,0.8)]";
 
 export const JOURNEY_STATUS_BADGE_UPCOMING =
   "inline-flex items-center rounded-full border border-[#1E4775]/15 bg-[#1E4775]/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/45";

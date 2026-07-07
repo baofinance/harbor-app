@@ -15,6 +15,7 @@ import {
   JOURNEY_STAGE_CARD_ACTIVE,
   JOURNEY_STAGE_CARD_BASE,
   JOURNEY_STAGE_CARD_FUTURE,
+  JOURNEY_STAGE_ACTIVE_ACCENT_CLASS,
   JOURNEY_STAGE_ACTIVE_BADGE_CLASS,
   JOURNEY_STAGE_DESC_CLASS,
   JOURNEY_STAGE_FOOTER_SLOT_CLASS,
@@ -94,6 +95,10 @@ export function JourneyStageCard({
       className={`${JOURNEY_STAGE_CARD_BASE} ${cardStateClass}`}
       aria-current={visualState === "active" ? "step" : undefined}
     >
+      {visualState === "active" ? (
+        <span className={JOURNEY_STAGE_ACTIVE_ACCENT_CLASS} aria-hidden />
+      ) : null}
+
       {visualState === "active" && badgeText ? (
         <span className={JOURNEY_STAGE_ACTIVE_BADGE_CLASS}>
           <span className={JOURNEY_STATUS_BADGE_ACTIVE}>{badgeText}</span>
