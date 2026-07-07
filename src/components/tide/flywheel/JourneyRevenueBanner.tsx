@@ -5,16 +5,18 @@ import { formatUSD } from "@/utils/formatters";
 import {
   JourneyRevenueSplitDiagram,
   type JourneyRevenueSplitBranch,
+  type JourneyTideDestination,
 } from "./JourneyRevenueSplitDiagram";
 import { JOURNEY_REVENUE_BANNER_CLASS } from "./revenueJourneyStyles";
 
 export type JourneyRevenueBannerProps = {
   label: string;
-  tagline: string;
+  tagline?: string;
   revenueUsd: number | null;
   isLoading?: boolean;
   reinvest: JourneyRevenueSplitBranch;
   strengthenTide: JourneyRevenueSplitBranch;
+  tideDestinations?: JourneyTideDestination[];
 };
 
 export function JourneyRevenueBanner({
@@ -24,6 +26,7 @@ export function JourneyRevenueBanner({
   isLoading = false,
   reinvest,
   strengthenTide,
+  tideDestinations,
 }: JourneyRevenueBannerProps) {
   const target = revenueUsd ?? 0;
   const animated = useAnimatedNumber(target, { disabled: isLoading });
@@ -38,6 +41,7 @@ export function JourneyRevenueBanner({
         sourceTagline={tagline}
         reinvest={reinvest}
         strengthenTide={strengthenTide}
+        tideDestinations={tideDestinations}
       />
     </div>
   );

@@ -54,13 +54,18 @@ export function ProtocolRevenueJourney() {
   const polVisual = visualById.pol ?? "future";
   const burnVisual = visualById.burn ?? "future";
 
-  const tideDestinations = copy.revenueSplit.strengthenTide.destinations;
+  const destinationLabels = copy.revenueSplit.strengthenTide.destinations;
+
+  const tideDestinations = [
+    { label: destinationLabels[0] ?? "Treasury", state: treasuryVisual },
+    { label: destinationLabels[1] ?? "POL", state: polVisual },
+    { label: destinationLabels[2] ?? "Burn", state: burnVisual },
+  ];
 
   const stages = [
     {
       id: "treasury",
       visualState: treasuryVisual,
-      destinationLabel: tideDestinations[0] ?? "Treasury",
       card: (
         <JourneyStageCard
           stageId="treasury"
@@ -88,7 +93,6 @@ export function ProtocolRevenueJourney() {
     {
       id: "pol",
       visualState: polVisual,
-      destinationLabel: tideDestinations[1] ?? "POL",
       card: (
         <JourneyStageCard
           stageId="pol"
@@ -137,7 +141,6 @@ export function ProtocolRevenueJourney() {
     {
       id: "burn",
       visualState: burnVisual,
-      destinationLabel: tideDestinations[2] ?? "Burn",
       card: (
         <JourneyStageCard
           stageId="burn"
@@ -175,11 +178,11 @@ export function ProtocolRevenueJourney() {
         <div className={JOURNEY_FLOW_CLASS}>
           <JourneyRevenueBanner
             label={copy.revenueHero.label}
-            tagline={copy.revenueHero.tagline}
             revenueUsd={metrics.lifetimeRevenueUsd}
             isLoading={metrics.isLoading}
             reinvest={copy.revenueSplit.reinvest}
             strengthenTide={copy.revenueSplit.strengthenTide}
+            tideDestinations={tideDestinations}
           />
 
           <JourneyTimeline stages={stages} />

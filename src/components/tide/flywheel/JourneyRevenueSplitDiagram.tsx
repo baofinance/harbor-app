@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import type { JourneyStageVisualState } from "@/utils/tideRevenueJourney";
 import {
   JOURNEY_REVENUE_BANNER_VALUE_CLASS,
   JOURNEY_REVENUE_LABEL_CLASS,
@@ -21,6 +22,9 @@ import {
   JOURNEY_SPLIT_CONNECTOR_MOBILE_CLASS,
   JOURNEY_SPLIT_DIAGRAM_CLASS,
   JOURNEY_SPLIT_SOURCE_CLASS,
+  JOURNEY_TIDE_DEST_CHIP_ACTIVE_CLASS,
+  JOURNEY_TIDE_DEST_CHIP_COMPLETE_CLASS,
+  JOURNEY_TIDE_DEST_CHIP_FUTURE_CLASS,
 } from "./revenueJourneyStyles";
 
 export type JourneyRevenueSplitBranch = {
@@ -33,6 +37,11 @@ export type JourneyRevenueSplitBranch = {
   destinations?: readonly string[];
 };
 
+export type JourneyTideDestination = {
+  label: string;
+  state: JourneyStageVisualState;
+};
+
 export type JourneyRevenueSplitDiagramProps = {
   sourceLabel: string;
   sourceValue: string;
@@ -41,7 +50,15 @@ export type JourneyRevenueSplitDiagramProps = {
   reinvest: JourneyRevenueSplitBranch;
   /** Bottom branch — strengthens TIDE, feeds the stages below. */
   strengthenTide: JourneyRevenueSplitBranch;
+  /** Destination chips (Treasury / POL / Burn) shown inside the TIDE branch. */
+  tideDestinations?: JourneyTideDestination[];
 };
+
+function tideDestChipClass(state: JourneyStageVisualState): string {
+  if (state === "active") return JOURNEY_TIDE_DEST_CHIP_ACTIVE_CLASS;
+  if (state === "complete") return JOURNEY_TIDE_DEST_CHIP_COMPLETE_CLASS;
+  return JOURNEY_TIDE_DEST_CHIP_FUTURE_CLASS;
+}
 
 export function JourneyRevenueSplitDiagram({
   sourceLabel,
@@ -49,6 +66,7 @@ export function JourneyRevenueSplitDiagram({
   sourceTagline,
   reinvest,
   strengthenTide,
+  tideDestinations,
 }: JourneyRevenueSplitDiagramProps) {
   return (
     <div className={JOURNEY_SPLIT_DIAGRAM_CLASS}>
@@ -126,6 +144,18 @@ export function JourneyRevenueSplitDiagram({
             <p className={JOURNEY_SPLIT_BRANCH_DESC_CLASS}>
               {strengthenTide.description}
             </p>
+            {tideDestinations?.length ? (
+              <div className={JOURNEY_SPLIT_CHIPS_ROW_CLASS}>
+                {tideDestinations.map((destination) => (
+                  <span
+                    key={destination.label}
+                    className={tideDestChipClass(destination.state)}
+                  >
+                    {destination.label}
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

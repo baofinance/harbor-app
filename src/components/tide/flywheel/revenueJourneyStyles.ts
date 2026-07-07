@@ -66,6 +66,19 @@ export const JOURNEY_SPLIT_CHIP_INACTIVE_CLASS =
 export const JOURNEY_SPLIT_CHIP_TIDE_CLASS =
   "inline-flex items-center rounded-md border border-harbor-coral/30 bg-harbor-coral/10 px-1.5 py-0.5 text-[10px] font-semibold text-harbor-coral";
 
+/** TIDE destination chips rendered inside the Strengthen TIDE box (light panel). */
+export const JOURNEY_TIDE_DEST_CHIP_BASE_CLASS =
+  "inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide";
+
+export const JOURNEY_TIDE_DEST_CHIP_ACTIVE_CLASS =
+  `${JOURNEY_TIDE_DEST_CHIP_BASE_CLASS} border-harbor-coral bg-harbor-coral text-white shadow-[0_4px_14px_-6px_rgba(255,138,122,0.7)]`;
+
+export const JOURNEY_TIDE_DEST_CHIP_COMPLETE_CLASS =
+  `${JOURNEY_TIDE_DEST_CHIP_BASE_CLASS} border-[#2A7A5E]/25 bg-harbor-mint/35 text-[#1A5C45]`;
+
+export const JOURNEY_TIDE_DEST_CHIP_FUTURE_CLASS =
+  `${JOURNEY_TIDE_DEST_CHIP_BASE_CLASS} border-[#1E4775]/15 bg-[#1E4775]/[0.04] text-[#1E4775]/40`;
+
 export const JOURNEY_SPLIT_BRANCH_REINVEST_CLASS =
   `${JOURNEY_SPLIT_BRANCH_BASE_CLASS} border-[#1E4775]/15 bg-[#1E4775]/[0.04]`;
 
@@ -107,21 +120,6 @@ export const JOURNEY_STAGE_GRID_CLASS =
 
 export const JOURNEY_STAGE_COLUMN_CLASS =
   "flex min-w-0 flex-col";
-
-export const JOURNEY_DESTINATION_CHIP_SLOT_CLASS =
-  "flex justify-center pt-2 lg:pt-3";
-
-export const JOURNEY_DESTINATION_CHIP_BASE_CLASS =
-  "inline-flex items-center rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide";
-
-export const JOURNEY_DESTINATION_CHIP_ACTIVE_CLASS =
-  `${JOURNEY_DESTINATION_CHIP_BASE_CLASS} border-harbor-coral/40 bg-harbor-coral/15 text-harbor-coral shadow-[0_4px_14px_-6px_rgba(255,138,122,0.55)]`;
-
-export const JOURNEY_DESTINATION_CHIP_COMPLETE_CLASS =
-  `${JOURNEY_DESTINATION_CHIP_BASE_CLASS} border-[#2A7A5E]/25 bg-harbor-mint/25 text-[#1A5C45]`;
-
-export const JOURNEY_DESTINATION_CHIP_FUTURE_CLASS =
-  `${JOURNEY_DESTINATION_CHIP_BASE_CLASS} border-white/15 bg-white/[0.04] text-white/40`;
 
 export const JOURNEY_DESTINATION_FEED_CLASS =
   "flex flex-col items-center py-1 lg:py-1.5";
