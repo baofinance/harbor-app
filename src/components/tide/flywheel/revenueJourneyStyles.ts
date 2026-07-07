@@ -37,7 +37,7 @@ export const JOURNEY_SPLIT_DIAGRAM_CLASS =
   "flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-0";
 
 export const JOURNEY_SPLIT_SOURCE_CLASS =
-  "flex flex-col justify-center text-left lg:w-[15rem] lg:shrink-0 lg:pr-2";
+  "flex flex-col justify-center text-left lg:w-[16rem] lg:shrink-0 lg:pl-6 lg:pr-2 xl:pl-10";
 
 export const JOURNEY_SPLIT_CONNECTOR_CLASS =
   "hidden text-[#1E4775]/30 lg:block lg:w-14 lg:shrink-0 lg:self-stretch";
@@ -49,7 +49,22 @@ export const JOURNEY_SPLIT_BRANCHES_CLASS =
   "flex min-w-0 flex-1 flex-col justify-center gap-3";
 
 export const JOURNEY_SPLIT_BRANCH_BASE_CLASS =
-  "flex items-center gap-4 rounded-xl border px-4 py-3";
+  "flex items-start gap-4 rounded-xl border px-4 py-3";
+
+export const JOURNEY_SPLIT_CHIPS_ROW_CLASS =
+  "mt-2 flex flex-wrap items-center gap-1.5";
+
+export const JOURNEY_SPLIT_CHIPS_LABEL_CLASS =
+  "mr-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/50";
+
+export const JOURNEY_SPLIT_CHIP_ACTIVE_CLASS =
+  "inline-flex items-center rounded-md border border-[#1E4775]/20 bg-white/70 px-1.5 py-0.5 text-[10px] font-semibold text-[#1E4775]";
+
+export const JOURNEY_SPLIT_CHIP_INACTIVE_CLASS =
+  "inline-flex items-center rounded-md border border-[#1E4775]/10 bg-[#1E4775]/[0.03] px-1.5 py-0.5 text-[10px] font-medium text-[#1E4775]/40";
+
+export const JOURNEY_SPLIT_CHIP_TIDE_CLASS =
+  "inline-flex items-center rounded-md border border-harbor-coral/30 bg-harbor-coral/10 px-1.5 py-0.5 text-[10px] font-semibold text-harbor-coral";
 
 export const JOURNEY_SPLIT_BRANCH_REINVEST_CLASS =
   `${JOURNEY_SPLIT_BRANCH_BASE_CLASS} border-[#1E4775]/15 bg-[#1E4775]/[0.04]`;

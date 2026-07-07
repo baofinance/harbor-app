@@ -13,6 +13,11 @@ import {
   JOURNEY_SPLIT_BRANCH_REINVEST_CLASS,
   JOURNEY_SPLIT_BRANCH_TIDE_CLASS,
   JOURNEY_SPLIT_BRANCHES_CLASS,
+  JOURNEY_SPLIT_CHIP_ACTIVE_CLASS,
+  JOURNEY_SPLIT_CHIP_INACTIVE_CLASS,
+  JOURNEY_SPLIT_CHIP_TIDE_CLASS,
+  JOURNEY_SPLIT_CHIPS_LABEL_CLASS,
+  JOURNEY_SPLIT_CHIPS_ROW_CLASS,
   JOURNEY_SPLIT_CONNECTOR_CLASS,
   JOURNEY_SPLIT_CONNECTOR_MOBILE_CLASS,
   JOURNEY_SPLIT_DIAGRAM_CLASS,
@@ -23,6 +28,10 @@ export type JourneyRevenueSplitBranch = {
   pct: number;
   label: string;
   description: string;
+  yieldLabel?: string;
+  activeMarkets?: readonly string[];
+  inactiveMarkets?: readonly string[];
+  destinations?: readonly string[];
 };
 
 export type JourneyRevenueSplitDiagramProps = {
@@ -81,6 +90,29 @@ export function JourneyRevenueSplitDiagram({
             <p className={JOURNEY_SPLIT_BRANCH_DESC_CLASS}>
               {reinvest.description}
             </p>
+            {reinvest.activeMarkets?.length ||
+            reinvest.inactiveMarkets?.length ? (
+              <div className={JOURNEY_SPLIT_CHIPS_ROW_CLASS}>
+                {reinvest.yieldLabel ? (
+                  <span className={JOURNEY_SPLIT_CHIPS_LABEL_CLASS}>
+                    {reinvest.yieldLabel}
+                  </span>
+                ) : null}
+                {reinvest.activeMarkets?.map((market) => (
+                  <span key={market} className={JOURNEY_SPLIT_CHIP_ACTIVE_CLASS}>
+                    {market}
+                  </span>
+                ))}
+                {reinvest.inactiveMarkets?.map((market) => (
+                  <span
+                    key={market}
+                    className={JOURNEY_SPLIT_CHIP_INACTIVE_CLASS}
+                  >
+                    {market}
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -95,6 +127,18 @@ export function JourneyRevenueSplitDiagram({
             <p className={JOURNEY_SPLIT_BRANCH_DESC_CLASS}>
               {strengthenTide.description}
             </p>
+            {strengthenTide.destinations?.length ? (
+              <div className={JOURNEY_SPLIT_CHIPS_ROW_CLASS}>
+                {strengthenTide.destinations.map((destination) => (
+                  <span
+                    key={destination}
+                    className={JOURNEY_SPLIT_CHIP_TIDE_CLASS}
+                  >
+                    {destination}
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
