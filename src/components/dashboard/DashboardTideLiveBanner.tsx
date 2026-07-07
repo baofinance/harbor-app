@@ -41,10 +41,10 @@ export function DashboardTideLiveBanner() {
       aria-label="Featured Harbor products"
     >
       <div className="grid grid-cols-1 md:grid-cols-2">
-        <div className="relative flex flex-col gap-2.5 border-b border-white/12 bg-gradient-to-br from-harbor-mint/40 via-[#1a5c52]/55 to-[#123d4a]/70 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4 md:border-b-0 md:border-r">
+        <div className="relative flex flex-col gap-2.5 border-b border-white/12 bg-gradient-to-br from-harbor-mint/[0.14] via-transparent to-transparent px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4 md:border-b-0 md:border-r">
           <div
             aria-hidden
-            className="pointer-events-none absolute -left-6 -top-6 h-20 w-20 rounded-full bg-harbor-mint/35 blur-2xl"
+            className="pointer-events-none absolute -left-6 -top-6 h-20 w-20 rounded-full bg-harbor-mint/20 blur-2xl"
           />
           <div className="relative min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
@@ -79,10 +79,10 @@ export function DashboardTideLiveBanner() {
           </div>
         </div>
 
-        <div className="relative flex flex-col gap-2.5 bg-gradient-to-br from-harbor-coral/40 via-[#5c2f38]/55 to-[#3d2438]/70 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4">
+        <div className="relative flex flex-col gap-2.5 bg-gradient-to-br from-harbor-coral/[0.14] via-transparent to-transparent px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4">
           <div
             aria-hidden
-            className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-harbor-coral/35 blur-2xl"
+            className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-harbor-coral/20 blur-2xl"
           />
           <div className="relative min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
