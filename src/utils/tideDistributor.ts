@@ -1,11 +1,13 @@
 import { formatToken } from "@/utils/formatters";
 import type { VeClaimStatus } from "@/abis/harborTideDistributor";
 import { TIDE_CONFIG } from "@/config/tide";
+import { isVeBaoLockExpired } from "@/utils/veBaoLock";
 
 export type TideClaimWindowStatus = "loading" | "not_started" | "open" | "ended";
 
 export type VeBaoClaimBlockerKind =
   | "extend_lock"
+  | "lock_expired"
   | "insufficient_locked"
   | "already_claimed"
   | "pool_cap"
@@ -45,7 +47,8 @@ export function isVeBaoLockEndTooEarly(
 
 export function getVeBaoClaimBlocker(
   status: VeClaimStatus | undefined,
-  endDate?: bigint
+  endDate?: bigint,
+  nowSec: bigint = BigInt(Math.floor(Date.now() / 1000)),
 ): VeBaoClaimBlocker | null {
   if (!status) return null;
   if (status.alreadyClaimed) {
@@ -64,6 +67,18 @@ export function getVeBaoClaimBlocker(
     return {
       kind: "insufficient_locked",
       message: `Keep at least ${formatToken(status.baoRequired, 18, 2)} BAO locked on veBAO (do not withdraw below your allocation).`,
+    };
+  }
+
+  if (isVeBaoLockExpired(status.veEnd, nowSec)) {
+    return {
+      kind: "lock_expired",
+      title: "veBAO lock expired",
+      message:
+        "Withdraw BAO from veBAO, then use the Swap card below with liquid BAO.",
+      detail: `Your lock ended: ${formatTideUnixDate(status.veEnd)}`,
+      ctaLabel: "Withdraw on BAO Finance",
+      ctaHref: TIDE_CONFIG.veBaoAppUrl,
     };
   }
 
@@ -86,10 +101,8 @@ export function getVeBaoClaimBlocker(
       kind: "extend_lock",
       title: "Extend your veBAO lock",
       message:
-        "Your lock must end after 31 December 2026 to claim TIDE. Extend your lock on veBAO, then return here to claim.",
+        "Your lock must end after 31 December 2026 to claim TIDE. Max-lock for 4 years to become eligible.",
       detail: `Your lock currently ends: ${formatTideUnixDate(status.veEnd)} · Required: after ${requiredAfter} (${requiredBy} or later)`,
-      ctaLabel: "Extend lock on veBAO",
-      ctaHref: TIDE_CONFIG.veBaoAppUrl,
     };
   }
 
