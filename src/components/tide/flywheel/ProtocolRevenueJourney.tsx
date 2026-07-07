@@ -178,12 +178,12 @@ export function ProtocolRevenueJourney() {
             ))}
           />
         </div>
-
-        <JourneyEducation
-          howRevenueFlows={copy.education.howRevenueFlows}
-          whyThisMatters={copy.education.whyThisMatters}
-        />
       </div>
+
+      <JourneyEducation
+        howRevenueFlows={copy.education.howRevenueFlows}
+        whyThisMatters={copy.education.whyThisMatters}
+      />
     </section>
   );
 }
