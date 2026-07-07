@@ -56,7 +56,21 @@ export const TIDE_FLYWHEEL_CONFIG = {
       "Every dollar earned by Harbor strengthens the TIDE ecosystem through a long-term capital allocation strategy.",
     revenueHero: {
       label: "Protocol Revenue Generated",
-      tagline: "Every dollar strengthens TIDE.",
+      tagline: "Every dollar strengthens TIDE with BUYBACKS",
+    },
+    revenueSplit: {
+      sourceLabel: "Source",
+      sourceTitle: "Protocol Revenue",
+      reinvest: {
+        pct: 75,
+        label: "Reinvest",
+        description: "Revenue reinvested into markets",
+      },
+      strengthenTide: {
+        pct: 25,
+        label: "Strengthen TIDE",
+        description: "Strengthens TIDE",
+      },
     },
     timelineEntryLabel: "Revenue",
     stages: {

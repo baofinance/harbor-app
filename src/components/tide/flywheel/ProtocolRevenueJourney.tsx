@@ -8,7 +8,6 @@ import {
 import { Droplets } from "lucide-react";
 import { TIDE_FLYWHEEL_CONFIG } from "@/config/tideFlywheel";
 import { useTideFlywheelMetrics } from "@/hooks/useTideFlywheelMetrics";
-import { formatUSD } from "@/utils/formatters";
 import {
   deriveAllStageVisuals,
   progressTowardTarget,
@@ -30,11 +29,6 @@ function formatPct(value: number | null | undefined): string {
   const n = value ?? 0;
   if (!Number.isFinite(n)) return "0.00%";
   return `${n.toFixed(2)}%`;
-}
-
-function formatTideTokens(value: number): string {
-  if (!Number.isFinite(value) || value <= 0) return "—";
-  return `${value.toLocaleString(undefined, { maximumFractionDigits: 0 })} TIDE`;
 }
 
 export function ProtocolRevenueJourney() {
@@ -179,19 +173,12 @@ export function ProtocolRevenueJourney() {
             tagline={copy.revenueHero.tagline}
             revenueUsd={metrics.lifetimeRevenueUsd}
             isLoading={metrics.isLoading}
-            buybackTitle={copy.stages.buyback.title}
-            buybackDescription={copy.stages.buyback.description}
-            buybackStatLabel={copy.stages.buyback.statLabel}
-            buybackTideAmount={
-              metrics.isLoading
-                ? "…"
-                : formatTideTokens(metrics.buyback.tideTokens)
-            }
-            buybackUsdAmount={
-              metrics.isLoading
-                ? ""
-                : `(${formatUSD(metrics.buyback.usd, { compact: false })})`
-            }
+            splitSourceLabel={copy.revenueSplit.sourceLabel}
+            splitSourceTitle={copy.revenueSplit.sourceTitle}
+            splitBranches={[
+              copy.revenueSplit.reinvest,
+              copy.revenueSplit.strengthenTide,
+            ]}
           />
 
           <JourneyTimeline stages={stages} />
