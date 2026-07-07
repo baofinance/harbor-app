@@ -36,16 +36,12 @@ export function DashboardTideLiveBanner() {
 
   return (
     <section
-      className="overflow-hidden rounded-2xl border border-white/10 shadow-[0_8px_32px_-10px_rgba(0,0,0,0.22)]"
+      className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] shadow-[0_8px_32px_-10px_rgba(0,0,0,0.22)] backdrop-blur-md"
       role="region"
       aria-label="Featured Harbor products"
     >
       <div className="grid grid-cols-1 md:grid-cols-2">
-        <div className="relative flex flex-col gap-2.5 border-b border-white/12 bg-gradient-to-br from-harbor-mint/25 via-harbor-mint/[0.18] to-harbor-mint/[0.12] px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4 md:border-b-0 md:border-r">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -left-6 -top-6 h-20 w-20 rounded-full bg-harbor-mint/20 blur-2xl"
-          />
+        <div className="relative flex flex-col gap-2.5 border-b border-harbor-mint/20 bg-harbor-mint/[0.18] px-3.5 py-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4 md:border-b-0 md:border-r">
           <div className="relative min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
               <PromoBadge tone="mint">Live now</PromoBadge>
@@ -79,11 +75,7 @@ export function DashboardTideLiveBanner() {
           </div>
         </div>
 
-        <div className="relative flex flex-col gap-2.5 bg-gradient-to-br from-harbor-coral/25 via-harbor-coral/[0.18] to-harbor-coral/[0.12] px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-harbor-coral/20 blur-2xl"
-          />
+        <div className="relative flex flex-col gap-2.5 border-harbor-coral/20 bg-harbor-coral/[0.18] px-3.5 py-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4">
           <div className="relative min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
               <PromoBadge tone="coral">Launching soon</PromoBadge>
