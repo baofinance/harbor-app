@@ -19,7 +19,7 @@ export function TideDashboard() {
 
   return (
     <TideTransactionProvider>
-      <section className={`mt-8 ${DASHBOARD_GAP_MAJOR}`}>
+      <section className={`mt-2 ${DASHBOARD_GAP_MAJOR}`}>
         {!isConnected ? (
           <div className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} px-4 py-3 sm:px-5 sm:py-4`}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
