@@ -2,10 +2,10 @@
 
 import { useAnimatedNumber } from "@/hooks/useAnimatedNumber";
 import { formatUSD } from "@/utils/formatters";
+import type { ReactNode } from "react";
 import {
   JourneyRevenueSplitDiagram,
   type JourneyRevenueSplitBranch,
-  type JourneyTideDestination,
 } from "./JourneyRevenueSplitDiagram";
 import { JOURNEY_REVENUE_BANNER_CLASS } from "./revenueJourneyStyles";
 
@@ -16,7 +16,7 @@ export type JourneyRevenueBannerProps = {
   isLoading?: boolean;
   reinvest: JourneyRevenueSplitBranch;
   strengthenTide: JourneyRevenueSplitBranch;
-  tideDestinations?: JourneyTideDestination[];
+  stageCards?: ReactNode;
 };
 
 export function JourneyRevenueBanner({
@@ -26,7 +26,7 @@ export function JourneyRevenueBanner({
   isLoading = false,
   reinvest,
   strengthenTide,
-  tideDestinations,
+  stageCards,
 }: JourneyRevenueBannerProps) {
   const target = revenueUsd ?? 0;
   const animated = useAnimatedNumber(target, { disabled: isLoading });
@@ -41,7 +41,7 @@ export function JourneyRevenueBanner({
         sourceTagline={tagline}
         reinvest={reinvest}
         strengthenTide={strengthenTide}
-        tideDestinations={tideDestinations}
+        stageCards={stageCards}
       />
     </div>
   );

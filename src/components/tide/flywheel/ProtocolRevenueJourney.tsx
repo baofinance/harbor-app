@@ -15,13 +15,13 @@ import {
 import { JourneyEducation } from "./JourneyEducation";
 import { JourneyRevenueBanner } from "./JourneyRevenueBanner";
 import { JourneyStageCard } from "./JourneyStageCard";
-import { JourneyTimeline } from "./JourneyTimeline";
 import {
   JOURNEY_CONTENT_CLASS,
   JOURNEY_FLOW_CLASS,
   JOURNEY_HEADER_TEXT_CLASS,
   JOURNEY_SECTION_CLASS,
   JOURNEY_SUBTITLE_CLASS,
+  JOURNEY_TIMELINE_CARD_SLOT_CLASS,
   JOURNEY_TITLE_CLASS,
 } from "./revenueJourneyStyles";
 
@@ -54,18 +54,9 @@ export function ProtocolRevenueJourney() {
   const polVisual = visualById.pol ?? "future";
   const burnVisual = visualById.burn ?? "future";
 
-  const destinationLabels = copy.revenueSplit.strengthenTide.destinations;
-
-  const tideDestinations = [
-    { label: destinationLabels[0] ?? "Treasury", state: treasuryVisual },
-    { label: destinationLabels[1] ?? "POL", state: polVisual },
-    { label: destinationLabels[2] ?? "Burn", state: burnVisual },
-  ];
-
   const stages = [
     {
       id: "treasury",
-      visualState: treasuryVisual,
       card: (
         <JourneyStageCard
           stageId="treasury"
@@ -92,7 +83,6 @@ export function ProtocolRevenueJourney() {
     },
     {
       id: "pol",
-      visualState: polVisual,
       card: (
         <JourneyStageCard
           stageId="pol"
@@ -140,7 +130,6 @@ export function ProtocolRevenueJourney() {
     },
     {
       id: "burn",
-      visualState: burnVisual,
       card: (
         <JourneyStageCard
           stageId="burn"
@@ -182,10 +171,12 @@ export function ProtocolRevenueJourney() {
             isLoading={metrics.isLoading}
             reinvest={copy.revenueSplit.reinvest}
             strengthenTide={copy.revenueSplit.strengthenTide}
-            tideDestinations={tideDestinations}
+            stageCards={stages.map((stage) => (
+              <div key={stage.id} className={JOURNEY_TIMELINE_CARD_SLOT_CLASS}>
+                {stage.card}
+              </div>
+            ))}
           />
-
-          <JourneyTimeline stages={stages} />
         </div>
 
         <JourneyEducation

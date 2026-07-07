@@ -32,18 +32,49 @@ export const JOURNEY_FLOW_CLASS = "flex min-w-0 flex-col gap-0";
 export const JOURNEY_REVENUE_BANNER_CLASS =
   `${JOURNEY_LIGHT_PANEL_CLASS} w-full px-5 py-5 text-[#1E4775] sm:px-6 sm:py-6`;
 
-/** Horizontal split flow: source on the left, two stacked branches on the right. */
-export const JOURNEY_SPLIT_DIAGRAM_CLASS =
-  "flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-0";
+/** Flow: revenue source feeds right into Reinvest and down into Strengthen TIDE. */
+export const JOURNEY_SPLIT_DIAGRAM_CLASS = "flex flex-col gap-3";
 
-export const JOURNEY_SPLIT_SOURCE_CLASS =
-  "flex flex-col justify-center text-left lg:w-[16rem] lg:shrink-0 lg:pl-6 lg:pr-2 xl:pl-10";
+/** Top row — revenue source (left) feeding into the Reinvest branch (right). */
+export const JOURNEY_SPLIT_TOP_ROW_CLASS =
+  "flex flex-col gap-3 lg:flex-row lg:items-stretch lg:gap-3";
 
-export const JOURNEY_SPLIT_CONNECTOR_CLASS =
-  "hidden text-[#1E4775]/30 lg:block lg:w-14 lg:shrink-0 lg:self-stretch";
+export const JOURNEY_REVENUE_SOURCE_BOX_CLASS =
+  "flex flex-col justify-center rounded-xl border border-[#1E4775]/15 bg-[#1E4775]/[0.05] px-4 py-4 text-left lg:w-[15rem] lg:shrink-0";
 
+/** Right-pointing connector between the source and the Reinvest branch (desktop). */
+export const JOURNEY_SPLIT_RIGHT_CONNECTOR_CLASS =
+  "hidden items-center justify-center text-[#1E4775]/35 lg:flex lg:w-6 lg:shrink-0";
+
+/** Down connector shown on mobile between stacked boxes. */
 export const JOURNEY_SPLIT_CONNECTOR_MOBILE_CLASS =
   "flex justify-center text-[#1E4775]/30 lg:hidden";
+
+/** Down connector from the source box into the Strengthen TIDE box (aligned left on desktop). */
+export const JOURNEY_SPLIT_DOWN_CONNECTOR_CLASS =
+  "flex justify-center text-harbor-coral/55 lg:w-[15rem]";
+
+/** Header row inside the Strengthen TIDE box (percentage + label/description). */
+export const JOURNEY_TIDE_HEADER_CLASS = "flex items-start gap-4";
+
+/** Grid holding the Treasury / POL / Burn stage cards inside the Strengthen TIDE box. */
+export const JOURNEY_TIDE_STAGE_GRID_CLASS =
+  "mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3";
+
+/** Mini market boxes inside the Reinvest branch (consistent with stage chips). */
+export const JOURNEY_MARKET_GRID_CLASS = "mt-2 flex flex-wrap gap-1.5";
+
+export const JOURNEY_MARKET_BOX_BASE_CLASS =
+  "inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold";
+
+export const JOURNEY_MARKET_BOX_ACTIVE_CLASS =
+  `${JOURNEY_MARKET_BOX_BASE_CLASS} border-[#1E4775]/20 bg-white/70 text-[#1E4775]`;
+
+export const JOURNEY_MARKET_BOX_LOADING_CLASS =
+  `${JOURNEY_MARKET_BOX_BASE_CLASS} animate-pulse border-dashed border-[#1E4775]/40 bg-white/40 text-[#1E4775]/70`;
+
+export const JOURNEY_MARKET_BOX_INACTIVE_CLASS =
+  `${JOURNEY_MARKET_BOX_BASE_CLASS} border-[#1E4775]/10 bg-[#1E4775]/[0.03] text-[#1E4775]/40`;
 
 export const JOURNEY_SPLIT_BRANCHES_CLASS =
   "flex min-w-0 flex-1 flex-col justify-center gap-3";
@@ -83,10 +114,10 @@ export const JOURNEY_TIDE_DEST_CHIP_FUTURE_CLASS =
   `${JOURNEY_TIDE_DEST_CHIP_BASE_CLASS} border-[#1E4775]/15 bg-[#1E4775]/[0.04] text-[#1E4775]/40`;
 
 export const JOURNEY_SPLIT_BRANCH_REINVEST_CLASS =
-  `${JOURNEY_SPLIT_BRANCH_BASE_CLASS} border-[#1E4775]/15 bg-[#1E4775]/[0.04]`;
+  `${JOURNEY_SPLIT_BRANCH_BASE_CLASS} flex-1 border-[#1E4775]/15 bg-[#1E4775]/[0.04]`;
 
 export const JOURNEY_SPLIT_BRANCH_TIDE_CLASS =
-  `${JOURNEY_SPLIT_BRANCH_BASE_CLASS} border-harbor-coral/40 bg-harbor-coral/[0.08]`;
+  "rounded-xl border border-harbor-coral/40 bg-harbor-coral/[0.08] px-4 py-4 sm:px-5 sm:py-5";
 
 export const JOURNEY_SPLIT_BRANCH_PCT_REINVEST_CLASS =
   "shrink-0 font-mono text-2xl font-bold tabular-nums text-[#1E4775] sm:text-3xl";
