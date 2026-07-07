@@ -1,7 +1,5 @@
 import {
   MV_CARD_INNER_GRADIENT,
-  MV_BODY_TEXT,
-  MV_FOOTER_PANEL,
   MV_MAIN_CARD_SHELL,
   MV_PROGRESS_FILL,
   MV_PROGRESS_FILL_COMPLETE,
@@ -278,14 +276,10 @@ export const JOURNEY_CONNECTOR_CHEVRON_CLASS = "text-white/30";
 
 export const JOURNEY_CONNECTOR_CHEVRON_ACTIVE_CLASS = "text-harbor-coral/60";
 
-export const JOURNEY_EDUCATION_CLASS =
-  `${MV_FOOTER_PANEL} px-5 py-6 sm:px-6 sm:py-7 lg:px-8`;
-
 export const JOURNEY_EDUCATION_GRID_CLASS =
-  "grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8";
+  "grid grid-cols-1 gap-6 border-t border-white/[0.08] pt-6 lg:grid-cols-2 lg:gap-8 lg:pt-8";
 
-export const JOURNEY_EDUCATION_TITLE_CLASS =
-  "text-sm font-semibold tracking-wide text-white/90";
+export const JOURNEY_EDUCATION_TITLE_CLASS = "text-sm font-semibold text-white";
 
 export const JOURNEY_EDUCATION_BODY_CLASS =
-  `mt-3 space-y-2 ${MV_BODY_TEXT}`;
+  "mt-3 space-y-2 text-xs leading-relaxed text-white/55 sm:text-sm";

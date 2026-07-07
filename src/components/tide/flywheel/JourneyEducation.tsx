@@ -2,7 +2,6 @@
 
 import {
   JOURNEY_EDUCATION_BODY_CLASS,
-  JOURNEY_EDUCATION_CLASS,
   JOURNEY_EDUCATION_GRID_CLASS,
   JOURNEY_EDUCATION_TITLE_CLASS,
 } from "./revenueJourneyStyles";
@@ -25,27 +24,25 @@ export function JourneyEducation({
   whyThisMatters,
 }: JourneyEducationProps) {
   return (
-    <footer className={JOURNEY_EDUCATION_CLASS}>
-      <div className={JOURNEY_EDUCATION_GRID_CLASS}>
-        <div>
-          <h3 className={JOURNEY_EDUCATION_TITLE_CLASS}>{howRevenueFlows.title}</h3>
-          <div className={JOURNEY_EDUCATION_BODY_CLASS}>
-            {howRevenueFlows.paragraphs.map((paragraph) => (
-              <p key={paragraph}>{paragraph}</p>
-            ))}
-          </div>
+    <footer className={JOURNEY_EDUCATION_GRID_CLASS}>
+      <div>
+        <h3 className={JOURNEY_EDUCATION_TITLE_CLASS}>{howRevenueFlows.title}</h3>
+        <div className={JOURNEY_EDUCATION_BODY_CLASS}>
+          {howRevenueFlows.paragraphs.map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
         </div>
-        <div className="lg:border-l lg:border-white/[0.08] lg:pl-8">
-          <h3 className={JOURNEY_EDUCATION_TITLE_CLASS}>{whyThisMatters.title}</h3>
-          <div className={JOURNEY_EDUCATION_BODY_CLASS}>
-            <p>{whyThisMatters.intro}</p>
-            <ul className="list-disc space-y-1 pl-4">
-              {whyThisMatters.bullets.map((bullet) => (
-                <li key={bullet}>{bullet}</li>
-              ))}
-            </ul>
-            <p>{whyThisMatters.outro}</p>
-          </div>
+      </div>
+      <div className="lg:border-l lg:border-white/[0.08] lg:pl-8">
+        <h3 className={JOURNEY_EDUCATION_TITLE_CLASS}>{whyThisMatters.title}</h3>
+        <div className={JOURNEY_EDUCATION_BODY_CLASS}>
+          <p>{whyThisMatters.intro}</p>
+          <ul className="list-disc space-y-1 pl-4">
+            {whyThisMatters.bullets.map((bullet) => (
+              <li key={bullet}>{bullet}</li>
+            ))}
+          </ul>
+          <p>{whyThisMatters.outro}</p>
         </div>
       </div>
     </footer>

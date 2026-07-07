@@ -7,6 +7,7 @@ import {
   JourneyRevenueSplitDiagram,
   type JourneyRevenueSplitBranch,
 } from "./JourneyRevenueSplitDiagram";
+import { JOURNEY_REVENUE_BANNER_CLASS } from "./revenueJourneyStyles";
 
 export type JourneyRevenueBannerProps = {
   label: string;
@@ -33,13 +34,15 @@ export function JourneyRevenueBanner({
   const display = isLoading ? "…" : formatUSD(animated, { compact: false });
 
   return (
-    <JourneyRevenueSplitDiagram
-      sourceLabel={label}
-      sourceValue={display}
-      sourceTagline={tagline}
-      reinvest={reinvest}
-      strengthenTide={strengthenTide}
-      stageCards={stageCards}
-    />
+    <div className={JOURNEY_REVENUE_BANNER_CLASS}>
+      <JourneyRevenueSplitDiagram
+        sourceLabel={label}
+        sourceValue={display}
+        sourceTagline={tagline}
+        reinvest={reinvest}
+        strengthenTide={strengthenTide}
+        stageCards={stageCards}
+      />
+    </div>
   );
 }
