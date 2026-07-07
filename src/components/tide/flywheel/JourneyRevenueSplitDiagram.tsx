@@ -8,9 +8,11 @@ import {
   JOURNEY_MARKET_BOX_LOADING_CLASS,
   JOURNEY_MARKET_GRID_CLASS,
   JOURNEY_REVENUE_BANNER_VALUE_CLASS,
+  JOURNEY_REVENUE_COLUMN_CLASS,
   JOURNEY_REVENUE_LABEL_CLASS,
   JOURNEY_REVENUE_SOURCE_BOX_CLASS,
   JOURNEY_REVENUE_TAGLINE_CLASS,
+  JOURNEY_SPLIT_BOTTOM_ROW_CLASS,
   JOURNEY_SPLIT_BRANCH_BODY_CLASS,
   JOURNEY_SPLIT_BRANCH_DESC_CLASS,
   JOURNEY_SPLIT_BRANCH_LABEL_CLASS,
@@ -19,10 +21,22 @@ import {
   JOURNEY_SPLIT_BRANCH_REINVEST_CLASS,
   JOURNEY_SPLIT_BRANCH_TIDE_CLASS,
   JOURNEY_SPLIT_CHIPS_LABEL_CLASS,
+  JOURNEY_SPLIT_CONNECTOR_MOBILE_CHEVRON_CLASS,
   JOURNEY_SPLIT_CONNECTOR_MOBILE_CLASS,
+  JOURNEY_SPLIT_CONNECTOR_MOBILE_LINE_CLASS,
+  JOURNEY_SPLIT_CONNECTOR_MOBILE_LINE_TIDE_CLASS,
   JOURNEY_SPLIT_DIAGRAM_CLASS,
-  JOURNEY_SPLIT_DOWN_CONNECTOR_CLASS,
-  JOURNEY_SPLIT_RIGHT_CONNECTOR_CLASS,
+  JOURNEY_SPLIT_DOWN_INTO_TIDE_CLASS,
+  JOURNEY_SPLIT_DOWN_STUB_CHEVRON_CLASS,
+  JOURNEY_SPLIT_DOWN_STUB_COLUMN_CLASS,
+  JOURNEY_SPLIT_DOWN_STUB_LINE_CLASS,
+  JOURNEY_SPLIT_DOWN_STUB_ROW_CLASS,
+  JOURNEY_SPLIT_DOWN_STUB_STACK_CLASS,
+  JOURNEY_SPLIT_FORK_CHEVRON_RIGHT_CLASS,
+  JOURNEY_SPLIT_FORK_CONNECTOR_CLASS,
+  JOURNEY_SPLIT_FORK_JUNCTION_CLASS,
+  JOURNEY_SPLIT_FORK_LINE_DOWN_CLASS,
+  JOURNEY_SPLIT_FORK_LINE_RIGHT_CLASS,
   JOURNEY_SPLIT_TOP_ROW_CLASS,
   JOURNEY_TIDE_HEADER_CLASS,
   JOURNEY_TIDE_STAGE_GRID_CLASS,
@@ -67,19 +81,28 @@ export function JourneyRevenueSplitDiagram({
   return (
     <div className={JOURNEY_SPLIT_DIAGRAM_CLASS}>
       <div className={JOURNEY_SPLIT_TOP_ROW_CLASS}>
-        <div className={JOURNEY_REVENUE_SOURCE_BOX_CLASS}>
-          <p className={JOURNEY_REVENUE_LABEL_CLASS}>{sourceLabel}</p>
-          <p className={JOURNEY_REVENUE_BANNER_VALUE_CLASS}>{sourceValue}</p>
-          {sourceTagline ? (
-            <p className={JOURNEY_REVENUE_TAGLINE_CLASS}>{sourceTagline}</p>
-          ) : null}
+        <div className={JOURNEY_REVENUE_COLUMN_CLASS}>
+          <div className={JOURNEY_REVENUE_SOURCE_BOX_CLASS}>
+            <p className={JOURNEY_REVENUE_LABEL_CLASS}>{sourceLabel}</p>
+            <p className={JOURNEY_REVENUE_BANNER_VALUE_CLASS}>{sourceValue}</p>
+            {sourceTagline ? (
+              <p className={JOURNEY_REVENUE_TAGLINE_CLASS}>{sourceTagline}</p>
+            ) : null}
+          </div>
         </div>
 
-        <div className={JOURNEY_SPLIT_RIGHT_CONNECTOR_CLASS} aria-hidden>
-          <ChevronRightIcon className="h-5 w-5" />
+        <div className={JOURNEY_SPLIT_FORK_CONNECTOR_CLASS} aria-hidden>
+          <div className={JOURNEY_SPLIT_FORK_LINE_RIGHT_CLASS} />
+          <div className={JOURNEY_SPLIT_FORK_LINE_DOWN_CLASS} />
+          <div className={JOURNEY_SPLIT_FORK_JUNCTION_CLASS} />
+          <ChevronRightIcon className={JOURNEY_SPLIT_FORK_CHEVRON_RIGHT_CLASS} />
         </div>
+
         <div className={JOURNEY_SPLIT_CONNECTOR_MOBILE_CLASS} aria-hidden>
-          <ChevronDownIcon className="h-5 w-5" />
+          <div className={JOURNEY_SPLIT_CONNECTOR_MOBILE_LINE_CLASS} />
+          <ChevronDownIcon
+            className={`${JOURNEY_SPLIT_CONNECTOR_MOBILE_CHEVRON_CLASS} text-[#1E4775]/55`}
+          />
         </div>
 
         <div className={JOURNEY_SPLIT_BRANCH_REINVEST_CLASS}>
@@ -134,28 +157,43 @@ export function JourneyRevenueSplitDiagram({
         </div>
       </div>
 
-      <div className={JOURNEY_SPLIT_DOWN_CONNECTOR_CLASS} aria-hidden>
-        <ChevronDownIcon className="h-5 w-5" />
-      </div>
-
-      <div className={JOURNEY_SPLIT_BRANCH_TIDE_CLASS}>
-        <div className={JOURNEY_TIDE_HEADER_CLASS}>
-          <span className={JOURNEY_SPLIT_BRANCH_PCT_TIDE_CLASS}>
-            {strengthenTide.pct}%
-          </span>
-          <div className={JOURNEY_SPLIT_BRANCH_BODY_CLASS}>
-            <p className={JOURNEY_SPLIT_BRANCH_LABEL_CLASS}>
-              {strengthenTide.label}
-            </p>
-            <p className={JOURNEY_SPLIT_BRANCH_DESC_CLASS}>
-              {strengthenTide.description}
-            </p>
+      <div className={JOURNEY_SPLIT_DOWN_STUB_ROW_CLASS} aria-hidden>
+        <div className={JOURNEY_SPLIT_DOWN_STUB_COLUMN_CLASS}>
+          <div className={JOURNEY_SPLIT_DOWN_STUB_STACK_CLASS}>
+            <div className={JOURNEY_SPLIT_DOWN_STUB_LINE_CLASS} />
+            <ChevronDownIcon className={JOURNEY_SPLIT_DOWN_STUB_CHEVRON_CLASS} />
           </div>
         </div>
+      </div>
 
-        {stageCards ? (
-          <div className={JOURNEY_TIDE_STAGE_GRID_CLASS}>{stageCards}</div>
-        ) : null}
+      <div className={JOURNEY_SPLIT_CONNECTOR_MOBILE_CLASS} aria-hidden>
+        <div className={JOURNEY_SPLIT_CONNECTOR_MOBILE_LINE_TIDE_CLASS} />
+        <ChevronDownIcon
+          className={`${JOURNEY_SPLIT_CONNECTOR_MOBILE_CHEVRON_CLASS} text-harbor-coral`}
+        />
+      </div>
+
+      <div className={JOURNEY_SPLIT_BOTTOM_ROW_CLASS}>
+        <div className={JOURNEY_SPLIT_DOWN_INTO_TIDE_CLASS} aria-hidden />
+        <div className={JOURNEY_SPLIT_BRANCH_TIDE_CLASS}>
+          <div className={JOURNEY_TIDE_HEADER_CLASS}>
+            <span className={JOURNEY_SPLIT_BRANCH_PCT_TIDE_CLASS}>
+              {strengthenTide.pct}%
+            </span>
+            <div className={JOURNEY_SPLIT_BRANCH_BODY_CLASS}>
+              <p className={JOURNEY_SPLIT_BRANCH_LABEL_CLASS}>
+                {strengthenTide.label}
+              </p>
+              <p className={JOURNEY_SPLIT_BRANCH_DESC_CLASS}>
+                {strengthenTide.description}
+              </p>
+            </div>
+          </div>
+
+          {stageCards ? (
+            <div className={JOURNEY_TIDE_STAGE_GRID_CLASS}>{stageCards}</div>
+          ) : null}
+        </div>
       </div>
     </div>
   );

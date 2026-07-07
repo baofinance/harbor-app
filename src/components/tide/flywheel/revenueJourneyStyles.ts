@@ -33,26 +33,72 @@ export const JOURNEY_REVENUE_BANNER_CLASS =
   `${JOURNEY_LIGHT_PANEL_CLASS} w-full px-5 py-5 text-[#1E4775] sm:px-6 sm:py-6`;
 
 /** Flow: revenue source feeds right into Reinvest and down into Strengthen TIDE. */
-export const JOURNEY_SPLIT_DIAGRAM_CLASS = "flex flex-col gap-3";
+export const JOURNEY_SPLIT_DIAGRAM_CLASS = "flex flex-col";
 
 /** Top row — revenue source (left) feeding into the Reinvest branch (right). */
 export const JOURNEY_SPLIT_TOP_ROW_CLASS =
-  "flex flex-col gap-3 lg:flex-row lg:items-stretch lg:gap-3";
+  "flex flex-col gap-3 lg:flex-row lg:items-stretch lg:gap-0";
+
+/** Left column: revenue source box only (connectors live in separate rows). */
+export const JOURNEY_REVENUE_COLUMN_CLASS =
+  "w-full shrink-0 lg:w-[15rem]";
 
 export const JOURNEY_REVENUE_SOURCE_BOX_CLASS =
-  "flex flex-col justify-center rounded-xl border border-[#1E4775]/15 bg-[#1E4775]/[0.05] px-4 py-4 text-left lg:w-[15rem] lg:shrink-0";
+  "flex h-full flex-col justify-center rounded-xl border border-[#1E4775]/15 bg-[#1E4775]/[0.05] px-4 py-4 text-left";
 
-/** Right-pointing connector between the source and the Reinvest branch (desktop). */
-export const JOURNEY_SPLIT_RIGHT_CONNECTOR_CLASS =
-  "hidden items-center justify-center text-[#1E4775]/35 lg:flex lg:w-6 lg:shrink-0";
+/** Row for the down stub aligned under the revenue column (at the fork junction). */
+export const JOURNEY_SPLIT_DOWN_STUB_ROW_CLASS =
+  "hidden lg:flex";
+
+export const JOURNEY_SPLIT_DOWN_STUB_COLUMN_CLASS =
+  "flex w-[15rem] shrink-0 justify-end py-1";
+
+/** Horizontal fork connector between revenue and Reinvest (desktop). */
+export const JOURNEY_SPLIT_FORK_CONNECTOR_CLASS =
+  "relative hidden w-14 shrink-0 self-stretch lg:block";
+
+/** Horizontal line segment feeding into Reinvest. */
+export const JOURNEY_SPLIT_FORK_LINE_RIGHT_CLASS =
+  "absolute left-0 right-3 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-[#1E4775]/55";
+
+/** Vertical line segment feeding down into Strengthen TIDE. */
+export const JOURNEY_SPLIT_FORK_LINE_DOWN_CLASS =
+  "absolute bottom-0 left-0 top-1/2 w-1.5 -translate-x-1/2 rounded-full bg-harbor-coral/75";
+
+/** Junction dot where revenue splits to Reinvest and Strengthen TIDE. */
+export const JOURNEY_SPLIT_FORK_JUNCTION_CLASS =
+  "absolute left-0 top-1/2 z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#1E4775]/80 shadow-[0_0_0_2px_rgba(30,71,117,0.25)]";
+
+export const JOURNEY_SPLIT_FORK_CHEVRON_RIGHT_CLASS =
+  "absolute right-0 top-1/2 h-7 w-7 -translate-y-1/2 text-[#1E4775]/80";
+
+/** Down stub below the revenue column, continuing into Strengthen TIDE. */
+export const JOURNEY_SPLIT_DOWN_STUB_STACK_CLASS =
+  "flex flex-col items-center";
+
+export const JOURNEY_SPLIT_DOWN_STUB_LINE_CLASS =
+  "h-5 w-1.5 rounded-full bg-harbor-coral/75";
+
+export const JOURNEY_SPLIT_DOWN_STUB_CHEVRON_CLASS = "h-7 w-7 text-harbor-coral";
 
 /** Down connector shown on mobile between stacked boxes. */
 export const JOURNEY_SPLIT_CONNECTOR_MOBILE_CLASS =
-  "flex justify-center text-[#1E4775]/30 lg:hidden";
+  "flex flex-col items-center gap-0.5 py-1 text-[#1E4775]/45 lg:hidden";
 
-/** Down connector from the source box into the Strengthen TIDE box (aligned left on desktop). */
-export const JOURNEY_SPLIT_DOWN_CONNECTOR_CLASS =
-  "flex justify-center text-harbor-coral/55 lg:w-[15rem]";
+export const JOURNEY_SPLIT_CONNECTOR_MOBILE_LINE_CLASS =
+  "h-4 w-1 rounded-full bg-[#1E4775]/35";
+
+export const JOURNEY_SPLIT_CONNECTOR_MOBILE_LINE_TIDE_CLASS =
+  "h-4 w-1 rounded-full bg-harbor-coral/55";
+
+export const JOURNEY_SPLIT_CONNECTOR_MOBILE_CHEVRON_CLASS = "h-5 w-5";
+
+/** Bottom row holding the Strengthen TIDE box (full width, linked from revenue column). */
+export const JOURNEY_SPLIT_BOTTOM_ROW_CLASS = "relative mt-1 lg:mt-0";
+
+/** Extends the down branch from the revenue column into the Strengthen TIDE box. */
+export const JOURNEY_SPLIT_DOWN_INTO_TIDE_CLASS =
+  "pointer-events-none absolute -top-5 left-[15rem] hidden h-5 w-1.5 -translate-x-1/2 rounded-full bg-harbor-coral/75 lg:block";
 
 /** Header row inside the Strengthen TIDE box (percentage + label/description). */
 export const JOURNEY_TIDE_HEADER_CLASS = "flex items-start gap-4";
