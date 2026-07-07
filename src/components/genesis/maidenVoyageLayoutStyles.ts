@@ -294,3 +294,13 @@ export const MV_UPSIDE_BENCHMARK_TILE_UPDATED =
 /** Final growth-stage benchmark tile accent. */
 export const MV_UPSIDE_BENCHMARK_TILE_DESTINATION =
   "border-[#B8EBD5]/15";
+
+/** Frosted veil over preview maiden voyage deposit cards (`genesisActive: "soon"`). */
+export const MV_PREVIEW_SOON_VEIL_CLASS =
+  "pointer-events-none absolute inset-0 z-[5] rounded-[inherit] bg-[#0a1428]/50 backdrop-blur-[3px]";
+
+export const MV_PREVIEW_SOON_CONTENT_DIM_CLASS =
+  "relative z-[2] saturate-[0.82] opacity-[0.88]";
+
+export const MV_PREVIEW_SOON_BADGE_CLASS =
+  "rounded-xl border border-white/40 bg-[#CFE5DD]/95 px-4 py-2 font-mono text-base font-extrabold tracking-[0.12em] text-[#2F4572] shadow-[0_10px_30px_-12px_rgba(0,0,0,0.45)] sm:text-lg";

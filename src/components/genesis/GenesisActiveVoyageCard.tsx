@@ -9,6 +9,7 @@ import {
   MAIDEN_VOYAGE_DOCS_URL,
 } from "@/config/maidenVoyageFeatured";
 import { isGenesisSoonUi } from "@/config/markets";
+import { HARBOR_COMING_SOON_CTA_SURFACE_CLASS } from "@/components/market-cards/harborBasicMarketTokens";
 import type { GenesisMarketConfig } from "@/types/genesisMarket";
 import type { ActiveVoyageStatus } from "@/utils/activeVoyageStatus";
 import {
@@ -34,10 +35,9 @@ import {
   MV_FOOTER_PANEL,
   MV_META_TEXT,
   MV_PRIMARY_CTA,
-  MV_COMING_SOON_CONTENT_DIM_CLASS,
-  MV_COMING_SOON_LABEL_CLASS,
-  MV_COMING_SOON_OVERLAY_CLASS,
-  MV_COMING_SOON_VEIL_CLASS,
+  MV_PREVIEW_SOON_CONTENT_DIM_CLASS,
+  MV_PREVIEW_SOON_VEIL_CLASS,
+  MV_PREVIEW_SOON_BADGE_CLASS,
 } from "./maidenVoyageLayoutStyles";
 
 export type GenesisActiveVoyageCardProps = {
@@ -102,8 +102,6 @@ export function GenesisActiveVoyageCard({
     isConnected,
   });
   const footnote = getActiveVoyageFootnote(voyageStatus);
-  const showComingSoonOverlay =
-    isGenesisSoonUi(market) || voyageStatus === "opening_soon";
 
   const handleCtaClick = () => {
     if (cta.action === "deposit") onDeposit();
@@ -116,34 +114,26 @@ export function GenesisActiveVoyageCard({
 
   const chainName = market.chain?.name ?? "Ethereum";
   const chainLogo = market.chain?.logo ?? "icons/eth.png";
+  const previewSoon = isGenesisSoonUi(market);
 
   return (
     <section
       key={marketId}
       className={`${MV_MAIN_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} relative flex flex-col overflow-hidden ${className}`}
-      aria-label={
-        showComingSoonOverlay
-          ? "Active maiden voyage — coming soon"
-          : "Active maiden voyage"
-      }
+      aria-label="Active maiden voyage"
     >
-      {showComingSoonOverlay ? (
+      {previewSoon ? (
         <>
-          <div aria-hidden className={MV_COMING_SOON_VEIL_CLASS} />
-          <div className={MV_COMING_SOON_OVERLAY_CLASS} aria-hidden>
-            <span className={MV_COMING_SOON_LABEL_CLASS}>Coming Soon</span>
+          <div aria-hidden className={MV_PREVIEW_SOON_VEIL_CLASS} />
+          <div className="pointer-events-none absolute inset-x-0 top-[36%] z-[6] flex justify-center px-4">
+            <span className={MV_PREVIEW_SOON_BADGE_CLASS}>COMING SOON</span>
           </div>
         </>
       ) : null}
 
       <div
-        className={
-          showComingSoonOverlay
-            ? MV_COMING_SOON_CONTENT_DIM_CLASS
-            : "flex min-h-0 flex-1 flex-col"
-        }
+        className={`shrink-0 px-4 py-3 sm:px-5 ${previewSoon ? MV_PREVIEW_SOON_CONTENT_DIM_CLASS : ""}`}
       >
-      <div className="shrink-0 px-4 py-3 sm:px-5">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/15 pb-3">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <FeaturedVoyageChainMark chainName={chainName} chainLogo={chainLogo} />
@@ -221,11 +211,19 @@ export function GenesisActiveVoyageCard({
           <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
             <button
               type="button"
-              className={`${MV_PRIMARY_CTA} min-h-[44px] sm:flex-1`}
-              disabled={cta.disabled}
+              className={
+                previewSoon
+                  ? `${HARBOR_COMING_SOON_CTA_SURFACE_CLASS} min-h-[44px] sm:flex-1`
+                  : `${MV_PRIMARY_CTA} min-h-[44px] sm:flex-1`
+              }
+              disabled={previewSoon || cta.disabled}
               onClick={handleCtaClick}
             >
-              {cta.action === "claim" && isClaiming ? "Claiming..." : cta.label}
+              {previewSoon
+                ? "Coming soon"
+                : cta.action === "claim" && isClaiming
+                  ? "Claiming..."
+                  : cta.label}
             </button>
             <a
               href={MAIDEN_VOYAGE_DOCS_URL}
@@ -247,11 +245,10 @@ export function GenesisActiveVoyageCard({
       </div>
 
       <footer
-        className={`${MV_FOOTER_PANEL} flex min-h-0 flex-1 flex-col justify-center px-4 py-3 sm:px-5`}
+        className={`${MV_FOOTER_PANEL} flex min-h-0 flex-1 flex-col justify-center px-4 py-3 sm:px-5 ${previewSoon ? MV_PREVIEW_SOON_CONTENT_DIM_CLASS : ""}`}
       >
         <GenesisMaidenVoyageStageStrip status={voyageStatus} showHeading={false} />
       </footer>
-      </div>
     </section>
   );
 }

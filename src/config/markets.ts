@@ -1166,7 +1166,7 @@ export const markets = {
           sailActive: "soon",
           test: false,
           status: "genesis" as const,
-          genesisActive: true as GenesisActiveSetting,
+          genesisActive: "soon" as GenesisActiveSetting,
           pegTarget: "USD",
           chainId: 4326,
           zapper: false,
