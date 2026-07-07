@@ -14,10 +14,8 @@ import { useTideFlywheelMetrics } from "@/hooks/useTideFlywheelMetrics";
 import { formatUSD } from "@/utils/formatters";
 import {
   deriveAllStageVisuals,
-  deriveRevenueAllocation,
   progressTowardTarget,
 } from "@/utils/tideRevenueJourney";
-import { JourneyAllocationCard } from "./JourneyAllocationCard";
 import { JourneyEducation } from "./JourneyEducation";
 import { JourneyRevenueHero } from "./JourneyRevenueHero";
 import { JourneyStageCard } from "./JourneyStageCard";
@@ -54,11 +52,6 @@ export function ProtocolRevenueJourney() {
   const visualById = useMemo(
     () => Object.fromEntries(visuals.map((v) => [v.id, v.state])),
     [visuals],
-  );
-
-  const allocation = useMemo(
-    () => deriveRevenueAllocation(metrics.activeStage),
-    [metrics.activeStage],
   );
 
   const treasuryPct = metrics.treasury.ownershipPct ?? 0;
@@ -223,13 +216,6 @@ export function ProtocolRevenueJourney() {
         </div>
 
         <JourneyTimeline entryLabel={copy.timelineEntryLabel} stages={stages} />
-
-        <JourneyAllocationCard
-          title={copy.allocation.title}
-          todayLabel={copy.allocation.todayLabel}
-          futureLabel={copy.allocation.futureLabel}
-          allocation={allocation}
-        />
 
         <JourneyEducation
           howRevenueFlows={copy.education.howRevenueFlows}

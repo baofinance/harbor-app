@@ -15,6 +15,7 @@ import {
   JOURNEY_STAGE_CARD_ACTIVE,
   JOURNEY_STAGE_CARD_BASE,
   JOURNEY_STAGE_CARD_FUTURE,
+  JOURNEY_STAGE_ACTIVE_BADGE_CLASS,
   JOURNEY_STAGE_DESC_CLASS,
   JOURNEY_STAGE_FOOTER_SLOT_CLASS,
   JOURNEY_STAGE_ICON_BADGE,
@@ -93,6 +94,12 @@ export function JourneyStageCard({
       className={`${JOURNEY_STAGE_CARD_BASE} ${cardStateClass}`}
       aria-current={visualState === "active" ? "step" : undefined}
     >
+      {visualState === "active" && badgeText ? (
+        <span className={JOURNEY_STAGE_ACTIVE_BADGE_CLASS}>
+          <span className={JOURNEY_STATUS_BADGE_ACTIVE}>{badgeText}</span>
+        </span>
+      ) : null}
+
       {visualState === "complete" ? (
         <span className={JOURNEY_CHECKMARK_CLASS} aria-hidden>
           <CheckIcon className="h-3 w-3" />
@@ -165,7 +172,7 @@ export function JourneyStageCard({
         </div>
 
         <div className={JOURNEY_STAGE_FOOTER_SLOT_CLASS}>
-          {badgeText ? (
+          {badgeText && visualState !== "active" ? (
             <span className={statusBadgeClass(visualState)}>
               {visualState === "complete" ? "✓ " : null}
               {badgeText}
