@@ -1,6 +1,6 @@
 import { HarborPageShell } from "@/components/shared/HarborPageShell";
 import { IndexPageTitleSection } from "@/components/shared/IndexPageTitleSection";
-import { TideDashboard, TideValueFlywheel } from "@/components/tide";
+import { TideDashboard, ProtocolRevenueJourney } from "@/components/tide";
 import { TIDE_CONFIG } from "@/config/tide";
 
 export default function TidePage() {
@@ -18,7 +18,7 @@ export default function TidePage() {
 
       <TideDashboard />
 
-      <TideValueFlywheel />
+      <ProtocolRevenueJourney />
     </HarborPageShell>
   );
 }

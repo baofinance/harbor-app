@@ -20,7 +20,7 @@ import type { StatusBadgeVariant } from "@/components/dashboard/portfolio/Status
 /** Dark frosted glass inset — flywheel revenue pill. */
 export const TIDE_DARK_GLASS_SHELL = `rounded-xl ${MV_GLASS_INSET_DARK}`;
 
-/** Outer flywheel section glass — matches `TideValueFlywheel` shell. */
+/** Outer flywheel / revenue journey section — see ProtocolRevenueJourney. */
 export const TIDE_FLYWHEEL_BOX_SHELL = `${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT}`;
 
 /** White frosted card shell — Claim / Swap dashboard cards. */
