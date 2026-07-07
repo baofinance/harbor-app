@@ -4,8 +4,8 @@
   "poolTokens": 15000000,
   "totalScore": 3425,
   "recipientCount": 35,
-  "mappedAddressCount": 8,
-  "pendingAddressCount": 27,
+  "mappedAddressCount": 9,
+  "pendingAddressCount": 26,
   "scoreGroups": [
     {
       "rankLabel": "1",
@@ -71,7 +71,7 @@
     {
       "rank": 4,
       "score": 175,
-      "address": "",
+      "address": "0x35e55a4227160d4d4f1b1732318d5062f348b354",
       "amount": "766423357664233576642335",
       "amountTokens": 766423,
       "airdropSent": false
