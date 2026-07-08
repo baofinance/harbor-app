@@ -8,6 +8,14 @@ import { markets } from "@/config/markets";
 import { TREASURY_SAFE_ADDRESS } from "@/config/treasury";
 import { ERC20_ABI } from "@/config/contracts";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
+import { MINTER_ABI, WRAPPED_PRICE_ORACLE_ABI } from "@/abis/shared";
+import { useFxSAVEAPR } from "@/hooks/useFxSAVEAPR";
+import { useWstETHAPR } from "@/hooks/useWstETHAPR";
+import {
+  computeCollateralYieldRewards,
+  formatRewardTokenAmount,
+  poolTvlSplitPercentages,
+} from "@/utils/collateralYieldRewardCalc";
 import {
   buildSafeTxBuilderJson,
   copyToClipboard,
@@ -94,18 +102,444 @@ function buildPoolEntries(): PoolEntry[] {
     });
 }
 
+type MarketGroup = {
+  marketId: string;
+  marketName: string;
+  anchorPool: PoolEntry;
+  sailPool: PoolEntry;
+  minterAddress: `0x${string}` | null;
+  wrappedCollateralToken: `0x${string}` | null;
+  collateralPriceOracle: `0x${string}` | null;
+  collateralSymbol: string;
+  rewardTokenSymbol: string;
+};
+
+function buildMarketGroups(pools: PoolEntry[]): MarketGroup[] {
+  const byMarket = new Map<string, PoolEntry[]>();
+  for (const pool of pools) {
+    const list = byMarket.get(pool.marketId) ?? [];
+    list.push(pool);
+    byMarket.set(pool.marketId, list);
+  }
+
+  return Array.from(byMarket.entries())
+    .map(([marketId, marketPools]) => {
+      const anchorPool = marketPools.find((p) => p.poolKind === "collateral");
+      const sailPool = marketPools.find((p) => p.poolKind === "leveraged");
+      if (!anchorPool || !sailPool) return null;
+
+      const market = markets[marketId as keyof typeof markets] as
+        | (typeof markets)[keyof typeof markets]
+        | undefined;
+      if (!market) return null;
+
+      const addresses = (market as { addresses?: Record<string, string> }).addresses;
+      const collateral = (market as { collateral?: { symbol?: string } }).collateral;
+
+      return {
+        marketId,
+        marketName: anchorPool.marketName,
+        anchorPool,
+        sailPool,
+        minterAddress: (addresses?.minter as `0x${string}` | undefined) ?? null,
+        wrappedCollateralToken:
+          (addresses?.wrappedCollateralToken as `0x${string}` | undefined) ?? null,
+        collateralPriceOracle:
+          (addresses?.collateralPrice as `0x${string}` | undefined) ?? null,
+        collateralSymbol: collateral?.symbol?.toLowerCase() ?? "",
+        rewardTokenSymbol: collateral?.symbol ?? "reward",
+      };
+    })
+    .filter((g): g is MarketGroup => g != null);
+}
+
+function MarketCollateralYieldPanel({
+  group,
+  depositTokenPrices,
+  rewardTokenPrices,
+  apyPct,
+  onApplyAmounts,
+}: {
+  group: MarketGroup;
+  depositTokenPrices: TokenPriceMap;
+  rewardTokenPrices: TokenPriceMap;
+  apyPct: number | null;
+  onApplyAmounts: (anchorAmount: string, sailAmount: string) => void;
+}) {
+  const [anchorSplitInput, setAnchorSplitInput] = useState("");
+  const [sailSplitInput, setSailSplitInput] = useState("");
+  const [splitTouched, setSplitTouched] = useState(false);
+
+  const minterQuery = useReadContract({
+    address: group.minterAddress ?? undefined,
+    abi: MINTER_ABI,
+    functionName: "collateralTokenBalance",
+    query: { enabled: !!group.minterAddress },
+  });
+
+  const anchorSupplyQuery = useReadContract({
+    address: group.anchorPool.poolAddress,
+    abi: stabilityPoolABI,
+    functionName: "totalAssetSupply",
+    query: { enabled: !!group.anchorPool.poolAddress },
+  });
+
+  const sailSupplyQuery = useReadContract({
+    address: group.sailPool.poolAddress,
+    abi: stabilityPoolABI,
+    functionName: "totalAssetSupply",
+    query: { enabled: !!group.sailPool.poolAddress },
+  });
+
+  const anchorAssetQuery = useReadContract({
+    address: group.anchorPool.poolAddress,
+    abi: stabilityPoolABI,
+    functionName: "ASSET_TOKEN",
+    query: { enabled: !!group.anchorPool.poolAddress },
+  });
+
+  const rewardPeriodQuery = useReadContract({
+    address: group.anchorPool.poolAddress,
+    abi: stabilityPoolABI,
+    functionName: "REWARD_PERIOD_LENGTH",
+    query: { enabled: !!group.anchorPool.poolAddress },
+  });
+
+  const wrappedRateQuery = useReadContract({
+    address: group.collateralPriceOracle ?? undefined,
+    abi: WRAPPED_PRICE_ORACLE_ABI,
+    functionName: "latestAnswer",
+    query: { enabled: !!group.collateralPriceOracle },
+  });
+
+  const anchorAssetAddress =
+    (anchorAssetQuery.data as `0x${string}` | undefined) ?? null;
+
+  const depositPriceStr = anchorAssetAddress
+    ? depositTokenPrices[anchorAssetAddress.toLowerCase()] ?? ""
+    : "";
+  const depositPrice = depositPriceStr.trim()
+    ? parseFloat(depositPriceStr)
+    : null;
+
+  const rewardTokenAddress = group.wrappedCollateralToken;
+  const rewardPriceStr = rewardTokenAddress
+    ? rewardTokenPrices[rewardTokenAddress.toLowerCase()] ?? ""
+    : "";
+  const rewardPrice = rewardPriceStr.trim() ? parseFloat(rewardPriceStr) : null;
+
+  const isFxMarket =
+    group.collateralSymbol === "fxsave" || group.collateralSymbol === "fxusd";
+  const isWstMarket =
+    group.collateralSymbol === "wsteth" || group.collateralSymbol === "steth";
+
+  const collateralValueUsd = useMemo(() => {
+    const balance = minterQuery.data as bigint | undefined;
+    if (balance == null) return null;
+    const underlyingEq = Number(balance) / 1e18;
+    if (!Number.isFinite(underlyingEq) || underlyingEq <= 0) return 0;
+
+    if (isFxMarket) {
+      return underlyingEq;
+    }
+
+    if (isWstMarket) {
+      const oracle = wrappedRateQuery.data as
+        | readonly [bigint, bigint, bigint, bigint]
+        | undefined;
+      const maxWrappedRate = oracle?.[3];
+      const wrappedRateNum = maxWrappedRate ? Number(maxWrappedRate) / 1e18 : 0;
+      const wstAmount =
+        wrappedRateNum > 0 ? underlyingEq / wrappedRateNum : underlyingEq;
+      if (rewardPrice != null && rewardPrice > 0) {
+        return wstAmount * rewardPrice;
+      }
+      return null;
+    }
+
+    if (rewardPrice != null && rewardPrice > 0) {
+      return underlyingEq * rewardPrice;
+    }
+    return null;
+  }, [
+    minterQuery.data,
+    isFxMarket,
+    isWstMarket,
+    wrappedRateQuery.data,
+    rewardPrice,
+  ]);
+
+  const wrappedCollateralTokens = useMemo(() => {
+    const balance = minterQuery.data as bigint | undefined;
+    if (balance == null) return null;
+    const underlyingEq = Number(balance) / 1e18;
+    if (!Number.isFinite(underlyingEq) || underlyingEq <= 0) return 0;
+
+    const oracle = wrappedRateQuery.data as
+      | readonly [bigint, bigint, bigint, bigint]
+      | undefined;
+    const maxWrappedRate = oracle?.[3];
+    const wrappedRateNum = maxWrappedRate ? Number(maxWrappedRate) / 1e18 : 0;
+
+    if (isFxMarket || isWstMarket) {
+      return wrappedRateNum > 0 ? underlyingEq / wrappedRateNum : null;
+    }
+
+    return underlyingEq;
+  }, [minterQuery.data, isFxMarket, isWstMarket, wrappedRateQuery.data]);
+
+  const apySourceLabel = isWstMarket
+    ? "wstETH"
+    : isFxMarket
+    ? "fxSAVE"
+    : group.rewardTokenSymbol;
+
+  const anchorTvlUsd = useMemo(() => {
+    const supply = anchorSupplyQuery.data as bigint | undefined;
+    if (supply == null || depositPrice == null || depositPrice <= 0) return null;
+    return (Number(supply) / 1e18) * depositPrice;
+  }, [anchorSupplyQuery.data, depositPrice]);
+
+  const sailTvlUsd = useMemo(() => {
+    const supply = sailSupplyQuery.data as bigint | undefined;
+    if (supply == null || depositPrice == null || depositPrice <= 0) return null;
+    return (Number(supply) / 1e18) * depositPrice;
+  }, [sailSupplyQuery.data, depositPrice]);
+
+  const defaultSplit = useMemo(() => {
+    if (anchorTvlUsd == null || sailTvlUsd == null) return null;
+    return poolTvlSplitPercentages(anchorTvlUsd, sailTvlUsd);
+  }, [anchorTvlUsd, sailTvlUsd]);
+
+  useEffect(() => {
+    if (splitTouched || !defaultSplit) return;
+    setAnchorSplitInput(defaultSplit.anchorPct.toFixed(1));
+    setSailSplitInput(defaultSplit.sailPct.toFixed(1));
+  }, [defaultSplit, splitTouched]);
+
+  const periodDays = useMemo(() => {
+    const sec = rewardPeriodQuery.data as bigint | undefined;
+    if (!sec || sec === 0n) return 7;
+    return Number(sec) / (24 * 60 * 60);
+  }, [rewardPeriodQuery.data]);
+
+  const anchorSplitPct = anchorSplitInput.trim()
+    ? parseFloat(anchorSplitInput)
+    : null;
+  const sailSplitPct = sailSplitInput.trim() ? parseFloat(sailSplitInput) : null;
+
+  const yieldResult = useMemo(() => {
+    if (collateralValueUsd == null) return { error: "Loading collateral value…" };
+    if (apyPct == null || apyPct <= 0) {
+      return { error: `Set ${apySourceLabel} APY above.` };
+    }
+    if (rewardPrice == null || rewardPrice <= 0) {
+      return { error: `Set ${group.rewardTokenSymbol} reward token price above.` };
+    }
+    if (depositPrice == null || depositPrice <= 0) {
+      return {
+        error:
+          "Set the Anchor deposit token (e.g. haEUR) price above for TVL split.",
+      };
+    }
+    if (anchorSplitPct == null || sailSplitPct == null) {
+      return { error: "Set Anchor and Sail split percentages." };
+    }
+
+    return computeCollateralYieldRewards({
+      collateralValueUsd,
+      apyPct,
+      periodDays,
+      rewardTokenPriceUsd: rewardPrice,
+      anchorSplitPct,
+      sailSplitPct,
+    });
+  }, [
+    collateralValueUsd,
+    apyPct,
+    rewardPrice,
+    depositPrice,
+    anchorSplitPct,
+    sailSplitPct,
+    periodDays,
+    group.rewardTokenSymbol,
+    apySourceLabel,
+  ]);
+
+  const canApply =
+    yieldResult &&
+    !("error" in yieldResult) &&
+    yieldResult.anchorRewardTokens > 0 &&
+    yieldResult.sailRewardTokens > 0;
+
+  const formatUsd = (n: number | null | undefined) =>
+    n == null || !Number.isFinite(n)
+      ? "—"
+      : n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+  return (
+    <div className="p-3 bg-black/25 border border-white/10 rounded">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+        <div className="text-white/80 text-xs font-medium">
+          Collateral yield → pool rewards ({periodDays.toFixed(0)}-day period)
+        </div>
+        <div className="text-white/50 text-xs">
+          APY source:{" "}
+          <span className="text-white/80">
+            {apySourceLabel}
+            {apyPct != null ? ` (${apyPct.toFixed(2)}%)` : ""}
+          </span>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-white/70 mb-3">
+        <div>
+          Yield generating collateral:{" "}
+          <span className="text-white/90">${formatUsd(collateralValueUsd)}</span>
+          {wrappedCollateralTokens != null && wrappedCollateralTokens > 0 ? (
+            <span className="text-white/50">
+              {" "}
+              ({wrappedCollateralTokens.toLocaleString(undefined, {
+                maximumFractionDigits: 2,
+              })}{" "}
+              {group.rewardTokenSymbol})
+            </span>
+          ) : null}
+        </div>
+        <div>
+          Anchor pool TVL:{" "}
+          <span className="text-white/90">${formatUsd(anchorTvlUsd)}</span>
+          {defaultSplit ? (
+            <span className="text-white/50"> ({defaultSplit.anchorPct.toFixed(1)}%)</span>
+          ) : null}
+        </div>
+        <div>
+          Sail pool TVL:{" "}
+          <span className="text-white/90">${formatUsd(sailTvlUsd)}</span>
+          {defaultSplit ? (
+            <span className="text-white/50"> ({defaultSplit.sailPct.toFixed(1)}%)</span>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="w-28">
+          <div className="text-white/70 text-xs mb-1">Anchor split (%)</div>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step={0.1}
+            value={anchorSplitInput}
+            onChange={(e) => {
+              setSplitTouched(true);
+              setAnchorSplitInput(e.target.value);
+            }}
+            className="w-full bg-zinc-900/50 px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 text-xs"
+          />
+        </div>
+        <div className="w-28">
+          <div className="text-white/70 text-xs mb-1">Sail split (%)</div>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step={0.1}
+            value={sailSplitInput}
+            onChange={(e) => {
+              setSplitTouched(true);
+              setSailSplitInput(e.target.value);
+            }}
+            className="w-full bg-zinc-900/50 px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 text-xs"
+          />
+        </div>
+        {defaultSplit ? (
+          <button
+            type="button"
+            className="py-2 px-3 bg-white/10 text-white text-xs hover:bg-white/15 transition-colors"
+            onClick={() => {
+              setSplitTouched(false);
+              setAnchorSplitInput(defaultSplit.anchorPct.toFixed(1));
+              setSailSplitInput(defaultSplit.sailPct.toFixed(1));
+            }}
+          >
+            Use TVL split
+          </button>
+        ) : null}
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
+        {"error" in yieldResult ? (
+          <span className="text-amber-300">{yieldResult.error}</span>
+        ) : (
+          <>
+            <span className="text-white/70">
+              Period yield:{" "}
+              <span className="text-white/90">
+                ${formatUsd(yieldResult.periodYieldUsd)}
+              </span>
+            </span>
+            <span className="text-white/70">
+              Total:{" "}
+              <span className="text-white/90">
+                {formatRewardTokenAmount(yieldResult.totalRewardTokens)}{" "}
+                {group.rewardTokenSymbol}
+              </span>
+            </span>
+            <span className="text-white/70">
+              Anchor:{" "}
+              <span className="text-white/90">
+                {formatRewardTokenAmount(yieldResult.anchorRewardTokens)}{" "}
+                {group.rewardTokenSymbol}
+              </span>
+            </span>
+            <span className="text-white/70">
+              Sail:{" "}
+              <span className="text-white/90">
+                {formatRewardTokenAmount(yieldResult.sailRewardTokens)}{" "}
+                {group.rewardTokenSymbol}
+              </span>
+            </span>
+            <button
+              type="button"
+              disabled={!canApply}
+              className="py-1.5 px-3 bg-white/15 text-white text-xs font-medium hover:bg-white/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              onClick={() => {
+                if (!canApply || "error" in yieldResult) return;
+                onApplyAmounts(
+                  formatRewardTokenAmount(yieldResult.anchorRewardTokens),
+                  formatRewardTokenAmount(yieldResult.sailRewardTokens)
+                );
+              }}
+            >
+              Set reward amounts
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export type TokenPriceMap = Record<string, string>;
+
+type AmountInjection = {
+  amount: string;
+  nonce: number;
+  enable?: boolean;
+};
 
 function RewardDepositRow({
   pool,
   onChange,
   depositTokenPrices,
   rewardTokenPrices,
+  amountInjection,
 }: {
   pool: PoolEntry;
   onChange: (key: string, row: RowComputed) => void;
   depositTokenPrices: TokenPriceMap;
   rewardTokenPrices: TokenPriceMap;
+  amountInjection?: AmountInjection | null;
 }) {
   const [enabled, setEnabled] = useState(false);
   const [rewardTokenInput, setRewardTokenInput] = useState("");
@@ -366,6 +800,12 @@ function RewardDepositRow({
     onChange(pool.key, rowComputed);
   }, [pool.key, rowComputed, onChange]);
 
+  useEffect(() => {
+    if (!amountInjection) return;
+    setAmountRaw(amountInjection.amount);
+    if (amountInjection.enable) setEnabled(true);
+  }, [amountInjection?.nonce]);
+
   return (
     <div className="bg-black/10 p-4">
       <div className="flex items-start justify-between gap-3">
@@ -535,7 +975,11 @@ function RewardDepositRow({
 export default function RewardDeposits() {
   const { address: connectedAddress } = useAccount();
   const pools = useMemo(() => buildPoolEntries(), []);
+  const marketGroups = useMemo(() => buildMarketGroups(pools), [pools]);
   const [rows, setRows] = useState<Record<string, RowComputed>>({});
+  const [amountInjections, setAmountInjections] = useState<
+    Record<string, AmountInjection>
+  >({});
   const [depositError, setDepositError] = useState<string | null>(null);
   const [depositResult, setDepositResult] = useState<string | null>(null);
   const [safeInfo, setSafeInfo] = useState<{
@@ -543,9 +987,64 @@ export default function RewardDeposits() {
     chainId: number;
   } | null>(null);
 
+  const { data: fxSAVEApy } = useFxSAVEAPR(true);
+  const { data: wstETHApy } = useWstETHAPR(true);
+
   // Global token prices (set once at top): key = token address lowercase
   const [depositTokenPrices, setDepositTokenPrices] = useState<TokenPriceMap>({});
   const [rewardTokenPrices, setRewardTokenPrices] = useState<TokenPriceMap>({});
+  const [fxSAVEApyInput, setFxSAVEApyInput] = useState("");
+  const [wstETHApyInput, setWstETHApyInput] = useState("");
+  const [apyDefaultsApplied, setApyDefaultsApplied] = useState(false);
+
+  useEffect(() => {
+    if (apyDefaultsApplied) return;
+    if (fxSAVEApy == null && wstETHApy == null) return;
+    if (fxSAVEApy != null) {
+      setFxSAVEApyInput((fxSAVEApy * 100).toFixed(2));
+    }
+    if (wstETHApy != null) {
+      setWstETHApyInput((wstETHApy * 100).toFixed(2));
+    }
+    setApyDefaultsApplied(true);
+  }, [fxSAVEApy, wstETHApy, apyDefaultsApplied]);
+
+  const fxSAVEApyPct = fxSAVEApyInput.trim()
+    ? parseFloat(fxSAVEApyInput)
+    : null;
+  const wstETHApyPct = wstETHApyInput.trim()
+    ? parseFloat(wstETHApyInput)
+    : null;
+
+  const applyMarketRewardAmounts = useCallback(
+    (group: MarketGroup, anchorAmount: string, sailAmount: string) => {
+      const nonce = Date.now();
+      setAmountInjections((prev) => ({
+        ...prev,
+        [group.anchorPool.key]: {
+          amount: anchorAmount,
+          nonce,
+          enable: true,
+        },
+        [group.sailPool.key]: {
+          amount: sailAmount,
+          nonce,
+          enable: true,
+        },
+      }));
+    },
+    []
+  );
+
+  const marketApyPct = useCallback(
+    (group: MarketGroup) => {
+      const sym = group.collateralSymbol;
+      if (sym === "fxsave" || sym === "fxusd") return fxSAVEApyPct;
+      if (sym === "wsteth" || sym === "steth") return wstETHApyPct;
+      return fxSAVEApyPct;
+    },
+    [fxSAVEApyPct, wstETHApyPct]
+  );
 
   // Discover unique deposit tokens (ASSET_TOKEN per pool) and reward tokens (activeRewardTokens)
   const poolTokenReads = useContractReads({
@@ -900,17 +1399,79 @@ export default function RewardDeposits() {
             </div>
           </div>
         </div>
+        <div className="border-t border-white/10 pt-4">
+          <div className="text-white/70 text-xs font-medium mb-2">
+            Wrapped collateral APY (%)
+          </div>
+          <div className="flex flex-wrap gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-white/90 text-xs w-16 shrink-0">fxSAVE</label>
+              <input
+                type="number"
+                min={0}
+                step={0.01}
+                value={fxSAVEApyInput}
+                onChange={(e) => setFxSAVEApyInput(e.target.value)}
+                placeholder="e.g. 3.61"
+                className="w-28 bg-zinc-900/50 px-3 py-1.5 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 text-xs"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-white/90 text-xs w-16 shrink-0">wstETH</label>
+              <input
+                type="number"
+                min={0}
+                step={0.01}
+                value={wstETHApyInput}
+                onChange={(e) => setWstETHApyInput(e.target.value)}
+                placeholder="e.g. 3.2"
+                className="w-28 bg-zinc-900/50 px-3 py-1.5 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 text-xs"
+              />
+            </div>
+          </div>
+          <div className="text-white/50 text-xs mt-2">
+            Used by the collateral yield calculator below. Defaults from DeFiLlama;
+            override manually if needed.
+          </div>
+        </div>
       </div>
 
       <div className="mt-4 space-y-3">
-        {pools.map((p) => (
-          <RewardDepositRow
-            key={p.key}
-            pool={p}
-            onChange={onRowChange}
-            depositTokenPrices={depositTokenPrices}
-            rewardTokenPrices={rewardTokenPrices}
-          />
+        {marketGroups.map((group) => (
+          <div
+            key={group.marketId}
+            className="border border-white/10 bg-black/10 rounded overflow-hidden"
+          >
+            <div className="px-4 py-2 bg-black/20 border-b border-white/10">
+              <div className="text-white font-geo text-base">{group.marketName}</div>
+            </div>
+            <div className="px-4 py-3">
+              <MarketCollateralYieldPanel
+                group={group}
+                depositTokenPrices={depositTokenPrices}
+                rewardTokenPrices={rewardTokenPrices}
+                apyPct={marketApyPct(group)}
+                onApplyAmounts={(anchorAmount, sailAmount) =>
+                  applyMarketRewardAmounts(group, anchorAmount, sailAmount)
+                }
+              />
+            </div>
+            <RewardDepositRow
+              pool={group.anchorPool}
+              onChange={onRowChange}
+              depositTokenPrices={depositTokenPrices}
+              rewardTokenPrices={rewardTokenPrices}
+              amountInjection={amountInjections[group.anchorPool.key]}
+            />
+            <div className="border-t border-white/10" />
+            <RewardDepositRow
+              pool={group.sailPool}
+              onChange={onRowChange}
+              depositTokenPrices={depositTokenPrices}
+              rewardTokenPrices={rewardTokenPrices}
+              amountInjection={amountInjections[group.sailPool.key]}
+            />
+          </div>
         ))}
       </div>
 
