@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildSailMarketChartPoints,
+  computeSailChartWindowPerformance,
   getSailMarketChartConfig,
   resamplePriceSeries,
   sailChartHasHsPriceOverlay,
@@ -113,5 +114,29 @@ describe("sailMarketChartSeries", () => {
     expect(compared[1]?.hsPriceUsd).toBeCloseTo(30, 5);
     expect(compared[1]?.defaultRatioAbs).toBe(110);
     expect(compared[1]?.hsPriceUsdAbs).toBe(13);
+  });
+
+  it("computes window performance from range start to latest point", () => {
+    const points = [
+      {
+        timestamp: 1,
+        defaultRatio: 100,
+        longUsd: 100,
+        shortUsd: 1,
+        hsPriceUsd: 10,
+      },
+      {
+        timestamp: 2,
+        defaultRatio: 110,
+        longUsd: 110,
+        shortUsd: 1,
+        hsPriceUsd: 13,
+      },
+    ];
+
+    const performance = computeSailChartWindowPerformance(points);
+    expect(performance.marketPerformancePct).toBeCloseTo(10, 5);
+    expect(performance.leverageTokenPerformancePct).toBeCloseTo(30, 5);
+    expect(performance.leverageTokenVsMarketPct).toBeCloseTo(20, 5);
   });
 });
