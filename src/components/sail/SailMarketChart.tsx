@@ -9,8 +9,10 @@ import { mergeChartData, useSailPriceHistory } from "@/hooks/useSailPriceHistory
 import {
   buildSailMarketChartPoints,
   computeLiveDefaultRatio,
+  computeSailChartWindowPerformance,
   getSailMarketChartConfig,
   sailChartHasHsPriceOverlay,
+  type SailChartWindowPerformance,
   type SailMarketChartConfig,
 } from "@/utils/sailMarketChartSeries";
 import {
@@ -41,6 +43,7 @@ export type SailMarketChartProps = {
   /** Hide Recharts legend when rendered in the price header. */
   hideLegend?: boolean;
   onHasHsPriceDataChange?: (hasData: boolean) => void;
+  onWindowPerformanceChange?: (performance: SailChartWindowPerformance | null) => void;
 };
 
 function OverlayToggle({
@@ -85,6 +88,7 @@ export function SailMarketChart({
   onShowHsPriceOverlayChange,
   hideLegend = false,
   onHasHsPriceDataChange,
+  onWindowPerformanceChange,
 }: SailMarketChartProps) {
   const [timeRange, setTimeRange] = useState<SailChartTimeRange>("1M");
   const [internalShowHsPriceUsd, setInternalShowHsPriceUsd] = useState(true);
@@ -188,6 +192,11 @@ export function SailMarketChart({
     [filteredData]
   );
 
+  const windowPerformance = useMemo(() => {
+    if (!hasHsPriceData) return null;
+    return computeSailChartWindowPerformance(filteredData);
+  }, [filteredData, hasHsPriceData]);
+
   const formatTimestamp = useMemo(() => {
     return (timestamp: number) =>
       formatSailChartAxisTimestamp(timestamp, timeRange);
@@ -217,6 +226,10 @@ export function SailMarketChart({
   useEffect(() => {
     onHasHsPriceDataChange?.(hasHsPriceData);
   }, [hasHsPriceData, onHasHsPriceDataChange]);
+
+  useEffect(() => {
+    onWindowPerformanceChange?.(windowPerformance);
+  }, [windowPerformance, onWindowPerformanceChange]);
 
   const toggleOverlay = () => {
     setShowHsPriceUsd(!showHsPriceUsd);

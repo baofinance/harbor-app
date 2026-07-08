@@ -8,10 +8,11 @@ import {
 } from "@/utils/sailMarketDirectionLabels";
 import {
   formatSailChartDefaultValue,
+  type SailChartWindowPerformance,
   type SailMarketChartConfig,
 } from "@/utils/sailMarketChartSeries";
 import { SAIL_ADVANCED_FROSTED_LIGHT_PANEL } from "@/components/sail/advanced/sailAdvancedStyles";
-import { SailChartSeriesLegend } from "@/components/sail/SailChartSeriesLegend";
+import { SailChartPerformanceSummary } from "@/components/sail/SailChartPerformanceSummary";
 
 const SailMarketChart = dynamic(
   () =>
@@ -69,6 +70,8 @@ export function SailMarketPriceChart({
   const [liveDefaultRatio, setLiveDefaultRatio] = useState<number | null>(null);
   const [showHsOverlay, setShowHsOverlay] = useState(true);
   const [hasHsOverlayData, setHasHsOverlayData] = useState(false);
+  const [windowPerformance, setWindowPerformance] =
+    useState<SailChartWindowPerformance | null>(null);
 
   const handleConfigReady = useCallback((config: SailMarketChartConfig) => {
     setChartConfig(config);
@@ -99,11 +102,10 @@ export function SailMarketPriceChart({
               {primaryDisplay}
             </p>
           </div>
-          {chartConfig && showHsOverlay && hasHsOverlayData ? (
-            <SailChartSeriesLegend
-              config={chartConfig}
-              comparePerformance
-              className="min-w-0 flex-1"
+          {windowPerformance && hasHsOverlayData ? (
+            <SailChartPerformanceSummary
+              performance={windowPerformance}
+              className="min-w-0 flex-1 sm:flex-none"
             />
           ) : null}
         </div>
@@ -122,6 +124,9 @@ export function SailMarketPriceChart({
           onShowHsPriceOverlayChange={showPriceHeader ? setShowHsOverlay : undefined}
           hideLegend={showPriceHeader}
           onHasHsPriceDataChange={showPriceHeader ? setHasHsOverlayData : undefined}
+          onWindowPerformanceChange={
+            showPriceHeader ? setWindowPerformance : undefined
+          }
         />
       </div>
     </div>

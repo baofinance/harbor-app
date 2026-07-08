@@ -34,6 +34,12 @@ export interface SailMarketChartPoint {
   hsPriceUsd: number;
 }
 
+export type SailChartWindowPerformance = {
+  marketPerformancePct: number | null;
+  leverageTokenPerformancePct: number | null;
+  leverageTokenVsMarketPct: number | null;
+};
+
 export interface LiveSideUsdPrices {
   ethPrice?: number | null;
   btcPrice?: number | null;
@@ -333,6 +339,16 @@ function firstPositiveFinite(values: Array<number | null | undefined>): number |
   return null;
 }
 
+function lastPositiveFinite(values: Array<number | null | undefined>): number | null {
+  for (let i = values.length - 1; i >= 0; i--) {
+    const value = values[i];
+    if (value != null && Number.isFinite(value) && value > 0) {
+      return value;
+    }
+  }
+  return null;
+}
+
 function percentChangeFromBaseline(
   current: number | null,
   baseline: number | null,
@@ -347,6 +363,44 @@ function percentChangeFromBaseline(
     return null;
   }
   return ((current / baseline) - 1) * 100;
+}
+
+/** Window performance for market rate and leverage token vs start of selected range. */
+export function computeSailChartWindowPerformance(
+  data: SailMarketChartPoint[],
+): SailChartWindowPerformance {
+  const marketBaseline = firstPositiveFinite(
+    data.map((row) => (Number.isFinite(row.defaultRatio) ? row.defaultRatio : null)),
+  );
+  const marketLatest = lastPositiveFinite(
+    data.map((row) => (Number.isFinite(row.defaultRatio) ? row.defaultRatio : null)),
+  );
+  const leverageBaseline = firstPositiveFinite(
+    data.map((row) =>
+      Number.isFinite(row.hsPriceUsd) && row.hsPriceUsd > 0 ? row.hsPriceUsd : null,
+    ),
+  );
+  const leverageLatest = lastPositiveFinite(
+    data.map((row) =>
+      Number.isFinite(row.hsPriceUsd) && row.hsPriceUsd > 0 ? row.hsPriceUsd : null,
+    ),
+  );
+
+  const marketPerformancePct = percentChangeFromBaseline(marketLatest, marketBaseline);
+  const leverageTokenPerformancePct = percentChangeFromBaseline(
+    leverageLatest,
+    leverageBaseline,
+  );
+  const leverageTokenVsMarketPct =
+    marketPerformancePct != null && leverageTokenPerformancePct != null
+      ? leverageTokenPerformancePct - marketPerformancePct
+      : null;
+
+  return {
+    marketPerformancePct,
+    leverageTokenPerformancePct,
+    leverageTokenVsMarketPct,
+  };
 }
 
 export function toRechartsSailChartData(
