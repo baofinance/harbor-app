@@ -18,9 +18,9 @@ type SailChartPerformanceSummaryProps = {
 
 function performanceValueClass(value: number | null): string {
   if (value == null || !Number.isFinite(value) || value === 0) {
-    return "text-[#1E4775]/75";
+    return "text-[#1E4775]/80";
   }
-  return value > 0 ? "text-harbor-mint" : "text-red-600";
+  return value > 0 ? "text-[#178A5C]" : "text-red-700";
 }
 
 function PerformanceStat({
@@ -43,7 +43,7 @@ function PerformanceStat({
       ) : null}
       <span className="text-[#1E4775]/60">{label}</span>
       <span
-        className={`font-mono font-semibold tabular-nums ${performanceValueClass(value)}`}
+        className={`font-mono text-[11px] font-bold tabular-nums sm:text-xs ${performanceValueClass(value)}`}
       >
         {formatSailChartPercentChange(value)}
       </span>
