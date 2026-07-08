@@ -102,9 +102,10 @@ export function SailMarketPriceChart({
               {primaryDisplay}
             </p>
           </div>
-          {windowPerformance && hasHsOverlayData ? (
+          {windowPerformance && hasHsOverlayData && chartConfig ? (
             <SailChartPerformanceSummary
               performance={windowPerformance}
+              marketPairLabel={`${chartConfig.longLabel}/${chartConfig.shortLabel}`}
               className="min-w-0 flex-1 sm:flex-none"
             />
           ) : null}
