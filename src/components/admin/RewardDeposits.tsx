@@ -8,6 +8,11 @@ import { markets } from "@/config/markets";
 import { TREASURY_SAFE_ADDRESS } from "@/config/treasury";
 import { ERC20_ABI } from "@/config/contracts";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
+import { useAdminRewardTokenPrices } from "@/hooks/useAdminRewardTokenPrices";
+import {
+  isHaDepositTokenSymbol,
+  isPrimaryRewardTokenSymbol,
+} from "@/utils/adminRewardTokenPrices";
 import { MINTER_ABI, WRAPPED_PRICE_ORACLE_ABI } from "@/abis/shared";
 import { useFxSAVEAPR } from "@/hooks/useFxSAVEAPR";
 import { useWstETHAPR } from "@/hooks/useWstETHAPR";
@@ -993,6 +998,11 @@ export default function RewardDeposits() {
   // Global token prices (set once at top): key = token address lowercase
   const [depositTokenPrices, setDepositTokenPrices] = useState<TokenPriceMap>({});
   const [rewardTokenPrices, setRewardTokenPrices] = useState<TokenPriceMap>({});
+  const [showAddAnotherReward, setShowAddAnotherReward] = useState(false);
+  const [extraRewardTokenAddresses, setExtraRewardTokenAddresses] = useState<
+    string[]
+  >([]);
+  const [extraRewardPicker, setExtraRewardPicker] = useState("");
   const [fxSAVEApyInput, setFxSAVEApyInput] = useState("");
   const [wstETHApyInput, setWstETHApyInput] = useState("");
   const [apyDefaultsApplied, setApyDefaultsApplied] = useState(false);
@@ -1113,6 +1123,88 @@ export default function RewardDeposits() {
     });
     return map;
   }, [tokenSymbolReads.data, allUniqueTokens]);
+
+  const primaryRewardTokens = useMemo(
+    () =>
+      uniqueRewardTokens.filter((addr) =>
+        isPrimaryRewardTokenSymbol(tokenSymbolByAddress[addr] ?? ""),
+      ),
+    [uniqueRewardTokens, tokenSymbolByAddress],
+  );
+
+  const extraRewardTokenCandidates = useMemo(
+    () =>
+      uniqueRewardTokens.filter(
+        (addr) =>
+          !isPrimaryRewardTokenSymbol(tokenSymbolByAddress[addr] ?? "") &&
+          !extraRewardTokenAddresses.includes(addr),
+      ),
+    [uniqueRewardTokens, tokenSymbolByAddress, extraRewardTokenAddresses],
+  );
+
+  const {
+    suggestedDepositPrices,
+    suggestedRewardPrices,
+    isLoading: isLoadingPrices,
+  } = useAdminRewardTokenPrices({
+    depositTokenAddresses: uniqueDepositTokens,
+    rewardTokenAddresses: uniqueRewardTokens,
+    tokenSymbolByAddress,
+    enabled: allUniqueTokens.length > 0,
+  });
+
+  useEffect(() => {
+    if (isLoadingPrices) return;
+
+    setDepositTokenPrices((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const [addr, price] of Object.entries(suggestedDepositPrices)) {
+        if (!prev[addr]?.trim() && price) {
+          next[addr] = price;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+
+    setRewardTokenPrices((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const [addr, price] of Object.entries(suggestedRewardPrices)) {
+        if (!prev[addr]?.trim() && price) {
+          next[addr] = price;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [suggestedDepositPrices, suggestedRewardPrices, isLoadingPrices]);
+
+  const handleRefreshPrices = useCallback(() => {
+    setDepositTokenPrices((prev) => {
+      const next = { ...prev };
+      for (const [addr, price] of Object.entries(suggestedDepositPrices)) {
+        if (price) next[addr] = price;
+      }
+      return next;
+    });
+    setRewardTokenPrices((prev) => {
+      const next = { ...prev };
+      for (const [addr, price] of Object.entries(suggestedRewardPrices)) {
+        if (price) next[addr] = price;
+      }
+      return next;
+    });
+  }, [suggestedDepositPrices, suggestedRewardPrices]);
+
+  const handleAddExtraRewardToken = useCallback(() => {
+    if (!extraRewardPicker) return;
+    setExtraRewardTokenAddresses((prev) =>
+      prev.includes(extraRewardPicker) ? prev : [...prev, extraRewardPicker],
+    );
+    setExtraRewardPicker("");
+  }, [extraRewardPicker]);
 
   useEffect(() => {
     let mounted = true;
@@ -1336,47 +1428,146 @@ export default function RewardDeposits() {
 
       {/* Set each token price once (used by target APR calculator in each row) */}
       <div className="mt-4 p-4 bg-black/20 border border-white/10 rounded space-y-4">
-        <div className="text-white font-geo text-base">Token prices (USD)</div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="text-white font-geo text-base">Token prices (USD)</div>
+          <div className="flex items-center gap-2">
+            {isLoadingPrices ? (
+              <span className="text-white/50 text-xs">Loading prices…</span>
+            ) : null}
+            <button
+              type="button"
+              className="py-1.5 px-3 bg-white/10 text-white text-xs font-medium hover:bg-white/15 transition-colors disabled:opacity-50"
+              onClick={handleRefreshPrices}
+              disabled={isLoadingPrices}
+            >
+              Refresh prices
+            </button>
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <div className="text-white/70 text-xs font-medium mb-2">Deposit tokens (pool assets)</div>
+            <div className="text-white/70 text-xs font-medium mb-2">
+              Deposit tokens (pool assets)
+            </div>
             <div className="space-y-2">
               {uniqueDepositTokens.length === 0 ? (
                 <div className="text-white/50 text-xs">Loading…</div>
               ) : (
-                uniqueDepositTokens.map((addr) => (
-                  <div key={addr} className="flex items-center gap-2">
-                    <label className="text-white/90 text-xs w-24 shrink-0">
-                      {tokenSymbolByAddress[addr] ?? truncate(addr)}
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      value={depositTokenPrices[addr] ?? ""}
-                      onChange={(e) =>
-                        setDepositTokenPrices((prev) => ({
-                          ...prev,
-                          [addr]: e.target.value,
-                        }))
-                      }
-                      placeholder="Price"
-                      className="flex-1 max-w-[120px] bg-zinc-900/50 px-3 py-1.5 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 text-xs"
-                    />
-                  </div>
-                ))
+                uniqueDepositTokens.map((addr) => {
+                  const symbol = tokenSymbolByAddress[addr] ?? truncate(addr);
+                  const isAutoHa =
+                    isHaDepositTokenSymbol(symbol) &&
+                    !!suggestedDepositPrices[addr] &&
+                    depositTokenPrices[addr] === suggestedDepositPrices[addr];
+                  return (
+                    <div key={addr} className="flex items-center gap-2">
+                      <label className="text-white/90 text-xs w-28 shrink-0">
+                        {symbol}
+                        {isAutoHa ? (
+                          <span className="ml-1 text-white/40">(auto)</span>
+                        ) : null}
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={depositTokenPrices[addr] ?? ""}
+                        onChange={(e) =>
+                          setDepositTokenPrices((prev) => ({
+                            ...prev,
+                            [addr]: e.target.value,
+                          }))
+                        }
+                        placeholder="Price"
+                        className="flex-1 max-w-[120px] bg-zinc-900/50 px-3 py-1.5 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 text-xs"
+                      />
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>
           <div>
-            <div className="text-white/70 text-xs font-medium mb-2">Reward tokens</div>
+            <div className="text-white/70 text-xs font-medium mb-2">
+              Reward tokens
+            </div>
             <div className="space-y-2">
               {uniqueRewardTokens.length === 0 ? (
                 <div className="text-white/50 text-xs">Loading…</div>
+              ) : primaryRewardTokens.length === 0 ? (
+                <div className="text-white/50 text-xs">
+                  No fxSAVE or wstETH reward tokens found on active pools.
+                </div>
               ) : (
-                uniqueRewardTokens.map((addr) => (
+                primaryRewardTokens.map((addr) => {
+                  const symbol = tokenSymbolByAddress[addr] ?? truncate(addr);
+                  const isAuto =
+                    !!suggestedRewardPrices[addr] &&
+                    rewardTokenPrices[addr] === suggestedRewardPrices[addr];
+                  return (
+                    <div key={addr} className="flex items-center gap-2">
+                      <label className="text-white/90 text-xs w-28 shrink-0">
+                        {symbol}
+                        {isAuto ? (
+                          <span className="ml-1 text-white/40">(auto)</span>
+                        ) : null}
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={rewardTokenPrices[addr] ?? ""}
+                        onChange={(e) =>
+                          setRewardTokenPrices((prev) => ({
+                            ...prev,
+                            [addr]: e.target.value,
+                          }))
+                        }
+                        placeholder="Price"
+                        className="flex-1 max-w-[120px] bg-zinc-900/50 px-3 py-1.5 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 text-xs"
+                      />
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <label className="mt-3 flex items-center gap-2 text-xs text-white/70">
+              <input
+                type="checkbox"
+                checked={showAddAnotherReward}
+                onChange={(e) => setShowAddAnotherReward(e.target.checked)}
+              />
+              Add another reward token
+            </label>
+
+            {showAddAnotherReward ? (
+              <div className="mt-2 space-y-2">
+                <div className="flex flex-wrap items-end gap-2">
+                  <select
+                    value={extraRewardPicker}
+                    onChange={(e) => setExtraRewardPicker(e.target.value)}
+                    className="min-w-[10rem] bg-zinc-900/50 px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-1 focus:ring-white/20"
+                  >
+                    <option value="">Select token…</option>
+                    {extraRewardTokenCandidates.map((addr) => (
+                      <option key={addr} value={addr}>
+                        {tokenSymbolByAddress[addr] ?? truncate(addr)}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="py-1.5 px-3 bg-white/10 text-white text-xs font-medium hover:bg-white/15 transition-colors disabled:opacity-50"
+                    onClick={handleAddExtraRewardToken}
+                    disabled={!extraRewardPicker}
+                  >
+                    Add
+                  </button>
+                </div>
+                {extraRewardTokenAddresses.map((addr) => (
                   <div key={addr} className="flex items-center gap-2">
-                    <label className="text-white/90 text-xs w-24 shrink-0">
+                    <label className="text-white/90 text-xs w-28 shrink-0">
                       {tokenSymbolByAddress[addr] ?? truncate(addr)}
                     </label>
                     <input
@@ -1393,10 +1584,21 @@ export default function RewardDeposits() {
                       placeholder="Price"
                       className="flex-1 max-w-[120px] bg-zinc-900/50 px-3 py-1.5 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 text-xs"
                     />
+                    <button
+                      type="button"
+                      className="text-white/50 text-xs hover:text-white/80"
+                      onClick={() =>
+                        setExtraRewardTokenAddresses((prev) =>
+                          prev.filter((a) => a !== addr),
+                        )
+                      }
+                    >
+                      Remove
+                    </button>
                   </div>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
         <div className="border-t border-white/10 pt-4">
