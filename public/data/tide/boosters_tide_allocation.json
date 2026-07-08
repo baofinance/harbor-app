@@ -4,8 +4,8 @@
   "poolTokens": 15000000,
   "totalScore": 3425,
   "recipientCount": 35,
-  "mappedAddressCount": 13,
-  "pendingAddressCount": 22,
+  "mappedAddressCount": 15,
+  "pendingAddressCount": 20,
   "scoreGroups": [
     {
       "rankLabel": "1",
@@ -111,7 +111,7 @@
     {
       "rank": 9,
       "score": 125,
-      "address": "",
+      "address": "0x66bBE9898cBdeF6853f43D9B595225BE5686fC31",
       "amount": "547445255474452554744525",
       "amountTokens": 547445,
       "airdropSent": false
@@ -119,7 +119,7 @@
     {
       "rank": 10,
       "score": 125,
-      "address": "",
+      "address": "0x06c8f0be400224e03238db128960780c03591e6c",
       "amount": "547445255474452554744525",
       "amountTokens": 547445,
       "airdropSent": false
