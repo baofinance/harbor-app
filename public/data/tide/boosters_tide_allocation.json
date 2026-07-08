@@ -4,8 +4,8 @@
   "poolTokens": 15000000,
   "totalScore": 3425,
   "recipientCount": 35,
-  "mappedAddressCount": 9,
-  "pendingAddressCount": 26,
+  "mappedAddressCount": 15,
+  "pendingAddressCount": 20,
   "scoreGroups": [
     {
       "rankLabel": "1",
@@ -47,7 +47,7 @@
     {
       "rank": 1,
       "score": 500,
-      "address": "",
+      "address": "0x810E30271Cdbd01769a7a4Aade0d22Eda193558d",
       "amount": "2189781021897810218978113",
       "amountTokens": 2189793,
       "airdropSent": false
@@ -63,7 +63,7 @@
     {
       "rank": 3,
       "score": 250,
-      "address": "",
+      "address": "0x315efd2f91fe761692ec59882cde3a4cd7ac1135",
       "amount": "1094890510948905109489051",
       "amountTokens": 1094890,
       "airdropSent": false
@@ -74,7 +74,7 @@
       "address": "0x35e55a4227160d4d4f1b1732318d5062f348b354",
       "amount": "766423357664233576642335",
       "amountTokens": 766423,
-      "airdropSent": false
+      "airdropSent": true
     },
     {
       "rank": 5,
@@ -111,7 +111,7 @@
     {
       "rank": 9,
       "score": 125,
-      "address": "",
+      "address": "0x66bBE9898cBdeF6853f43D9B595225BE5686fC31",
       "amount": "547445255474452554744525",
       "amountTokens": 547445,
       "airdropSent": false
@@ -119,7 +119,7 @@
     {
       "rank": 10,
       "score": 125,
-      "address": "",
+      "address": "0x06c8f0be400224e03238db128960780c03591e6c",
       "amount": "547445255474452554744525",
       "amountTokens": 547445,
       "airdropSent": false
@@ -183,7 +183,7 @@
     {
       "rank": 18,
       "score": 75,
-      "address": "",
+      "address": "0xcadf9f065e96516483aff69fbd8d0b81201199d9",
       "amount": "328467153284671532846715",
       "amountTokens": 328467,
       "airdropSent": false
@@ -263,7 +263,7 @@
     {
       "rank": 28,
       "score": 40,
-      "address": "",
+      "address": "0x9a717799733552A3a49667Dee2b6341BC4d8a38d",
       "amount": "175182481751824817518248",
       "amountTokens": 175182,
       "airdropSent": false
@@ -325,6 +325,6 @@
       "airdropSent": false
     }
   ],
-  "airdropSentCount": 8,
-  "airdropPendingCount": 27
+  "airdropSentCount": 9,
+  "airdropPendingCount": 26
 }
