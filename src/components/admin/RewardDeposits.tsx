@@ -69,6 +69,45 @@ function truncate(addr: string) {
   return addr.length > 12 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr;
 }
 
+type TokenDepositTotal = {
+  tokenAddress: `0x${string}`;
+  symbol: string;
+  decimals: number;
+  totalRaw: bigint;
+};
+
+function aggregateTokenDepositTotals(rows: RowComputed[]): TokenDepositTotal[] {
+  const byToken = new Map<string, TokenDepositTotal>();
+  for (const row of rows) {
+    if (!row.enabled) continue;
+    if (!row.rewardToken || row.amountParsed == null || row.amountParsed <= 0n) {
+      continue;
+    }
+    if (row.decimals == null) continue;
+
+    const key = row.rewardToken.toLowerCase();
+    const existing = byToken.get(key);
+    if (existing) {
+      byToken.set(key, {
+        ...existing,
+        totalRaw: existing.totalRaw + row.amountParsed,
+      });
+      continue;
+    }
+
+    byToken.set(key, {
+      tokenAddress: row.rewardToken,
+      symbol: row.tokenSymbol ?? truncate(row.rewardToken),
+      decimals: row.decimals,
+      totalRaw: row.amountParsed,
+    });
+  }
+
+  return Array.from(byToken.values()).sort((a, b) =>
+    a.symbol.localeCompare(b.symbol),
+  );
+}
+
 function buildPoolEntries(): PoolEntry[] {
   return Object.entries(markets)
     .filter(([marketId, m]) => {
@@ -1279,6 +1318,32 @@ export default function RewardDeposits() {
     return Object.values(rows).filter((r) => r.enabled);
   }, [rows]);
 
+  const tokenDepositTotals = useMemo(
+    () => aggregateTokenDepositTotals(Object.values(rows)),
+    [rows],
+  );
+
+  const treasuryBalanceReads = useContractReads({
+    contracts: tokenDepositTotals.map((token) => ({
+      address: token.tokenAddress,
+      abi: ERC20_ABI,
+      functionName: "balanceOf" as const,
+      args: [TREASURY_SAFE_ADDRESS],
+    })),
+    query: { enabled: tokenDepositTotals.length > 0 },
+  });
+
+  const treasuryBalanceByToken = useMemo(() => {
+    const map = new Map<string, bigint>();
+    tokenDepositTotals.forEach((token, index) => {
+      const balance = treasuryBalanceReads.data?.[index]?.result;
+      if (typeof balance === "bigint") {
+        map.set(token.tokenAddress.toLowerCase(), balance);
+      }
+    });
+    return map;
+  }, [tokenDepositTotals, treasuryBalanceReads.data]);
+
   const txs = useMemo(() => {
     const out: AdminBatchCall[] = [];
 
@@ -1465,6 +1530,81 @@ export default function RewardDeposits() {
             Copy calldata list
           </button>
         </div>
+      </div>
+
+      <div className="mt-4 p-4 bg-black/20 border border-white/10 rounded">
+        <div className="text-white font-geo text-base mb-3">Reward deposit totals</div>
+        {tokenDepositTotals.length === 0 ? (
+          <div className="text-white/50 text-xs">
+            Select pools and enter reward amounts to see totals.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[480px] text-xs">
+              <thead>
+                <tr className="text-left text-white/50 border-b border-white/10">
+                  <th className="py-2 pr-4 font-medium">Token</th>
+                  <th className="py-2 pr-4 font-medium text-right">
+                    Total deposits
+                  </th>
+                  <th className="py-2 font-medium text-right">
+                    Treasury balance
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {tokenDepositTotals.map((token) => {
+                  const treasuryBalance = treasuryBalanceByToken.get(
+                    token.tokenAddress.toLowerCase(),
+                  );
+                  const totalFormatted = formatUnits(
+                    token.totalRaw,
+                    token.decimals,
+                  );
+                  const treasuryFormatted =
+                    treasuryBalance != null
+                      ? formatUnits(treasuryBalance, token.decimals)
+                      : treasuryBalanceReads.isLoading
+                        ? "…"
+                        : "—";
+                  const insufficientBalance =
+                    treasuryBalance != null && token.totalRaw > treasuryBalance;
+
+                  return (
+                    <tr
+                      key={token.tokenAddress}
+                      className="border-b border-white/5 text-white/80"
+                    >
+                      <td className="py-2 pr-4">{token.symbol}</td>
+                      <td className="py-2 pr-4 text-right font-mono tabular-nums">
+                        {totalFormatted}
+                      </td>
+                      <td
+                        className={`py-2 text-right font-mono tabular-nums ${
+                          insufficientBalance ? "text-red-300" : "text-white/90"
+                        }`}
+                      >
+                        {treasuryFormatted}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {tokenDepositTotals.some((token) => {
+              const treasuryBalance = treasuryBalanceByToken.get(
+                token.tokenAddress.toLowerCase(),
+              );
+              return (
+                treasuryBalance != null && token.totalRaw > treasuryBalance
+              );
+            }) ? (
+              <p className="mt-3 text-red-300 text-xs">
+                One or more totals exceed the treasury balance for that token.
+              </p>
+            ) : null}
+          </div>
+        )}
       </div>
 
       {/* Set each token price once (used by target APR calculator in each row) */}
@@ -1701,49 +1841,54 @@ export default function RewardDeposits() {
           </span>
         </button>
 
-        {manualExpanded ? (
-          <div className="border-t border-white/10 px-4 py-4 space-y-3">
-            {marketGroups.map((group) => (
-              <div
-                key={group.marketId}
-                className="border border-white/10 bg-black/10 rounded overflow-hidden"
-              >
-                <div className="px-4 py-2 bg-black/20 border-b border-white/10">
-                  <div className="text-white font-geo text-base">
-                    {group.marketName}
-                  </div>
+        <div
+          className={
+            manualExpanded
+              ? "border-t border-white/10 px-4 py-4 space-y-3"
+              : "hidden"
+          }
+          aria-hidden={!manualExpanded}
+        >
+          {marketGroups.map((group) => (
+            <div
+              key={group.marketId}
+              className="border border-white/10 bg-black/10 rounded overflow-hidden"
+            >
+              <div className="px-4 py-2 bg-black/20 border-b border-white/10">
+                <div className="text-white font-geo text-base">
+                  {group.marketName}
                 </div>
-                <div className="px-4 py-3">
-                  <MarketCollateralYieldPanel
-                    group={group}
-                    depositTokenPrices={depositTokenPrices}
-                    rewardTokenPrices={rewardTokenPrices}
-                    apyPct={marketApyPct(group)}
-                    revenueSplitPct={revenueSplitPct}
-                    onApplyAmounts={(anchorAmount, sailAmount) =>
-                      applyMarketRewardAmounts(group, anchorAmount, sailAmount)
-                    }
-                  />
-                </div>
-                <RewardDepositRow
-                  pool={group.anchorPool}
-                  onChange={onRowChange}
+              </div>
+              <div className="px-4 py-3">
+                <MarketCollateralYieldPanel
+                  group={group}
                   depositTokenPrices={depositTokenPrices}
                   rewardTokenPrices={rewardTokenPrices}
-                  amountInjection={amountInjections[group.anchorPool.key]}
-                />
-                <div className="border-t border-white/10" />
-                <RewardDepositRow
-                  pool={group.sailPool}
-                  onChange={onRowChange}
-                  depositTokenPrices={depositTokenPrices}
-                  rewardTokenPrices={rewardTokenPrices}
-                  amountInjection={amountInjections[group.sailPool.key]}
+                  apyPct={marketApyPct(group)}
+                  revenueSplitPct={revenueSplitPct}
+                  onApplyAmounts={(anchorAmount, sailAmount) =>
+                    applyMarketRewardAmounts(group, anchorAmount, sailAmount)
+                  }
                 />
               </div>
-            ))}
-          </div>
-        ) : null}
+              <RewardDepositRow
+                pool={group.anchorPool}
+                onChange={onRowChange}
+                depositTokenPrices={depositTokenPrices}
+                rewardTokenPrices={rewardTokenPrices}
+                amountInjection={amountInjections[group.anchorPool.key]}
+              />
+              <div className="border-t border-white/10" />
+              <RewardDepositRow
+                pool={group.sailPool}
+                onChange={onRowChange}
+                depositTokenPrices={depositTokenPrices}
+                rewardTokenPrices={rewardTokenPrices}
+                amountInjection={amountInjections[group.sailPool.key]}
+              />
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="mt-4 bg-black/10 p-4">
