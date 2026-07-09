@@ -5,14 +5,19 @@ export type CollateralYieldRewardInput = {
   rewardTokenPriceUsd: number;
   anchorSplitPct: number;
   sailSplitPct: number;
+  /** Share of market yield allocated to pool rewards (default 100). */
+  revenueSplitPct?: number;
 };
 
 export type CollateralYieldRewardResult = {
   annualYieldUsd: number;
+  /** Yield for the period before revenue split. */
+  grossPeriodYieldUsd: number;
   periodYieldUsd: number;
   totalRewardTokens: number;
   anchorRewardTokens: number;
   sailRewardTokens: number;
+  revenueSplitPct: number;
 };
 
 export function computeCollateralYieldRewards(
@@ -25,6 +30,7 @@ export function computeCollateralYieldRewards(
     rewardTokenPriceUsd,
     anchorSplitPct,
     sailSplitPct,
+    revenueSplitPct = 100,
   } = input;
 
   if (!Number.isFinite(collateralValueUsd) || collateralValueUsd <= 0) {
@@ -39,6 +45,13 @@ export function computeCollateralYieldRewards(
   if (!Number.isFinite(rewardTokenPriceUsd) || rewardTokenPriceUsd <= 0) {
     return { error: "Reward token price must be set." };
   }
+  if (
+    !Number.isFinite(revenueSplitPct) ||
+    revenueSplitPct <= 0 ||
+    revenueSplitPct > 100
+  ) {
+    return { error: "Revenue split must be between 0 and 100." };
+  }
 
   const splitTotal = anchorSplitPct + sailSplitPct;
   if (!Number.isFinite(splitTotal) || Math.abs(splitTotal - 100) > 0.01) {
@@ -46,17 +59,21 @@ export function computeCollateralYieldRewards(
   }
 
   const annualYieldUsd = collateralValueUsd * (apyPct / 100);
-  const periodYieldUsd = annualYieldUsd * (periodDays / 365);
+  const grossPeriodYieldUsd = annualYieldUsd * (periodDays / 365);
+  const periodYieldUsd =
+    grossPeriodYieldUsd * (revenueSplitPct / 100);
   const totalRewardTokens = periodYieldUsd / rewardTokenPriceUsd;
   const anchorRewardTokens = totalRewardTokens * (anchorSplitPct / 100);
   const sailRewardTokens = totalRewardTokens * (sailSplitPct / 100);
 
   return {
     annualYieldUsd,
+    grossPeriodYieldUsd,
     periodYieldUsd,
     totalRewardTokens,
     anchorRewardTokens,
     sailRewardTokens,
+    revenueSplitPct,
   };
 }
 

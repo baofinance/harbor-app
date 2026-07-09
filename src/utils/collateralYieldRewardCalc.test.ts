@@ -42,6 +42,35 @@ describe("computeCollateralYieldRewards", () => {
     expect(result.anchorRewardTokens).toBeCloseTo(0.00219, 3);
     expect(result.sailRewardTokens).toBeCloseTo(0.00146, 3);
   });
+
+  it("applies global revenue split before pool allocation", () => {
+    const full = computeCollateralYieldRewards({
+      collateralValueUsd: 11790,
+      apyPct: 3.61,
+      periodDays: 7,
+      rewardTokenPriceUsd: 1.0945350483889254,
+      anchorSplitPct: 50,
+      sailSplitPct: 50,
+      revenueSplitPct: 100,
+    });
+    const split75 = computeCollateralYieldRewards({
+      collateralValueUsd: 11790,
+      apyPct: 3.61,
+      periodDays: 7,
+      rewardTokenPriceUsd: 1.0945350483889254,
+      anchorSplitPct: 50,
+      sailSplitPct: 50,
+      revenueSplitPct: 75,
+    });
+
+    expect(full).not.toHaveProperty("error");
+    expect(split75).not.toHaveProperty("error");
+    if ("error" in full || "error" in split75) return;
+
+    expect(split75.periodYieldUsd).toBeCloseTo(full.periodYieldUsd * 0.75, 2);
+    expect(split75.totalRewardTokens).toBeCloseTo(full.totalRewardTokens * 0.75, 2);
+    expect(split75.grossPeriodYieldUsd).toBeCloseTo(full.periodYieldUsd, 2);
+  });
 });
 
 describe("poolTvlSplitPercentages", () => {
