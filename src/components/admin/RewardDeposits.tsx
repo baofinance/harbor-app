@@ -29,6 +29,7 @@ import {
   type AdminBatchCall,
   type SafeInfo,
 } from "@/utils/adminBatchTx";
+import { GlobalRewardSettings } from "@/components/admin/GlobalRewardSettings";
 
 type PoolKind = "collateral" | "leveraged";
 
@@ -163,12 +164,14 @@ function MarketCollateralYieldPanel({
   depositTokenPrices,
   rewardTokenPrices,
   apyPct,
+  revenueSplitPct,
   onApplyAmounts,
 }: {
   group: MarketGroup;
   depositTokenPrices: TokenPriceMap;
   rewardTokenPrices: TokenPriceMap;
   apyPct: number | null;
+  revenueSplitPct: number | null;
   onApplyAmounts: (anchorAmount: string, sailAmount: string) => void;
 }) {
   const [anchorSplitInput, setAnchorSplitInput] = useState("");
@@ -350,6 +353,9 @@ function MarketCollateralYieldPanel({
     if (anchorSplitPct == null || sailSplitPct == null) {
       return { error: "Set Anchor and Sail split percentages." };
     }
+    if (revenueSplitPct == null || revenueSplitPct <= 0) {
+      return { error: "Set global revenue split above." };
+    }
 
     return computeCollateralYieldRewards({
       collateralValueUsd,
@@ -358,6 +364,7 @@ function MarketCollateralYieldPanel({
       rewardTokenPriceUsd: rewardPrice,
       anchorSplitPct,
       sailSplitPct,
+      revenueSplitPct,
     });
   }, [
     collateralValueUsd,
@@ -366,6 +373,7 @@ function MarketCollateralYieldPanel({
     depositPrice,
     anchorSplitPct,
     sailSplitPct,
+    revenueSplitPct,
     periodDays,
     group.rewardTokenSymbol,
     apySourceLabel,
@@ -478,7 +486,13 @@ function MarketCollateralYieldPanel({
         ) : (
           <>
             <span className="text-white/70">
-              Period yield:{" "}
+              Gross period yield:{" "}
+              <span className="text-white/90">
+                ${formatUsd(yieldResult.grossPeriodYieldUsd)}
+              </span>
+            </span>
+            <span className="text-white/70">
+              Allocated ({yieldResult.revenueSplitPct.toFixed(0)}%):{" "}
               <span className="text-white/90">
                 ${formatUsd(yieldResult.periodYieldUsd)}
               </span>
@@ -1005,6 +1019,8 @@ export default function RewardDeposits() {
   const [extraRewardPicker, setExtraRewardPicker] = useState("");
   const [fxSAVEApyInput, setFxSAVEApyInput] = useState("");
   const [wstETHApyInput, setWstETHApyInput] = useState("");
+  const [revenueSplitInput, setRevenueSplitInput] = useState("75");
+  const [manualExpanded, setManualExpanded] = useState(false);
   const [apyDefaultsApplied, setApyDefaultsApplied] = useState(false);
 
   useEffect(() => {
@@ -1024,6 +1040,9 @@ export default function RewardDeposits() {
     : null;
   const wstETHApyPct = wstETHApyInput.trim()
     ? parseFloat(wstETHApyInput)
+    : null;
+  const revenueSplitPct = revenueSplitInput.trim()
+    ? parseFloat(revenueSplitInput)
     : null;
 
   const applyMarketRewardAmounts = useCallback(
@@ -1054,6 +1073,28 @@ export default function RewardDeposits() {
       return fxSAVEApyPct;
     },
     [fxSAVEApyPct, wstETHApyPct]
+  );
+
+  const apyPctByMarketId = useMemo(() => {
+    const map: Record<string, number | null> = {};
+    for (const group of marketGroups) {
+      map[group.marketId] = marketApyPct(group);
+    }
+    return map;
+  }, [marketGroups, marketApyPct]);
+
+  const applyGlobalPoolAmounts = useCallback(
+    (injections: Record<string, { amount: string; enable: boolean }>) => {
+      const nonce = Date.now();
+      setAmountInjections((prev) => {
+        const next = { ...prev };
+        for (const [poolKey, { amount, enable }] of Object.entries(injections)) {
+          next[poolKey] = { amount, nonce, enable };
+        }
+        return next;
+      });
+    },
+    [],
   );
 
   // Discover unique deposit tokens (ASSET_TOKEN per pool) and reward tokens (activeRewardTokens)
@@ -1638,43 +1679,71 @@ export default function RewardDeposits() {
         </div>
       </div>
 
-      <div className="mt-4 space-y-3">
-        {marketGroups.map((group) => (
-          <div
-            key={group.marketId}
-            className="border border-white/10 bg-black/10 rounded overflow-hidden"
-          >
-            <div className="px-4 py-2 bg-black/20 border-b border-white/10">
-              <div className="text-white font-geo text-base">{group.marketName}</div>
-            </div>
-            <div className="px-4 py-3">
-              <MarketCollateralYieldPanel
-                group={group}
-                depositTokenPrices={depositTokenPrices}
-                rewardTokenPrices={rewardTokenPrices}
-                apyPct={marketApyPct(group)}
-                onApplyAmounts={(anchorAmount, sailAmount) =>
-                  applyMarketRewardAmounts(group, anchorAmount, sailAmount)
-                }
-              />
-            </div>
-            <RewardDepositRow
-              pool={group.anchorPool}
-              onChange={onRowChange}
-              depositTokenPrices={depositTokenPrices}
-              rewardTokenPrices={rewardTokenPrices}
-              amountInjection={amountInjections[group.anchorPool.key]}
-            />
-            <div className="border-t border-white/10" />
-            <RewardDepositRow
-              pool={group.sailPool}
-              onChange={onRowChange}
-              depositTokenPrices={depositTokenPrices}
-              rewardTokenPrices={rewardTokenPrices}
-              amountInjection={amountInjections[group.sailPool.key]}
-            />
+      <GlobalRewardSettings
+        marketGroups={marketGroups}
+        depositTokenPrices={depositTokenPrices}
+        rewardTokenPrices={rewardTokenPrices}
+        apyPctByMarketId={apyPctByMarketId}
+        revenueSplitInput={revenueSplitInput}
+        onRevenueSplitChange={setRevenueSplitInput}
+        onApplyPoolAmounts={applyGlobalPoolAmounts}
+      />
+
+      <div className="mt-4 border border-white/10 rounded overflow-hidden bg-black/20">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-white/[0.03] transition-colors"
+          onClick={() => setManualExpanded((v) => !v)}
+        >
+          <span className="text-white font-geo text-base">Manual</span>
+          <span className="text-white/50 text-xs">
+            {manualExpanded ? "Hide" : "Show"} · configure each market individually
+          </span>
+        </button>
+
+        {manualExpanded ? (
+          <div className="border-t border-white/10 px-4 py-4 space-y-3">
+            {marketGroups.map((group) => (
+              <div
+                key={group.marketId}
+                className="border border-white/10 bg-black/10 rounded overflow-hidden"
+              >
+                <div className="px-4 py-2 bg-black/20 border-b border-white/10">
+                  <div className="text-white font-geo text-base">
+                    {group.marketName}
+                  </div>
+                </div>
+                <div className="px-4 py-3">
+                  <MarketCollateralYieldPanel
+                    group={group}
+                    depositTokenPrices={depositTokenPrices}
+                    rewardTokenPrices={rewardTokenPrices}
+                    apyPct={marketApyPct(group)}
+                    revenueSplitPct={revenueSplitPct}
+                    onApplyAmounts={(anchorAmount, sailAmount) =>
+                      applyMarketRewardAmounts(group, anchorAmount, sailAmount)
+                    }
+                  />
+                </div>
+                <RewardDepositRow
+                  pool={group.anchorPool}
+                  onChange={onRowChange}
+                  depositTokenPrices={depositTokenPrices}
+                  rewardTokenPrices={rewardTokenPrices}
+                  amountInjection={amountInjections[group.anchorPool.key]}
+                />
+                <div className="border-t border-white/10" />
+                <RewardDepositRow
+                  pool={group.sailPool}
+                  onChange={onRowChange}
+                  depositTokenPrices={depositTokenPrices}
+                  rewardTokenPrices={rewardTokenPrices}
+                  amountInjection={amountInjections[group.sailPool.key]}
+                />
+              </div>
+            ))}
           </div>
-        ))}
+        ) : null}
       </div>
 
       <div className="mt-4 bg-black/10 p-4">
