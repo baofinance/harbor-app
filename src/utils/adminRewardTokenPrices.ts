@@ -100,6 +100,14 @@ export function formatAdminPriceUsd(value: number | null | undefined): string {
   return value.toFixed(2);
 }
 
+/** Reward tokens (fxSAVE, wstETH) need finer precision than ha* deposit prices. */
+export function formatAdminRewardPriceUsd(
+  value: number | null | undefined,
+): string {
+  if (value == null || !Number.isFinite(value) || value <= 0) return "";
+  return value.toFixed(6);
+}
+
 export type BuildSuggestedPricesInput = {
   depositTokenAddresses: string[];
   rewardTokenAddresses: string[];
@@ -133,7 +141,7 @@ export function buildSuggestedAdminTokenPrices(
     const symbol = input.tokenSymbolByAddress[addr] ?? "";
     if (!isPrimaryRewardTokenSymbol(symbol)) continue;
     const usd = resolveRewardTokenUsdPrice(symbol, input.cgPrices);
-    const formatted = formatAdminPriceUsd(usd);
+    const formatted = formatAdminRewardPriceUsd(usd);
     if (formatted) suggestedRewardPrices[addr] = formatted;
   }
 

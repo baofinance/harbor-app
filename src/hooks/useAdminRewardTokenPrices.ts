@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
+import { useFxSAVEOnChainPrice } from "@/hooks/useFxSAVEOnChainPrice";
 import { usePegTargetPrices } from "@/hooks/usePegTargetPrices";
 import {
   buildPeggedTokenAddressMap,
@@ -25,7 +26,7 @@ export function useAdminRewardTokenPrices({
 }: UseAdminRewardTokenPricesInput) {
   const pegPrices = usePegTargetPrices();
   const { price: fxSAVEPrice, isLoading: isFxSaveLoading } =
-    useCoinGeckoPrice("fx-usd-saving", 120_000);
+    useFxSAVEOnChainPrice(enabled);
   const { price: wstETHPrice, isLoading: isWstEthLoading } =
     useCoinGeckoPrice("wrapped-steth", 120_000);
 

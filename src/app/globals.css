@@ -114,12 +114,31 @@ body.app-bg-megaeth .app-index-metrics-strip {
   background-color: #10141a;
 }
 
-body.app-bg-megaeth .app-index-manage-btn {
-  background-color: #10141a;
+/* Primary row actions (Manage on Earn, Sail, Genesis) — lighter coal on frosted rows */
+body.app-bg-megaeth .app-index-manage-btn:not(:disabled) {
+  border-color: #343c47 !important;
+  background-color: #2a3139 !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: 0 1px 2px rgba(16, 20, 26, 0.18);
 }
 
-body.app-bg-megaeth .app-index-manage-btn:hover {
-  background-color: #1a2029;
+body.app-bg-megaeth .app-index-manage-btn:not(:disabled):hover {
+  border-color: #3f4854 !important;
+  background-color: #353d47 !important;
+  color: #ffffff !important;
+}
+
+body.app-bg-megaeth .app-index-manage-btn:disabled {
+  border-color: rgba(42, 49, 57, 0.22) !important;
+  background-color: rgba(255, 255, 255, 0.55) !important;
+  background-image: none !important;
+  color: rgba(42, 49, 57, 0.42) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  opacity: 1 !important;
 }
 
 .smoke-particle-el {

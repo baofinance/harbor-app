@@ -32,7 +32,7 @@ export default function IndexToolbarSegmentedToggle({
 }: IndexToolbarSegmentedToggleProps) {
   const group = (
     <div
-      className="inline-flex rounded-md bg-[#1E4775]/20 p-0.5"
+      className="app-index-segmented-toggle inline-flex rounded-md bg-[#1E4775]/20 p-0.5"
       role="group"
       aria-label={ariaLabel || label || "Options"}
     >
