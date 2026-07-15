@@ -62,10 +62,12 @@ export function SailPerpBenchmarkSummary({
   if (!data) return null;
 
   const { benchmark, assumptions } = data;
+  const sailVsPerpPct =
+    benchmark.sailNetReturnPct - benchmark.perpReturnPct;
   const costItems = [
     ["Trading fees", benchmark.costs.tradingFeesUsd],
     ["Slippage", benchmark.costs.slippageUsd],
-    ["Funding", benchmark.costs.fundingUsd],
+    ["Funding cost / credit", benchmark.costs.fundingUsd],
     ["Liquidation", benchmark.costs.liquidationImpactUsd],
     ["Sail mint fee", benchmark.costs.sailMintFeeUsd],
     ["Sail redeem fee", benchmark.costs.sailRedeemFeeUsd],
@@ -84,6 +86,9 @@ export function SailPerpBenchmarkSummary({
           <span>
             Perp <ReturnValue value={benchmark.perpReturnPct} />
           </span>
+          <span>
+            Sail vs perp <ReturnValue value={sailVsPerpPct} />
+          </span>
           {benchmark.liquidatedAt ? (
             <span className="font-semibold text-red-700">Liquidated</span>
           ) : null}
@@ -101,11 +106,13 @@ export function SailPerpBenchmarkSummary({
           ))}
         </div>
         <p className="mt-2 text-[10px] leading-relaxed text-[#1E4775]/55">
-          Same {usd(assumptions.startingCapitalUsd)} starting capital, no margin
+          Net versus net: both start with the same{" "}
+          {usd(assumptions.startingCapitalUsd)}. Sail includes historical entry
+          and hypothetical endpoint redemption fees. The perp includes funding,
+          rebalancing, entry/exit trading costs, and liquidation. No margin
           top-ups, {assumptions.takerFeeBps} bps taker fee,{" "}
           {assumptions.slippageBps} bps modeled slippage, hourly high/low
-          liquidation checks, and historical funding. Sail uses archive-state
-          leverage plus historical mint/redeem fee bands.
+          liquidation checks, and historical funding.
         </p>
         {data.warnings.length > 0 ? (
           <ul className="mt-2 list-disc space-y-1 pl-4 text-[10px] text-[#1E4775]/55">

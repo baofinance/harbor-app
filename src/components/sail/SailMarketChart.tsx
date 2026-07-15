@@ -222,8 +222,26 @@ export function SailMarketChart({
 
   const windowPerformance = useMemo(() => {
     if (!hasHsPriceData) return null;
-    return computeSailChartWindowPerformance(filteredData);
-  }, [filteredData, hasHsPriceData]);
+    const performance = computeSailChartWindowPerformance(filteredData);
+    const sailNetReturn = showPerpBenchmark
+      ? perpBenchmarkQuery.data?.benchmark.sailNetReturnPct
+      : null;
+    if (sailNetReturn == null) return performance;
+    return {
+      ...performance,
+      leverageTokenPerformancePct: sailNetReturn,
+      leverageTokenVsMarketPct:
+        performance.marketPerformancePct == null
+          ? null
+          : sailNetReturn - performance.marketPerformancePct,
+      leverageTokenIsNet: true,
+    };
+  }, [
+    filteredData,
+    hasHsPriceData,
+    showPerpBenchmark,
+    perpBenchmarkQuery.data,
+  ]);
 
   const formatTimestamp = useMemo(() => {
     return (timestamp: number) =>

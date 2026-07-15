@@ -135,4 +135,27 @@ describe("runSailPerpBenchmark", () => {
     expect(result.costs.sailMintFeeUsd).toBe(10);
     expect(result.costs.sailRedeemFeeUsd).toBeGreaterThan(0);
   });
+
+  it("uses timestamped Sail redemption fees for the net return series", () => {
+    const result = runSailPerpBenchmark({
+      states,
+      exposure: { collateralCoin: null, targetCoin: "ETH" },
+      assumptions,
+      sailRedeemFeeBpsByTimestamp: [
+        { timestamp: states[0]!.timestamp, feeBps: 100 },
+        { timestamp: states[1]!.timestamp, feeBps: 500 },
+      ],
+      candlesByCoin: {
+        ETH: [
+          { timestamp: states[0]!.timestamp, open: 100, high: 100, low: 100, close: 100 },
+          { timestamp: states[1]!.timestamp, open: 100, high: 100, low: 100, close: 100 },
+        ],
+      },
+      fundingByCoin: { ETH: [] },
+    });
+
+    expect(result.points[0]!.sailReturnPct).toBeCloseTo(-1);
+    expect(result.points[1]!.sailReturnPct).toBeCloseTo(4.5);
+    expect(result.sailNetReturnPct).toBeCloseTo(4.5);
+  });
 });

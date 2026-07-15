@@ -113,12 +113,17 @@ export function runSailPerpBenchmark({
   fundingByCoin,
   exposure,
   assumptions,
+  sailRedeemFeeBpsByTimestamp = [],
 }: {
   states: SailStateObservation[];
   candlesByCoin: Partial<Record<PerpCoin, PerpCandle[]>>;
   fundingByCoin: Partial<Record<PerpCoin, PerpFundingPoint[]>>;
   exposure: SailPerpExposure;
   assumptions: SailPerpBenchmarkAssumptions;
+  sailRedeemFeeBpsByTimestamp?: Array<{
+    timestamp: number;
+    feeBps: number;
+  }>;
 }): SailPerpBenchmarkResult {
   const orderedStates = [...states]
     .filter(
@@ -227,7 +232,17 @@ export function runSailPerpBenchmark({
   rebalance(targetPerpNotionals(equity, initialState.leverageRatio, exposure));
 
   const sailMintRate = assumptions.sailMintFeeBps / 10_000;
-  const sailRedeemRate = assumptions.sailRedeemFeeBps / 10_000;
+  const orderedRedeemFees = [...sailRedeemFeeBpsByTimestamp].sort(
+    (a, b) => a.timestamp - b.timestamp,
+  );
+  const redeemRateAt = (timestamp: number) => {
+    let feeBps = assumptions.sailRedeemFeeBps;
+    for (const observation of orderedRedeemFees) {
+      if (observation.timestamp > timestamp) break;
+      feeBps = observation.feeBps;
+    }
+    return feeBps / 10_000;
+  };
   costs.sailMintFeeUsd = capital * sailMintRate;
   const sailUnits =
     (capital - costs.sailMintFeeUsd) / Math.max(firstState.sailPriceUsd, 1e-12);
@@ -276,6 +291,7 @@ export function runSailPerpBenchmark({
     }
 
     const sailValueBeforeRedeem = sailUnits * state.sailPriceUsd;
+    const sailRedeemRate = redeemRateAt(timestamp);
     const sailValueAfterRedeem =
       sailValueBeforeRedeem * (1 - sailRedeemRate);
     points.push({
@@ -299,7 +315,8 @@ export function runSailPerpBenchmark({
   const sailGrossEndValue =
     capital * (lastState.sailPriceUsd / firstState.sailPriceUsd);
   const sailValueBeforeRedeem = sailUnits * lastState.sailPriceUsd;
-  costs.sailRedeemFeeUsd = sailValueBeforeRedeem * sailRedeemRate;
+  costs.sailRedeemFeeUsd =
+    sailValueBeforeRedeem * redeemRateAt(lastState.timestamp);
   const sailNetEndValue = sailValueBeforeRedeem - costs.sailRedeemFeeUsd;
 
   return {

@@ -34,12 +34,15 @@ export interface SailMarketChartPoint {
   hsPriceUsd: number;
   /** Modeled same-capital perpetual account return for this timestamp. */
   perpReturnPct?: number | null;
+  /** Sail return after modeled entry and endpoint exit fees. */
+  sailNetReturnPct?: number | null;
 }
 
 export type SailChartWindowPerformance = {
   marketPerformancePct: number | null;
   leverageTokenPerformancePct: number | null;
   leverageTokenVsMarketPct: number | null;
+  leverageTokenIsNet?: boolean;
 };
 
 export interface LiveSideUsdPrices {
@@ -337,24 +340,38 @@ export type SailMarketChartRechartsPoint = Omit<
 
 export function attachPerpBenchmarkSeries(
   data: SailMarketChartPoint[],
-  benchmark: Array<{ timestamp: number; perpReturnPct: number }>,
+  benchmark: Array<{
+    timestamp: number;
+    perpReturnPct: number;
+    sailReturnPct: number;
+  }>,
 ): SailMarketChartPoint[] {
   if (benchmark.length === 0) {
-    return data.map((point) => ({ ...point, perpReturnPct: null }));
+    return data.map((point) => ({
+      ...point,
+      perpReturnPct: null,
+      sailNetReturnPct: null,
+    }));
   }
   const ordered = [...benchmark].sort((a, b) => a.timestamp - b.timestamp);
   let benchmarkIndex = 0;
-  let latest: number | null = null;
+  let latestPerp: number | null = null;
+  let latestSail: number | null = null;
 
   return data.map((point) => {
     while (
       benchmarkIndex < ordered.length &&
       ordered[benchmarkIndex]!.timestamp <= point.timestamp
     ) {
-      latest = ordered[benchmarkIndex]!.perpReturnPct;
+      latestPerp = ordered[benchmarkIndex]!.perpReturnPct;
+      latestSail = ordered[benchmarkIndex]!.sailReturnPct;
       benchmarkIndex++;
     }
-    return { ...point, perpReturnPct: latest };
+    return {
+      ...point,
+      perpReturnPct: latestPerp,
+      sailNetReturnPct: latestSail,
+    };
   });
 }
 

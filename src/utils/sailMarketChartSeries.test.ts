@@ -161,9 +161,15 @@ describe("sailMarketChartSeries", () => {
 
     expect(
       attachPerpBenchmarkSeries(points, [
-        { timestamp: 90, perpReturnPct: 0 },
-        { timestamp: 150, perpReturnPct: 5 },
-      ]).map((point) => point.perpReturnPct),
-    ).toEqual([0, 5]);
+        { timestamp: 90, perpReturnPct: 0, sailReturnPct: -1 },
+        { timestamp: 150, perpReturnPct: 5, sailReturnPct: 3 },
+      ]).map((point) => ({
+        perp: point.perpReturnPct,
+        sail: point.sailNetReturnPct,
+      })),
+    ).toEqual([
+      { perp: 0, sail: -1 },
+      { perp: 5, sail: 3 },
+    ]);
   });
 });

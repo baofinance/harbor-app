@@ -433,6 +433,36 @@ export async function buildSailPerpBenchmark(
   if (configChangeResult.error) {
     warnings.push("Historical fee-config event scan was unavailable.");
   }
+  const changedConfigs = await mapWithConcurrency(
+    feeConfigChangeBlocks.filter(
+      (block) =>
+        block > firstState.blockNumber && block < lastState.blockNumber,
+    ),
+    RPC_CONCURRENCY,
+    async (blockNumber) => ({
+      blockNumber,
+      config: await readMinterConfig(client, minterAddress, blockNumber),
+    }),
+  );
+  const feeConfigSchedule = [
+    { blockNumber: firstState.blockNumber, config: startConfig },
+    ...changedConfigs,
+    { blockNumber: lastState.blockNumber, config: endConfig },
+  ].sort((a, b) => a.blockNumber - b.blockNumber);
+  const sailRedeemFeeBpsByTimestamp = states.map((state) => {
+    let config = startConfig;
+    for (const observation of feeConfigSchedule) {
+      if (observation.blockNumber > state.blockNumber) break;
+      config = observation.config;
+    }
+    return {
+      timestamp: state.timestamp,
+      feeBps: Math.max(
+        0,
+        feeBpsAtCollateralRatio(config, state.collateralRatio, "redeem"),
+      ),
+    };
+  });
   const candlesByCoin = Object.fromEntries(
     marketData.map((data) => [data.coin, data.candles]),
   );
@@ -461,6 +491,7 @@ export async function buildSailPerpBenchmark(
     fundingByCoin,
     exposure,
     assumptions,
+    sailRedeemFeeBpsByTimestamp,
   });
 
   if (rawReferences.length > states.length) {
