@@ -1,0 +1,491 @@
+import { getAddress, type PublicClient } from "viem";
+import { minterABI } from "@/abis/minter";
+import { getGraphHeaders, getSailPriceGraphUrl } from "@/config/graph";
+import { markets } from "@/config/markets";
+import { bandsFromConfig, getCurrentFee } from "@/utils/sailFeeBands";
+import {
+  runSailPerpBenchmark,
+  type PerpCandle,
+  type PerpCoin,
+  type PerpFundingPoint,
+  type SailPerpBenchmarkAssumptions,
+  type SailPerpBenchmarkResult,
+  type SailPerpExposure,
+  type SailStateObservation,
+} from "@/utils/sailPerpBenchmark";
+
+const HYPERLIQUID_INFO_URL = "https://api.hyperliquid.xyz/info";
+const MAX_STATE_POINTS = 120;
+const GRAPH_PAGE_SIZE = 1_000;
+const MAX_GRAPH_PAGES = 20;
+const RPC_CONCURRENCY = 10;
+
+type GraphStateReference = {
+  timestamp: number;
+  blockNumber: number;
+  sailPriceUsd: number;
+};
+
+type IncentiveConfig = {
+  collateralRatioBandUpperBounds: readonly bigint[];
+  incentiveRatios: readonly bigint[];
+};
+
+type MinterConfig = {
+  mintLeveragedIncentiveConfig: IncentiveConfig;
+  redeemLeveragedIncentiveConfig: IncentiveConfig;
+};
+
+export type SailPerpBenchmarkApiResponse = {
+  marketId: string;
+  venue: "Hyperliquid";
+  exposure: SailPerpExposure;
+  stateObservations: SailStateObservation[];
+  feeConfigChangeBlocks: number[];
+  assumptions: SailPerpBenchmarkAssumptions & {
+    stateObservationCount: number;
+    candleInterval: "1h";
+    executionModel: "base-tier taker";
+  };
+  benchmark: SailPerpBenchmarkResult;
+  warnings: string[];
+  generatedAt: string;
+};
+
+const STATE_REFERENCES_QUERY = `
+  query SailBenchmarkStateReferences(
+    $tokenAddress: Bytes!
+    $since: BigInt!
+    $until: BigInt!
+    $cursor: BigInt!
+  ) {
+    hourlyPriceSnapshots(
+      where: {
+        tokenAddress: $tokenAddress
+        hourTimestamp_gte: $since
+        hourTimestamp_lte: $until
+        hourTimestamp_gt: $cursor
+      }
+      orderBy: hourTimestamp
+      orderDirection: asc
+      first: ${GRAPH_PAGE_SIZE}
+    ) {
+      hourTimestamp
+      blockNumber
+      tokenPriceUSD
+    }
+  }
+`;
+
+async function graphRequest<T>(
+  query: string,
+  variables: Record<string, unknown>,
+): Promise<T> {
+  const url = getSailPriceGraphUrl();
+  const response = await fetch(url, {
+    method: "POST",
+    headers: getGraphHeaders(url),
+    body: JSON.stringify({ query, variables }),
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    throw new Error(`Sail price subgraph returned ${response.status}`);
+  }
+  const payload = (await response.json()) as {
+    data?: T;
+    errors?: Array<{ message?: string }>;
+  };
+  if (payload.errors?.length || !payload.data) {
+    throw new Error(payload.errors?.[0]?.message ?? "Sail price subgraph failed");
+  }
+  return payload.data;
+}
+
+async function fetchStateReferences(
+  tokenAddress: string,
+  startTimestamp: number,
+  endTimestamp: number,
+): Promise<GraphStateReference[]> {
+  const rows: GraphStateReference[] = [];
+  let cursor = startTimestamp - 1;
+
+  for (let page = 0; page < MAX_GRAPH_PAGES; page++) {
+    const data = await graphRequest<{
+      hourlyPriceSnapshots: Array<{
+        hourTimestamp: string;
+        blockNumber: string;
+        tokenPriceUSD: string;
+      }>;
+    }>(STATE_REFERENCES_QUERY, {
+      tokenAddress: tokenAddress.toLowerCase(),
+      since: String(startTimestamp),
+      until: String(endTimestamp),
+      cursor: String(cursor),
+    });
+    const batch = data.hourlyPriceSnapshots ?? [];
+    if (batch.length === 0) break;
+    for (const row of batch) {
+      rows.push({
+        timestamp: Number(row.hourTimestamp),
+        blockNumber: Number(row.blockNumber),
+        sailPriceUsd: Number(row.tokenPriceUSD),
+      });
+    }
+    cursor = Number(batch[batch.length - 1]!.hourTimestamp);
+    if (batch.length < GRAPH_PAGE_SIZE) break;
+  }
+
+  return rows;
+}
+
+function sampleReferences(
+  rows: GraphStateReference[],
+  maximum = MAX_STATE_POINTS,
+): GraphStateReference[] {
+  if (rows.length <= maximum) return rows;
+  const sampled: GraphStateReference[] = [];
+  const step = (rows.length - 1) / (maximum - 1);
+  for (let index = 0; index < maximum; index++) {
+    sampled.push(rows[Math.round(index * step)]!);
+  }
+  return sampled.filter(
+    (row, index) => index === 0 || row.blockNumber !== sampled[index - 1]!.blockNumber,
+  );
+}
+
+async function mapWithConcurrency<T, R>(
+  values: T[],
+  limit: number,
+  fn: (value: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(values.length);
+  let cursor = 0;
+  async function worker() {
+    while (cursor < values.length) {
+      const index = cursor++;
+      results[index] = await fn(values[index]!);
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(limit, values.length) }, () => worker()),
+  );
+  return results;
+}
+
+async function fetchArchiveStates(
+  client: PublicClient,
+  minterAddress: `0x${string}`,
+  references: GraphStateReference[],
+): Promise<SailStateObservation[]> {
+  return mapWithConcurrency(references, RPC_CONCURRENCY, async (reference) => {
+    const results = await client.multicall({
+      blockNumber: BigInt(reference.blockNumber),
+      allowFailure: false,
+      contracts: [
+        {
+          address: minterAddress,
+          abi: minterABI,
+          functionName: "leveragedTokenPrice",
+        },
+        {
+          address: minterAddress,
+          abi: minterABI,
+          functionName: "leverageRatio",
+        },
+        {
+          address: minterAddress,
+          abi: minterABI,
+          functionName: "collateralRatio",
+        },
+      ],
+    });
+    const [, leverageRaw, collateralRatioRaw] = results as readonly [
+      bigint,
+      bigint,
+      bigint,
+    ];
+    return {
+      ...reference,
+      leverageRatio: Number(leverageRaw) / 1e18,
+      collateralRatio: Number(collateralRatioRaw) / 1e18,
+    };
+  });
+}
+
+async function readMinterConfig(
+  client: PublicClient,
+  minterAddress: `0x${string}`,
+  blockNumber: number,
+): Promise<MinterConfig> {
+  return (await client.readContract({
+    address: minterAddress,
+    abi: minterABI,
+    functionName: "config",
+    blockNumber: BigInt(blockNumber),
+  })) as MinterConfig;
+}
+
+function feeBpsAtCollateralRatio(
+  config: MinterConfig,
+  collateralRatio: number,
+  side: "mint" | "redeem",
+): number {
+  const incentive =
+    side === "mint"
+      ? config.mintLeveragedIncentiveConfig
+      : config.redeemLeveragedIncentiveConfig;
+  const bands = bandsFromConfig(incentive);
+  const ratio = getCurrentFee(
+    bands,
+    BigInt(Math.round(collateralRatio * 1e18)),
+  );
+  return ratio == null ? 0 : Number(ratio) / 1e14;
+}
+
+async function fetchConfigChangeBlocks(
+  client: PublicClient,
+  minterAddress: `0x${string}`,
+  fromBlock: number,
+  toBlock: number,
+): Promise<number[]> {
+  const blocks: number[] = [];
+  const chunkSize = 25_000;
+  for (let start = fromBlock; start <= toBlock; start += chunkSize) {
+    const end = Math.min(toBlock, start + chunkSize - 1);
+    const logs = await client.getLogs({
+      address: minterAddress,
+      event: minterABI.find(
+        (item) => item.type === "event" && item.name === "UpdateConfig",
+      ) as Extract<(typeof minterABI)[number], { type: "event" }>,
+      fromBlock: BigInt(start),
+      toBlock: BigInt(end),
+    });
+    for (const log of logs) blocks.push(Number(log.blockNumber));
+  }
+  return Array.from(new Set(blocks));
+}
+
+function resolveExposure(marketId: string): SailPerpExposure | null {
+  const market = markets[marketId as keyof typeof markets] as
+    | (typeof markets)[keyof typeof markets]
+    | undefined;
+  if (!market) return null;
+  const collateralSymbol = market.collateral.symbol.toUpperCase();
+  const pegTarget = market.pegTarget.toUpperCase();
+  const collateralCoin: PerpCoin | null =
+    collateralSymbol.includes("STETH") ? "ETH" : null;
+  const targetCoin: PerpCoin | null =
+    pegTarget === "ETH" || pegTarget === "BTC"
+      ? (pegTarget as PerpCoin)
+      : null;
+  if (!collateralCoin && !targetCoin) return null;
+  return { collateralCoin, targetCoin };
+}
+
+async function hyperliquidRequest<T>(body: Record<string, unknown>): Promise<T> {
+  const response = await fetch(HYPERLIQUID_INFO_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    throw new Error(`Hyperliquid returned ${response.status}`);
+  }
+  return (await response.json()) as T;
+}
+
+async function fetchFundingHistory(
+  coin: PerpCoin,
+  startTimestamp: number,
+  endTimestamp: number,
+): Promise<PerpFundingPoint[]> {
+  const points: PerpFundingPoint[] = [];
+  let cursorMs = startTimestamp * 1_000;
+  const endMs = endTimestamp * 1_000;
+  for (let page = 0; page < 30 && cursorMs <= endMs; page++) {
+    const batch = await hyperliquidRequest<
+      Array<{ time: number; fundingRate: string }>
+    >({
+      type: "fundingHistory",
+      coin,
+      startTime: cursorMs,
+      endTime: endMs,
+    });
+    if (batch.length === 0) break;
+    for (const row of batch) {
+      points.push({
+        timestamp: Math.floor(row.time / 1_000),
+        rate: Number(row.fundingRate),
+      });
+    }
+    const next = batch[batch.length - 1]!.time + 1;
+    if (next <= cursorMs || batch.length < 500) break;
+    cursorMs = next;
+  }
+  return points;
+}
+
+async function fetchCandles(
+  coin: PerpCoin,
+  startTimestamp: number,
+  endTimestamp: number,
+): Promise<PerpCandle[]> {
+  const candles: PerpCandle[] = [];
+  let cursorMs = startTimestamp * 1_000;
+  const endMs = endTimestamp * 1_000;
+  for (let page = 0; page < 10 && cursorMs <= endMs; page++) {
+    const batch = await hyperliquidRequest<
+      Array<{ t: number; o: string; h: string; l: string; c: string }>
+    >({
+      type: "candleSnapshot",
+      req: {
+        coin,
+        interval: "1h",
+        startTime: cursorMs,
+        endTime: endMs,
+      },
+    });
+    if (batch.length === 0) break;
+    for (const row of batch) {
+      candles.push({
+        timestamp: Math.floor(row.t / 1_000),
+        open: Number(row.o),
+        high: Number(row.h),
+        low: Number(row.l),
+        close: Number(row.c),
+      });
+    }
+    const next = batch[batch.length - 1]!.t + 60 * 60 * 1_000;
+    if (next <= cursorMs || batch.length < 5_000) break;
+    cursorMs = next;
+  }
+  return candles;
+}
+
+export async function buildSailPerpBenchmark(
+  client: PublicClient,
+  marketId: string,
+  startTimestamp: number,
+  endTimestamp: number,
+): Promise<SailPerpBenchmarkApiResponse> {
+  const market = markets[marketId as keyof typeof markets] as
+    | (typeof markets)[keyof typeof markets]
+    | undefined;
+  const exposure = resolveExposure(marketId);
+  if (!market || !exposure) {
+    throw new Error("This market has no supported Hyperliquid benchmark");
+  }
+  const minterAddress = getAddress(market.addresses.minter);
+  const tokenAddress = getAddress(market.addresses.leveragedToken);
+  const rawReferences = await fetchStateReferences(
+    tokenAddress,
+    startTimestamp,
+    endTimestamp,
+  );
+  const references = sampleReferences(rawReferences);
+  if (references.length < 2) {
+    throw new Error("Not enough Sail history exists for this range");
+  }
+
+  const warnings: string[] = [];
+  const states = await fetchArchiveStates(client, minterAddress, references);
+  const firstState = states[0]!;
+  const lastState = states[states.length - 1]!;
+  const coins = Array.from(
+    new Set(
+      [exposure.collateralCoin, exposure.targetCoin].filter(
+        (coin): coin is PerpCoin => coin != null,
+      ),
+    ),
+  );
+  const [[startConfig, endConfig], configChangeResult, marketData] =
+    await Promise.all([
+      Promise.all([
+        readMinterConfig(client, minterAddress, firstState.blockNumber),
+        readMinterConfig(client, minterAddress, lastState.blockNumber),
+      ]),
+      fetchConfigChangeBlocks(
+        client,
+        minterAddress,
+        firstState.blockNumber,
+        lastState.blockNumber,
+      )
+        .then((blocks) => ({ blocks, error: false }))
+        .catch(() => ({ blocks: [] as number[], error: true })),
+      Promise.all(
+        coins.map(async (coin) => ({
+          coin,
+          candles: await fetchCandles(
+            coin,
+            firstState.timestamp,
+            lastState.timestamp,
+          ),
+          funding: await fetchFundingHistory(
+            coin,
+            firstState.timestamp,
+            lastState.timestamp,
+          ),
+        })),
+      ),
+    ]);
+  const feeConfigChangeBlocks = configChangeResult.blocks;
+  if (configChangeResult.error) {
+    warnings.push("Historical fee-config event scan was unavailable.");
+  }
+  const candlesByCoin = Object.fromEntries(
+    marketData.map((data) => [data.coin, data.candles]),
+  );
+  const fundingByCoin = Object.fromEntries(
+    marketData.map((data) => [data.coin, data.funding]),
+  );
+
+  const assumptions: SailPerpBenchmarkAssumptions = {
+    startingCapitalUsd: 1_000,
+    takerFeeBps: 4.5,
+    slippageBps: 1,
+    maintenanceMarginRate: 0.03,
+    liquidationPenaltyRate: 0.005,
+    sailMintFeeBps: Math.max(
+      0,
+      feeBpsAtCollateralRatio(startConfig, firstState.collateralRatio, "mint"),
+    ),
+    sailRedeemFeeBps: Math.max(
+      0,
+      feeBpsAtCollateralRatio(endConfig, lastState.collateralRatio, "redeem"),
+    ),
+  };
+  const benchmark = runSailPerpBenchmark({
+    states,
+    candlesByCoin,
+    fundingByCoin,
+    exposure,
+    assumptions,
+  });
+
+  if (rawReferences.length > states.length) {
+    warnings.push(
+      `Sail state history was sampled at ${states.length} deterministic blocks from ${rawReferences.length} hourly references.`,
+    );
+  }
+  warnings.push(
+    "Liquidation uses hourly high/low prices and a documented maintenance-margin model; it is not an account-specific execution replay.",
+  );
+
+  return {
+    marketId,
+    venue: "Hyperliquid",
+    exposure,
+    stateObservations: states,
+    feeConfigChangeBlocks,
+    assumptions: {
+      ...assumptions,
+      stateObservationCount: states.length,
+      candleInterval: "1h",
+      executionModel: "base-tier taker",
+    },
+    benchmark,
+    warnings,
+    generatedAt: new Date().toISOString(),
+  };
+}

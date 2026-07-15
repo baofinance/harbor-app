@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  attachPerpBenchmarkSeries,
   buildSailMarketChartPoints,
   computeSailChartWindowPerformance,
   getSailMarketChartConfig,
@@ -138,5 +139,31 @@ describe("sailMarketChartSeries", () => {
     expect(performance.marketPerformancePct).toBeCloseTo(10, 5);
     expect(performance.leverageTokenPerformancePct).toBeCloseTo(30, 5);
     expect(performance.leverageTokenVsMarketPct).toBeCloseTo(20, 5);
+  });
+
+  it("carries modeled perp returns onto chart timestamps", () => {
+    const points = [
+      {
+        timestamp: 100,
+        defaultRatio: 1,
+        longUsd: 1,
+        shortUsd: 1,
+        hsPriceUsd: 1,
+      },
+      {
+        timestamp: 200,
+        defaultRatio: 1,
+        longUsd: 1,
+        shortUsd: 1,
+        hsPriceUsd: 1,
+      },
+    ];
+
+    expect(
+      attachPerpBenchmarkSeries(points, [
+        { timestamp: 90, perpReturnPct: 0 },
+        { timestamp: 150, perpReturnPct: 5 },
+      ]).map((point) => point.perpReturnPct),
+    ).toEqual([0, 5]);
   });
 });

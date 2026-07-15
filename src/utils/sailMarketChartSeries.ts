@@ -32,6 +32,8 @@ export interface SailMarketChartPoint {
   longUsd: number;
   shortUsd: number;
   hsPriceUsd: number;
+  /** Modeled same-capital perpetual account return for this timestamp. */
+  perpReturnPct?: number | null;
 }
 
 export type SailChartWindowPerformance = {
@@ -322,13 +324,39 @@ export function buildSailMarketChartPoints(
 }
 
 /** Recharts treats null as a gap; NaN can break dual-axis line scales. */
-export type SailMarketChartRechartsPoint = SailMarketChartPoint & {
+export type SailMarketChartRechartsPoint = Omit<
+  SailMarketChartPoint,
+  "defaultRatio" | "hsPriceUsd"
+> & {
   defaultRatio: number | null;
   hsPriceUsd: number | null;
   /** Absolute values preserved when plotting relative performance. */
   defaultRatioAbs: number | null;
   hsPriceUsdAbs: number | null;
 };
+
+export function attachPerpBenchmarkSeries(
+  data: SailMarketChartPoint[],
+  benchmark: Array<{ timestamp: number; perpReturnPct: number }>,
+): SailMarketChartPoint[] {
+  if (benchmark.length === 0) {
+    return data.map((point) => ({ ...point, perpReturnPct: null }));
+  }
+  const ordered = [...benchmark].sort((a, b) => a.timestamp - b.timestamp);
+  let benchmarkIndex = 0;
+  let latest: number | null = null;
+
+  return data.map((point) => {
+    while (
+      benchmarkIndex < ordered.length &&
+      ordered[benchmarkIndex]!.timestamp <= point.timestamp
+    ) {
+      latest = ordered[benchmarkIndex]!.perpReturnPct;
+      benchmarkIndex++;
+    }
+    return { ...point, perpReturnPct: latest };
+  });
+}
 
 function firstPositiveFinite(values: Array<number | null | undefined>): number | null {
   for (const value of values) {

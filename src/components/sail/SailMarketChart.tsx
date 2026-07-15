@@ -6,7 +6,9 @@ import { markets } from "@/config/markets";
 import { usePegTargetPrices } from "@/hooks/usePegTargetPrices";
 import { useChainlinkUsdHistory } from "@/hooks/useChainlinkUsdHistory";
 import { mergeChartData, useSailPriceHistory } from "@/hooks/useSailPriceHistory";
+import { useSailPerpBenchmark } from "@/hooks/useSailPerpBenchmark";
 import {
+  attachPerpBenchmarkSeries,
   buildSailMarketChartPoints,
   computeLiveDefaultRatio,
   computeSailChartWindowPerformance,
@@ -31,6 +33,7 @@ import {
 import {
   SailMarketMultiSeriesChart,
 } from "./SailMarketMultiSeriesChart";
+import { SailPerpBenchmarkSummary } from "./SailPerpBenchmarkSummary";
 
 export type SailMarketChartProps = {
   marketId: string;
@@ -92,6 +95,7 @@ export function SailMarketChart({
 }: SailMarketChartProps) {
   const [timeRange, setTimeRange] = useState<SailChartTimeRange>("1M");
   const [internalShowHsPriceUsd, setInternalShowHsPriceUsd] = useState(true);
+  const [showPerpBenchmark, setShowPerpBenchmark] = useState(false);
   const showHsPriceUsd = showHsPriceOverlay ?? internalShowHsPriceUsd;
   const setShowHsPriceUsd = onShowHsPriceOverlayChange ?? setInternalShowHsPriceUsd;
 
@@ -106,7 +110,8 @@ export function SailMarketChart({
     [fetchDays]
   );
 
-  const leveragedTokenAddress = markets[marketId]?.addresses?.leveragedToken as
+  const selectedMarket = markets[marketId as keyof typeof markets];
+  const leveragedTokenAddress = selectedMarket?.addresses?.leveragedToken as
     | string
     | undefined;
 
@@ -153,7 +158,7 @@ export function SailMarketChart({
     error: subgraphError,
   } = useSailPriceHistory({
     tokenAddress: leveragedTokenAddress || "",
-    genesisAddress: markets[marketId]?.addresses?.genesis as string | undefined,
+    genesisAddress: selectedMarket?.addresses?.genesis as string | undefined,
     sinceGenesisEnd: true,
     daysBack: fetchDays,
     enabled: !!leveragedTokenAddress,
@@ -184,6 +189,29 @@ export function SailMarketChart({
   const filteredData = useMemo(
     () => filterSailChartPointsByRange(chartPoints, timeRange),
     [chartPoints, timeRange]
+  );
+  const benchmarkWindow = useMemo(() => {
+    if (filteredData.length < 2) return { start: null, end: null };
+    return {
+      start: filteredData[0]!.timestamp,
+      end: filteredData[filteredData.length - 1]!.timestamp,
+    };
+  }, [filteredData]);
+  const perpBenchmarkQuery = useSailPerpBenchmark({
+    marketId,
+    startTimestamp: benchmarkWindow.start,
+    endTimestamp: benchmarkWindow.end,
+    enabled: showPerpBenchmark && showHsPriceUsd,
+  });
+  const chartDataWithPerp = useMemo(
+    () =>
+      attachPerpBenchmarkSeries(
+        filteredData,
+        showPerpBenchmark
+          ? (perpBenchmarkQuery.data?.benchmark.points ?? [])
+          : [],
+      ),
+    [filteredData, showPerpBenchmark, perpBenchmarkQuery.data],
   );
 
   const validDefaultPoints = filteredData.filter((p) => Number.isFinite(p.defaultRatio));
@@ -245,6 +273,16 @@ export function SailMarketChart({
           color={SAIL_CHART_HS_COLOR}
           disabled={!hasHsPriceData && !isBlockingLoading}
         />
+        <OverlayToggle
+          label="Compare modeled perp"
+          active={showPerpBenchmark}
+          onClick={() => {
+            setShowPerpBenchmark((current) => !current);
+            if (!showHsPriceUsd) setShowHsPriceUsd(true);
+          }}
+          color="#6D5BD0"
+          disabled={!hasHsPriceData && !isBlockingLoading}
+        />
         <div className="min-w-0 flex-1 text-xs text-[#1E4775]/60">
           {isBlockingLoading
             ? "Loading..."
@@ -271,6 +309,19 @@ export function SailMarketChart({
           ))}
         </div>
       </div>
+      {showPerpBenchmark ? (
+        <div className="mb-2 shrink-0">
+          <SailPerpBenchmarkSummary
+            data={perpBenchmarkQuery.data ?? null}
+            isLoading={perpBenchmarkQuery.isLoading}
+            error={
+              perpBenchmarkQuery.error instanceof Error
+                ? perpBenchmarkQuery.error.message
+                : null
+            }
+          />
+        </div>
+      ) : null}
       <div className="min-h-0 flex-1">
         {isBlockingLoading ? (
           <div className="flex h-full items-center justify-center text-[#1E4775]/60">
@@ -286,7 +337,7 @@ export function SailMarketChart({
           </div>
         ) : (
           <SailMarketMultiSeriesChart
-            data={filteredData}
+            data={chartDataWithPerp}
             config={config}
             showHsPriceUsd={showHsPriceUsd && hasHsPriceData}
             formatTimestamp={formatTimestamp}

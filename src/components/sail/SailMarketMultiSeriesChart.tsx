@@ -40,6 +40,7 @@ interface SailMarketMultiSeriesChartProps {
 const SERIES_COLORS = {
   defaultRatio: SAIL_CHART_BASELINE_COLOR,
   hsPriceUsd: SAIL_CHART_HS_COLOR,
+  perpReturnPct: "#6D5BD0",
 } as const;
 
 function MultiSeriesTooltip({
@@ -83,6 +84,13 @@ function MultiSeriesTooltip({
       value: `${formatSailChartPercentChange(row.hsPriceUsd)} · ${formatSailChartUsdValue(hsAbs)}`,
       color: SERIES_COLORS.hsPriceUsd,
     });
+    if (row.perpReturnPct != null) {
+      items.push({
+        label: "Modeled perp (return)",
+        value: formatSailChartPercentChange(row.perpReturnPct),
+        color: SERIES_COLORS.perpReturnPct,
+      });
+    }
   }
 
   return (
@@ -124,6 +132,9 @@ export function SailMarketMultiSeriesChart({
 }: SailMarketMultiSeriesChartProps) {
   const comparePerformance = showHsPriceUsd;
   const chartData = toRechartsSailChartData(data, comparePerformance);
+  const showPerpBenchmark =
+    comparePerformance &&
+    chartData.some((row) => row.perpReturnPct != null);
 
   const legendPayload = comparePerformance
     ? [
@@ -137,6 +148,15 @@ export function SailMarketMultiSeriesChart({
           type: "line" as const,
           color: SERIES_COLORS.hsPriceUsd,
         },
+        ...(showPerpBenchmark
+          ? [
+              {
+                value: "Modeled perp (% chg)",
+                type: "line" as const,
+                color: SERIES_COLORS.perpReturnPct,
+              },
+            ]
+          : []),
       ]
     : [
         {
@@ -279,6 +299,26 @@ export function SailMarketMultiSeriesChart({
               strokeWidth: 2,
               fill: "#fff",
               stroke: SERIES_COLORS.hsPriceUsd,
+            }}
+            connectNulls
+            isAnimationActive={false}
+          />
+        ) : null}
+        {showPerpBenchmark ? (
+          <Line
+            yAxisId="left"
+            type="monotone"
+            dataKey="perpReturnPct"
+            name="Modeled perp (% chg)"
+            stroke={SERIES_COLORS.perpReturnPct}
+            strokeWidth={2}
+            strokeDasharray="5 3"
+            dot={false}
+            activeDot={{
+              r: 4,
+              strokeWidth: 2,
+              fill: "#fff",
+              stroke: SERIES_COLORS.perpReturnPct,
             }}
             connectNulls
             isAnimationActive={false}
