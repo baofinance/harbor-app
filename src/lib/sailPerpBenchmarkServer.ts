@@ -4,6 +4,8 @@ import { getGraphHeaders, getSailPriceGraphUrl } from "@/config/graph";
 import { markets } from "@/config/markets";
 import { bandsFromConfig, getCurrentFee } from "@/utils/sailFeeBands";
 import {
+  isSailFeeDisallowBps,
+  resolveSailPerpExposureFromSymbols,
   runSailPerpBenchmark,
   type PerpCandle,
   type PerpCoin,
@@ -271,16 +273,10 @@ function resolveExposure(marketId: string): SailPerpExposure | null {
     | (typeof markets)[keyof typeof markets]
     | undefined;
   if (!market) return null;
-  const collateralSymbol = market.collateral.symbol.toUpperCase();
-  const pegTarget = market.pegTarget.toUpperCase();
-  const collateralCoin: PerpCoin | null =
-    collateralSymbol.includes("STETH") ? "ETH" : null;
-  const targetCoin: PerpCoin | null =
-    pegTarget === "ETH" || pegTarget === "BTC"
-      ? (pegTarget as PerpCoin)
-      : null;
-  if (!collateralCoin && !targetCoin) return null;
-  return { collateralCoin, targetCoin };
+  return resolveSailPerpExposureFromSymbols(
+    market.collateral.symbol,
+    market.pegTarget,
+  );
 }
 
 async function hyperliquidRequest<T>(body: Record<string, unknown>): Promise<T> {
@@ -375,7 +371,9 @@ export async function buildSailPerpBenchmark(
     | undefined;
   const exposure = resolveExposure(marketId);
   if (!market || !exposure) {
-    throw new Error("This market has no supported Hyperliquid benchmark");
+    throw new Error(
+      "This market has no supported Hyperliquid benchmark (EUR/metals pegs need a matching hedge leg)",
+    );
   }
   const minterAddress = getAddress(market.addresses.minter);
   const tokenAddress = getAddress(market.addresses.leveragedToken);
@@ -458,9 +456,10 @@ export async function buildSailPerpBenchmark(
     }
     return {
       timestamp: state.timestamp,
-      feeBps: Math.max(
-        0,
-        feeBpsAtCollateralRatio(config, state.collateralRatio, "redeem"),
+      feeBps: feeBpsAtCollateralRatio(
+        config,
+        state.collateralRatio,
+        "redeem",
       ),
     };
   });
@@ -471,20 +470,24 @@ export async function buildSailPerpBenchmark(
     marketData.map((data) => [data.coin, data.funding]),
   );
 
+  const sailMintFeeBps = feeBpsAtCollateralRatio(
+    startConfig,
+    firstState.collateralRatio,
+    "mint",
+  );
+  const sailRedeemFeeBps = feeBpsAtCollateralRatio(
+    endConfig,
+    lastState.collateralRatio,
+    "redeem",
+  );
   const assumptions: SailPerpBenchmarkAssumptions = {
     startingCapitalUsd: 1_000,
     takerFeeBps: 4.5,
     slippageBps: 1,
     maintenanceMarginRate: 0.03,
     liquidationPenaltyRate: 0.005,
-    sailMintFeeBps: Math.max(
-      0,
-      feeBpsAtCollateralRatio(startConfig, firstState.collateralRatio, "mint"),
-    ),
-    sailRedeemFeeBps: Math.max(
-      0,
-      feeBpsAtCollateralRatio(endConfig, lastState.collateralRatio, "redeem"),
-    ),
+    sailMintFeeBps,
+    sailRedeemFeeBps,
   };
   const benchmark = runSailPerpBenchmark({
     states,
@@ -498,6 +501,16 @@ export async function buildSailPerpBenchmark(
   if (rawReferences.length > states.length) {
     warnings.push(
       `Sail state history was sampled at ${states.length} deterministic blocks from ${rawReferences.length} hourly references.`,
+    );
+  }
+  if (isSailFeeDisallowBps(sailMintFeeBps)) {
+    warnings.push(
+      "Sail mint was disallowed at range start (100% fee band); entry fee is treated as 0 so buy-and-hold NAV is not wiped to −100%.",
+    );
+  }
+  if (sailRedeemFeeBpsByTimestamp.some((point) => isSailFeeDisallowBps(point.feeBps))) {
+    warnings.push(
+      "Some hours hit a 100% redeem-disallow band; those hours use 0 modeled redeem fee instead of a total loss.",
     );
   }
   warnings.push(

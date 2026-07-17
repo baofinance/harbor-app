@@ -108,6 +108,43 @@ export function targetPerpNotionals(
   return notionals;
 }
 
+/**
+ * Map a Sail market onto Hyperliquid-tradable legs.
+ * Non-USD pegs without an ETH/BTC short leg (EUR, metals, etc.) are unsupported —
+ * modeling them as naked long ETH produces false liquidations vs the spot ratio.
+ */
+export function resolveSailPerpExposureFromSymbols(
+  collateralSymbol: string,
+  pegTarget: string,
+): SailPerpExposure | null {
+  const collateral = collateralSymbol.toUpperCase();
+  const peg = pegTarget.toUpperCase();
+  const collateralCoin: PerpCoin | null = collateral.includes("STETH")
+    ? "ETH"
+    : null;
+  const targetCoin: PerpCoin | null =
+    peg === "ETH" || peg === "BTC" ? (peg as PerpCoin) : null;
+
+  if (peg !== "USD" && peg !== "ETH" && peg !== "BTC") {
+    return null;
+  }
+  if (!collateralCoin && !targetCoin) return null;
+  return { collateralCoin, targetCoin };
+}
+
+/**
+ * On-chain 100% (WAD) mint/redeem bands mean "disallowed", not a payable fee.
+ * Applying them as 100% fees zeros Sail units / marks every exit as a total loss.
+ */
+export function modeledSailFeeRateFromBps(feeBps: number): number {
+  if (!Number.isFinite(feeBps) || Math.abs(feeBps) >= 10_000) return 0;
+  return feeBps / 10_000;
+}
+
+export function isSailFeeDisallowBps(feeBps: number): boolean {
+  return Number.isFinite(feeBps) && Math.abs(feeBps) >= 10_000;
+}
+
 export function runSailPerpBenchmark({
   states,
   candlesByCoin,
@@ -237,7 +274,7 @@ export function runSailPerpBenchmark({
     targetPerpNotionals(equity, openingLeverageRatio, exposure),
   );
 
-  const sailMintRate = assumptions.sailMintFeeBps / 10_000;
+  const sailMintRate = modeledSailFeeRateFromBps(assumptions.sailMintFeeBps);
   const orderedRedeemFees = [...sailRedeemFeeBpsByTimestamp].sort(
     (a, b) => a.timestamp - b.timestamp,
   );
@@ -247,7 +284,7 @@ export function runSailPerpBenchmark({
       if (observation.timestamp > timestamp) break;
       feeBps = observation.feeBps;
     }
-    return feeBps / 10_000;
+    return modeledSailFeeRateFromBps(feeBps);
   };
   costs.sailMintFeeUsd = capital * sailMintRate;
   const sailUnits =

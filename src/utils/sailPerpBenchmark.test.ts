@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  isSailFeeDisallowBps,
+  modeledSailFeeRateFromBps,
+  resolveSailPerpExposureFromSymbols,
   runSailPerpBenchmark,
   targetPerpNotionals,
   type SailPerpBenchmarkAssumptions,
@@ -218,5 +221,65 @@ describe("runSailPerpBenchmark", () => {
     expect(result.points[0]!.sailReturnPct).toBeCloseTo(-1);
     expect(result.points[1]!.sailReturnPct).toBeCloseTo(4.5);
     expect(result.sailNetReturnPct).toBeCloseTo(4.5);
+  });
+
+  it("ignores 100% disallow mint/redeem bands instead of wiping Sail to -100%", () => {
+    const result = runSailPerpBenchmark({
+      states,
+      exposure: { collateralCoin: null, targetCoin: "ETH" },
+      assumptions: {
+        ...assumptions,
+        sailMintFeeBps: 10_000,
+        sailRedeemFeeBps: 10_000,
+      },
+      sailRedeemFeeBpsByTimestamp: [
+        { timestamp: states[0]!.timestamp, feeBps: 10_000 },
+        { timestamp: states[1]!.timestamp, feeBps: 10_000 },
+      ],
+      candlesByCoin: {
+        ETH: [
+          { timestamp: states[0]!.timestamp, open: 100, high: 100, low: 100, close: 100 },
+          { timestamp: states[1]!.timestamp, open: 100, high: 100, low: 100, close: 100 },
+        ],
+      },
+      fundingByCoin: { ETH: [] },
+    });
+
+    expect(result.costs.sailMintFeeUsd).toBe(0);
+    expect(result.costs.sailRedeemFeeUsd).toBe(0);
+    expect(result.points[0]!.sailReturnPct).toBeCloseTo(0);
+    expect(result.points[1]!.sailReturnPct).toBeCloseTo(10);
+    expect(result.sailNetReturnPct).toBeCloseTo(10);
+  });
+});
+
+describe("resolveSailPerpExposureFromSymbols", () => {
+  it("supports USD-peg long ETH and ETH/BTC peg shorts", () => {
+    expect(resolveSailPerpExposureFromSymbols("wstETH", "USD")).toEqual({
+      collateralCoin: "ETH",
+      targetCoin: null,
+    });
+    expect(resolveSailPerpExposureFromSymbols("fxUSD", "ETH")).toEqual({
+      collateralCoin: null,
+      targetCoin: "ETH",
+    });
+    expect(resolveSailPerpExposureFromSymbols("wstETH", "BTC")).toEqual({
+      collateralCoin: "ETH",
+      targetCoin: "BTC",
+    });
+  });
+
+  it("rejects EUR and metals pegs that lack a Hyperliquid hedge leg", () => {
+    expect(resolveSailPerpExposureFromSymbols("wstETH", "EUR")).toBeNull();
+    expect(resolveSailPerpExposureFromSymbols("wstETH", "GOLD")).toBeNull();
+    expect(resolveSailPerpExposureFromSymbols("wstETH", "SILVER")).toBeNull();
+  });
+});
+
+describe("modeledSailFeeRateFromBps", () => {
+  it("treats absolute 100% bands as disallow, not a payable fee", () => {
+    expect(isSailFeeDisallowBps(10_000)).toBe(true);
+    expect(modeledSailFeeRateFromBps(10_000)).toBe(0);
+    expect(modeledSailFeeRateFromBps(100)).toBeCloseTo(0.01);
   });
 });
