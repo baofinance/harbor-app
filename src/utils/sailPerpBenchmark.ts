@@ -58,6 +58,7 @@ export type SailPerpBenchmarkResult = {
   perpReturnPct: number;
   sailGrossReturnPct: number;
   sailNetReturnPct: number;
+  openingLeverageRatio: number;
   liquidatedAt: number | null;
   costs: SailPerpBenchmarkCosts;
 };
@@ -155,6 +156,7 @@ export function runSailPerpBenchmark({
       perpReturnPct: 0,
       sailGrossReturnPct: 0,
       sailNetReturnPct: 0,
+      openingLeverageRatio: 0,
       liquidatedAt: null,
       costs: emptyCosts,
     };
@@ -202,6 +204,7 @@ export function runSailPerpBenchmark({
       perpReturnPct: 0,
       sailGrossReturnPct: 0,
       sailNetReturnPct: 0,
+      openingLeverageRatio: 0,
       liquidatedAt: null,
       costs: emptyCosts,
     };
@@ -216,7 +219,7 @@ export function runSailPerpBenchmark({
   let liquidatedAt: number | null = null;
   const points: SailPerpBenchmarkPoint[] = [];
 
-  const rebalance = (targets: PositionMap) => {
+  const tradeToTargets = (targets: PositionMap) => {
     for (const coin of coins) {
       const turnover = Math.abs((targets[coin] ?? 0) - (positions[coin] ?? 0));
       const fee = turnover * feeRate;
@@ -229,7 +232,10 @@ export function runSailPerpBenchmark({
   };
 
   const initialState = stateAt(orderedStates, timeline[0]!) ?? firstState;
-  rebalance(targetPerpNotionals(equity, initialState.leverageRatio, exposure));
+  const openingLeverageRatio = initialState.leverageRatio;
+  tradeToTargets(
+    targetPerpNotionals(equity, openingLeverageRatio, exposure),
+  );
 
   const sailMintRate = assumptions.sailMintFeeBps / 10_000;
   const orderedRedeemFees = [...sailRedeemFeeBpsByTimestamp].sort(
@@ -272,8 +278,6 @@ export function runSailPerpBenchmark({
         const fundingCost = signedNotional * fundingRate;
         costs.fundingUsd += fundingCost;
         equity -= fundingCost;
-
-        positions[coin] = signedNotional * (current.close / previous.close);
       }
 
       const maintenanceRequired =
@@ -285,8 +289,6 @@ export function runSailPerpBenchmark({
         costs.liquidationImpactUsd += Math.max(0, beforeLiquidation - equity);
         positions = {};
         liquidatedAt = timestamp;
-      } else {
-        rebalance(targetPerpNotionals(equity, state.leverageRatio, exposure));
       }
     }
 
@@ -304,7 +306,7 @@ export function runSailPerpBenchmark({
   }
 
   if (liquidatedAt == null) {
-    rebalance({});
+    tradeToTargets({});
     const lastPoint = points[points.length - 1];
     if (lastPoint) {
       lastPoint.perpEquityUsd = equity;
@@ -324,6 +326,7 @@ export function runSailPerpBenchmark({
     perpReturnPct: (equity / capital - 1) * 100,
     sailGrossReturnPct: (sailGrossEndValue / capital - 1) * 100,
     sailNetReturnPct: (sailNetEndValue / capital - 1) * 100,
+    openingLeverageRatio,
     liquidatedAt,
     costs,
   };

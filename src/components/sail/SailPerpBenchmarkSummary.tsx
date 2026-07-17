@@ -108,10 +108,11 @@ export function SailPerpBenchmarkSummary({
         <p className="mt-2 text-[10px] leading-relaxed text-[#1E4775]/55">
           Net versus net: both start with the same{" "}
           {usd(assumptions.startingCapitalUsd)}. Sail includes historical entry
-          and hypothetical endpoint redemption fees. The perp includes funding,
-          rebalancing, entry/exit trading costs, and liquidation. No margin
-          top-ups, {assumptions.takerFeeBps} bps taker fee,{" "}
-          {assumptions.slippageBps} bps modeled slippage, hourly high/low
+          and hypothetical endpoint redemption fees. The perp opens once at Sail
+          leverage ({benchmark.openingLeverageRatio.toFixed(2)}x) and is held
+          without rebalancing; costs include funding, entry/exit trading, and
+          liquidation. No margin top-ups, {assumptions.takerFeeBps} bps taker
+          fee, {assumptions.slippageBps} bps modeled slippage, hourly high/low
           liquidation checks, and historical funding.
         </p>
         {data.warnings.length > 0 ? (

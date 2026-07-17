@@ -46,6 +46,7 @@ export type SailPerpBenchmarkApiResponse = {
     stateObservationCount: number;
     candleInterval: "1h";
     executionModel: "base-tier taker";
+    positionModel: "fixed-at-open";
   };
   benchmark: SailPerpBenchmarkResult;
   warnings: string[];
@@ -502,6 +503,9 @@ export async function buildSailPerpBenchmark(
   warnings.push(
     "Liquidation uses hourly high/low prices and a documented maintenance-margin model; it is not an account-specific execution replay.",
   );
+  warnings.push(
+    `Perp exposure is sized once at ${benchmark.openingLeverageRatio.toFixed(2)}x leverage (Sail at range start) and held without rebalancing; effective leverage drifts with PnL.`,
+  );
 
   return {
     marketId,
@@ -514,6 +518,7 @@ export async function buildSailPerpBenchmark(
       stateObservationCount: states.length,
       candleInterval: "1h",
       executionModel: "base-tier taker",
+      positionModel: "fixed-at-open",
     },
     benchmark,
     warnings,

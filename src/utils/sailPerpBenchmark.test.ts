@@ -75,7 +75,7 @@ describe("runSailPerpBenchmark", () => {
     expect(result.sailGrossReturnPct).toBeCloseTo(10);
   });
 
-  it("charges entry, rebalance, and exit turnover", () => {
+  it("charges entry and exit turnover only", () => {
     const result = runSailPerpBenchmark({
       states,
       exposure: { collateralCoin: "ETH", targetCoin: null },
@@ -89,9 +89,70 @@ describe("runSailPerpBenchmark", () => {
       fundingByCoin: { ETH: [] },
     });
 
-    expect(result.costs.tradingFeesUsd).toBeGreaterThan(1);
+    expect(result.costs.tradingFeesUsd).toBeGreaterThan(0);
     expect(result.costs.slippageUsd).toBeGreaterThan(0);
     expect(result.perpReturnPct).toBeLessThan(0);
+  });
+
+  it("does not resize when Sail leverage changes mid-period", () => {
+    const changingLeverageStates: SailStateObservation[] = [
+      {
+        timestamp: 1_700_000_000,
+        blockNumber: 1,
+        sailPriceUsd: 10,
+        leverageRatio: 2,
+        collateralRatio: 2,
+      },
+      {
+        timestamp: 1_700_001_800,
+        blockNumber: 2,
+        sailPriceUsd: 10,
+        leverageRatio: 4,
+        collateralRatio: 2,
+      },
+      {
+        timestamp: 1_700_003_600,
+        blockNumber: 3,
+        sailPriceUsd: 10,
+        leverageRatio: 4,
+        collateralRatio: 2,
+      },
+    ];
+    const result = runSailPerpBenchmark({
+      states: changingLeverageStates,
+      exposure: { collateralCoin: "ETH", targetCoin: null },
+      assumptions: { ...assumptions, takerFeeBps: 5, slippageBps: 1 },
+      candlesByCoin: {
+        ETH: [
+          {
+            timestamp: changingLeverageStates[0]!.timestamp,
+            open: 100,
+            high: 100,
+            low: 100,
+            close: 100,
+          },
+          {
+            timestamp: changingLeverageStates[1]!.timestamp,
+            open: 100,
+            high: 100,
+            low: 100,
+            close: 100,
+          },
+          {
+            timestamp: changingLeverageStates[2]!.timestamp,
+            open: 100,
+            high: 100,
+            low: 100,
+            close: 100,
+          },
+        ],
+      },
+      fundingByCoin: { ETH: [] },
+    });
+
+    expect(result.openingLeverageRatio).toBe(2);
+    expect(result.costs.tradingFeesUsd).toBeCloseTo(2);
+    expect(result.costs.slippageUsd).toBeCloseTo(0.4);
   });
 
   it("freezes the strategy after an adverse intrahour liquidation", () => {
