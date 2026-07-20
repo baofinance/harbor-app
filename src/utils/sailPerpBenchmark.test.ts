@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  dropPreLiveSailStates,
   isHip3PerpCoin,
+  isPreLiveSailState,
   isSailFeeDisallowBps,
   modeledSailFeeRateFromBps,
   PERP_COIN_API_SYMBOL,
@@ -416,5 +418,30 @@ describe("modeledSailFeeRateFromBps", () => {
     expect(modeledSailFeeRateFromBps(9_999.99)).toBe(0);
     expect(modeledSailFeeRateFromBps(100)).toBeCloseTo(0.01);
     expect(isSailFeeDisallowBps(500)).toBe(false);
+  });
+});
+
+describe("dropPreLiveSailStates", () => {
+  it("skips genesis CR≈1 / NAV=1 snapshots when live states exist", () => {
+    const genesis: SailStateObservation = {
+      timestamp: 1,
+      blockNumber: 1,
+      sailPriceUsd: 1.16,
+      navInPeg: 1,
+      leverageRatio: 20,
+      collateralRatio: 1,
+    };
+    const live: SailStateObservation = {
+      timestamp: 2,
+      blockNumber: 2,
+      sailPriceUsd: 0.9,
+      navInPeg: 0.76,
+      leverageRatio: 2.2,
+      collateralRatio: 1.8,
+    };
+    const live2: SailStateObservation = { ...live, timestamp: 3, blockNumber: 3 };
+    expect(isPreLiveSailState(genesis)).toBe(true);
+    expect(isPreLiveSailState(live)).toBe(false);
+    expect(dropPreLiveSailStates([genesis, live, live2])).toEqual([live, live2]);
   });
 });

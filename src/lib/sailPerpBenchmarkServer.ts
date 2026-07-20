@@ -6,6 +6,7 @@ import { bandsFromConfig, getCurrentFee } from "@/utils/sailFeeBands";
 import {
   isHip3PerpCoin,
   isSailFeeDisallowBps,
+  dropPreLiveSailStates,
   PERP_COIN_API_SYMBOL,
   repriceSailStatesWithPegUsd,
   resolveSailPerpExposureFromSymbols,
@@ -447,13 +448,16 @@ export async function buildSailPerpBenchmark(
   const fundingByCoin = Object.fromEntries(
     marketData.map((data) => [data.coin, data.funding]),
   );
-  const states = repriceSailStatesWithPegUsd(
-    archiveStates,
-    exposure,
-    candlesByCoin,
+  const states = dropPreLiveSailStates(
+    repriceSailStatesWithPegUsd(archiveStates, exposure, candlesByCoin),
   );
   if (states.length < 2) {
     throw new Error("Not enough priced Sail history exists for this range");
+  }
+  if (states[0]!.timestamp > archiveStates[0]!.timestamp) {
+    warnings.push(
+      "Skipped pre-live / genesis Sail snapshots (CR≈1, NAV pinned) so the Hyperliquid comparison is not opened at sentinel leverage before the market is active.",
+    );
   }
   const firstState = states[0]!;
   const lastState = states[states.length - 1]!;

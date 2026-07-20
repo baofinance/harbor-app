@@ -174,6 +174,34 @@ export function isSailFeeDisallowBps(feeBps: number): boolean {
   return Number.isFinite(feeBps) && Math.abs(feeBps) >= SAIL_FEE_DISALLOW_BPS;
 }
 
+/**
+ * Genesis / pre-market snapshots often report sentinel leverage (e.g. 20x) while
+ * collateral ratio is still ~1 and NAV is pinned at 1 peg unit. Sizing a perp at
+ * that leverage liquidates on normal noise before Sail is economically live.
+ */
+export function isPreLiveSailState(state: SailStateObservation): boolean {
+  if (Number.isFinite(state.collateralRatio) && state.collateralRatio <= 1.001) {
+    return true;
+  }
+  if (
+    state.navInPeg != null &&
+    Number.isFinite(state.navInPeg) &&
+    Math.abs(state.navInPeg - 1) < 1e-9 &&
+    state.collateralRatio < 1.05
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** Prefer post-genesis states when enough exist; otherwise keep the full series. */
+export function dropPreLiveSailStates(
+  states: SailStateObservation[],
+): SailStateObservation[] {
+  const live = states.filter((state) => !isPreLiveSailState(state));
+  return live.length >= 2 ? live : states;
+}
+
 /** Convert on-chain NAV (peg units) to USD using the peg leg's Hyperliquid price. */
 export function repriceSailStatesWithPegUsd(
   states: SailStateObservation[],
@@ -378,24 +406,29 @@ export function runSailPerpBenchmark({
     if (index > 0 && liquidatedAt == null) {
       const previousTimestamp = timeline[index - 1]!;
       const equityBeforeMove = equity;
-      let grossNotional = 0;
 
       for (const coin of coins) {
         const previous = candleMaps[coin].get(hourKey(previousTimestamp))!;
         const current = candleMaps[coin].get(hourKey(timestamp))!;
         const signedNotional = positions[coin] ?? 0;
-        grossNotional += Math.abs(signedNotional);
 
         // Mark equity on hour closes (same basis as the chart series). Intrahour
         // high/low wicks falsely liquidate high two-leg Sail leverage on quiet days.
         const closeReturn = current.close / previous.close - 1;
         equity += signedNotional * closeReturn;
+        // Keep USD notionals marked to the new close (fixed coin size).
+        positions[coin] = signedNotional * (current.close / previous.close);
 
         const fundingRate = fundingMaps[coin].get(hourKey(timestamp)) ?? 0;
-        const fundingCost = signedNotional * fundingRate;
+        const fundingCost = (positions[coin] ?? 0) * fundingRate;
         costs.fundingUsd += fundingCost;
         equity -= fundingCost;
       }
+
+      const grossNotional = coins.reduce(
+        (sum, coin) => sum + Math.abs(positions[coin] ?? 0),
+        0,
+      );
 
       // Two-leg Sail-sized notionals can imply MM > equity at open under a flat
       // notional MM model (false instant liquidation). Only apply MM when it is
