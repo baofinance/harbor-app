@@ -4,7 +4,7 @@ import {
   getCurrentFee,
   type FeeBand,
 } from "@/utils/sailFeeBands";
-import { formatToken } from "@/utils/sailDisplayFormat";
+import { formatLeverageFromCollateralRatio, formatToken } from "@/utils/sailDisplayFormat";
 
 export type SailTvlPriceInputs = {
   wrappedRate?: bigint;
@@ -215,7 +215,7 @@ export function buildSailMarketDetailMetrics(input: {
 
   const rebalanceThresholdLabel =
     minCollateralRatio !== undefined
-      ? `${((Number(minCollateralRatio) / 1e18) * 100).toFixed(0)}%`
+      ? formatLeverageFromCollateralRatio(minCollateralRatio)
       : undefined;
 
   return {

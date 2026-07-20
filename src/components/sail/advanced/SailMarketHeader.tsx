@@ -62,7 +62,7 @@ export function SailMarketHeader({
               onSelect={onSelectMarket}
             />
           </div>
-          <div className="flex min-w-0 flex-1 items-center justify-start text-left sm:pl-1">
+          <div className="flex min-w-0 flex-1 items-center justify-center text-center sm:pl-1">
             <SailMarketEarnTagline market={selectedMarket} />
           </div>
         </div>
@@ -89,7 +89,6 @@ export function SailMarketHeader({
         <div className="min-w-0">
           <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>This market</p>
           <SailMarketEducationStrip
-            market={selectedMarket}
             leverageRatio={leverageRatio}
             rebalanceThresholdLabel={rebalanceThresholdLabel}
             className="min-w-0 w-full"

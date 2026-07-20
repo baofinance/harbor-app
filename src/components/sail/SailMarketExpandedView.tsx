@@ -7,6 +7,7 @@ import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import {
   formatLeverage,
+  formatLeverageFromCollateralRatio,
   formatPnL,
   formatRatio,
   formatUSD,
@@ -157,7 +158,7 @@ export function SailMarketExpandedView({
                 <>
                   {" "}
                   Rebalances at{" "}
-                  {((Number(minCollateralRatio) / 1e18) * 100).toFixed(0)}%
+                  {formatLeverageFromCollateralRatio(minCollateralRatio)}
                 </>
               )}
             </p>

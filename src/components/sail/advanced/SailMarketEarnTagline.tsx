@@ -4,11 +4,13 @@ import type { DefinedMarket } from "@/config/markets";
 import { getSailDirectionChipLabels } from "@/utils/sailMarketDirectionLabels";
 
 const SAIL_EARN_TAGLINE_CLASS =
-  "min-w-0 text-xl font-bold leading-snug text-white/85 sm:text-2xl lg:text-3xl";
+  "min-w-0 text-center text-xl font-bold leading-snug text-white/85 sm:text-2xl lg:text-3xl";
 const SAIL_EARN_TAGLINE_LONG_CLASS = "font-extrabold text-[#6bc4a8]";
 const SAIL_EARN_TAGLINE_SHORT_CLASS = "font-extrabold text-[#FF8A7A]";
 const SAIL_EARN_PERKS_CLASS =
-  "mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/55 sm:text-sm";
+  "mt-2.5 flex flex-wrap items-center justify-center gap-2 text-xs text-white/70 sm:text-sm";
+const SAIL_EARN_PERK_PILL_CLASS =
+  "inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.08] px-3 py-1";
 
 const SAIL_EARN_PERKS = [
   "Automatically adjusting leverage",
@@ -38,7 +40,7 @@ export function SailMarketEarnTagline({
       </p>
       <ul className={SAIL_EARN_PERKS_CLASS}>
         {SAIL_EARN_PERKS.map((label) => (
-          <li key={label} className="inline-flex items-center gap-1.5">
+          <li key={label} className={SAIL_EARN_PERK_PILL_CLASS}>
             <span className="text-[#6bc4a8]" aria-hidden="true">
               ✓
             </span>
