@@ -235,6 +235,8 @@ async function readMinterConfig(
   })) as MinterConfig;
 }
 
+const WAD = 10n ** 18n;
+
 function feeBpsAtCollateralRatio(
   config: MinterConfig,
   collateralRatio: number,
@@ -249,7 +251,10 @@ function feeBpsAtCollateralRatio(
     bands,
     BigInt(Math.round(collateralRatio * 1e18)),
   );
-  return ratio == null ? 0 : Number(ratio) / 1e14;
+  if (ratio == null) return 0;
+  // Prefer bigint math: Number(WAD)/1e14 can yield 9999.99-style artifacts.
+  if (ratio >= WAD) return 10_000;
+  return Number((ratio * 10_000n) / WAD);
 }
 
 async function fetchConfigChangeBlocks(
@@ -553,7 +558,7 @@ export async function buildSailPerpBenchmark(
     );
   }
   warnings.push(
-    "Liquidation uses hourly high/low prices and a documented maintenance-margin model; it is not an account-specific execution replay.",
+    "Liquidation uses hour-close equity and a documented maintenance-margin model; it is not an account-specific execution replay.",
   );
   warnings.push(
     `Perp exposure is sized once at ${benchmark.openingLeverageRatio.toFixed(2)}x current leverage (Sail at range start) and held without rebalancing; effective leverage drifts with PnL.`,

@@ -161,7 +161,27 @@ describe("runSailPerpBenchmark", () => {
     expect(result.costs.slippageUsd).toBeCloseTo(0.4);
   });
 
-  it("freezes the strategy after an adverse intrahour liquidation", () => {
+  it("freezes the strategy after close-based bankruptcy", () => {
+    const result = runSailPerpBenchmark({
+      states,
+      exposure: { collateralCoin: "ETH", targetCoin: null },
+      assumptions,
+      candlesByCoin: {
+        ETH: [
+          { timestamp: states[0]!.timestamp, open: 100, high: 100, low: 100, close: 100 },
+          // Large adverse close (not merely a wick) wipes a long.
+          { timestamp: states[1]!.timestamp, open: 100, high: 100, low: 1, close: 1 },
+        ],
+      },
+      fundingByCoin: { ETH: [] },
+    });
+
+    expect(result.liquidatedAt).toBe(states[1]!.timestamp);
+    expect(result.points[1]!.perpEquityUsd).toBe(0);
+    expect(result.perpReturnPct).toBe(-100);
+  });
+
+  it("does not liquidate on an adverse wick when the hour closes flat", () => {
     const result = runSailPerpBenchmark({
       states,
       exposure: { collateralCoin: "ETH", targetCoin: null },
@@ -175,8 +195,8 @@ describe("runSailPerpBenchmark", () => {
       fundingByCoin: { ETH: [] },
     });
 
-    expect(result.liquidatedAt).toBe(states[1]!.timestamp);
-    expect(result.costs.liquidationImpactUsd).toBeGreaterThan(0);
+    expect(result.liquidatedAt).toBeNull();
+    expect(result.points[1]!.perpReturnPct).toBeGreaterThan(-50);
   });
 
   it("deducts Sail entry and exit fees from net return", () => {
@@ -389,9 +409,12 @@ describe("repriceSailStatesWithPegUsd", () => {
 });
 
 describe("modeledSailFeeRateFromBps", () => {
-  it("treats absolute 100% bands as disallow, not a payable fee", () => {
+  it("treats ~100% bands as disallow, not a payable fee", () => {
     expect(isSailFeeDisallowBps(10_000)).toBe(true);
+    expect(isSailFeeDisallowBps(9_999.99)).toBe(true);
     expect(modeledSailFeeRateFromBps(10_000)).toBe(0);
+    expect(modeledSailFeeRateFromBps(9_999.99)).toBe(0);
     expect(modeledSailFeeRateFromBps(100)).toBeCloseTo(0.01);
+    expect(isSailFeeDisallowBps(500)).toBe(false);
   });
 });

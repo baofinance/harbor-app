@@ -155,16 +155,23 @@ export function resolveSailPerpExposureFromSymbols(
 }
 
 /**
- * On-chain 100% (WAD) mint/redeem bands mean "disallowed", not a payable fee.
- * Applying them as 100% fees zeros Sail units / marks every exit as a total loss.
+ * On-chain ~100% (WAD) mint/redeem bands mean "disallowed", not a payable fee.
+ * Applying them as fees zeros Sail units / marks every exit as a total loss.
+ *
+ * Threshold is 99% (not exact 10000 bps): WAD→float conversion can yield values
+ * like 9999.99 for a full disallow band, which previously wiped Sail to −100%.
  */
+export const SAIL_FEE_DISALLOW_BPS = 9_900;
+
 export function modeledSailFeeRateFromBps(feeBps: number): number {
-  if (!Number.isFinite(feeBps) || Math.abs(feeBps) >= 10_000) return 0;
+  if (!Number.isFinite(feeBps) || Math.abs(feeBps) >= SAIL_FEE_DISALLOW_BPS) {
+    return 0;
+  }
   return feeBps / 10_000;
 }
 
 export function isSailFeeDisallowBps(feeBps: number): boolean {
-  return Number.isFinite(feeBps) && Math.abs(feeBps) >= 10_000;
+  return Number.isFinite(feeBps) && Math.abs(feeBps) >= SAIL_FEE_DISALLOW_BPS;
 }
 
 /** Convert on-chain NAV (peg units) to USD using the peg leg's Hyperliquid price. */
@@ -372,7 +379,6 @@ export function runSailPerpBenchmark({
       const previousTimestamp = timeline[index - 1]!;
       const equityBeforeMove = equity;
       let grossNotional = 0;
-      let worstEquity = equity;
 
       for (const coin of coins) {
         const previous = candleMaps[coin].get(hourKey(previousTimestamp))!;
@@ -380,11 +386,10 @@ export function runSailPerpBenchmark({
         const signedNotional = positions[coin] ?? 0;
         grossNotional += Math.abs(signedNotional);
 
+        // Mark equity on hour closes (same basis as the chart series). Intrahour
+        // high/low wicks falsely liquidate high two-leg Sail leverage on quiet days.
         const closeReturn = current.close / previous.close - 1;
         equity += signedNotional * closeReturn;
-
-        const adversePrice = signedNotional >= 0 ? current.low : current.high;
-        worstEquity += signedNotional * (adversePrice / previous.close - 1);
 
         const fundingRate = fundingMaps[coin].get(hourKey(timestamp)) ?? 0;
         const fundingCost = signedNotional * fundingRate;
@@ -399,10 +404,10 @@ export function runSailPerpBenchmark({
         grossNotional * assumptions.maintenanceMarginRate;
       const maintenanceRequired =
         rawMaintenance < equityBeforeMove ? rawMaintenance : 0;
-      if (worstEquity <= maintenanceRequired) {
+      if (equity <= maintenanceRequired) {
         const penalty = grossNotional * assumptions.liquidationPenaltyRate;
         const beforeLiquidation = equity;
-        equity = Math.max(0, Math.min(equity, worstEquity) - penalty);
+        equity = Math.max(0, equity - penalty);
         costs.liquidationImpactUsd += Math.max(0, beforeLiquidation - equity);
         positions = {};
         liquidatedAt = timestamp;

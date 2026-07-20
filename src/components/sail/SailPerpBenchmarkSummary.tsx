@@ -113,7 +113,7 @@ export function SailPerpBenchmarkSummary({
           {benchmark.openingLeverageRatio.toFixed(2)}x) and is held without
           rebalancing; costs include funding, entry/exit trading, and
           liquidation. No margin top-ups, {assumptions.takerFeeBps} bps taker
-          fee, {assumptions.slippageBps} bps modeled slippage, hourly high/low
+          fee, {assumptions.slippageBps} bps modeled slippage, hour-close
           liquidation checks, and historical funding.
         </p>
         {data.warnings.length > 0 ? (
