@@ -4,7 +4,9 @@ import { getGraphHeaders, getSailPriceGraphUrl } from "@/config/graph";
 import { markets } from "@/config/markets";
 import { bandsFromConfig, getCurrentFee } from "@/utils/sailFeeBands";
 import {
+  isHip3PerpCoin,
   isSailFeeDisallowBps,
+  PERP_COIN_API_SYMBOL,
   resolveSailPerpExposureFromSymbols,
   runSailPerpBenchmark,
   type PerpCandle,
@@ -21,6 +23,9 @@ const MAX_STATE_POINTS = 120;
 const GRAPH_PAGE_SIZE = 1_000;
 const MAX_GRAPH_PAGES = 20;
 const RPC_CONCURRENCY = 10;
+/** HIP-3 (trade.xyz) base taker fee — higher than native crypto perps. */
+const HIP3_TAKER_FEE_BPS = 9;
+const NATIVE_TAKER_FEE_BPS = 4.5;
 
 type GraphStateReference = {
   timestamp: number;
@@ -47,7 +52,7 @@ export type SailPerpBenchmarkApiResponse = {
   assumptions: SailPerpBenchmarkAssumptions & {
     stateObservationCount: number;
     candleInterval: "1h";
-    executionModel: "base-tier taker";
+    executionModel: "base-tier taker" | "hip-3 taker";
     positionModel: "fixed-at-open";
   };
   benchmark: SailPerpBenchmarkResult;
@@ -297,6 +302,7 @@ async function fetchFundingHistory(
   startTimestamp: number,
   endTimestamp: number,
 ): Promise<PerpFundingPoint[]> {
+  const apiCoin = PERP_COIN_API_SYMBOL[coin];
   const points: PerpFundingPoint[] = [];
   let cursorMs = startTimestamp * 1_000;
   const endMs = endTimestamp * 1_000;
@@ -305,7 +311,7 @@ async function fetchFundingHistory(
       Array<{ time: number; fundingRate: string }>
     >({
       type: "fundingHistory",
-      coin,
+      coin: apiCoin,
       startTime: cursorMs,
       endTime: endMs,
     });
@@ -328,6 +334,7 @@ async function fetchCandles(
   startTimestamp: number,
   endTimestamp: number,
 ): Promise<PerpCandle[]> {
+  const apiCoin = PERP_COIN_API_SYMBOL[coin];
   const candles: PerpCandle[] = [];
   let cursorMs = startTimestamp * 1_000;
   const endMs = endTimestamp * 1_000;
@@ -337,7 +344,7 @@ async function fetchCandles(
     >({
       type: "candleSnapshot",
       req: {
-        coin,
+        coin: apiCoin,
         interval: "1h",
         startTime: cursorMs,
         endTime: endMs,
@@ -372,7 +379,7 @@ export async function buildSailPerpBenchmark(
   const exposure = resolveExposure(marketId);
   if (!market || !exposure) {
     throw new Error(
-      "This market has no supported Hyperliquid benchmark (EUR/metals pegs need a matching hedge leg)",
+      "This market has no supported Hyperliquid benchmark (unsupported peg)",
     );
   }
   const minterAddress = getAddress(market.addresses.minter);
@@ -398,6 +405,7 @@ export async function buildSailPerpBenchmark(
       ),
     ),
   );
+  const usesHip3 = coins.some(isHip3PerpCoin);
   const [[startConfig, endConfig], configChangeResult, marketData] =
     await Promise.all([
       Promise.all([
@@ -428,6 +436,13 @@ export async function buildSailPerpBenchmark(
         })),
       ),
     ]);
+  for (const data of marketData) {
+    if (data.candles.length < 2) {
+      throw new Error(
+        `Not enough Hyperliquid history for ${PERP_COIN_API_SYMBOL[data.coin]} in this range`,
+      );
+    }
+  }
   const feeConfigChangeBlocks = configChangeResult.blocks;
   if (configChangeResult.error) {
     warnings.push("Historical fee-config event scan was unavailable.");
@@ -482,7 +497,7 @@ export async function buildSailPerpBenchmark(
   );
   const assumptions: SailPerpBenchmarkAssumptions = {
     startingCapitalUsd: 1_000,
-    takerFeeBps: 4.5,
+    takerFeeBps: usesHip3 ? HIP3_TAKER_FEE_BPS : NATIVE_TAKER_FEE_BPS,
     slippageBps: 1,
     maintenanceMarginRate: 0.03,
     liquidationPenaltyRate: 0.005,
@@ -498,9 +513,23 @@ export async function buildSailPerpBenchmark(
     sailRedeemFeeBpsByTimestamp,
   });
 
+  if (benchmark.points.length < 2) {
+    throw new Error(
+      "Not enough overlapping Hyperliquid candle history for this market and range",
+    );
+  }
+
   if (rawReferences.length > states.length) {
     warnings.push(
       `Sail state history was sampled at ${states.length} deterministic blocks from ${rawReferences.length} hourly references.`,
+    );
+  }
+  if (usesHip3) {
+    const hip3Coins = coins
+      .filter(isHip3PerpCoin)
+      .map((coin) => PERP_COIN_API_SYMBOL[coin]);
+    warnings.push(
+      `Uses Hyperliquid HIP-3 markets (${hip3Coins.join(", ")}) for the peg leg; taker fee modeled at ${HIP3_TAKER_FEE_BPS} bps. History only covers hours where all legs have candles.`,
     );
   }
   if (isSailFeeDisallowBps(sailMintFeeBps)) {
@@ -530,7 +559,7 @@ export async function buildSailPerpBenchmark(
       ...assumptions,
       stateObservationCount: states.length,
       candleInterval: "1h",
-      executionModel: "base-tier taker",
+      executionModel: usesHip3 ? "hip-3 taker" : "base-tier taker",
       positionModel: "fixed-at-open",
     },
     benchmark,

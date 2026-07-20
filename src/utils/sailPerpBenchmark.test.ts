@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  isHip3PerpCoin,
   isSailFeeDisallowBps,
   modeledSailFeeRateFromBps,
+  PERP_COIN_API_SYMBOL,
   resolveSailPerpExposureFromSymbols,
   runSailPerpBenchmark,
   targetPerpNotionals,
@@ -269,10 +271,37 @@ describe("resolveSailPerpExposureFromSymbols", () => {
     });
   });
 
-  it("rejects EUR and metals pegs that lack a Hyperliquid hedge leg", () => {
-    expect(resolveSailPerpExposureFromSymbols("wstETH", "EUR")).toBeNull();
-    expect(resolveSailPerpExposureFromSymbols("wstETH", "GOLD")).toBeNull();
-    expect(resolveSailPerpExposureFromSymbols("wstETH", "SILVER")).toBeNull();
+  it("supports EUR and metals pegs via HIP-3 hedge legs", () => {
+    expect(resolveSailPerpExposureFromSymbols("wstETH", "EUR")).toEqual({
+      collateralCoin: "ETH",
+      targetCoin: "EUR",
+    });
+    expect(resolveSailPerpExposureFromSymbols("fxUSD", "EUR")).toEqual({
+      collateralCoin: null,
+      targetCoin: "EUR",
+    });
+    expect(resolveSailPerpExposureFromSymbols("wstETH", "GOLD")).toEqual({
+      collateralCoin: "ETH",
+      targetCoin: "GOLD",
+    });
+    expect(resolveSailPerpExposureFromSymbols("wstETH", "SILVER")).toEqual({
+      collateralCoin: "ETH",
+      targetCoin: "SILVER",
+    });
+  });
+
+  it("rejects pegs without a Hyperliquid hedge leg", () => {
+    expect(resolveSailPerpExposureFromSymbols("wstETH", "MCAP")).toBeNull();
+    expect(resolveSailPerpExposureFromSymbols("fxUSD", "USD")).toBeNull();
+  });
+});
+
+describe("PERP_COIN_API_SYMBOL", () => {
+  it("maps HIP-3 assets to dex-prefixed Hyperliquid symbols", () => {
+    expect(PERP_COIN_API_SYMBOL.EUR).toBe("xyz:EUR");
+    expect(PERP_COIN_API_SYMBOL.GOLD).toBe("xyz:GOLD");
+    expect(isHip3PerpCoin("EUR")).toBe(true);
+    expect(isHip3PerpCoin("ETH")).toBe(false);
   });
 });
 

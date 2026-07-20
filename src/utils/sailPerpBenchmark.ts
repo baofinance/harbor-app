@@ -1,4 +1,17 @@
-export type PerpCoin = "BTC" | "ETH";
+export type PerpCoin = "BTC" | "ETH" | "EUR" | "GOLD" | "SILVER";
+
+/** Hyperliquid info API coin id (native or HIP-3 `dex:TICKER`). */
+export const PERP_COIN_API_SYMBOL: Record<PerpCoin, string> = {
+  BTC: "BTC",
+  ETH: "ETH",
+  EUR: "xyz:EUR",
+  GOLD: "xyz:GOLD",
+  SILVER: "xyz:SILVER",
+};
+
+export function isHip3PerpCoin(coin: PerpCoin): boolean {
+  return coin === "EUR" || coin === "GOLD" || coin === "SILVER";
+}
 
 export type SailStateObservation = {
   timestamp: number;
@@ -110,8 +123,7 @@ export function targetPerpNotionals(
 
 /**
  * Map a Sail market onto Hyperliquid-tradable legs.
- * Non-USD pegs without an ETH/BTC short leg (EUR, metals, etc.) are unsupported —
- * modeling them as naked long ETH produces false liquidations vs the spot ratio.
+ * ETH/BTC use native perps; EUR/GOLD/SILVER use HIP-3 (`xyz:`) markets.
  */
 export function resolveSailPerpExposureFromSymbols(
   collateralSymbol: string,
@@ -122,10 +134,18 @@ export function resolveSailPerpExposureFromSymbols(
   const collateralCoin: PerpCoin | null = collateral.includes("STETH")
     ? "ETH"
     : null;
-  const targetCoin: PerpCoin | null =
-    peg === "ETH" || peg === "BTC" ? (peg as PerpCoin) : null;
 
-  if (peg !== "USD" && peg !== "ETH" && peg !== "BTC") {
+  const pegCoinByTarget: Partial<Record<string, PerpCoin>> = {
+    ETH: "ETH",
+    BTC: "BTC",
+    EUR: "EUR",
+    GOLD: "GOLD",
+    SILVER: "SILVER",
+  };
+  const targetCoin: PerpCoin | null =
+    peg === "USD" ? null : (pegCoinByTarget[peg] ?? null);
+
+  if (peg !== "USD" && targetCoin == null) {
     return null;
   }
   if (!collateralCoin && !targetCoin) return null;
