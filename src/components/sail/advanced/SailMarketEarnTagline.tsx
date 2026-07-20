@@ -7,8 +7,14 @@ const SAIL_EARN_TAGLINE_CLASS =
   "min-w-0 text-xl font-bold leading-snug text-white/85 sm:text-2xl lg:text-3xl";
 const SAIL_EARN_TAGLINE_LONG_CLASS = "font-extrabold text-[#6bc4a8]";
 const SAIL_EARN_TAGLINE_SHORT_CLASS = "font-extrabold text-[#FF8A7A]";
-const SAIL_EARN_SUPPORT_CLASS =
-  "mt-2 max-w-2xl text-xs leading-relaxed text-white/55 sm:text-sm";
+const SAIL_EARN_PERKS_CLASS =
+  "mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/55 sm:text-sm";
+
+const SAIL_EARN_PERKS = [
+  "Automatically adjusting leverage",
+  "No Funding Fees",
+  "No Margin management",
+] as const;
 
 type SailMarketEarnTaglineProps = {
   market: DefinedMarket;
@@ -30,11 +36,16 @@ export function SailMarketEarnTagline({
         outperforms{" "}
         <span className={SAIL_EARN_TAGLINE_SHORT_CLASS}>{shortLabel}</span>.
       </p>
-      <p className={SAIL_EARN_SUPPORT_CLASS}>
-        Sail tokens provide leveraged exposure by automatically adjusting
-        leverage over time. Unlike perpetual futures, there are no funding fees
-        and no manual margin management.
-      </p>
+      <ul className={SAIL_EARN_PERKS_CLASS}>
+        {SAIL_EARN_PERKS.map((label) => (
+          <li key={label} className="inline-flex items-center gap-1.5">
+            <span className="text-[#6bc4a8]" aria-hidden="true">
+              ✓
+            </span>
+            <span>{label}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

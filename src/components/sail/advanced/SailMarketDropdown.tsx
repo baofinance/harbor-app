@@ -62,7 +62,6 @@ export function SailMarketDropdown({
   if (!selected) return null;
 
   const marketTitle = formatSailMarketDropdownTitle(selected.market);
-  const selectedLeverage = formatLeverage(selected.leverageRatio);
 
   return (
     <div ref={rootRef} className={`relative min-w-0 ${open ? "z-50" : ""}`}>
@@ -80,8 +79,6 @@ export function SailMarketDropdown({
         />
         <div className={`min-w-0 flex-1 truncate ${SAIL_DROPDOWN_TRIGGER_TITLE_CLASS}`}>
           {marketTitle}
-          <span className={SAIL_DROPDOWN_TITLE_SEPARATOR_CLASS}> · </span>
-          <span className={SAIL_DROPDOWN_LEVERAGE_INLINE_CLASS}>{selectedLeverage}</span>
         </div>
         {selected.positionLabel ? (
           <div className="hidden shrink-0 truncate text-xs font-medium text-[#4A9784] sm:block">

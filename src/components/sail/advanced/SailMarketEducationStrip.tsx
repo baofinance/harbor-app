@@ -13,6 +13,7 @@ import { getSailDirectionChipLabels } from "@/utils/sailMarketDirectionLabels";
 type SailMarketEducationStripProps = {
   market: DefinedMarket;
   leverageRatio?: bigint;
+  rebalanceThresholdLabel?: string;
   className?: string;
 };
 
@@ -34,6 +35,7 @@ function StatCell({ label, value }: { label: string; value: string }) {
 export function SailMarketEducationStrip({
   market,
   leverageRatio,
+  rebalanceThresholdLabel,
   className = "",
 }: SailMarketEducationStripProps) {
   const { longLabel, shortLabel } = getSailDirectionChipLabels(market, "", "");
@@ -55,9 +57,12 @@ export function SailMarketEducationStrip({
           label="Current leverage"
           value={formatLeverage(leverageRatio)}
         />
+        <StatCell
+          label="Rebalances at"
+          value={rebalanceThresholdLabel ?? "—"}
+        />
         <StatCell label="Funding fees" value="None" />
         <StatCell label="Leverage" value="Automatic" />
-        <StatCell label="Risk" value="Variable" />
       </div>
     </div>
   );

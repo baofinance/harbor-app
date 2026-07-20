@@ -147,6 +147,7 @@ export function SailAdvancedLayout({
           isConnected,
         }}
         leverageRatio={selectedMetrics?.leverageRatio}
+        rebalanceThresholdLabel={selectedMetrics?.rebalanceThresholdLabel}
       />
 
       <div className="space-y-4">

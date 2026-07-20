@@ -12,10 +12,11 @@ import {
   SailWalletStatsStrip,
   type SailWalletStatsStripProps,
 } from "./SailWalletStatsStrip";
-import {
-  SAIL_ADVANCED_LABEL,
-  SAIL_ADVANCED_MAIN_GRID_COLUMNS,
-} from "./sailAdvancedStyles";
+import { SAIL_ADVANCED_LABEL } from "./sailAdvancedStyles";
+
+/** Equal-width wallet / this-market row (not tied to chart+trade column widths). */
+const SAIL_HEADER_STATS_GRID_CLASS =
+  "grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch";
 
 type SailMarketHeaderProps = {
   selectedMarketId: string | null;
@@ -31,6 +32,7 @@ type SailMarketHeaderProps = {
   walletStats: SailWalletStatsStripProps;
   marketPosition: Omit<SailMarketPositionBarProps, "market">;
   leverageRatio?: bigint;
+  rebalanceThresholdLabel?: string;
 };
 
 /** Market switcher + wallet / this-market stats under the dropdown. */
@@ -42,6 +44,7 @@ export function SailMarketHeader({
   walletStats,
   marketPosition,
   leverageRatio,
+  rebalanceThresholdLabel,
 }: SailMarketHeaderProps) {
   if (!selectedMarket) return null;
 
@@ -66,7 +69,7 @@ export function SailMarketHeader({
       </div>
 
       {isConnected ? (
-        <div className={SAIL_ADVANCED_MAIN_GRID_COLUMNS}>
+        <div className={SAIL_HEADER_STATS_GRID_CLASS}>
           <div className="min-w-0">
             <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>Your wallet</p>
             <SailWalletStatsStrip {...walletStats} className="min-w-0 w-full" />
@@ -76,6 +79,8 @@ export function SailMarketHeader({
             <SailMarketPositionBar
               market={selectedMarket}
               {...marketPosition}
+              leverageRatio={leverageRatio}
+              rebalanceThresholdLabel={rebalanceThresholdLabel}
               className="min-w-0 w-full"
             />
           </div>
@@ -86,6 +91,7 @@ export function SailMarketHeader({
           <SailMarketEducationStrip
             market={selectedMarket}
             leverageRatio={leverageRatio}
+            rebalanceThresholdLabel={rebalanceThresholdLabel}
             className="min-w-0 w-full"
           />
         </div>
