@@ -94,7 +94,7 @@ export function SailMarketMetricsPanel({
       <MetricSectionCard
         title="Risk"
         rows={[
-          { label: "Leverage", value: leverage },
+          { label: "Current leverage", value: leverage },
           { label: "Collateral ratio", value: collateralRatio },
           { label: "Rebalance at", value: rebalanceAt },
         ]}

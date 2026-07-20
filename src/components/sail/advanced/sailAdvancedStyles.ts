@@ -118,7 +118,7 @@ export const SAIL_MOBILE_TRADE_SELL_BUTTON_CLASS = `flex-1 rounded-lg px-4 py-2.
 export const SAIL_CHART_BASELINE_COLOR = "#1F9D6A";
 export const SAIL_CHART_HS_COLOR = "#FF8A7A";
 /** User-facing label for the leveraged token overlay series (not the hs* symbol). */
-export const SAIL_CHART_LEVERAGE_TOKEN_LABEL = "Leverage token";
+export const SAIL_CHART_LEVERAGE_TOKEN_LABEL = "Leveraged token";
 
 /** Series key beside Sail chart (e.g. “BTC per 1 ETH (% chg)”). */
 export const SAIL_CHART_LEGEND_CLASS =

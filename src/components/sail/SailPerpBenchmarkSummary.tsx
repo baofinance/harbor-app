@@ -47,15 +47,15 @@ export function SailPerpBenchmarkSummary({
   if (isLoading) {
     return (
       <div className="rounded-lg border border-[#1E4775]/10 bg-white/45 px-3 py-2 text-xs text-[#1E4775]/60">
-        Building modeled Hyperliquid benchmark from historical funding, prices,
-        and Sail state…
+        Building Hyperliquid comparison from historical funding, prices, and
+        Sail state…
       </div>
     );
   }
   if (error) {
     return (
       <div className="rounded-lg border border-amber-700/15 bg-amber-50/70 px-3 py-2 text-xs text-amber-900/80">
-        Modeled perp benchmark unavailable: {error}
+        Hyperliquid comparison unavailable: {error}
       </div>
     );
   }
@@ -77,17 +77,17 @@ export function SailPerpBenchmarkSummary({
     <details className="relative rounded-lg border border-[#1E4775]/10 bg-white/70 text-[#1E4775]">
       <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-3 py-2">
         <span className="text-xs font-semibold">
-          Modeled perp benchmark · Hyperliquid
+          Hyperliquid comparison
         </span>
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
           <span>
             Sail net <ReturnValue value={benchmark.sailNetReturnPct} />
           </span>
           <span>
-            Perp <ReturnValue value={benchmark.perpReturnPct} />
+            Hyperliquid <ReturnValue value={benchmark.perpReturnPct} />
           </span>
           <span>
-            Sail vs perp <ReturnValue value={sailVsPerpPct} />
+            Sail vs Hyperliquid <ReturnValue value={sailVsPerpPct} />
           </span>
           {benchmark.liquidatedAt ? (
             <span className="font-semibold text-red-700">Liquidated</span>
@@ -108,9 +108,10 @@ export function SailPerpBenchmarkSummary({
         <p className="mt-2 text-[10px] leading-relaxed text-[#1E4775]/55">
           Net versus net: both start with the same{" "}
           {usd(assumptions.startingCapitalUsd)}. Sail includes historical entry
-          and hypothetical endpoint redemption fees. The perp opens once at Sail
-          leverage ({benchmark.openingLeverageRatio.toFixed(2)}x) and is held
-          without rebalancing; costs include funding, entry/exit trading, and
+          and hypothetical endpoint redemption fees. The Hyperliquid comparison
+          opens once at current leverage (
+          {benchmark.openingLeverageRatio.toFixed(2)}x) and is held without
+          rebalancing; costs include funding, entry/exit trading, and
           liquidation. No margin top-ups, {assumptions.takerFeeBps} bps taker
           fee, {assumptions.slippageBps} bps modeled slippage, hourly high/low
           liquidation checks, and historical funding.

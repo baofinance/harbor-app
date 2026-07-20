@@ -3,6 +3,7 @@
 import type { DefinedMarket } from "@/config/markets";
 import { SailMarketEarnTagline } from "./SailMarketEarnTagline";
 import { SailMarketDropdown } from "./SailMarketDropdown";
+import { SailMarketEducationStrip } from "./SailMarketEducationStrip";
 import {
   SailMarketPositionBar,
   type SailMarketPositionBarProps,
@@ -29,6 +30,7 @@ type SailMarketHeaderProps = {
   onSelectMarket: (marketId: string) => void;
   walletStats: SailWalletStatsStripProps;
   marketPosition: Omit<SailMarketPositionBarProps, "market">;
+  leverageRatio?: bigint;
 };
 
 /** Market switcher + wallet / this-market stats under the dropdown. */
@@ -39,8 +41,11 @@ export function SailMarketHeader({
   onSelectMarket,
   walletStats,
   marketPosition,
+  leverageRatio,
 }: SailMarketHeaderProps) {
   if (!selectedMarket) return null;
+
+  const isConnected = marketPosition.isConnected;
 
   return (
     <div className="relative z-40 flex flex-col gap-3">
@@ -60,20 +65,31 @@ export function SailMarketHeader({
         </div>
       </div>
 
-      <div className={SAIL_ADVANCED_MAIN_GRID_COLUMNS}>
-        <div className="min-w-0">
-          <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>Your wallet</p>
-          <SailWalletStatsStrip {...walletStats} className="min-w-0 w-full" />
+      {isConnected ? (
+        <div className={SAIL_ADVANCED_MAIN_GRID_COLUMNS}>
+          <div className="min-w-0">
+            <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>Your wallet</p>
+            <SailWalletStatsStrip {...walletStats} className="min-w-0 w-full" />
+          </div>
+          <div className="min-w-0">
+            <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>This market</p>
+            <SailMarketPositionBar
+              market={selectedMarket}
+              {...marketPosition}
+              className="min-w-0 w-full"
+            />
+          </div>
         </div>
+      ) : (
         <div className="min-w-0">
           <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>This market</p>
-          <SailMarketPositionBar
+          <SailMarketEducationStrip
             market={selectedMarket}
-            {...marketPosition}
+            leverageRatio={leverageRatio}
             className="min-w-0 w-full"
           />
         </div>
-      </div>
+      )}
     </div>
   );
 }

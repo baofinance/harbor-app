@@ -96,7 +96,7 @@ function MultiSeriesTooltip({
     );
     if (row.perpReturnPct != null) {
       items.push({
-        label: "Modeled perp (return)",
+        label: "Hyperliquid comparison (return)",
         value: formatSailChartPercentChange(row.perpReturnPct),
         color: SERIES_COLORS.perpReturnPct,
       });
@@ -166,7 +166,7 @@ export function SailMarketMultiSeriesChart({
         ...(showPerpBenchmark
           ? [
               {
-                value: "Modeled perp (% chg)",
+                value: "Hyperliquid comparison (% chg)",
                 type: "line" as const,
                 color: SERIES_COLORS.perpReturnPct,
               },
@@ -328,7 +328,7 @@ export function SailMarketMultiSeriesChart({
             yAxisId="left"
             type="monotone"
             dataKey="perpReturnPct"
-            name="Modeled perp (% chg)"
+            name="Hyperliquid comparison (% chg)"
             stroke={SERIES_COLORS.perpReturnPct}
             strokeWidth={2}
             strokeDasharray="5 3"

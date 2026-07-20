@@ -95,7 +95,7 @@ export function SailMarketChart({
 }: SailMarketChartProps) {
   const [timeRange, setTimeRange] = useState<SailChartTimeRange>("1M");
   const [internalShowHsPriceUsd, setInternalShowHsPriceUsd] = useState(true);
-  const [showPerpBenchmark, setShowPerpBenchmark] = useState(false);
+  const [showPerpBenchmark, setShowPerpBenchmark] = useState(true);
   const showHsPriceUsd = showHsPriceOverlay ?? internalShowHsPriceUsd;
   const setShowHsPriceUsd = onShowHsPriceOverlayChange ?? setInternalShowHsPriceUsd;
 
@@ -292,7 +292,7 @@ export function SailMarketChart({
           disabled={!hasHsPriceData && !isBlockingLoading}
         />
         <OverlayToggle
-          label="Compare modeled perp"
+          label="Hyperliquid comparison"
           active={showPerpBenchmark}
           onClick={() => {
             setShowPerpBenchmark((current) => !current);

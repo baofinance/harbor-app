@@ -7,7 +7,7 @@ export function SailPageTitleSection() {
   return (
     <IndexPageTitleSection
       title="Sail"
-      subtitle="Variable leverage tokens"
+      subtitle="Variable leveraged tokens"
     />
   );
 }

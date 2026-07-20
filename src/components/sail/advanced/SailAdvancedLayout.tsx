@@ -146,6 +146,7 @@ export function SailAdvancedLayout({
           leveragedTokenPriceUSD,
           isConnected,
         }}
+        leverageRatio={selectedMetrics?.leverageRatio}
       />
 
       <div className="space-y-4">

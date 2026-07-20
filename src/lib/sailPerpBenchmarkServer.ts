@@ -517,7 +517,7 @@ export async function buildSailPerpBenchmark(
     "Liquidation uses hourly high/low prices and a documented maintenance-margin model; it is not an account-specific execution replay.",
   );
   warnings.push(
-    `Perp exposure is sized once at ${benchmark.openingLeverageRatio.toFixed(2)}x leverage (Sail at range start) and held without rebalancing; effective leverage drifts with PnL.`,
+    `Perp exposure is sized once at ${benchmark.openingLeverageRatio.toFixed(2)}x current leverage (Sail at range start) and held without rebalancing; effective leverage drifts with PnL.`,
   );
 
   return {

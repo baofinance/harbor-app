@@ -410,7 +410,7 @@ function percentChangeFromBaseline(
   return ((current / baseline) - 1) * 100;
 }
 
-/** Window performance for market rate and leverage token vs start of selected range. */
+/** Window performance for market rate and leveraged token vs start of selected range. */
 export function computeSailChartWindowPerformance(
   data: SailMarketChartPoint[],
 ): SailChartWindowPerformance {
