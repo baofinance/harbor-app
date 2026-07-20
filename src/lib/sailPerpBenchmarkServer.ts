@@ -7,6 +7,7 @@ import {
   isHip3PerpCoin,
   isSailFeeDisallowBps,
   PERP_COIN_API_SYMBOL,
+  repriceSailStatesWithPegUsd,
   resolveSailPerpExposureFromSymbols,
   runSailPerpBenchmark,
   type PerpCandle,
@@ -207,13 +208,14 @@ async function fetchArchiveStates(
         },
       ],
     });
-    const [, leverageRaw, collateralRatioRaw] = results as readonly [
+    const [priceRaw, leverageRaw, collateralRatioRaw] = results as readonly [
       bigint,
       bigint,
       bigint,
     ];
     return {
       ...reference,
+      navInPeg: Number(priceRaw) / 1e18,
       leverageRatio: Number(leverageRaw) / 1e18,
       collateralRatio: Number(collateralRatioRaw) / 1e18,
     };
@@ -395,9 +397,11 @@ export async function buildSailPerpBenchmark(
   }
 
   const warnings: string[] = [];
-  const states = await fetchArchiveStates(client, minterAddress, references);
-  const firstState = states[0]!;
-  const lastState = states[states.length - 1]!;
+  const archiveStates = await fetchArchiveStates(
+    client,
+    minterAddress,
+    references,
+  );
   const coins = Array.from(
     new Set(
       [exposure.collateralCoin, exposure.targetCoin].filter(
@@ -406,36 +410,25 @@ export async function buildSailPerpBenchmark(
     ),
   );
   const usesHip3 = coins.some(isHip3PerpCoin);
-  const [[startConfig, endConfig], configChangeResult, marketData] =
-    await Promise.all([
-      Promise.all([
-        readMinterConfig(client, minterAddress, firstState.blockNumber),
-        readMinterConfig(client, minterAddress, lastState.blockNumber),
-      ]),
-      fetchConfigChangeBlocks(
-        client,
-        minterAddress,
-        firstState.blockNumber,
-        lastState.blockNumber,
-      )
-        .then((blocks) => ({ blocks, error: false }))
-        .catch(() => ({ blocks: [] as number[], error: true })),
-      Promise.all(
-        coins.map(async (coin) => ({
-          coin,
-          candles: await fetchCandles(
-            coin,
-            firstState.timestamp,
-            lastState.timestamp,
-          ),
-          funding: await fetchFundingHistory(
-            coin,
-            firstState.timestamp,
-            lastState.timestamp,
-          ),
-        })),
-      ),
-    ]);
+  const candleStart = archiveStates[0]!.timestamp;
+  const candleEnd = archiveStates[archiveStates.length - 1]!.timestamp;
+  const [configChangeResult, marketData] = await Promise.all([
+    fetchConfigChangeBlocks(
+      client,
+      minterAddress,
+      archiveStates[0]!.blockNumber,
+      archiveStates[archiveStates.length - 1]!.blockNumber,
+    )
+      .then((blocks) => ({ blocks, error: false }))
+      .catch(() => ({ blocks: [] as number[], error: true })),
+    Promise.all(
+      coins.map(async (coin) => ({
+        coin,
+        candles: await fetchCandles(coin, candleStart, candleEnd),
+        funding: await fetchFundingHistory(coin, candleStart, candleEnd),
+      })),
+    ),
+  ]);
   for (const data of marketData) {
     if (data.candles.length < 2) {
       throw new Error(
@@ -443,10 +436,33 @@ export async function buildSailPerpBenchmark(
       );
     }
   }
+  const candlesByCoin = Object.fromEntries(
+    marketData.map((data) => [data.coin, data.candles]),
+  ) as Partial<Record<PerpCoin, PerpCandle[]>>;
+  const fundingByCoin = Object.fromEntries(
+    marketData.map((data) => [data.coin, data.funding]),
+  );
+  const states = repriceSailStatesWithPegUsd(
+    archiveStates,
+    exposure,
+    candlesByCoin,
+  );
+  if (states.length < 2) {
+    throw new Error("Not enough priced Sail history exists for this range");
+  }
+  const firstState = states[0]!;
+  const lastState = states[states.length - 1]!;
+  const [startConfig, endConfig] = await Promise.all([
+    readMinterConfig(client, minterAddress, firstState.blockNumber),
+    readMinterConfig(client, minterAddress, lastState.blockNumber),
+  ]);
   const feeConfigChangeBlocks = configChangeResult.blocks;
   if (configChangeResult.error) {
     warnings.push("Historical fee-config event scan was unavailable.");
   }
+  warnings.push(
+    "Sail USD prices use on-chain leveragedTokenPrice × peg USD when available (avoids subgraph placeholder prices).",
+  );
   const changedConfigs = await mapWithConcurrency(
     feeConfigChangeBlocks.filter(
       (block) =>
@@ -478,12 +494,6 @@ export async function buildSailPerpBenchmark(
       ),
     };
   });
-  const candlesByCoin = Object.fromEntries(
-    marketData.map((data) => [data.coin, data.candles]),
-  );
-  const fundingByCoin = Object.fromEntries(
-    marketData.map((data) => [data.coin, data.funding]),
-  );
 
   const sailMintFeeBps = feeBpsAtCollateralRatio(
     startConfig,

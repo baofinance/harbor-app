@@ -4,6 +4,7 @@ import {
   isSailFeeDisallowBps,
   modeledSailFeeRateFromBps,
   PERP_COIN_API_SYMBOL,
+  repriceSailStatesWithPegUsd,
   resolveSailPerpExposureFromSymbols,
   runSailPerpBenchmark,
   targetPerpNotionals,
@@ -225,6 +226,58 @@ describe("runSailPerpBenchmark", () => {
     expect(result.sailNetReturnPct).toBeCloseTo(4.5);
   });
 
+  it("does not instantly liquidate high two-leg leverage on a flat market", () => {
+    const highLevStates: SailStateObservation[] = [
+      {
+        timestamp: 1_700_000_000,
+        blockNumber: 1,
+        sailPriceUsd: 10,
+        leverageRatio: 25,
+        collateralRatio: 1.05,
+      },
+      {
+        timestamp: 1_700_003_600,
+        blockNumber: 2,
+        sailPriceUsd: 10,
+        leverageRatio: 25,
+        collateralRatio: 1.05,
+      },
+      {
+        timestamp: 1_700_007_200,
+        blockNumber: 3,
+        sailPriceUsd: 10,
+        leverageRatio: 25,
+        collateralRatio: 1.05,
+      },
+    ];
+    const flat = (timestamp: number) => ({
+      timestamp,
+      open: 100,
+      high: 100.1,
+      low: 99.9,
+      close: 100,
+    });
+    const result = runSailPerpBenchmark({
+      states: highLevStates,
+      exposure: { collateralCoin: "ETH", targetCoin: "EUR" },
+      assumptions,
+      candlesByCoin: {
+        ETH: highLevStates.map((s) => flat(s.timestamp)),
+        EUR: highLevStates.map((s) => ({
+          ...flat(s.timestamp),
+          open: 1.1,
+          high: 1.101,
+          low: 1.099,
+          close: 1.1,
+        })),
+      },
+      fundingByCoin: { ETH: [], EUR: [] },
+    });
+
+    expect(result.liquidatedAt).toBeNull();
+    expect(result.points.length).toBe(3);
+  });
+
   it("ignores 100% disallow mint/redeem bands instead of wiping Sail to -100%", () => {
     const result = runSailPerpBenchmark({
       states,
@@ -302,6 +355,36 @@ describe("PERP_COIN_API_SYMBOL", () => {
     expect(PERP_COIN_API_SYMBOL.GOLD).toBe("xyz:GOLD");
     expect(isHip3PerpCoin("EUR")).toBe(true);
     expect(isHip3PerpCoin("ETH")).toBe(false);
+  });
+});
+
+describe("repriceSailStatesWithPegUsd", () => {
+  it("multiplies on-chain NAV by peg USD from candles", () => {
+    const priced = repriceSailStatesWithPegUsd(
+      [
+        {
+          timestamp: 1_700_000_000,
+          blockNumber: 1,
+          sailPriceUsd: 1,
+          navInPeg: 2_000,
+          leverageRatio: 2,
+          collateralRatio: 2,
+        },
+      ],
+      { collateralCoin: "ETH", targetCoin: "EUR" },
+      {
+        EUR: [
+          {
+            timestamp: 1_700_000_000,
+            open: 1.1,
+            high: 1.1,
+            low: 1.1,
+            close: 1.1,
+          },
+        ],
+      },
+    );
+    expect(priced[0]!.sailPriceUsd).toBeCloseTo(2_200);
   });
 });
 

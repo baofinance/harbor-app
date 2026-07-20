@@ -19,6 +19,8 @@ export type SailStateObservation = {
   sailPriceUsd: number;
   leverageRatio: number;
   collateralRatio: number;
+  /** On-chain leveragedTokenPrice in peg units (before × peg USD). */
+  navInPeg?: number;
 };
 
 export type PerpCandle = {
@@ -165,6 +167,57 @@ export function isSailFeeDisallowBps(feeBps: number): boolean {
   return Number.isFinite(feeBps) && Math.abs(feeBps) >= 10_000;
 }
 
+/** Convert on-chain NAV (peg units) to USD using the peg leg's Hyperliquid price. */
+export function repriceSailStatesWithPegUsd(
+  states: SailStateObservation[],
+  exposure: SailPerpExposure,
+  candlesByCoin: Partial<Record<PerpCoin, PerpCandle[]>>,
+): SailStateObservation[] {
+  const pegCoin = exposure.targetCoin;
+  const pegCandles = pegCoin
+    ? [...(candlesByCoin[pegCoin] ?? [])].sort(
+        (a, b) => a.timestamp - b.timestamp,
+      )
+    : [];
+  const pegByHour = new Map(
+    pegCandles.map((candle) => [hourKey(candle.timestamp), candle.close]),
+  );
+
+  const pegUsdAt = (timestamp: number): number => {
+    if (!pegCoin) return 1;
+    const exact = pegByHour.get(hourKey(timestamp));
+    if (exact != null && exact > 0) return exact;
+    let best: number | null = null;
+    for (const candle of pegCandles) {
+      if (candle.timestamp > timestamp) break;
+      if (candle.close > 0) best = candle.close;
+    }
+    return best ?? 0;
+  };
+
+  return states
+    .map((state) => {
+      const navInPeg = state.navInPeg;
+      if (navInPeg == null || !(navInPeg > 0)) {
+        return state;
+      }
+      const pegUsd = pegUsdAt(state.timestamp);
+      if (!(pegUsd > 0)) {
+        return state;
+      }
+      return {
+        ...state,
+        sailPriceUsd: navInPeg * pegUsd,
+      };
+    })
+    .filter(
+      (state) =>
+        state.timestamp > 0 &&
+        finitePositive(state.sailPriceUsd) &&
+        finitePositive(state.leverageRatio),
+    );
+}
+
 export function runSailPerpBenchmark({
   states,
   candlesByCoin,
@@ -307,8 +360,9 @@ export function runSailPerpBenchmark({
     return modeledSailFeeRateFromBps(feeBps);
   };
   costs.sailMintFeeUsd = capital * sailMintRate;
+  const sailEntryPrice = initialState.sailPriceUsd;
   const sailUnits =
-    (capital - costs.sailMintFeeUsd) / Math.max(firstState.sailPriceUsd, 1e-12);
+    (capital - costs.sailMintFeeUsd) / Math.max(sailEntryPrice, 1e-12);
 
   for (let index = 0; index < timeline.length; index++) {
     const timestamp = timeline[index]!;
@@ -316,6 +370,7 @@ export function runSailPerpBenchmark({
 
     if (index > 0 && liquidatedAt == null) {
       const previousTimestamp = timeline[index - 1]!;
+      const equityBeforeMove = equity;
       let grossNotional = 0;
       let worstEquity = equity;
 
@@ -337,8 +392,13 @@ export function runSailPerpBenchmark({
         equity -= fundingCost;
       }
 
-      const maintenanceRequired =
+      // Two-leg Sail-sized notionals can imply MM > equity at open under a flat
+      // notional MM model (false instant liquidation). Only apply MM when it is
+      // solvent at the start of the hour; otherwise use bankruptcy (equity <= 0).
+      const rawMaintenance =
         grossNotional * assumptions.maintenanceMarginRate;
+      const maintenanceRequired =
+        rawMaintenance < equityBeforeMove ? rawMaintenance : 0;
       if (worstEquity <= maintenanceRequired) {
         const penalty = grossNotional * assumptions.liquidationPenaltyRate;
         const beforeLiquidation = equity;
@@ -371,11 +431,13 @@ export function runSailPerpBenchmark({
     }
   }
 
+  const endState =
+    stateAt(orderedStates, timeline[timeline.length - 1]!) ?? lastState;
   const sailGrossEndValue =
-    capital * (lastState.sailPriceUsd / firstState.sailPriceUsd);
-  const sailValueBeforeRedeem = sailUnits * lastState.sailPriceUsd;
+    capital * (endState.sailPriceUsd / sailEntryPrice);
+  const sailValueBeforeRedeem = sailUnits * endState.sailPriceUsd;
   costs.sailRedeemFeeUsd =
-    sailValueBeforeRedeem * redeemRateAt(lastState.timestamp);
+    sailValueBeforeRedeem * redeemRateAt(endState.timestamp);
   const sailNetEndValue = sailValueBeforeRedeem - costs.sailRedeemFeeUsd;
 
   return {
