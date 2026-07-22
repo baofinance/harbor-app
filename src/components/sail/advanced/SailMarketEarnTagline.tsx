@@ -8,7 +8,7 @@ const SAIL_EARN_TAGLINE_CLASS =
 const SAIL_EARN_TAGLINE_LONG_CLASS = "font-extrabold text-[#6bc4a8]";
 const SAIL_EARN_TAGLINE_SHORT_CLASS = "font-extrabold text-[#FF8A7A]";
 const SAIL_EARN_PERKS_CLASS =
-  "mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[11px] font-medium tracking-wide text-white/70 sm:gap-x-0 sm:text-xs";
+  "mt-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[11px] font-medium tracking-wide text-white/70 sm:gap-x-0 sm:text-xs";
 const SAIL_EARN_PERK_ITEM_CLASS =
   "inline-flex items-center gap-1.5 text-white/75";
 const SAIL_EARN_PERK_RULE_CLASS =

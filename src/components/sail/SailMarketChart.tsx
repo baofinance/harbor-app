@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { DefinedMarket } from "@/config/markets";
 import { markets } from "@/config/markets";
+import InfoTooltip from "@/components/InfoTooltip";
 import { usePegTargetPrices } from "@/hooks/usePegTargetPrices";
 import { useChainlinkUsdHistory } from "@/hooks/useChainlinkUsdHistory";
 import { mergeChartData, useSailPriceHistory } from "@/hooks/useSailPriceHistory";
@@ -34,6 +35,43 @@ import {
   SailMarketMultiSeriesChart,
 } from "./SailMarketMultiSeriesChart";
 import { SailPerpBenchmarkSummary } from "./SailPerpBenchmarkSummary";
+
+const SAIL_CHART_COMPARISON_INFO = (
+  <div className="space-y-3 text-sm leading-relaxed">
+    <p>
+      Chart performance is measured versus the start of the selected time range
+      (not all-time). Toggle overlays to compare the leveraged token and a
+      modeled Hyperliquid perpetual against the underlying market.
+    </p>
+    <div>
+      <p className="font-semibold text-white">Hyperliquid comparison</p>
+      <p className="mt-1 text-white/85">
+        A same-capital backtest: both sides start with $1,000. Sail uses
+        historical token NAV with modeled mint/redeem fees. The Hyperliquid side
+        opens once at Sail’s leverage at the range start and is held without
+        rebalancing (no margin top-ups).
+      </p>
+    </div>
+    <ul className="list-disc space-y-1 pl-4 text-white/85">
+      <li>
+        Exposure mirrors the Sail market (e.g. long ETH / short the peg leg,
+        including HIP-3 markets like EUR where needed).
+      </li>
+      <li>
+        Costs include taker fees, small modeled slippage, historical funding,
+        and hour-close liquidation checks.
+      </li>
+      <li>
+        Sail net is NAV after fees; Hyperliquid is account equity after those
+        costs. “Liquidated” means modeled equity hit zero under the hold.
+      </li>
+    </ul>
+    <p className="text-white/70">
+      This is an illustrative comparison, not a guarantee of realized trader
+      PnL on Hyperliquid.
+    </p>
+  </div>
+);
 
 export type SailMarketChartProps = {
   marketId: string;
@@ -301,14 +339,22 @@ export function SailMarketChart({
           color="#6D5BD0"
           disabled={!hasHsPriceData && !isBlockingLoading}
         />
-        <div className="min-w-0 flex-1 text-xs text-[#1E4775]/60">
-          {isBlockingLoading
-            ? "Loading..."
-            : isEnrichingOracles
-              ? "Updating oracle data..."
-              : showHsPriceUsd && hasHsPriceData
-                ? "Performance vs start of range"
-                : `${validDefaultPoints.length} data points`}
+        <div className="flex min-w-0 flex-1 items-center gap-2 text-xs text-[#1E4775]/60">
+          {isBlockingLoading ? (
+            <span>Loading...</span>
+          ) : isEnrichingOracles ? (
+            <span>Loading market prices...</span>
+          ) : (
+            <InfoTooltip
+              side="bottom"
+              centerOnMobile
+              label={SAIL_CHART_COMPARISON_INFO}
+            >
+              <span className="inline-flex h-5 w-5 cursor-help items-center justify-center rounded-full border border-[#1E4775]/25 bg-white/70 text-[11px] font-semibold text-[#1E4775]/70 transition hover:border-[#1E4775]/40 hover:bg-white hover:text-[#1E4775]">
+                i
+              </span>
+            </InfoTooltip>
+          )}
         </div>
         <div className="flex flex-wrap justify-end gap-1.5 sm:gap-2">
           {SAIL_CHART_TIME_RANGES.map((range) => (
@@ -345,7 +391,7 @@ export function SailMarketChart({
           <div className="flex h-full items-center justify-center text-[#1E4775]/60">
             {isSubgraphLoading
               ? "Loading price history..."
-              : "Updating oracle data..."}
+              : "Loading market prices..."}
           </div>
         ) : validDefaultPoints.length === 0 ? (
           <div className="flex h-full items-center justify-center text-center text-sm text-[#1E4775]/60">
