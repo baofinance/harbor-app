@@ -1,4 +1,5 @@
 import { MV_GLASS_INSET_LIGHT } from "@/components/genesis/maidenVoyageLayoutStyles";
+import { HARBOR_FROSTED_LIGHT_CARD } from "@/components/shared/harborFrostedSurfaceStyles";
 
 /** Intro tiles under index page heroes (Earn, Sail extended). */
 export const HARBOR_STAT_TILE_INTRO_CLASS = `rounded-xl overflow-hidden px-3 py-2.5 flex flex-col items-center justify-center text-center relative ${MV_GLASS_INSET_LIGHT}`;
@@ -53,3 +54,21 @@ export const HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS =
 
 export const HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS =
   "text-sm font-semibold text-white font-mono mt-1";
+
+/** Light frosted strip — matches Sail leverage wallet / this-market bars. */
+export const HARBOR_STAT_TILE_LIGHT_STRIP_SHELL_CLASS = `rounded-xl overflow-hidden ${HARBOR_FROSTED_LIGHT_CARD}`;
+
+export const HARBOR_STAT_TILE_LIGHT_STRIP_GRID_6_CLASS =
+  "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-y divide-[#1E4775]/10 lg:divide-y-0";
+
+export const HARBOR_STAT_TILE_LIGHT_STRIP_TITLE_CLASS =
+  "text-base font-bold text-[#1E4775]";
+
+export const HARBOR_STAT_TILE_LIGHT_STRIP_LABEL_CLASS =
+  "text-[11px] font-medium uppercase tracking-widest text-[#1E4775]/55";
+
+export const HARBOR_STAT_TILE_LIGHT_STRIP_VALUE_CLASS =
+  "mt-1 font-mono text-sm font-semibold tabular-nums text-[#1E4775]";
+
+export const HARBOR_STAT_TILE_LIGHT_STRIP_MUTED_CLASS =
+  "text-[10px] font-medium text-[#1E4775]/55";

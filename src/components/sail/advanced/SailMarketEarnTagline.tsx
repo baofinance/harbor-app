@@ -8,7 +8,7 @@ const SAIL_EARN_TAGLINE_CLASS =
 const SAIL_EARN_TAGLINE_LONG_CLASS = "font-extrabold text-[#6bc4a8]";
 const SAIL_EARN_TAGLINE_SHORT_CLASS = "font-extrabold text-[#FF8A7A]";
 const SAIL_EARN_PERKS_CLASS =
-  "mt-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[11px] font-medium tracking-wide text-white/70 sm:gap-x-0 sm:text-xs";
+  "mb-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[11px] font-medium tracking-wide text-white/70 sm:gap-x-0 sm:text-xs";
 const SAIL_EARN_PERK_ITEM_CLASS =
   "inline-flex items-center gap-1.5 text-white/75";
 const SAIL_EARN_PERK_RULE_CLASS =
@@ -34,12 +34,6 @@ export function SailMarketEarnTagline({
 
   return (
     <div className={`min-w-0 ${className}`.trim()}>
-      <p className={SAIL_EARN_TAGLINE_CLASS}>
-        Earn amplified returns if{" "}
-        <span className={SAIL_EARN_TAGLINE_LONG_CLASS}>{longLabel}</span>{" "}
-        outperforms{" "}
-        <span className={SAIL_EARN_TAGLINE_SHORT_CLASS}>{shortLabel}</span>.
-      </p>
       <ul className={SAIL_EARN_PERKS_CLASS}>
         {SAIL_EARN_PERKS.map((label, index) => (
           <li key={label} className="inline-flex items-center">
@@ -56,6 +50,12 @@ export function SailMarketEarnTagline({
           </li>
         ))}
       </ul>
+      <p className={SAIL_EARN_TAGLINE_CLASS}>
+        Earn amplified returns if{" "}
+        <span className={SAIL_EARN_TAGLINE_LONG_CLASS}>{longLabel}</span>{" "}
+        outperforms{" "}
+        <span className={SAIL_EARN_TAGLINE_SHORT_CLASS}>{shortLabel}</span>.
+      </p>
     </div>
   );
 }
