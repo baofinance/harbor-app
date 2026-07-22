@@ -30,6 +30,14 @@ import {
   HARBOR_BTN_GLASS_SEGMENT_ACTIVE_LIGHT,
 } from "@/components/shared/harborButtonStyles";
 
+/** Header chrome — darker frosted band so market/tagline/stats read apart from page + white cards. */
+export const SAIL_ADVANCED_HEADER_SHELL =
+  "rounded-2xl border border-white/[0.1] bg-[#0a1929]/55 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-md sm:p-5";
+
+/** Hairline between tagline row and wallet / this-market stats. */
+export const SAIL_ADVANCED_HEADER_DIVIDER =
+  "h-px w-full bg-gradient-to-r from-transparent via-white/20 to-transparent";
+
 /** Two-column Sail UI+ layout — chart/main left, trade panel right (lg+). */
 export const SAIL_ADVANCED_MAIN_GRID_COLUMNS =
   "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-stretch";

@@ -4,13 +4,15 @@ import type { DefinedMarket } from "@/config/markets";
 import { getSailDirectionChipLabels } from "@/utils/sailMarketDirectionLabels";
 
 const SAIL_EARN_TAGLINE_CLASS =
-  "min-w-0 text-center text-xl font-bold leading-snug text-white/85 sm:text-2xl lg:text-3xl";
+  "min-w-0 text-center text-xl font-bold leading-snug text-white/90 sm:text-2xl lg:text-3xl";
 const SAIL_EARN_TAGLINE_LONG_CLASS = "font-extrabold text-[#6bc4a8]";
 const SAIL_EARN_TAGLINE_SHORT_CLASS = "font-extrabold text-[#FF8A7A]";
 const SAIL_EARN_PERKS_CLASS =
-  "mt-2.5 flex flex-wrap items-center justify-center gap-2 text-xs text-white/70 sm:text-sm";
-const SAIL_EARN_PERK_PILL_CLASS =
-  "inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.08] px-3 py-1";
+  "mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[11px] font-medium tracking-wide text-white/70 sm:gap-x-0 sm:text-xs";
+const SAIL_EARN_PERK_ITEM_CLASS =
+  "inline-flex items-center gap-1.5 text-white/75";
+const SAIL_EARN_PERK_RULE_CLASS =
+  "mx-2.5 hidden h-3 w-px shrink-0 bg-white/20 sm:mx-3 sm:inline-block";
 
 const SAIL_EARN_PERKS = [
   "Automatically adjusting leverage",
@@ -39,12 +41,18 @@ export function SailMarketEarnTagline({
         <span className={SAIL_EARN_TAGLINE_SHORT_CLASS}>{shortLabel}</span>.
       </p>
       <ul className={SAIL_EARN_PERKS_CLASS}>
-        {SAIL_EARN_PERKS.map((label) => (
-          <li key={label} className={SAIL_EARN_PERK_PILL_CLASS}>
-            <span className="text-[#6bc4a8]" aria-hidden="true">
-              ✓
+        {SAIL_EARN_PERKS.map((label, index) => (
+          <li key={label} className="inline-flex items-center">
+            {index > 0 ? (
+              <span className={SAIL_EARN_PERK_RULE_CLASS} aria-hidden="true" />
+            ) : null}
+            <span className={SAIL_EARN_PERK_ITEM_CLASS}>
+              <span
+                className="inline-block h-1 w-1 rounded-full bg-[#6bc4a8]"
+                aria-hidden="true"
+              />
+              <span>{label}</span>
             </span>
-            <span>{label}</span>
           </li>
         ))}
       </ul>

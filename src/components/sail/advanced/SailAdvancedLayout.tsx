@@ -133,7 +133,7 @@ export function SailAdvancedLayout({
 
 
   return (
-    <div className="space-y-4 pb-[calc(4.25rem+env(safe-area-inset-bottom))] lg:pb-0">
+    <div className="space-y-5 pb-[calc(4.25rem+env(safe-area-inset-bottom))] lg:pb-0">
       <SailMarketHeader
         selectedMarketId={selectedMarketId}
         selectedMarket={selectedMarket}
@@ -150,7 +150,7 @@ export function SailAdvancedLayout({
         rebalanceThresholdLabel={selectedMetrics?.rebalanceThresholdLabel}
       />
 
-      <div className="space-y-4">
+      <div className="space-y-4 pt-0.5">
         <div className={`relative z-0 ${SAIL_ADVANCED_MAIN_GRID_CLASS}`}>
           <div className="order-1 flex min-h-0 flex-col gap-3 lg:order-none lg:h-full">
             <div className="flex min-h-[22rem] flex-1 flex-col sm:min-h-[26rem] lg:min-h-0">

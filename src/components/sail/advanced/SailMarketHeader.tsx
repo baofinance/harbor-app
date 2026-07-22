@@ -12,7 +12,11 @@ import {
   SailWalletStatsStrip,
   type SailWalletStatsStripProps,
 } from "./SailWalletStatsStrip";
-import { SAIL_ADVANCED_LABEL } from "./sailAdvancedStyles";
+import {
+  SAIL_ADVANCED_HEADER_DIVIDER,
+  SAIL_ADVANCED_HEADER_SHELL,
+  SAIL_ADVANCED_LABEL,
+} from "./sailAdvancedStyles";
 
 /** Equal-width wallet / this-market row (not tied to chart+trade column widths). */
 const SAIL_HEADER_STATS_GRID_CLASS =
@@ -51,50 +55,54 @@ export function SailMarketHeader({
   const isConnected = marketPosition.isConnected;
 
   return (
-    <div className="relative z-40 flex flex-col gap-3">
-      <div className="min-w-0">
-        <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>Market</p>
-        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-          <div className="w-full min-w-0 max-w-xs shrink-0 sm:max-w-sm">
-            <SailMarketDropdown
-              selectedMarketId={selectedMarketId}
-              options={dropdownOptions}
-              onSelect={onSelectMarket}
-            />
-          </div>
-          <div className="flex min-w-0 flex-1 items-center justify-center text-center sm:pl-1">
-            <SailMarketEarnTagline market={selectedMarket} />
+    <header className={`relative z-40 ${SAIL_ADVANCED_HEADER_SHELL}`}>
+      <div className="flex flex-col gap-4">
+        <div className="min-w-0">
+          <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>Market</p>
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <div className="w-full min-w-0 max-w-xs shrink-0 sm:max-w-sm">
+              <SailMarketDropdown
+                selectedMarketId={selectedMarketId}
+                options={dropdownOptions}
+                onSelect={onSelectMarket}
+              />
+            </div>
+            <div className="flex min-w-0 flex-1 items-center justify-center text-center sm:pl-1">
+              <SailMarketEarnTagline market={selectedMarket} />
+            </div>
           </div>
         </div>
-      </div>
 
-      {isConnected ? (
-        <div className={SAIL_HEADER_STATS_GRID_CLASS}>
-          <div className="min-w-0">
-            <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>Your wallet</p>
-            <SailWalletStatsStrip {...walletStats} className="min-w-0 w-full" />
+        <div className={SAIL_ADVANCED_HEADER_DIVIDER} role="presentation" />
+
+        {isConnected ? (
+          <div className={SAIL_HEADER_STATS_GRID_CLASS}>
+            <div className="min-w-0">
+              <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>Your wallet</p>
+              <SailWalletStatsStrip {...walletStats} className="min-w-0 w-full" />
+            </div>
+            <div className="min-w-0">
+              <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>This market</p>
+              <SailMarketPositionBar
+                market={selectedMarket}
+                {...marketPosition}
+                leverageRatio={leverageRatio}
+                rebalanceThresholdLabel={rebalanceThresholdLabel}
+                className="min-w-0 w-full"
+              />
+            </div>
           </div>
+        ) : (
           <div className="min-w-0">
             <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>This market</p>
-            <SailMarketPositionBar
-              market={selectedMarket}
-              {...marketPosition}
+            <SailMarketEducationStrip
               leverageRatio={leverageRatio}
               rebalanceThresholdLabel={rebalanceThresholdLabel}
               className="min-w-0 w-full"
             />
           </div>
-        </div>
-      ) : (
-        <div className="min-w-0">
-          <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>This market</p>
-          <SailMarketEducationStrip
-            leverageRatio={leverageRatio}
-            rebalanceThresholdLabel={rebalanceThresholdLabel}
-            className="min-w-0 w-full"
-          />
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </header>
   );
 }
