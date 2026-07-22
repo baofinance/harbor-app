@@ -30,16 +30,8 @@ import {
   HARBOR_BTN_GLASS_SEGMENT_ACTIVE_LIGHT,
 } from "@/components/shared/harborButtonStyles";
 
-/** Header chrome — same light frosted glass as chart / trade cards. */
-export const SAIL_ADVANCED_HEADER_SHELL = `rounded-2xl p-4 sm:p-5 ${HARBOR_FROSTED_LIGHT_CARD}`;
-
-/** Hairline between tagline row and wallet / this-market stats. */
-export const SAIL_ADVANCED_HEADER_DIVIDER =
-  "h-px w-full bg-gradient-to-r from-transparent via-[#1E4775]/18 to-transparent";
-
-/** Nested metric strip inside the light header (subtle navy wash, not dark glass). */
-export const SAIL_ADVANCED_HEADER_STRIP_SHELL =
-  "rounded-xl overflow-hidden border border-[#1E4775]/10 bg-[#1E4775]/[0.04]";
+/** Standalone header metric cards on dark Sail chrome (wallet / this market). */
+export const SAIL_ADVANCED_HEADER_STRIP_SHELL = `rounded-xl overflow-hidden h-full ${HARBOR_FROSTED_LIGHT_CARD}`;
 
 export const SAIL_ADVANCED_HEADER_STRIP_DIVIDE =
   "divide-x divide-y divide-[#1E4775]/10";
@@ -49,6 +41,13 @@ export const SAIL_ADVANCED_HEADER_STRIP_LABEL =
 
 export const SAIL_ADVANCED_HEADER_STRIP_VALUE =
   "mt-1 truncate font-mono text-xs font-semibold tabular-nums text-[#1E4775] sm:text-sm";
+
+/** @deprecated Outer header shell removed — title sits on page chrome. */
+export const SAIL_ADVANCED_HEADER_SHELL = `rounded-2xl p-4 sm:p-5 ${HARBOR_FROSTED_LIGHT_CARD}`;
+
+/** @deprecated */
+export const SAIL_ADVANCED_HEADER_DIVIDER =
+  "h-px w-full bg-gradient-to-r from-transparent via-[#1E4775]/18 to-transparent";
 
 /** Two-column Sail UI+ layout — chart/main left, trade panel right (lg+). */
 export const SAIL_ADVANCED_MAIN_GRID_COLUMNS =
