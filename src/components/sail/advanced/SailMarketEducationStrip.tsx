@@ -1,11 +1,11 @@
 "use client";
 
 import {
-  HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS,
-  HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS,
-  HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS,
-  HARBOR_STAT_TILE_INTRO_STRIP_SHELL_CLASS,
-} from "@/components/shared/harborStatTileStyles";
+  SAIL_ADVANCED_HEADER_STRIP_DIVIDE,
+  SAIL_ADVANCED_HEADER_STRIP_LABEL,
+  SAIL_ADVANCED_HEADER_STRIP_SHELL,
+  SAIL_ADVANCED_HEADER_STRIP_VALUE,
+} from "@/components/sail/advanced/sailAdvancedStyles";
 import { formatLeverage } from "@/utils/sailDisplayFormat";
 
 type SailMarketEducationStripProps = {
@@ -14,14 +14,11 @@ type SailMarketEducationStripProps = {
   className?: string;
 };
 
-const LABEL = `${HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS} text-[10px] tracking-wide`;
-const VALUE = `truncate ${HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS} text-xs sm:text-sm`;
-
 function StatCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className={`${HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS} px-3 sm:py-2.5`}>
-      <span className={LABEL}>{label}</span>
-      <span className={VALUE} title={value}>
+    <div className="flex min-w-0 flex-col items-center justify-center px-3 py-2.5 text-center sm:py-2.5">
+      <span className={SAIL_ADVANCED_HEADER_STRIP_LABEL}>{label}</span>
+      <span className={SAIL_ADVANCED_HEADER_STRIP_VALUE} title={value}>
         {value}
       </span>
     </div>
@@ -36,7 +33,7 @@ export function SailMarketEducationStrip({
 }: SailMarketEducationStripProps) {
   return (
     <div
-      className={`${HARBOR_STAT_TILE_INTRO_STRIP_SHELL_CLASS} grid grid-cols-2 divide-x divide-y divide-white/[0.08] sm:grid-cols-4 sm:divide-y-0 ${className}`.trim()}
+      className={`${SAIL_ADVANCED_HEADER_STRIP_SHELL} grid grid-cols-2 ${SAIL_ADVANCED_HEADER_STRIP_DIVIDE} sm:grid-cols-4 sm:divide-y-0 ${className}`.trim()}
       aria-label="This market facts"
     >
       <StatCell

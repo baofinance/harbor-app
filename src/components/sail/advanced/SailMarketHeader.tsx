@@ -15,7 +15,7 @@ import {
 import {
   SAIL_ADVANCED_HEADER_DIVIDER,
   SAIL_ADVANCED_HEADER_SHELL,
-  SAIL_ADVANCED_LABEL,
+  SAIL_ADVANCED_LIGHT_LABEL,
 } from "./sailAdvancedStyles";
 
 /** Equal-width wallet / this-market row (not tied to chart+trade column widths). */
@@ -58,7 +58,7 @@ export function SailMarketHeader({
     <header className={`relative z-40 ${SAIL_ADVANCED_HEADER_SHELL}`}>
       <div className="flex flex-col gap-4">
         <div className="min-w-0">
-          <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>Market</p>
+          <p className={`mb-1 ${SAIL_ADVANCED_LIGHT_LABEL}`}>Market</p>
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
             <div className="w-full min-w-0 max-w-xs shrink-0 sm:max-w-sm">
               <SailMarketDropdown
@@ -78,11 +78,11 @@ export function SailMarketHeader({
         {isConnected ? (
           <div className={SAIL_HEADER_STATS_GRID_CLASS}>
             <div className="min-w-0">
-              <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>Your wallet</p>
+              <p className={`mb-1 ${SAIL_ADVANCED_LIGHT_LABEL}`}>Your wallet</p>
               <SailWalletStatsStrip {...walletStats} className="min-w-0 w-full" />
             </div>
             <div className="min-w-0">
-              <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>This market</p>
+              <p className={`mb-1 ${SAIL_ADVANCED_LIGHT_LABEL}`}>This market</p>
               <SailMarketPositionBar
                 market={selectedMarket}
                 {...marketPosition}
@@ -94,7 +94,7 @@ export function SailMarketHeader({
           </div>
         ) : (
           <div className="min-w-0">
-            <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>This market</p>
+            <p className={`mb-1 ${SAIL_ADVANCED_LIGHT_LABEL}`}>This market</p>
             <SailMarketEducationStrip
               leverageRatio={leverageRatio}
               rebalanceThresholdLabel={rebalanceThresholdLabel}

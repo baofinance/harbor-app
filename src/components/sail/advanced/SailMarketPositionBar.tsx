@@ -2,18 +2,18 @@
 
 import type { DefinedMarket } from "@/config/markets";
 import { SailConnectWalletStripNotice } from "@/components/sail/advanced/SailConnectWalletStripNotice";
+import {
+  SAIL_ADVANCED_HEADER_STRIP_DIVIDE,
+  SAIL_ADVANCED_HEADER_STRIP_LABEL,
+  SAIL_ADVANCED_HEADER_STRIP_SHELL,
+  SAIL_ADVANCED_HEADER_STRIP_VALUE,
+} from "@/components/sail/advanced/sailAdvancedStyles";
 import { useSailPositionPnL } from "@/hooks/useSailPositionPnL";
 import {
   formatLeverage,
   formatPnL,
   formatUSD,
 } from "@/utils/sailDisplayFormat";
-import {
-  HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS,
-  HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS,
-  HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS,
-  HARBOR_STAT_TILE_INTRO_STRIP_SHELL_CLASS,
-} from "@/components/shared/harborStatTileStyles";
 
 export type SailMarketPositionBarProps = {
   market: DefinedMarket;
@@ -25,8 +25,8 @@ export type SailMarketPositionBarProps = {
   rebalanceThresholdLabel?: string;
 };
 
-const SAIL_POSITION_STAT_VALUE = `truncate ${HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS} text-xs`;
-const SAIL_POSITION_STAT_LABEL = `${HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS} text-[10px] tracking-wide`;
+const SAIL_POSITION_STAT_VALUE = SAIL_ADVANCED_HEADER_STRIP_VALUE;
+const SAIL_POSITION_STAT_LABEL = SAIL_ADVANCED_HEADER_STRIP_LABEL;
 
 function StatCell({
   label,
@@ -38,7 +38,7 @@ function StatCell({
   valueClassName?: string;
 }) {
   return (
-    <div className={`${HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS} px-3 sm:py-2.5`}>
+    <div className="flex min-w-0 flex-col items-center justify-center px-3 py-2.5 text-center">
       <span className={SAIL_POSITION_STAT_LABEL}>{label}</span>
       <span className={valueClassName} title={value}>
         {value}
@@ -69,8 +69,8 @@ function formatPositionPnL(
   const pctText = ` (${unrealizedPnLPercent >= 0 ? "+" : ""}${unrealizedPnLPercent.toFixed(2)}%)`;
   const colorClass =
     unrealizedPnL > 0
-      ? `${SAIL_POSITION_STAT_VALUE} text-harbor-mint`
-      : `${SAIL_POSITION_STAT_VALUE} text-harbor-coral`;
+      ? `${SAIL_POSITION_STAT_VALUE} text-[#2d6b5c]`
+      : `${SAIL_POSITION_STAT_VALUE} text-[#c45c4e]`;
 
   return {
     text: `${formatted.text}${pctText}`,
@@ -126,8 +126,8 @@ export function SailMarketPositionBar({
   );
 
   const shellClass = embedded
-    ? `grid w-full grid-cols-2 divide-x divide-y divide-white/[0.08] sm:grid-cols-4 sm:divide-y-0 ${className}`.trim()
-    : `${HARBOR_STAT_TILE_INTRO_STRIP_SHELL_CLASS} grid grid-cols-2 divide-x divide-y divide-white/[0.08] sm:grid-cols-4 sm:divide-y-0 ${className}`.trim();
+    ? `grid w-full grid-cols-2 ${SAIL_ADVANCED_HEADER_STRIP_DIVIDE} sm:grid-cols-4 sm:divide-y-0 ${className}`.trim()
+    : `${SAIL_ADVANCED_HEADER_STRIP_SHELL} grid grid-cols-2 ${SAIL_ADVANCED_HEADER_STRIP_DIVIDE} sm:grid-cols-4 sm:divide-y-0 ${className}`.trim();
 
   if (!isConnected) {
     return (

@@ -17,7 +17,7 @@ export function SailConnectWalletStripNotice({
     <div
       className={`${HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS} flex flex-col items-center justify-center gap-2 px-3 py-3 sm:flex-row sm:gap-3 sm:py-2.5 ${className}`.trim()}
     >
-      <p className="text-center text-xs leading-snug text-white/75">{message}</p>
+      <p className="text-center text-xs leading-snug text-[#1E4775]/70">{message}</p>
       <div className="shrink-0">
         <ConnectWallet />
       </div>

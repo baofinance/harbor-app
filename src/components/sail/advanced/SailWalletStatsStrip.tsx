@@ -1,13 +1,13 @@
 "use client";
 
 import { SailConnectWalletStripNotice } from "@/components/sail/advanced/SailConnectWalletStripNotice";
-import { formatUSD } from "@/utils/formatters";
 import {
-  HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS,
-  HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS,
-  HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS,
-  HARBOR_STAT_TILE_INTRO_STRIP_SHELL_CLASS,
-} from "@/components/shared/harborStatTileStyles";
+  SAIL_ADVANCED_HEADER_STRIP_DIVIDE,
+  SAIL_ADVANCED_HEADER_STRIP_LABEL,
+  SAIL_ADVANCED_HEADER_STRIP_SHELL,
+  SAIL_ADVANCED_HEADER_STRIP_VALUE,
+} from "@/components/sail/advanced/sailAdvancedStyles";
+import { formatUSD } from "@/utils/formatters";
 
 export type SailWalletStatsStripProps = {
   isConnected: boolean;
@@ -28,18 +28,8 @@ export type SailWalletStatsStripProps = {
   className?: string;
 };
 
-const SAIL_WALLET_STATS_GRID =
-  "grid w-full divide-x divide-white/[0.08]";
-
-const SAIL_WALLET_STATS_SHELL = `${HARBOR_STAT_TILE_INTRO_STRIP_SHELL_CLASS} ${SAIL_WALLET_STATS_GRID}`;
-
-const SAIL_WALLET_STATS_EMBEDDED_SHELL = SAIL_WALLET_STATS_GRID;
-
-const SAIL_WALLET_STATS_CELL = `${HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS} px-2 sm:px-4 sm:py-2.5`;
-
-const SAIL_WALLET_STATS_LABEL = `${HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS} text-[10px] tracking-wide`;
-
-const SAIL_WALLET_STATS_VALUE = `truncate ${HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS} text-xs sm:text-sm`;
+const SAIL_WALLET_STATS_CELL =
+  "flex min-w-0 flex-col items-center justify-center px-2 py-2.5 text-center sm:px-4";
 
 function formatSailMarks(value: number): string {
   if (value <= 0) return "0";
@@ -55,15 +45,15 @@ function formatPnL(
   isConnected: boolean,
 ): { text: string; valueClassName: string } {
   if (!isConnected) {
-    return { text: "—", valueClassName: SAIL_WALLET_STATS_VALUE };
+    return { text: "—", valueClassName: SAIL_ADVANCED_HEADER_STRIP_VALUE };
   }
   if (loading) {
-    return { text: "…", valueClassName: SAIL_WALLET_STATS_VALUE };
+    return { text: "…", valueClassName: SAIL_ADVANCED_HEADER_STRIP_VALUE };
   }
 
   const { totalPnL, pnlPercent } = pnlFromMarkets;
   if (!totalPnL) {
-    return { text: "$0.00", valueClassName: SAIL_WALLET_STATS_VALUE };
+    return { text: "$0.00", valueClassName: SAIL_ADVANCED_HEADER_STRIP_VALUE };
   }
 
   const dollar =
@@ -79,17 +69,17 @@ function formatPnL(
     text: `${dollar}${pctText}`,
     valueClassName:
       totalPnL > 0
-        ? `${SAIL_WALLET_STATS_VALUE} text-harbor-mint`
+        ? `${SAIL_ADVANCED_HEADER_STRIP_VALUE} text-[#2d6b5c]`
         : totalPnL < 0
-          ? `${SAIL_WALLET_STATS_VALUE} text-harbor-coral`
-          : SAIL_WALLET_STATS_VALUE,
+          ? `${SAIL_ADVANCED_HEADER_STRIP_VALUE} text-[#c45c4e]`
+          : SAIL_ADVANCED_HEADER_STRIP_VALUE,
   };
 }
 
 function StatCell({
   label,
   value,
-  valueClassName = SAIL_WALLET_STATS_VALUE,
+  valueClassName = SAIL_ADVANCED_HEADER_STRIP_VALUE,
 }: {
   label: string;
   value: string;
@@ -97,12 +87,19 @@ function StatCell({
 }) {
   return (
     <div className={SAIL_WALLET_STATS_CELL}>
-      <span className={SAIL_WALLET_STATS_LABEL}>{label}</span>
+      <span className={SAIL_ADVANCED_HEADER_STRIP_LABEL}>{label}</span>
       <span className={valueClassName} title={value}>
         {value}
       </span>
     </div>
   );
+}
+
+function stripShell(embedded: boolean, className: string): string {
+  if (embedded) {
+    return `grid w-full ${SAIL_ADVANCED_HEADER_STRIP_DIVIDE} ${className}`.trim();
+  }
+  return `${SAIL_ADVANCED_HEADER_STRIP_SHELL} grid w-full ${SAIL_ADVANCED_HEADER_STRIP_DIVIDE} ${className}`.trim();
 }
 
 /** Compact header wallet stats — single frosted row beside the market dropdown. */
@@ -120,14 +117,14 @@ export function SailWalletStatsStrip({
   const pnl = formatPnL(pnlFromMarkets, pnlSummaryLoading, isConnected);
   const marksValue = isLoadingSailMarks ? "…" : formatSailMarks(totalSailMarks);
   const gridClass = showSailMarks
-    ? "grid-cols-2 sm:grid-cols-4"
-    : "grid-cols-3";
-  const shellClass = embedded ? SAIL_WALLET_STATS_EMBEDDED_SHELL : SAIL_WALLET_STATS_SHELL;
+    ? "grid-cols-2 sm:grid-cols-4 sm:divide-y-0"
+    : "grid-cols-3 sm:divide-y-0";
+  const shellClass = stripShell(embedded, `${gridClass} ${className}`);
 
   if (!isConnected) {
     return (
       <div
-        className={`${shellClass} grid-cols-1 ${className}`.trim()}
+        className={stripShell(embedded, `grid-cols-1 ${className}`)}
         aria-label="Your Sail wallet"
       >
         <SailConnectWalletStripNotice message="Connect your wallet to view portfolio stats." />
@@ -136,10 +133,7 @@ export function SailWalletStatsStrip({
   }
 
   return (
-    <div
-      className={`${shellClass} ${gridClass} ${className}`.trim()}
-      aria-label="Your Sail wallet"
-    >
+    <div className={shellClass} aria-label="Your Sail wallet">
       <StatCell
         label="Leverage Portfolio"
         value={formatUSD(sailUserStats.totalPositionsUSD, { compact: false })}
@@ -165,12 +159,15 @@ export function SailWalletMarksChip({
   isLoadingSailMarks,
   totalSailMarks,
   className = "",
-}: Pick<SailWalletStatsStripProps, "isLoadingSailMarks" | "totalSailMarks" | "className">) {
+}: Pick<
+  SailWalletStatsStripProps,
+  "isLoadingSailMarks" | "totalSailMarks" | "className"
+>) {
   const marksValue = isLoadingSailMarks ? "…" : formatSailMarks(totalSailMarks);
 
   return (
     <div
-      className={`${SAIL_WALLET_STATS_SHELL} ${className}`.trim()}
+      className={`${SAIL_ADVANCED_HEADER_STRIP_SHELL} grid ${className}`.trim()}
       style={{ gridTemplateColumns: "minmax(0, 1fr)" }}
       aria-label="Sail marks"
     >
