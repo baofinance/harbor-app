@@ -50,7 +50,7 @@ export function SailMarketHeader({
   const isConnected = marketPosition.isConnected;
 
   return (
-    <header className="relative z-40 flex flex-col gap-4">
+    <header className="relative z-10 flex flex-col gap-4">
       <div className="min-w-0">
         <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>Market</p>
         <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">

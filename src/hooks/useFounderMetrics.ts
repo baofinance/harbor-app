@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAccount } from "wagmi";
+import { useHarborAccount } from "@/hooks/useHarborAccount";
 import { isAddress, type Address } from "viem";
 import { markets } from "@/config/markets";
 import { getGraphHeaders, getGraphUrl } from "@/config/graph";
@@ -91,7 +91,7 @@ async function fetchGenesisParticipants(genesis: Address): Promise<{
 }
 
 export function useFounderMetrics() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useHarborAccount();
   const [rows, setRows] = useState<FounderMetricRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

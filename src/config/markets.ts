@@ -957,7 +957,7 @@ export const markets = {
           genesisActive: "soon" as GenesisActiveSetting,
           pegTarget: "USD",
           chainId: 1,
-          zapper: false,
+          zapper: true,
           anyswap: false,
           chain: { name: "Ethereum", logo: "icons/eth.png" },
           collateral: {
@@ -966,7 +966,11 @@ export const markets = {
             underlyingSymbol: "stETH",
           },
           underlyingCoinGeckoId: "wrapped-steth",
-          acceptedAssets: [{ symbol: "wstETH", name: "Wrapped stETH" }],
+          acceptedAssets: [
+            { symbol: "ETH", name: "Ethereum" },
+            { symbol: "stETH", name: "Lido Staked ETH" },
+            { symbol: "wstETH", name: "Wrapped stETH" },
+          ],
           rewardTokens: { default: ["wstETH"], additional: [] },
           addresses: {
             minter: contractsMarkets["steth-usd"].addresses.minter,
@@ -986,6 +990,10 @@ export const markets = {
             collateralToken: contractsMarkets["steth-usd"].addresses.collateralToken,
             wrappedCollateralToken:
               contractsMarkets["steth-usd"].addresses.wrappedCollateralToken,
+            genesisZap: contractsMarkets["steth-usd"].addresses.genesisZap,
+            peggedTokenZap: contractsMarkets["steth-usd"].addresses.peggedTokenZap,
+            leveragedTokenZap:
+              contractsMarkets["steth-usd"].addresses.leveragedTokenZap,
           },
           startBlock: contractsMarkets["steth-usd"].startBlock,
           peggedToken: {

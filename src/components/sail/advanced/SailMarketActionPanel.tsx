@@ -39,8 +39,8 @@ export function SailMarketActionPanel({
   depositsPaused = false,
 }: SailMarketActionPanelProps) {
   return (
-    <aside className="flex h-full min-h-0 flex-col">
-      <div className={`${SAIL_EMBEDDED_FORM_PANEL} flex min-h-0 flex-1 flex-col`}>
+    <aside className="flex flex-col">
+      <div className={`${SAIL_EMBEDDED_FORM_PANEL} flex flex-col`}>
         {isComingSoon ? (
           <div className="flex min-h-[16rem] flex-1 flex-col items-center justify-center gap-2 px-4 py-8 text-center">
             <p className={SAIL_ADVANCED_LIGHT_SECTION_TITLE}>Coming soon</p>
@@ -50,7 +50,7 @@ export function SailMarketActionPanel({
             </p>
           </div>
         ) : (
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-col">
             <SailManageModal
               embedded
               isOpen

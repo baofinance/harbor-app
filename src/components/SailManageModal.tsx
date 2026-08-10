@@ -1928,8 +1928,14 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
    txHash={txHash}
  />
  ) : (
- <div className="flex min-h-0 flex-1 flex-col">
-   <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+ <div className={embedded ? "flex flex-col space-y-3" : "flex min-h-0 flex-1 flex-col"}>
+   <div
+     className={
+       embedded
+         ? "space-y-3"
+         : "min-h-0 flex-1 space-y-3 overflow-y-auto"
+     }
+   >
    {!embedded ? (
      <DepositModalFlowOverview
        parts={

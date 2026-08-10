@@ -30,6 +30,12 @@ const ORACLE_TBTC_USD =
 const GENESIS_START = "2026-05-17T22:51:35Z";
 const GENESIS_END = "2027-01-01T00:00:00Z";
 
+/** stETH-USD zaps (GenesisETHZap_v1 / MinterETHZap_v1, deployed 2026-08-10). */
+const STETH_USD_GENESIS_ZAP =
+  "0x2E70388011a20d8dd80637765F8FA53e01F611ef" as `0x${string}`;
+const STETH_USD_MINTER_ZAP =
+  "0x103EE4E35C2C1C96bF6C040fd0c0769F0d3f82Eb" as `0x${string}`;
+
 function usdMarketGenesis(
   peggedSymbol: string,
   leveragedSymbol: string
@@ -63,6 +69,9 @@ function buildUsdStackMarket(args: {
   stabilityPoolManager: `0x${string}`;
   peggedRewardSymbol: string;
   leveragedRewardSymbol: string;
+  genesisZap?: `0x${string}`;
+  peggedTokenZap?: `0x${string}`;
+  leveragedTokenZap?: `0x${string}`;
 }): MarketConfig {
   return {
     id: args.id,
@@ -87,6 +96,11 @@ function buildUsdStackMarket(args: {
       underlyingCollateralToken: args.underlyingCollateralToken,
       rebalancePoolCollateral: ZERO,
       rebalancePoolLeveraged: ZERO,
+      ...(args.genesisZap ? { genesisZap: args.genesisZap } : {}),
+      ...(args.peggedTokenZap ? { peggedTokenZap: args.peggedTokenZap } : {}),
+      ...(args.leveragedTokenZap
+        ? { leveragedTokenZap: args.leveragedTokenZap }
+        : {}),
     },
     genesis: usdMarketGenesis(args.peggedRewardSymbol, args.leveragedRewardSymbol),
   };
@@ -110,6 +124,9 @@ export const mainnetUsdMarkets = {
     stabilityPoolManager: "0x377a4A6BEC4C75F2B7054B67Df03ce9A7497c33d",
     peggedRewardSymbol: "haUSD",
     leveragedRewardSymbol: "hsSTETH-USD",
+    genesisZap: STETH_USD_GENESIS_ZAP,
+    peggedTokenZap: STETH_USD_MINTER_ZAP,
+    leveragedTokenZap: STETH_USD_MINTER_ZAP,
   }),
   "paxg-usd": buildUsdStackMarket({
     id: "paxg-usd",

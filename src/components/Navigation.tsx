@@ -68,7 +68,7 @@ export default function Example() {
     ) : null}
     <Disclosure<"nav">
       as="nav"
-      className={`app-nav-shell relative w-full max-w-[1300px] shrink-0 ${navBgClass} after:pointer-events-none mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/20 mb-4 sm:mb-6`}
+      className={`app-nav-shell sticky top-0 z-50 w-full max-w-[1300px] shrink-0 ${navBgClass} after:pointer-events-none mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/20 mb-4 sm:mb-6`}
     >
       {/* Match index pages: `max-w-[1300px]` + `px-4 sm:px-10` on main */}
       <div className="w-full px-4 sm:px-10">
@@ -142,7 +142,7 @@ export default function Example() {
                 <PageLayoutToggle />
               </Suspense>
               <ConnectWallet />
-              <Popover className="relative">
+              <Popover className="relative" modal={false}>
                 <PopoverButton
                   className={HARBOR_NAV_ICON_BUTTON_CLASS}
                   aria-label="More navigation"
