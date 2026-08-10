@@ -3,6 +3,8 @@ import { markets as contractsMarkets } from "./contracts.index";
 // Check if we're using test2 contracts
 const useTest2 = process.env.NEXT_PUBLIC_USE_TEST2_CONTRACTS === "true";
 const useMegaeth = process.env.NEXT_PUBLIC_USE_MEGAETH === "true";
+/** Preview markets (`genesisActive: "soon"`) become live on staging for QA (e.g. haUSD zap). */
+const isStaging = process.env.NEXT_PUBLIC_APP_ENV === "staging";
 
 const getContractMarket = (marketId: string) => contractsMarkets[marketId];
 
@@ -16,6 +18,9 @@ const resolveStabilityPoolManager = (
 
 /** Maiden Voyage / genesis index visibility (see `getGenesisActiveSetting`). */
 export type GenesisActiveSetting = true | false | "soon" | "completed";
+
+/** On-chain zap contract API (`v1` = harbor-zap-contracts `_v1` family). */
+export type ZapApiVersion = "legacy" | "v1";
 
 export const markets = {
   // ============================================================================
@@ -954,10 +959,11 @@ export const markets = {
           sailActive: "soon" as const,
           test: false,
           status: "genesis" as const,
-          genesisActive: "soon" as GenesisActiveSetting,
+          genesisActive: (isStaging ? true : "soon") as GenesisActiveSetting,
           pegTarget: "USD",
           chainId: 1,
           zapper: true,
+          zapApiVersion: "v1" as ZapApiVersion,
           anyswap: false,
           chain: { name: "Ethereum", logo: "icons/eth.png" },
           collateral: {

@@ -24,7 +24,13 @@ import {
   USDC_ZAP_ABI,
   GENESIS_STETH_ZAP_PERMIT_ABI,
   GENESIS_USDC_ZAP_PERMIT_ABI,
+  GENESIS_ETH_ZAP_V1_ABI,
 } from "@/abis";
+import {
+  genesisV1MinWrappedFromEth,
+  genesisV1MinWrappedFromStEth,
+} from "@/utils/genesisEthZapV1";
+import { marketUsesZapV1 } from "@/utils/zapApiVersion";
 import {
  TransactionProgressModal,
  TransactionStep,
@@ -82,7 +88,13 @@ priceOracle?: string;
  /** Market chainId (for contract reads). Deposit mode (zapper/anyswap) comes from market config when provided. */
  chainId?: number;
  /** Full market config for deposit mode (zapper, anyswap). When provided, overrides chain-based defaults. */
- market?: { chainId?: number; zapper?: boolean; anyswap?: boolean; [k: string]: unknown };
+ market?: {
+   chainId?: number;
+   zapper?: boolean;
+   anyswap?: boolean;
+   zapApiVersion?: "legacy" | "v1";
+   [k: string]: unknown;
+ };
  onSuccess?: () => void;
  embedded?: boolean;
 }
@@ -333,6 +345,7 @@ const isFXSAVE = selectedAsset.toLowerCase() ==="fxsave";
 // Deposit mode from market config (zapper, anyswap); fallback to chainId when market not provided
 const depositMode = getDepositMode(market ?? (chainId != null ? { chainId } : undefined));
 const { collateralOnly, nativeTokenLabel, isMegaEth } = depositMode;
+const useZapV1 = marketUsesZapV1(market);
 
 // Get genesis zap address from marketAddresses prop
 // Note: Legacy contracts object doesn't have genesisZap, use market config instead
@@ -1121,6 +1134,22 @@ if (includePermitAttempt) {
 
    try {
      if (params.type === "steth") {
+       if (useZapV1) {
+         return await writeContractAsync({
+           address: genesisZapAddress as `0x${string}`,
+           abi: GENESIS_ETH_ZAP_V1_ABI,
+           functionName: "zapCollateralWithPermit",
+           args: [
+             params.amount,
+             params.minOut,
+             address as `0x${string}`,
+             permitResult.deadline,
+             permitResult.permitSig.v,
+             permitResult.permitSig.r,
+             permitResult.permitSig.s,
+           ],
+         });
+       }
        return await writeContractAsync({
          address: genesisZapAddress as `0x${string}`,
          abi: [...ZAP_ABI, ...GENESIS_STETH_ZAP_PERMIT_ABI] as const,
@@ -1420,7 +1449,21 @@ setTxHash(null);
       if (!ethAmount || ethAmount <= 0n) {
         throw new Error("Invalid ETH amount for deposit");
       }
-      
+
+      if (useZapV1) {
+        const minWstETHOut = await genesisV1MinWrappedFromEth(
+          publicClient ?? undefined,
+          genesisZapAddress,
+          ethAmount
+        );
+        depositHash = await writeContractAsync({
+          address: genesisZapAddress,
+          abi: GENESIS_ETH_ZAP_V1_ABI,
+          functionName: "zapNativeAsset",
+          args: [address as `0x${string}`, minWstETHOut, 0n],
+          value: ethAmount,
+        });
+      } else {
       // Use zapEth for ETH deposits with slippage protection
       // Contract flow: ETH → stETH (via submit, 1:1) → wstETH (via wrap) → Genesis
       // stETH.submit() returns stETH tokens 1:1 with ETH (not shares)
@@ -1445,28 +1488,34 @@ setTxHash(null);
         args: [address as `0x${string}`, minWstETHOut, minEthEquivalentOut],
         value: ethAmount,
       });
+      }
       
       // Clean up swap amount if used
       if (needsETHZapAfterSwap) {
         delete (window as any).__swapEthAmount;
       }
     } else if (isStETH && useETHZap && genesisZapAddress && wstETHAddress) {
-      // Use zapStEth for stETH deposits with slippage protection
-      // Get expected wstETH from stETH amount
-      const expectedWstETH = await publicClient.readContract({
-        address: wstETHAddress,
-        abi: WSTETH_ABI,
-        functionName: "getWstETHByStETH",
-        args: [amountBigInt],
-      });
-      
-      // Apply 1% slippage buffer (99% of expected)
-      const minWstETHOut = (expectedWstETH * 99n) / 100n;
+      let resolvedMinWstETHOut: bigint;
+      if (useZapV1) {
+        resolvedMinWstETHOut = await genesisV1MinWrappedFromStEth(
+          publicClient ?? undefined,
+          genesisZapAddress,
+          amountBigInt
+        );
+      } else {
+        const expectedWstETH = await publicClient.readContract({
+          address: wstETHAddress,
+          abi: WSTETH_ABI,
+          functionName: "getWstETHByStETH",
+          args: [amountBigInt],
+        });
+        resolvedMinWstETHOut = (expectedWstETH * 99n) / 100n;
+      }
 
       const permitHash = await tryPermitZap({
         type: "steth",
         amount: amountBigInt,
-        minOut: minWstETHOut,
+        minOut: resolvedMinWstETHOut,
       });
 
       if (permitHash) {
@@ -1485,9 +1534,11 @@ setTxHash(null);
 
         depositHash = await writeContractAsync({
           address: genesisZapAddress,
-          abi: ZAP_ABI,
-          functionName:"zapStEth",
-          args: [amountBigInt, address as `0x${string}`, minWstETHOut],
+          abi: useZapV1 ? GENESIS_ETH_ZAP_V1_ABI : ZAP_ABI,
+          functionName: useZapV1 ? "zapCollateral" : "zapStEth",
+          args: useZapV1
+            ? [amountBigInt, resolvedMinWstETHOut, address as `0x${string}`]
+            : [amountBigInt, address as `0x${string}`, resolvedMinWstETHOut],
         });
       }
     } else if ((isUSDC || needsSwap) && useUSDCZap && genesisZapAddress) {

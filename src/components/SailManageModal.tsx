@@ -17,8 +17,12 @@ import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
 import { REDEEM_LEVERAGED_WITH_PERMIT_ABI } from "@/abis/redeemPermit";
 import { WSTETH_ABI } from "@/abis";
-import { MINTER_ETH_ZAP_V3_ABI } from "@/abis";
+import { MINTER_ETH_ZAP_V3_ABI, MINTER_ETH_ZAP_V1_ABI } from "@/abis";
 import { MINTER_USDC_ZAP_V3_ABI } from "@/abis";
+import {
+  marketUsesZapV1,
+  minterEthNativeZapFunctionName,
+} from "@/utils/zapApiVersion";
 import { calculateDeadline } from "@/utils/permit";
 import { usePermitFlow } from "@/hooks/usePermitFlow";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
@@ -316,6 +320,8 @@ const needsSwap =
 
 const useETHZap = useZap && isWstETHMarket && (isNativeETH || isStETH || needsSwap);
 const useUSDCZap = useZap && isFxUSDMarket && (isUSDC || isFxUSD || needsSwap);
+const useZapV1 = marketUsesZapV1(market);
+const ethZapAbi = useZapV1 ? MINTER_ETH_ZAP_V1_ABI : MINTER_ETH_ZAP_V3_ABI;
 
 // Get fxSAVE rate for USDC zap calculations
 const priceOracleAddress = market.addresses?.collateralPrice as `0x${string}` | undefined;
@@ -1180,8 +1186,8 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
        if (includeSwap || isNativeETH) {
          mintHash = await writeContractAsync({
            address: zapAddress,
-           abi: MINTER_ETH_ZAP_V3_ABI,
-           functionName: "zapBaseAssetToLeveraged",
+           abi: ethZapAbi,
+           functionName: minterEthNativeZapFunctionName("ToLeveraged", useZapV1),
            args: [
              minWrappedCollateralOut,
              address as `0x${string}`,
@@ -1216,7 +1222,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
           try {
             mintHash = await writeContractAsync({
               address: zapAddress,
-              abi: MINTER_ETH_ZAP_V3_ABI,
+              abi: ethZapAbi,
               functionName: "zapCollateralToLeveragedWithPermit",
               args: [
                 amountForMint,
@@ -1272,7 +1278,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
           
           mintHash = await writeContractAsync({
             address: zapAddress,
-            abi: MINTER_ETH_ZAP_V3_ABI,
+            abi: ethZapAbi,
             functionName: "zapCollateralToLeveraged",
             args: [
               amountForMint,
