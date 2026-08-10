@@ -2,14 +2,18 @@
 
 import type { DefinedMarket } from "@/config/markets";
 import { SailConnectWalletStripNotice } from "@/components/sail/advanced/SailConnectWalletStripNotice";
-import { useSailPositionPnL } from "@/hooks/useSailPositionPnL";
-import { formatPnL, formatUSD } from "@/utils/sailDisplayFormat";
 import {
-  HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS,
-  HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS,
-  HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS,
-  HARBOR_STAT_TILE_INTRO_STRIP_SHELL_CLASS,
-} from "@/components/shared/harborStatTileStyles";
+  SAIL_ADVANCED_HEADER_STRIP_DIVIDE,
+  SAIL_ADVANCED_HEADER_STRIP_LABEL,
+  SAIL_ADVANCED_HEADER_STRIP_SHELL,
+  SAIL_ADVANCED_HEADER_STRIP_VALUE,
+} from "@/components/sail/advanced/sailAdvancedStyles";
+import { useSailPositionPnL } from "@/hooks/useSailPositionPnL";
+import {
+  formatLeverage,
+  formatPnL,
+  formatUSD,
+} from "@/utils/sailDisplayFormat";
 
 export type SailMarketPositionBarProps = {
   market: DefinedMarket;
@@ -17,9 +21,31 @@ export type SailMarketPositionBarProps = {
   currentValueUSD?: number;
   leveragedTokenPriceUSD?: number;
   isConnected: boolean;
+  leverageRatio?: bigint;
+  rebalanceThresholdLabel?: string;
 };
 
-const SAIL_POSITION_STAT_VALUE = `truncate ${HARBOR_STAT_TILE_INTRO_METRIC_VALUE_CLASS} text-xs`;
+const SAIL_POSITION_STAT_VALUE = SAIL_ADVANCED_HEADER_STRIP_VALUE;
+const SAIL_POSITION_STAT_LABEL = SAIL_ADVANCED_HEADER_STRIP_LABEL;
+
+function StatCell({
+  label,
+  value,
+  valueClassName = SAIL_POSITION_STAT_VALUE,
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col items-center justify-center px-3 py-2.5 text-center">
+      <span className={SAIL_POSITION_STAT_LABEL}>{label}</span>
+      <span className={valueClassName} title={value}>
+        {value}
+      </span>
+    </div>
+  );
+}
 
 function formatPositionPnL(
   unrealizedPnL: number,
@@ -43,8 +69,8 @@ function formatPositionPnL(
   const pctText = ` (${unrealizedPnLPercent >= 0 ? "+" : ""}${unrealizedPnLPercent.toFixed(2)}%)`;
   const colorClass =
     unrealizedPnL > 0
-      ? `${SAIL_POSITION_STAT_VALUE} text-harbor-mint`
-      : `${SAIL_POSITION_STAT_VALUE} text-harbor-coral`;
+      ? `${SAIL_POSITION_STAT_VALUE} text-[#2d6b5c]`
+      : `${SAIL_POSITION_STAT_VALUE} text-[#c45c4e]`;
 
   return {
     text: `${formatted.text}${pctText}`,
@@ -52,13 +78,15 @@ function formatPositionPnL(
   };
 }
 
-/** Per-market position value and PnL — header row beside wallet stats. */
+/** Per-market position value, PnL, and leverage facts — header row beside wallet stats. */
 export function SailMarketPositionBar({
   market,
   userDeposit,
   currentValueUSD,
   leveragedTokenPriceUSD,
   isConnected,
+  leverageRatio,
+  rebalanceThresholdLabel,
   embedded = false,
   className = "",
 }: SailMarketPositionBarProps & {
@@ -98,15 +126,15 @@ export function SailMarketPositionBar({
   );
 
   const shellClass = embedded
-    ? `grid w-full grid-cols-2 divide-x divide-white/[0.08] ${className}`.trim()
-    : `${HARBOR_STAT_TILE_INTRO_STRIP_SHELL_CLASS} grid grid-cols-2 divide-x divide-white/[0.08] ${className}`.trim();
+    ? `grid w-full grid-cols-2 ${SAIL_ADVANCED_HEADER_STRIP_DIVIDE} sm:grid-cols-4 sm:divide-y-0 ${className}`.trim()
+    : `${SAIL_ADVANCED_HEADER_STRIP_SHELL} grid grid-cols-2 ${SAIL_ADVANCED_HEADER_STRIP_DIVIDE} sm:grid-cols-4 sm:divide-y-0 ${className}`.trim();
 
   if (!isConnected) {
     return (
       <div className={shellClass} aria-label="Your position in this market">
         <SailConnectWalletStripNotice
           message="Connect your wallet to view your position in this market."
-          className="col-span-2"
+          className="col-span-2 sm:col-span-4"
         />
       </div>
     );
@@ -114,18 +142,20 @@ export function SailMarketPositionBar({
 
   return (
     <div className={shellClass} aria-label="Your position in this market">
-      <div className={`${HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS} px-3 sm:py-2.5`}>
-        <span className={`${HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS} text-[10px] tracking-wide`}>
-          Your position
-        </span>
-        <span className={SAIL_POSITION_STAT_VALUE}>{positionValue}</span>
-      </div>
-      <div className={`${HARBOR_STAT_TILE_INTRO_STRIP_CELL_CLASS} px-3 sm:py-2.5`}>
-        <span className={`${HARBOR_STAT_TILE_INTRO_METRIC_LABEL_CLASS} text-[10px] tracking-wide`}>
-          PnL
-        </span>
-        <span className={pnl.valueClassName}>{pnl.text}</span>
-      </div>
+      <StatCell label="Your position" value={positionValue} />
+      <StatCell
+        label="PnL"
+        value={pnl.text}
+        valueClassName={pnl.valueClassName}
+      />
+      <StatCell
+        label="Rebalances at"
+        value={rebalanceThresholdLabel ?? "—"}
+      />
+      <StatCell
+        label="Current leverage"
+        value={formatLeverage(leverageRatio)}
+      />
     </div>
   );
 }

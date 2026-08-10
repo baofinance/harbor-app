@@ -40,6 +40,7 @@ interface SailMarketMultiSeriesChartProps {
 const SERIES_COLORS = {
   defaultRatio: SAIL_CHART_BASELINE_COLOR,
   hsPriceUsd: SAIL_CHART_HS_COLOR,
+  perpReturnPct: "#6D5BD0",
 } as const;
 
 function MultiSeriesTooltip({
@@ -78,11 +79,28 @@ function MultiSeriesTooltip({
   ];
 
   if (comparePerformance) {
-    items.push({
-      label: `${SAIL_CHART_LEVERAGE_TOKEN_LABEL} (return)`,
-      value: `${formatSailChartPercentChange(row.hsPriceUsd)} · ${formatSailChartUsdValue(hsAbs)}`,
-      color: SERIES_COLORS.hsPriceUsd,
-    });
+    const showNetComparison =
+      row.perpReturnPct != null && row.sailNetReturnPct != null;
+    items.push(
+      showNetComparison
+        ? {
+            label: "Sail net (return)",
+            value: formatSailChartPercentChange(row.sailNetReturnPct),
+            color: SERIES_COLORS.hsPriceUsd,
+          }
+        : {
+            label: `${SAIL_CHART_LEVERAGE_TOKEN_LABEL} (return)`,
+            value: `${formatSailChartPercentChange(row.hsPriceUsd)} · ${formatSailChartUsdValue(hsAbs)}`,
+            color: SERIES_COLORS.hsPriceUsd,
+          },
+    );
+    if (row.perpReturnPct != null) {
+      items.push({
+        label: "Hyperliquid comparison (return)",
+        value: formatSailChartPercentChange(row.perpReturnPct),
+        color: SERIES_COLORS.perpReturnPct,
+      });
+    }
   }
 
   return (
@@ -124,6 +142,12 @@ export function SailMarketMultiSeriesChart({
 }: SailMarketMultiSeriesChartProps) {
   const comparePerformance = showHsPriceUsd;
   const chartData = toRechartsSailChartData(data, comparePerformance);
+  const showPerpBenchmark =
+    comparePerformance &&
+    chartData.some((row) => row.perpReturnPct != null);
+  const showNetComparison =
+    showPerpBenchmark &&
+    chartData.some((row) => row.sailNetReturnPct != null);
 
   const legendPayload = comparePerformance
     ? [
@@ -133,10 +157,21 @@ export function SailMarketMultiSeriesChart({
           color: SERIES_COLORS.defaultRatio,
         },
         {
-          value: `${SAIL_CHART_LEVERAGE_TOKEN_LABEL} (% chg)`,
+          value: showNetComparison
+            ? "Sail net (% chg)"
+            : `${SAIL_CHART_LEVERAGE_TOKEN_LABEL} (% chg)`,
           type: "line" as const,
           color: SERIES_COLORS.hsPriceUsd,
         },
+        ...(showPerpBenchmark
+          ? [
+              {
+                value: "Hyperliquid comparison (% chg)",
+                type: "line" as const,
+                color: SERIES_COLORS.perpReturnPct,
+              },
+            ]
+          : []),
       ]
     : [
         {
@@ -269,8 +304,12 @@ export function SailMarketMultiSeriesChart({
           <Line
             yAxisId="left"
             type="monotone"
-            dataKey="hsPriceUsd"
-            name={`${SAIL_CHART_LEVERAGE_TOKEN_LABEL} (% chg)`}
+            dataKey={showNetComparison ? "sailNetReturnPct" : "hsPriceUsd"}
+            name={
+              showNetComparison
+                ? "Sail net (% chg)"
+                : `${SAIL_CHART_LEVERAGE_TOKEN_LABEL} (% chg)`
+            }
             stroke={SERIES_COLORS.hsPriceUsd}
             strokeWidth={2.5}
             dot={false}
@@ -279,6 +318,26 @@ export function SailMarketMultiSeriesChart({
               strokeWidth: 2,
               fill: "#fff",
               stroke: SERIES_COLORS.hsPriceUsd,
+            }}
+            connectNulls
+            isAnimationActive={false}
+          />
+        ) : null}
+        {showPerpBenchmark ? (
+          <Line
+            yAxisId="left"
+            type="monotone"
+            dataKey="perpReturnPct"
+            name="Hyperliquid comparison (% chg)"
+            stroke={SERIES_COLORS.perpReturnPct}
+            strokeWidth={2}
+            strokeDasharray="5 3"
+            dot={false}
+            activeDot={{
+              r: 4,
+              strokeWidth: 2,
+              fill: "#fff",
+              stroke: SERIES_COLORS.perpReturnPct,
             }}
             connectNulls
             isAnimationActive={false}

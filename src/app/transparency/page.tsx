@@ -305,10 +305,6 @@ function MarketCard({
     const avgPrice = (market.minPrice + market.maxPrice) / 2n;
     const maxPrice = market.maxPrice; // Use maxPrice for collateral price (matches anchor page which uses maxUnderlyingPrice)
     const avgRate = (market.minRate + market.maxRate) / 2n;
-    const healthStatus = getHealthColor(
-        market.collateralRatio,
-        market.rebalanceThreshold
-    );
 
     const tokenPrices = tokenPricesByMarket[market.marketId];
 
@@ -324,9 +320,6 @@ function MarketCard({
     const leverageDisplay = isGenesisPending
         ? "-"
         : formatLeverageRatio(market.leverageRatio);
-    const healthBadgeStatus: HealthStatus = isGenesisPending
-        ? "genesis"
-        : healthStatus;
     const peggedTokenSymbol = marketCfg?.peggedToken?.symbol || "haETH";
     const leveragedTokenSymbol = marketCfg?.leveragedToken?.symbol || "hsFXUSD-ETH";
     const collateralHeldSymbol: string =
@@ -335,9 +328,16 @@ function MarketCard({
     const minterAddress =
         (market.minterAddress as `0x${string}` | undefined) ??
         (marketCfg?.addresses?.minter as `0x${string}` | undefined);
-    const volatilityProtection = minterAddress
-        ? volatilityProtectionMap.get(minterAddress.toLowerCase())?.protection ?? "-"
-        : "-";
+    const volatilityProtectionData = minterAddress
+        ? volatilityProtectionMap.get(minterAddress.toLowerCase())
+        : undefined;
+    const volatilityProtection = volatilityProtectionData?.protection ?? "-";
+    const healthStatus = getHealthColor(
+        volatilityProtectionData?.protectionPercent
+    );
+    const healthBadgeStatus: HealthStatus = isGenesisPending
+        ? "genesis"
+        : healthStatus;
 
     // collateralTokenBalance is in underlying-equivalent units (fxUSD for fxSAVE markets, stETH for wstETH markets)
     // Convert to wrapped collateral units using avgRate (underlying per wrapped)

@@ -2,8 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DefinedMarket } from "@/config/markets";
+import { isSailSoonUi } from "@/config/markets";
 import type { SailContractReads } from "@/types/sail";
-import type { SailMarketDetailMetrics } from "@/utils/sailMarketMetrics";
+import {
+  isSailDepositsPausedByLeverage,
+  type SailMarketDetailMetrics,
+} from "@/utils/sailMarketMetrics";
 import { buildSailUserPositionLabel } from "@/utils/sailUserPositionLabel";
 import { SailMarketActionPanel } from "./SailMarketActionPanel";
 import { SailMarketChartColumn } from "./SailMarketChartColumn";
@@ -12,7 +16,10 @@ import { SailMarketInfoFooter } from "./SailMarketInfoFooter";
 import { SailMarketMetricsCollapsible } from "./SailMarketMetricsCollapsible";
 import { SailMobileTradeBar } from "./SailMobileTradeBar";
 import type { SailWalletStatsStripProps } from "./SailWalletStatsStrip";
-import { SAIL_ADVANCED_MAIN_GRID_CLASS } from "./sailAdvancedStyles";
+import {
+  SAIL_ADVANCED_FROSTED_LIGHT_PANEL,
+  SAIL_ADVANCED_MAIN_GRID_CLASS,
+} from "./sailAdvancedStyles";
 
 const SAIL_TRADE_PANEL_ID = "sail-trade-panel";
 
@@ -64,9 +71,14 @@ export function SailAdvancedLayout({
 }: SailAdvancedLayoutProps) {
   const [tradeTab, setTradeTab] = useState<"mint" | "redeem">("mint");
 
+  const isComingSoon = selectedMarket ? isSailSoonUi(selectedMarket) : false;
+  const isDepositsPaused = isSailDepositsPausedByLeverage(
+    selectedMetrics?.leverageRatio,
+  );
+
   useEffect(() => {
-    setTradeTab("mint");
-  }, [selectedMarketId]);
+    setTradeTab(isDepositsPaused ? "redeem" : "mint");
+  }, [selectedMarketId, isDepositsPaused]);
 
   const scrollToTradePanel = useCallback(() => {
     document
@@ -76,10 +88,11 @@ export function SailAdvancedLayout({
 
   const openTradeTab = useCallback(
     (tab: "mint" | "redeem") => {
+      if (tab === "mint" && isDepositsPaused) return;
       setTradeTab(tab);
       requestAnimationFrame(() => scrollToTradePanel());
     },
-    [scrollToTradePanel],
+    [isDepositsPaused, scrollToTradePanel],
   );
 
   const dropdownOptions = useMemo(
@@ -103,6 +116,7 @@ export function SailAdvancedLayout({
               tokenPricesByMarket[marketId]?.leveragedPriceUSD,
             )
           : { hasPosition: false as const };
+        const comingSoon = isSailSoonUi(market);
 
         return {
           marketId,
@@ -110,6 +124,9 @@ export function SailAdvancedLayout({
           leverageRatio,
           hasPosition: position.hasPosition,
           positionLabel: position.hasPosition ? position.label : undefined,
+          isComingSoon: comingSoon,
+          isDepositsPaused:
+            !comingSoon && isSailDepositsPausedByLeverage(leverageRatio),
         };
       }),
     [
@@ -131,9 +148,11 @@ export function SailAdvancedLayout({
     );
   }
 
+  const haTokenSymbol =
+    selectedMarket.peggedToken?.symbol || "ha token";
 
   return (
-    <div className="space-y-4 pb-[calc(4.25rem+env(safe-area-inset-bottom))] lg:pb-0">
+    <div className="space-y-5 pb-[calc(4.25rem+env(safe-area-inset-bottom))] lg:pb-0">
       <SailMarketHeader
         selectedMarketId={selectedMarketId}
         selectedMarket={selectedMarket}
@@ -146,9 +165,27 @@ export function SailAdvancedLayout({
           leveragedTokenPriceUSD,
           isConnected,
         }}
+        leverageRatio={selectedMetrics?.leverageRatio}
+        rebalanceThresholdLabel={selectedMetrics?.rebalanceThresholdLabel}
       />
 
-      <div className="space-y-4">
+      {isDepositsPaused && !isComingSoon ? (
+        <div
+          className={`overflow-hidden rounded-xl px-4 py-3 ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`}
+          role="status"
+        >
+          <p className="text-sm font-semibold text-[#1E4775]">
+            Deposits paused
+          </p>
+          <p className="mt-1 text-sm leading-snug text-[#1E4775]/75">
+            More {haTokenSymbol} needs to be minted for the leverage function to
+            work as expected on this market. Selling existing sail tokens remains
+            available.
+          </p>
+        </div>
+      ) : null}
+
+      <div className="space-y-4 pt-0.5">
         <div className={`relative z-0 ${SAIL_ADVANCED_MAIN_GRID_CLASS}`}>
           <div className="order-1 flex min-h-0 flex-col gap-3 lg:order-none lg:h-full">
             <div className="flex min-h-[22rem] flex-1 flex-col sm:min-h-[26rem] lg:min-h-0">
@@ -172,6 +209,8 @@ export function SailAdvancedLayout({
               ethPrice={ethPrice}
               wstETHPrice={wstETHPrice}
               fxSAVEPrice={fxSAVEPrice}
+              isComingSoon={isComingSoon}
+              depositsPaused={isDepositsPaused}
               marketFees={
                 selectedMetrics
                   ? {
@@ -192,10 +231,13 @@ export function SailAdvancedLayout({
         />
       </div>
 
-      <SailMobileTradeBar
-        onMint={() => openTradeTab("mint")}
-        onRedeem={() => openTradeTab("redeem")}
-      />
+      {isComingSoon ? null : (
+        <SailMobileTradeBar
+          onMint={() => openTradeTab("mint")}
+          onRedeem={() => openTradeTab("redeem")}
+          mintDisabled={isDepositsPaused}
+        />
+      )}
 
       <SailMarketInfoFooter />
     </div>

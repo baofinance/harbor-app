@@ -1,10 +1,27 @@
 import type { DefinedMarket } from "@/config/markets";
+import { isSailSoonUi } from "@/config/markets";
 import {
   bandsFromConfig,
   getCurrentFee,
   type FeeBand,
 } from "@/utils/sailFeeBands";
-import { formatToken } from "@/utils/sailDisplayFormat";
+import { formatLeverageFromCollateralRatio, formatToken } from "@/utils/sailDisplayFormat";
+
+/** 1.0x leverage in WAD (18 decimals). */
+const ONE_X_LEVERAGE_WAD = 10n ** 18n;
+/** Treat ≤1.005x as 1.00x (display rounds to two decimals). */
+const ONE_X_LEVERAGE_MAX_WAD = (ONE_X_LEVERAGE_WAD * 1005n) / 1000n;
+
+/**
+ * When sail leverage is ~1x, the market is almost entirely leveraged tokens —
+ * more ha (pegged) liquidity is needed before leverage works. Deposits should pause.
+ */
+export function isSailDepositsPausedByLeverage(
+  leverageRatio: bigint | undefined,
+): boolean {
+  if (leverageRatio === undefined || leverageRatio <= 0n) return false;
+  return leverageRatio <= ONE_X_LEVERAGE_MAX_WAD;
+}
 
 export type SailTvlPriceInputs = {
   wrappedRate?: bigint;
@@ -215,7 +232,7 @@ export function buildSailMarketDetailMetrics(input: {
 
   const rebalanceThresholdLabel =
     minCollateralRatio !== undefined
-      ? `${((Number(minCollateralRatio) / 1e18) * 100).toFixed(0)}%`
+      ? formatLeverageFromCollateralRatio(minCollateralRatio)
       : undefined;
 
   return {
@@ -247,17 +264,30 @@ export function buildSailMarketDetailMetrics(input: {
   };
 }
 
-/** Pick highest-TVL market; tie-break by stable sort on marketId. */
+/** Pick highest-TVL live market; skip coming-soon and ~1x leverage (deposits paused). Tie-break by marketId. */
 export function pickDefaultSailMarketId(
   markets: readonly [string, DefinedMarket][],
-  tvlById: ReadonlyMap<string, number | undefined>
+  tvlById: ReadonlyMap<string, number | undefined>,
+  leverageById?: ReadonlyMap<string, bigint | undefined>,
 ): string | null {
   if (markets.length === 0) return null;
+
+  const liveMarkets = markets.filter(([id, market]) => {
+    if (isSailSoonUi(market)) return false;
+    if (
+      leverageById &&
+      isSailDepositsPausedByLeverage(leverageById.get(id))
+    ) {
+      return false;
+    }
+    return true;
+  });
+  const candidates = liveMarkets.length > 0 ? liveMarkets : markets;
 
   let bestId: string | null = null;
   let bestTvl = -1;
 
-  for (const [id] of markets) {
+  for (const [id] of candidates) {
     const tvl = tvlById.get(id);
     if (tvl === undefined || tvl <= 0) continue;
     if (tvl > bestTvl || (tvl === bestTvl && (bestId === null || id < bestId))) {
@@ -268,6 +298,6 @@ export function pickDefaultSailMarketId(
 
   if (bestId) return bestId;
 
-  const sorted = [...markets].map(([id]) => id).sort();
+  const sorted = [...candidates].map(([id]) => id).sort();
   return sorted[0] ?? null;
 }

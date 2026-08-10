@@ -9,10 +9,7 @@ import {
   type MarketYieldPlan,
   type TokenPriceMap,
 } from "@/utils/marketYieldSnapshot";
-
-function poolKindLabel(kind: "collateral" | "leveraged") {
-  return kind === "collateral" ? "Anchor Pool" : "Sail Pool";
-}
+import { poolKindLabel } from "@/utils/adminPoolVisibility";
 
 type GlobalRewardSettingsProps = {
   marketGroups: MarketGroupLike[];
@@ -24,6 +21,8 @@ type GlobalRewardSettingsProps = {
   onApplyPoolAmounts: (
     injections: Record<string, { amount: string; enable: boolean }>,
   ) => void;
+  onSelectedPoolKeysChange?: (keys: Set<string>) => void;
+  visiblePoolKeys?: Set<string>;
 };
 
 export function GlobalRewardSettings({
@@ -34,6 +33,8 @@ export function GlobalRewardSettings({
   revenueSplitInput,
   onRevenueSplitChange,
   onApplyPoolAmounts,
+  onSelectedPoolKeysChange,
+  visiblePoolKeys,
 }: GlobalRewardSettingsProps) {
   const [expanded, setExpanded] = useState(true);
   const [minPoolTvlInput, setMinPoolTvlInput] = useState("1000");
@@ -61,8 +62,16 @@ export function GlobalRewardSettings({
 
   useEffect(() => {
     if (selectionTouched || isLoading || plans.length === 0) return;
-    setSelectedPoolKeys(new Set(poolKeysMeetingMinTvl(plans, minPoolTvlUsd)));
-  }, [plans, minPoolTvlUsd, isLoading, selectionTouched]);
+    const keys = poolKeysMeetingMinTvl(plans, minPoolTvlUsd);
+    const filtered = visiblePoolKeys
+      ? keys.filter((key) => visiblePoolKeys.has(key))
+      : keys;
+    setSelectedPoolKeys(new Set(filtered));
+  }, [plans, minPoolTvlUsd, isLoading, selectionTouched, visiblePoolKeys]);
+
+  useEffect(() => {
+    onSelectedPoolKeysChange?.(selectedPoolKeys);
+  }, [selectedPoolKeys, onSelectedPoolKeysChange]);
 
   const poolRows = useMemo(() => {
     const rows: Array<{
@@ -70,11 +79,23 @@ export function GlobalRewardSettings({
       line: MarketYieldPlan["anchorLine"];
     }> = [];
     for (const plan of plans) {
-      rows.push({ plan, line: plan.anchorLine });
-      rows.push({ plan, line: plan.sailLine });
+      if (!visiblePoolKeys || visiblePoolKeys.has(plan.anchorLine.poolKey)) {
+        rows.push({ plan, line: plan.anchorLine });
+      }
+      if (!visiblePoolKeys || visiblePoolKeys.has(plan.sailLine.poolKey)) {
+        rows.push({ plan, line: plan.sailLine });
+      }
     }
     return rows;
-  }, [plans]);
+  }, [plans, visiblePoolKeys]);
+
+  useEffect(() => {
+    if (!visiblePoolKeys) return;
+    setSelectedPoolKeys((prev) => {
+      const next = new Set([...prev].filter((key) => visiblePoolKeys.has(key)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [visiblePoolKeys]);
 
   const togglePool = useCallback((poolKey: string, checked: boolean) => {
     setSelectionTouched(true);
@@ -88,8 +109,12 @@ export function GlobalRewardSettings({
 
   const syncSelectionToMinTvl = useCallback(() => {
     setSelectionTouched(false);
-    setSelectedPoolKeys(new Set(poolKeysMeetingMinTvl(plans, minPoolTvlUsd)));
-  }, [plans, minPoolTvlUsd]);
+    const keys = poolKeysMeetingMinTvl(plans, minPoolTvlUsd);
+    const filtered = visiblePoolKeys
+      ? keys.filter((key) => visiblePoolKeys.has(key))
+      : keys;
+    setSelectedPoolKeys(new Set(filtered));
+  }, [plans, minPoolTvlUsd, visiblePoolKeys]);
 
   const handleApplySelected = useCallback(() => {
     const planByPoolKey = new Map<

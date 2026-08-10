@@ -7,6 +7,7 @@ import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import {
   formatLeverage,
+  formatLeverageFromCollateralRatio,
   formatPnL,
   formatRatio,
   formatUSD,
@@ -157,7 +158,7 @@ export function SailMarketExpandedView({
                 <>
                   {" "}
                   Rebalances at{" "}
-                  {((Number(minCollateralRatio) / 1e18) * 100).toFixed(0)}%
+                  {formatLeverageFromCollateralRatio(minCollateralRatio)}
                 </>
               )}
             </p>
@@ -278,7 +279,7 @@ export function SailMarketExpandedView({
 
             <div className={`${HARBOR_FROSTED_LIGHT_CARD_ROUNDED} p-3 h-full flex flex-col items-center text-center`}>
               <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
-                Leverage Ratio
+                Current leverage
               </h3>
               <p className="text-sm font-bold text-[#1E4775]">
                 {formatLeverage(leverageRatio)}

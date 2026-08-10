@@ -30,6 +30,25 @@ import {
   HARBOR_BTN_GLASS_SEGMENT_ACTIVE_LIGHT,
 } from "@/components/shared/harborButtonStyles";
 
+/** Standalone header metric cards on dark Sail chrome (wallet / this market). */
+export const SAIL_ADVANCED_HEADER_STRIP_SHELL = `rounded-xl overflow-hidden h-full ${HARBOR_FROSTED_LIGHT_CARD}`;
+
+export const SAIL_ADVANCED_HEADER_STRIP_DIVIDE =
+  "divide-x divide-y divide-[#1E4775]/10";
+
+export const SAIL_ADVANCED_HEADER_STRIP_LABEL =
+  "text-[10px] font-medium uppercase tracking-wide text-[#1E4775]/55";
+
+export const SAIL_ADVANCED_HEADER_STRIP_VALUE =
+  "mt-1 truncate font-mono text-xs font-semibold tabular-nums text-[#1E4775] sm:text-sm";
+
+/** @deprecated Outer header shell removed — title sits on page chrome. */
+export const SAIL_ADVANCED_HEADER_SHELL = `rounded-2xl p-4 sm:p-5 ${HARBOR_FROSTED_LIGHT_CARD}`;
+
+/** @deprecated */
+export const SAIL_ADVANCED_HEADER_DIVIDER =
+  "h-px w-full bg-gradient-to-r from-transparent via-[#1E4775]/18 to-transparent";
+
 /** Two-column Sail UI+ layout — chart/main left, trade panel right (lg+). */
 export const SAIL_ADVANCED_MAIN_GRID_COLUMNS =
   "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-stretch";
@@ -118,7 +137,7 @@ export const SAIL_MOBILE_TRADE_SELL_BUTTON_CLASS = `flex-1 rounded-lg px-4 py-2.
 export const SAIL_CHART_BASELINE_COLOR = "#1F9D6A";
 export const SAIL_CHART_HS_COLOR = "#FF8A7A";
 /** User-facing label for the leveraged token overlay series (not the hs* symbol). */
-export const SAIL_CHART_LEVERAGE_TOKEN_LABEL = "Leverage token";
+export const SAIL_CHART_LEVERAGE_TOKEN_LABEL = "Leveraged token";
 
 /** Series key beside Sail chart (e.g. “BTC per 1 ETH (% chg)”). */
 export const SAIL_CHART_LEGEND_CLASS =

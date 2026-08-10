@@ -3,10 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { DefinedMarket } from "@/config/markets";
 import { markets } from "@/config/markets";
+import InfoTooltip from "@/components/InfoTooltip";
 import { usePegTargetPrices } from "@/hooks/usePegTargetPrices";
 import { useChainlinkUsdHistory } from "@/hooks/useChainlinkUsdHistory";
 import { mergeChartData, useSailPriceHistory } from "@/hooks/useSailPriceHistory";
+import { useSailPerpBenchmark } from "@/hooks/useSailPerpBenchmark";
 import {
+  attachPerpBenchmarkSeries,
   buildSailMarketChartPoints,
   computeLiveDefaultRatio,
   computeSailChartWindowPerformance,
@@ -31,6 +34,44 @@ import {
 import {
   SailMarketMultiSeriesChart,
 } from "./SailMarketMultiSeriesChart";
+import { SailPerpBenchmarkSummary } from "./SailPerpBenchmarkSummary";
+
+const SAIL_CHART_COMPARISON_INFO = (
+  <div className="space-y-3 text-sm leading-relaxed">
+    <p>
+      Chart performance is measured versus the start of the selected time range
+      (not all-time). Toggle overlays to compare the leveraged token and a
+      modeled Hyperliquid perpetual against the underlying market.
+    </p>
+    <div>
+      <p className="font-semibold text-white">Hyperliquid comparison</p>
+      <p className="mt-1 text-white/85">
+        A same-capital backtest: both sides start with $1,000. Sail uses
+        historical token NAV with modeled mint/redeem fees. The Hyperliquid side
+        opens once at Sail’s leverage at the range start and is held without
+        rebalancing (no margin top-ups).
+      </p>
+    </div>
+    <ul className="list-disc space-y-1 pl-4 text-white/85">
+      <li>
+        Exposure mirrors the Sail market (e.g. long ETH / short the peg leg,
+        including HIP-3 markets like EUR where needed).
+      </li>
+      <li>
+        Costs include taker fees, small modeled slippage, historical funding,
+        and hour-close liquidation checks.
+      </li>
+      <li>
+        Sail net is NAV after fees; Hyperliquid is account equity after those
+        costs. “Liquidated” means modeled equity hit zero under the hold.
+      </li>
+    </ul>
+    <p className="text-white/70">
+      This is an illustrative comparison, not a guarantee of realized trader
+      PnL on Hyperliquid.
+    </p>
+  </div>
+);
 
 export type SailMarketChartProps = {
   marketId: string;
@@ -92,6 +133,7 @@ export function SailMarketChart({
 }: SailMarketChartProps) {
   const [timeRange, setTimeRange] = useState<SailChartTimeRange>("1M");
   const [internalShowHsPriceUsd, setInternalShowHsPriceUsd] = useState(true);
+  const [showPerpBenchmark, setShowPerpBenchmark] = useState(true);
   const showHsPriceUsd = showHsPriceOverlay ?? internalShowHsPriceUsd;
   const setShowHsPriceUsd = onShowHsPriceOverlayChange ?? setInternalShowHsPriceUsd;
 
@@ -106,7 +148,8 @@ export function SailMarketChart({
     [fetchDays]
   );
 
-  const leveragedTokenAddress = markets[marketId]?.addresses?.leveragedToken as
+  const selectedMarket = markets[marketId as keyof typeof markets];
+  const leveragedTokenAddress = selectedMarket?.addresses?.leveragedToken as
     | string
     | undefined;
 
@@ -153,7 +196,7 @@ export function SailMarketChart({
     error: subgraphError,
   } = useSailPriceHistory({
     tokenAddress: leveragedTokenAddress || "",
-    genesisAddress: markets[marketId]?.addresses?.genesis as string | undefined,
+    genesisAddress: selectedMarket?.addresses?.genesis as string | undefined,
     sinceGenesisEnd: true,
     daysBack: fetchDays,
     enabled: !!leveragedTokenAddress,
@@ -185,6 +228,29 @@ export function SailMarketChart({
     () => filterSailChartPointsByRange(chartPoints, timeRange),
     [chartPoints, timeRange]
   );
+  const benchmarkWindow = useMemo(() => {
+    if (filteredData.length < 2) return { start: null, end: null };
+    return {
+      start: filteredData[0]!.timestamp,
+      end: filteredData[filteredData.length - 1]!.timestamp,
+    };
+  }, [filteredData]);
+  const perpBenchmarkQuery = useSailPerpBenchmark({
+    marketId,
+    startTimestamp: benchmarkWindow.start,
+    endTimestamp: benchmarkWindow.end,
+    enabled: showPerpBenchmark && showHsPriceUsd,
+  });
+  const chartDataWithPerp = useMemo(
+    () =>
+      attachPerpBenchmarkSeries(
+        filteredData,
+        showPerpBenchmark
+          ? (perpBenchmarkQuery.data?.benchmark.points ?? [])
+          : [],
+      ),
+    [filteredData, showPerpBenchmark, perpBenchmarkQuery.data],
+  );
 
   const validDefaultPoints = filteredData.filter((p) => Number.isFinite(p.defaultRatio));
   const hasHsPriceData = useMemo(
@@ -194,8 +260,26 @@ export function SailMarketChart({
 
   const windowPerformance = useMemo(() => {
     if (!hasHsPriceData) return null;
-    return computeSailChartWindowPerformance(filteredData);
-  }, [filteredData, hasHsPriceData]);
+    const performance = computeSailChartWindowPerformance(filteredData);
+    const sailNetReturn = showPerpBenchmark
+      ? perpBenchmarkQuery.data?.benchmark.sailNetReturnPct
+      : null;
+    if (sailNetReturn == null) return performance;
+    return {
+      ...performance,
+      leverageTokenPerformancePct: sailNetReturn,
+      leverageTokenVsMarketPct:
+        performance.marketPerformancePct == null
+          ? null
+          : sailNetReturn - performance.marketPerformancePct,
+      leverageTokenIsNet: true,
+    };
+  }, [
+    filteredData,
+    hasHsPriceData,
+    showPerpBenchmark,
+    perpBenchmarkQuery.data,
+  ]);
 
   const formatTimestamp = useMemo(() => {
     return (timestamp: number) =>
@@ -245,14 +329,32 @@ export function SailMarketChart({
           color={SAIL_CHART_HS_COLOR}
           disabled={!hasHsPriceData && !isBlockingLoading}
         />
-        <div className="min-w-0 flex-1 text-xs text-[#1E4775]/60">
-          {isBlockingLoading
-            ? "Loading..."
-            : isEnrichingOracles
-              ? "Updating oracle data..."
-              : showHsPriceUsd && hasHsPriceData
-                ? "Performance vs start of range"
-                : `${validDefaultPoints.length} data points`}
+        <OverlayToggle
+          label="Hyperliquid comparison"
+          active={showPerpBenchmark}
+          onClick={() => {
+            setShowPerpBenchmark((current) => !current);
+            if (!showHsPriceUsd) setShowHsPriceUsd(true);
+          }}
+          color="#6D5BD0"
+          disabled={!hasHsPriceData && !isBlockingLoading}
+        />
+        <div className="flex min-w-0 flex-1 items-center gap-2 text-xs text-[#1E4775]/60">
+          {isBlockingLoading ? (
+            <span>Loading...</span>
+          ) : isEnrichingOracles ? (
+            <span>Loading market prices...</span>
+          ) : (
+            <InfoTooltip
+              side="bottom"
+              centerOnMobile
+              label={SAIL_CHART_COMPARISON_INFO}
+            >
+              <span className="inline-flex h-5 w-5 cursor-help items-center justify-center rounded-full border border-[#1E4775]/25 bg-white/70 text-[11px] font-semibold text-[#1E4775]/70 transition hover:border-[#1E4775]/40 hover:bg-white hover:text-[#1E4775]">
+                i
+              </span>
+            </InfoTooltip>
+          )}
         </div>
         <div className="flex flex-wrap justify-end gap-1.5 sm:gap-2">
           {SAIL_CHART_TIME_RANGES.map((range) => (
@@ -271,12 +373,25 @@ export function SailMarketChart({
           ))}
         </div>
       </div>
+      {showPerpBenchmark ? (
+        <div className="mb-2 shrink-0">
+          <SailPerpBenchmarkSummary
+            data={perpBenchmarkQuery.data ?? null}
+            isLoading={perpBenchmarkQuery.isLoading}
+            error={
+              perpBenchmarkQuery.error instanceof Error
+                ? perpBenchmarkQuery.error.message
+                : null
+            }
+          />
+        </div>
+      ) : null}
       <div className="min-h-0 flex-1">
         {isBlockingLoading ? (
           <div className="flex h-full items-center justify-center text-[#1E4775]/60">
             {isSubgraphLoading
               ? "Loading price history..."
-              : "Updating oracle data..."}
+              : "Loading market prices..."}
           </div>
         ) : validDefaultPoints.length === 0 ? (
           <div className="flex h-full items-center justify-center text-center text-sm text-[#1E4775]/60">
@@ -286,7 +401,7 @@ export function SailMarketChart({
           </div>
         ) : (
           <SailMarketMultiSeriesChart
-            data={filteredData}
+            data={chartDataWithPerp}
             config={config}
             showHsPriceUsd={showHsPriceUsd && hasHsPriceData}
             formatTimestamp={formatTimestamp}

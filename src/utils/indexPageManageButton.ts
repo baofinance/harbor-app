@@ -1,6 +1,6 @@
 /**
- * Primary "Manage" action on Genesis / Sail / Anchor index rows — one visual system.
- * Composed from {@link harborButtonStyles} tiers.
+ * Primary "Manage" action on Genesis / Sail / Anchor (Earn) index rows — one visual system.
+ * Uses `app-index-manage-btn`; MegaETH theme overrides in globals.css.
  */
 import {
   HARBOR_BTN_CORAL_DESKTOP_CLASS,

@@ -380,19 +380,18 @@ export function formatTokenBalance(
   return `${(num / 1000000).toFixed(2)}M`;
 }
 
+/**
+ * Health from volatility protection (% adverse move to 100% CR).
+ * Healthy when protection is at least 70%.
+ */
 export function getHealthColor(
-  collateralRatio: bigint,
-  threshold: bigint
+  protectionPercent: number | undefined
 ): "green" | "yellow" | "red" {
-  const cr = Number(collateralRatio);
-  const th = Number(threshold);
-
-  // If threshold is 0, use default thresholds
-  const greenThreshold = th > 0 ? th * 1.15 : 1.5e18;
-  const yellowThreshold = th > 0 ? th * 1.05 : 1.3e18;
-
-  if (cr >= greenThreshold) return "green";
-  if (cr >= yellowThreshold) return "yellow";
+  if (protectionPercent === undefined || Number.isNaN(protectionPercent)) {
+    return "yellow";
+  }
+  if (protectionPercent >= 70) return "green";
+  if (protectionPercent >= 35) return "yellow";
   return "red";
 }
 

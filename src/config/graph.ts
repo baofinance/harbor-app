@@ -6,6 +6,26 @@ const useTest2 = process.env.NEXT_PUBLIC_USE_TEST2_CONTRACTS === "true";
 // Default marks subgraph. Override with NEXT_PUBLIC_GRAPH_URL if needed.
 const DEFAULT_MARKS_URL = "https://api.studio.thegraph.com/query/1718836/harbor-marks/v0.1.5-maiden-fee-defer-20260513-2043";
 
+// Sail price/PnL subgraph (decentralized network). Gateway calls need NEXT_PUBLIC_GRAPH_API_KEY.
+const DEFAULT_SAIL_PRICE_URL =
+  "https://gateway.thegraph.com/api/subgraphs/id/GAWpqqYAhqbEpRZTiRGSwf4TNjARuLUhjr2S3x9eGRAZ";
+
+function resolveSailPriceGraphUrl(): string {
+  if (useTest2) {
+    return (
+      process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL_TEST2 ||
+      process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL ||
+      process.env.SAIL_PRICE_GRAPH_URL ||
+      DEFAULT_SAIL_PRICE_URL
+    );
+  }
+  return (
+    process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL ||
+    process.env.SAIL_PRICE_GRAPH_URL ||
+    DEFAULT_SAIL_PRICE_URL
+  );
+}
+
 export const GRAPH_CONFIG = {
   // Harbor Marks subgraph. Use env to override (e.g. gateway). Default: Studio (see DEFAULT_MARKS_URL).
   marks: {
@@ -20,13 +40,8 @@ export const GRAPH_CONFIG = {
   },
   // Sail Token Price subgraph (for price history and PnL)
   sailPrice: {
-    // Intentionally do NOT fall back to the marks subgraph; sail price/PnL needs its own schema.
-    // If this is empty, UI hooks will throw a clear error prompting configuration.
-    url: useTest2
-      ? process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL_TEST2 ||
-      process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL ||
-        ""
-      : process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL || "",
+    // Prefer env; fall back to the known production sail-tokens deployment.
+    url: resolveSailPriceGraphUrl(),
     chainId: 1,
     network: "mainnet",
   },
@@ -119,7 +134,17 @@ export const getSailPriceGraphUrl = (): string => {
   const url = GRAPH_CONFIG.sailPrice.url;
   if (!url) {
     throw new Error(
-      "Missing Sail price subgraph URL. Set NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL (production) or NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL_TEST2 (test2)."
+      "Missing Sail price subgraph URL. Set NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL (production) or NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL_TEST2 (test2).",
+    );
+  }
+  const graphApiKey = (process.env.NEXT_PUBLIC_GRAPH_API_KEY || "").trim();
+  if (
+    url.includes("gateway.thegraph.com") &&
+    !graphApiKey &&
+    process.env.NODE_ENV !== "test"
+  ) {
+    throw new Error(
+      "Sail price subgraph uses The Graph gateway and requires NEXT_PUBLIC_GRAPH_API_KEY.",
     );
   }
   return url;

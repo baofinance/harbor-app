@@ -28,6 +28,10 @@ function getUpstreamMainnetRpcUrl(): string {
   );
 }
 
+function getArchiveMainnetRpcUrl(): string {
+  return process.env.MAINNET_ARCHIVE_RPC_URL || getUpstreamMainnetRpcUrl();
+}
+
 /**
  * URL passed to wagmi/viem `http()` for browser reads.
  * When `NEXT_PUBLIC_USE_RPC_PROXY=true`, use same-origin `/api/rpc` so previews (e.g. Vercel)
@@ -207,6 +211,17 @@ export function getRpcClient() {
  */
 export function getMainnetRpcClient() {
   return getRpcClient();
+}
+
+/**
+ * Server-side client for historical block-state reads.
+ * Set MAINNET_ARCHIVE_RPC_URL when the standard provider does not retain archive state.
+ */
+export function getArchiveMainnetRpcClient() {
+  return createPublicClient({
+    chain: mainnetChain,
+    transport: http(getArchiveMainnetRpcUrl()),
+  });
 }
 
 /**

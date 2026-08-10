@@ -68,12 +68,20 @@ export function SailChartPerformanceSummary({
           color={SAIL_CHART_BASELINE_COLOR}
         />
         <PerformanceStat
-          label={SAIL_CHART_LEVERAGE_TOKEN_LABEL}
+          label={
+            performance.leverageTokenIsNet
+              ? "Sail net"
+              : SAIL_CHART_LEVERAGE_TOKEN_LABEL
+          }
           value={performance.leverageTokenPerformancePct}
           color={SAIL_CHART_HS_COLOR}
         />
         <PerformanceStat
-          label={`${SAIL_CHART_LEVERAGE_TOKEN_LABEL} vs ${marketPairLabel}`}
+          label={`${
+            performance.leverageTokenIsNet
+              ? "Sail net"
+              : SAIL_CHART_LEVERAGE_TOKEN_LABEL
+          } vs ${marketPairLabel}`}
           value={performance.leverageTokenVsMarketPct}
         />
       </div>

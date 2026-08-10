@@ -183,11 +183,31 @@ export function useSailSelectedMarket({
       return;
     }
 
+    const leverageByMarketId = new Map<string, bigint | undefined>();
+    for (const [id] of markets) {
+      const globalIndex = sailMarketIdToIndex.get(id);
+      if (globalIndex === undefined) continue;
+      const baseOffset = marketOffsets.get(globalIndex);
+      if (baseOffset === undefined) continue;
+      leverageByMarketId.set(
+        id,
+        readMarketSlot<bigint>(reads, baseOffset, 0),
+      );
+    }
+
     setSelectedMarketIdState((prev) => {
       if (prev && markets.some(([id]) => id === prev)) return prev;
-      return pickDefaultSailMarketId(markets, tvlByMarketId);
+      return pickDefaultSailMarketId(markets, tvlByMarketId, leverageByMarketId);
     });
-  }, [readsReady, markets, searchParams, tvlByMarketId]);
+  }, [
+    readsReady,
+    markets,
+    searchParams,
+    tvlByMarketId,
+    reads,
+    sailMarketIdToIndex,
+    marketOffsets,
+  ]);
 
   const setSelectedMarketId = useCallback(
     (marketId: string) => {

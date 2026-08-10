@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildSuggestedAdminTokenPrices,
   formatAdminPriceUsd,
+  formatAdminRewardPriceUsd,
   inferPegTargetFromHaSymbol,
   isPrimaryRewardTokenSymbol,
   resolveHaTokenUsdPrice,
@@ -74,12 +75,15 @@ describe("adminRewardTokenPrices", () => {
       });
 
     expect(suggestedDepositPrices[haEth]).toBe("3000.00");
-    expect(suggestedRewardPrices[fxSave]).toBe("1.05");
+    expect(suggestedRewardPrices[fxSave]).toBe("1.050000");
     expect(suggestedRewardPrices[usdc]).toBeUndefined();
   });
 
   it("formats admin USD prices", () => {
     expect(formatAdminPriceUsd(3000.456)).toBe("3000.46");
+    expect(formatAdminRewardPriceUsd(1.0945350483889254)).toBe(
+      "1.094535",
+    );
     expect(formatAdminPriceUsd(null)).toBe("");
   });
 });

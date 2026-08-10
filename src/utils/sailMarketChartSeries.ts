@@ -32,12 +32,17 @@ export interface SailMarketChartPoint {
   longUsd: number;
   shortUsd: number;
   hsPriceUsd: number;
+  /** Modeled same-capital perpetual account return for this timestamp. */
+  perpReturnPct?: number | null;
+  /** Sail return after modeled entry and endpoint exit fees. */
+  sailNetReturnPct?: number | null;
 }
 
 export type SailChartWindowPerformance = {
   marketPerformancePct: number | null;
   leverageTokenPerformancePct: number | null;
   leverageTokenVsMarketPct: number | null;
+  leverageTokenIsNet?: boolean;
 };
 
 export interface LiveSideUsdPrices {
@@ -322,13 +327,53 @@ export function buildSailMarketChartPoints(
 }
 
 /** Recharts treats null as a gap; NaN can break dual-axis line scales. */
-export type SailMarketChartRechartsPoint = SailMarketChartPoint & {
+export type SailMarketChartRechartsPoint = Omit<
+  SailMarketChartPoint,
+  "defaultRatio" | "hsPriceUsd"
+> & {
   defaultRatio: number | null;
   hsPriceUsd: number | null;
   /** Absolute values preserved when plotting relative performance. */
   defaultRatioAbs: number | null;
   hsPriceUsdAbs: number | null;
 };
+
+export function attachPerpBenchmarkSeries(
+  data: SailMarketChartPoint[],
+  benchmark: Array<{
+    timestamp: number;
+    perpReturnPct: number;
+    sailReturnPct: number;
+  }>,
+): SailMarketChartPoint[] {
+  if (benchmark.length === 0) {
+    return data.map((point) => ({
+      ...point,
+      perpReturnPct: null,
+      sailNetReturnPct: null,
+    }));
+  }
+  const ordered = [...benchmark].sort((a, b) => a.timestamp - b.timestamp);
+  let benchmarkIndex = 0;
+  let latestPerp: number | null = null;
+  let latestSail: number | null = null;
+
+  return data.map((point) => {
+    while (
+      benchmarkIndex < ordered.length &&
+      ordered[benchmarkIndex]!.timestamp <= point.timestamp
+    ) {
+      latestPerp = ordered[benchmarkIndex]!.perpReturnPct;
+      latestSail = ordered[benchmarkIndex]!.sailReturnPct;
+      benchmarkIndex++;
+    }
+    return {
+      ...point,
+      perpReturnPct: latestPerp,
+      sailNetReturnPct: latestSail,
+    };
+  });
+}
 
 function firstPositiveFinite(values: Array<number | null | undefined>): number | null {
   for (const value of values) {
@@ -365,7 +410,7 @@ function percentChangeFromBaseline(
   return ((current / baseline) - 1) * 100;
 }
 
-/** Window performance for market rate and leverage token vs start of selected range. */
+/** Window performance for market rate and leveraged token vs start of selected range. */
 export function computeSailChartWindowPerformance(
   data: SailMarketChartPoint[],
 ): SailChartWindowPerformance {

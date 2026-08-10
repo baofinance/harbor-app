@@ -39,6 +39,22 @@ export function formatLeverage(value: bigint | undefined): string {
   return `${leverage.toFixed(2)}x`;
 }
 
+/**
+ * Convert a collateral-ratio threshold (WAD) into the equivalent leverage label.
+ * CR = collateral / debt → leverage ≈ CR / (CR − 1).
+ */
+export function formatLeverageFromCollateralRatio(
+  collateralRatioWad: bigint | undefined,
+): string {
+  if (collateralRatioWad === undefined || collateralRatioWad <= BigInt(1e18)) {
+    return "-";
+  }
+  const cr = Number(collateralRatioWad) / 1e18;
+  const leverage = cr / (cr - 1);
+  if (!Number.isFinite(leverage) || leverage <= 0) return "-";
+  return `${leverage.toFixed(2)}x`;
+}
+
 export function formatPnL(value: number): { text: string; color: string } {
   const isPositive = value >= 0;
   const sign = isPositive ? "+" : "-";
