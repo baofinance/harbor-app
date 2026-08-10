@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DefinedMarket } from "@/config/markets";
 import {
   computeSailMarketTvlUsd,
+  isSailDepositsPausedByLeverage,
   pickDefaultSailMarketId,
   resolveMinCollateralRatio,
 } from "./sailMarketMetrics";
@@ -57,6 +58,36 @@ describe("pickDefaultSailMarketId", () => {
       ["a-market", undefined],
     ]);
     expect(pickDefaultSailMarketId(markets, tvl)).toBe("a-market");
+  });
+
+  it("skips ~1x leverage (deposits paused) markets when alternatives exist", () => {
+    const markets: [string, DefinedMarket][] = [
+      ["paused", wstEthMarket],
+      ["live", wstEthMarket],
+    ];
+    const tvl = new Map([
+      ["paused", 900],
+      ["live", 100],
+    ]);
+    const leverage = new Map<string, bigint | undefined>([
+      ["paused", 10n ** 18n],
+      ["live", 5n * 10n ** 18n],
+    ]);
+    expect(pickDefaultSailMarketId(markets, tvl, leverage)).toBe("live");
+  });
+});
+
+describe("isSailDepositsPausedByLeverage", () => {
+  it("treats 1.00x as paused", () => {
+    expect(isSailDepositsPausedByLeverage(10n ** 18n)).toBe(true);
+  });
+
+  it("treats normal leverage as not paused", () => {
+    expect(isSailDepositsPausedByLeverage(5n * 10n ** 18n)).toBe(false);
+  });
+
+  it("ignores missing leverage", () => {
+    expect(isSailDepositsPausedByLeverage(undefined)).toBe(false);
   });
 });
 

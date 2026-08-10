@@ -8,10 +8,15 @@ import {
 type SailMobileTradeBarProps = {
   onMint: () => void;
   onRedeem: () => void;
+  mintDisabled?: boolean;
 };
 
 /** Sticky Buy / Sell shortcuts — scrolls to the embedded trade panel on small screens. */
-export function SailMobileTradeBar({ onMint, onRedeem }: SailMobileTradeBarProps) {
+export function SailMobileTradeBar({
+  onMint,
+  onRedeem,
+  mintDisabled = false,
+}: SailMobileTradeBarProps) {
   return (
     <div
       className="fixed inset-x-0 bottom-0 z-40 border-t border-white/15 bg-[#0d2847]/92 backdrop-blur-lg lg:hidden"
@@ -21,7 +26,10 @@ export function SailMobileTradeBar({ onMint, onRedeem }: SailMobileTradeBarProps
         <button
           type="button"
           onClick={onMint}
-          className={SAIL_MOBILE_TRADE_BUY_BUTTON_CLASS}
+          disabled={mintDisabled}
+          className={`${SAIL_MOBILE_TRADE_BUY_BUTTON_CLASS} ${
+            mintDisabled ? "cursor-not-allowed opacity-40" : ""
+          }`}
         >
           Buy
         </button>

@@ -74,6 +74,8 @@ interface SailManageModalProps {
  fxSAVEPrice?: number | null;
  /** Current market buy/sell fee bands for embedded trade footer. */
  marketFees?: SailTradeMarketFees;
+ /** When true, mint/buy is disabled (e.g. ~1x leverage / insufficient ha liquidity). */
+ depositsPaused?: boolean;
 }
 
 type ModalStep =
@@ -118,13 +120,16 @@ export const SailManageModal = ({
  wstETHPrice: wstETHPriceProp,
  fxSAVEPrice: fxSAVEPriceProp,
  marketFees,
+ depositsPaused = false,
 }: SailManageModalProps) => {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const depositMode = getDepositMode(market);
   const { collateralOnly: isCollateralOnlyChain, nativeTokenLabel, isMegaEth } = depositMode;
   const marketChainId = (market as DefinedMarket & { chainId?: number }).chainId ?? 1;
-  const depositsBlocked = depositsBlockedForMarket(market);
+  const depositsBlocked =
+    depositsBlockedForMarket(market) || depositsPaused;
+  const haTokenSymbol = market.peggedToken?.symbol || "ha token";
   const { writeContractAsync } = useWriteContract();
   const { sendTransactionAsync } = useSendTransaction();
   const { switchChain } = useSwitchChain();
@@ -786,8 +791,21 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  }
  }, [isOpen, initialTab]);
 
+ // Embedded panel: follow parent tab (e.g. force Sell when deposits are paused)
+ useEffect(() => {
+   if (!embedded || !isOpen) return;
+   setActiveTab(initialTab);
+ }, [embedded, isOpen, initialTab]);
+
+ useEffect(() => {
+   if (depositsPaused && activeTab === "mint") {
+     setActiveTab("redeem");
+   }
+ }, [depositsPaused, activeTab]);
+
  // Handle tab change (clear error when switching, aligned with Genesis/Anchor)
  const handleTabChange = (tab:"mint" |"redeem") => {
+ if (depositsPaused && tab === "mint") return;
  if (step ==="input" || step ==="error") {
  setActiveTab(tab);
  setAmount("");
@@ -868,9 +886,11 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
 
  // Handle mint
  const handleMint = async () => {
- if (depositsBlockedForMarket(market)) {
+ if (depositsBlocked) {
  setError(
-   isMarketArchived(market)
+   depositsPaused
+     ? `Deposits are paused until more ${haTokenSymbol} is minted for leverage to work as expected.`
+     : isMarketArchived(market)
      ? "This market is archived. New mints are not accepted."
      : "Mints are unavailable while this market is in maintenance."
  );

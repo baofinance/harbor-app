@@ -2,7 +2,10 @@
 
 import type { DefinedMarket } from "@/config/markets";
 import { SailMarketEarnTagline } from "./SailMarketEarnTagline";
-import { SailMarketDropdown } from "./SailMarketDropdown";
+import {
+  SailMarketDropdown,
+  type SailMarketDropdownOption,
+} from "./SailMarketDropdown";
 import { SailMarketEducationStrip } from "./SailMarketEducationStrip";
 import {
   SailMarketPositionBar,
@@ -23,13 +26,7 @@ const SAIL_HEADER_STATS_GRID_CLASS =
 type SailMarketHeaderProps = {
   selectedMarketId: string | null;
   selectedMarket: DefinedMarket | null;
-  dropdownOptions: Array<{
-    marketId: string;
-    market: DefinedMarket;
-    leverageRatio?: bigint;
-    hasPosition?: boolean;
-    positionLabel?: string;
-  }>;
+  dropdownOptions: SailMarketDropdownOption[];
   onSelectMarket: (marketId: string) => void;
   walletStats: SailWalletStatsStripProps;
   marketPosition: Omit<SailMarketPositionBarProps, "market">;
