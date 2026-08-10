@@ -171,7 +171,7 @@ export function SailAdvancedLayout({
 
       {isDepositsPaused && !isComingSoon ? (
         <div
-          className={`px-4 py-3 ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`}
+          className={`overflow-hidden rounded-xl px-4 py-3 ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`}
           role="status"
         >
           <p className="text-sm font-semibold text-[#1E4775]">
