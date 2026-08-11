@@ -33,8 +33,12 @@ import {
 import { REDEEM_PEGGED_WITH_PERMIT_ABI } from "@/abis/redeemPermit";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { ZAP_ABI, USDC_ZAP_ABI, WSTETH_ABI } from "@/abis";
-import { MINTER_ETH_ZAP_V3_ABI } from "@/abis";
+import { MINTER_ETH_ZAP_V3_ABI, MINTER_ETH_ZAP_V1_ABI } from "@/abis";
 import { MINTER_USDC_ZAP_V3_ABI } from "@/abis";
+import {
+  marketUsesZapV1,
+  minterEthNativeZapFunctionName,
+} from "@/utils/zapApiVersion";
 import Image from "next/image";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import {
@@ -87,7 +91,7 @@ import { DepositStabilityPoolCard } from "@/components/deposit/DepositStabilityP
 import { TokenLogo } from "@/components/shared";
 import { getRevertReason } from "@/utils/parseViemRevert";
 import type { DefinedMarket } from "@/config/markets";
-import { depositsBlockedForMarket, isMarketArchived } from "@/config/markets";
+import { depositsBlockedForMarket, isMarketArchived, isZapStabilityPoolAllowlistPending } from "@/config/markets";
 import { anchorAddressByName } from "@/types/anchor";
 import { calculateDeadline } from "@/utils/permit";
 import {
@@ -5274,6 +5278,9 @@ export const AnchorDepositWithdrawModal = ({
   const zapAddress = anchorAddressByName(
     depositAssetMarket as DefinedMarket | undefined
   )?.peggedTokenZap as `0x${string}` | undefined;
+  const useZapV1 = marketUsesZapV1(depositAssetMarket);
+  const ethZapAbi = useZapV1 ? MINTER_ETH_ZAP_V1_ABI : MINTER_ETH_ZAP_V3_ABI;
+  const zapSpAllowlistPending = isZapStabilityPoolAllowlistPending(depositAssetMarket);
   
   // Determine which zap to use
   const useZap = !!zapAddress && !isDirectPeggedDeposit && !isWrappedCollateral && activeTab === "deposit";
@@ -6403,11 +6410,13 @@ export const AnchorDepositWithdrawModal = ({
           
           // If user selected a stability pool, we should complete the full flow (mint + deposit)
           // and show it in the progress modal.
-          const shouldDepositToPool = simpleMode
+          const wantsDepositToPool = simpleMode
             ? selectedStabilityPool &&
               selectedStabilityPool.poolType !== "none" &&
               !!stabilityPoolAddress
             : depositInStabilityPool && !mintOnly;
+          const shouldDepositToPool =
+            wantsDepositToPool && !(useZap && zapSpAllowlistPending);
 
           // Set up progress modal before zap transaction
           // Determine the actual asset being zapped (after swap if applicable)
@@ -6733,8 +6742,8 @@ export const AnchorDepositWithdrawModal = ({
                 const minStabilityPoolOut = (minPeggedOut * (feePercentage !== undefined && feePercentage >= 1 ? 98n : 99n)) / 100n;
                 zapHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: MINTER_ETH_ZAP_V3_ABI,
-                  functionName: "zapBaseAssetToStabilityPool",
+                  abi: ethZapAbi,
+                  functionName: minterEthNativeZapFunctionName("ToStabilityPool", useZapV1),
                   args: [
                     minWEth,
                     address as `0x${string}`,
@@ -6758,8 +6767,8 @@ export const AnchorDepositWithdrawModal = ({
               });
               zapHash = await writeContractAsync({
               address: zapAddress,
-                abi: MINTER_ETH_ZAP_V3_ABI,
-                functionName: "zapBaseAssetToPegged",
+                abi: ethZapAbi,
+                functionName: minterEthNativeZapFunctionName("ToPegged", useZapV1),
                 args: [
                   minWEth,
                   address as `0x${string}`,
@@ -6830,7 +6839,7 @@ export const AnchorDepositWithdrawModal = ({
                       const deadline = permitResult.deadline || calculateDeadline(3600);
                       const permitHash = await writeContractAsync({
                         address: zapAddress,
-                        abi: MINTER_ETH_ZAP_V3_ABI,
+                        abi: ethZapAbi,
                         functionName: "zapCollateralToStabilityPoolWithPermit",
                         args: [
                           swappedAmount,
@@ -6861,7 +6870,7 @@ export const AnchorDepositWithdrawModal = ({
                     setStep("minting");
                     const permitHash = await writeContractAsync({
                       address: zapAddress,
-                      abi: MINTER_ETH_ZAP_V3_ABI,
+                      abi: ethZapAbi,
                       functionName: "zapCollateralToPeggedWithPermit",
                       args: [
                         swappedAmount,
@@ -6926,7 +6935,7 @@ export const AnchorDepositWithdrawModal = ({
               });
               zapHash = await writeContractAsync({
                 address: zapAddress,
-                abi: MINTER_ETH_ZAP_V3_ABI,
+                abi: ethZapAbi,
                 functionName: "zapCollateralToPegged",
                 args: [
                   swappedAmount,
@@ -7348,11 +7357,13 @@ export const AnchorDepositWithdrawModal = ({
         }
         
         // In simple mode, check if a stability pool is selected; in advanced mode, use depositInStabilityPool
-        const shouldDepositToPool = simpleMode
+        const wantsDepositToPool = simpleMode
           ? selectedStabilityPool &&
             selectedStabilityPool.poolType !== "none" &&
             !!stabilityPoolAddress
           : depositInStabilityPool && !mintOnly;
+        const shouldDepositToPool =
+          wantsDepositToPool && !(useZap && zapSpAllowlistPending);
         const includeApprovePegged =
           shouldDepositToPool && needsPeggedTokenApproval;
         const includeDeposit = shouldDepositToPool;
@@ -7905,8 +7916,8 @@ export const AnchorDepositWithdrawModal = ({
                 });
                 mintHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: MINTER_ETH_ZAP_V3_ABI,
-                  functionName: "zapBaseAssetToStabilityPool",
+                  abi: ethZapAbi,
+                  functionName: minterEthNativeZapFunctionName("ToStabilityPool", useZapV1),
                   args: [
                     minWEth2,
                     address as `0x${string}`,
@@ -7931,8 +7942,8 @@ export const AnchorDepositWithdrawModal = ({
               });
               mintHash = await writeContractAsync({
                 address: zapAddress,
-                abi: MINTER_ETH_ZAP_V3_ABI,
-                functionName: "zapBaseAssetToPegged",
+                abi: ethZapAbi,
+                functionName: minterEthNativeZapFunctionName("ToPegged", useZapV1),
                 args: [
                   minWEth2,
                   address as `0x${string}`,
@@ -7972,7 +7983,7 @@ export const AnchorDepositWithdrawModal = ({
                 });
                 mintHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: MINTER_ETH_ZAP_V3_ABI,
+                  abi: ethZapAbi,
                   functionName: "zapCollateralToStabilityPoolWithPermit",
                   args: [
                     amountBigInt,
@@ -8010,7 +8021,7 @@ export const AnchorDepositWithdrawModal = ({
               ) {
                 mintHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: MINTER_ETH_ZAP_V3_ABI,
+                  abi: ethZapAbi,
                   functionName: "zapCollateralToPeggedWithPermit",
                   args: [
                     amountBigInt,
@@ -8026,7 +8037,7 @@ export const AnchorDepositWithdrawModal = ({
               } else {
                 mintHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: MINTER_ETH_ZAP_V3_ABI,
+                  abi: ethZapAbi,
                   functionName: "zapCollateralToPegged",
                   args: [
                     amountBigInt,
@@ -8234,7 +8245,7 @@ export const AnchorDepositWithdrawModal = ({
             });
             mintHash = await writeContractAsync({
               address: zapAddress,
-              abi: MINTER_ETH_ZAP_V3_ABI,
+              abi: ethZapAbi,
               functionName: "zapWrappedCollateralToStabilityPoolWithPermit",
               args: [
                 amountBigInt,
@@ -10905,6 +10916,14 @@ export const AnchorDepositWithdrawModal = ({
                   <div className="flex min-h-0 flex-1 flex-col animate-in fade-in-0 slide-in-from-right-2 duration-200">
                     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
                       <DepositModalFlowOverview parts={depositFlowParts} />
+                      {zapSpAllowlistPending && useZap && (
+                        <InfoCallout variant="info">
+                          Stability pool zap deposits are temporarily unavailable for
+                          this market while pool allowlists are finalized. You can
+                          still mint to your wallet and deposit to a pool in a
+                          separate step.
+                        </InfoCallout>
+                      )}
                       {selectedRewardToken || isDirectPeggedDeposit ? (
                         <div className="space-y-3">
                           <DepositStabilityPoolCard

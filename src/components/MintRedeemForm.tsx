@@ -20,7 +20,11 @@ import MintRedeemStatusModal from "./MintRedeemStatusModal";
 import type { Market as MarketCfg } from "../config/markets";
 import { minterABI } from "@/abis/minter";
 import { ERC20_ABI, GENESIS_ABI } from "@/abis/shared";
-import { MINTER_ETH_ZAP_V3_ABI, MINTER_USDC_ZAP_V3_ABI } from "@/abis";
+import { MINTER_ETH_ZAP_V3_ABI, MINTER_ETH_ZAP_V1_ABI, MINTER_USDC_ZAP_V3_ABI } from "@/abis";
+import {
+  marketUsesZapV1,
+  minterEthNativeZapFunctionName,
+} from "@/utils/zapApiVersion";
 import { parseUnits } from "viem";
 import { calculateDeadline } from "@/utils/permit";
 import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
@@ -167,6 +171,8 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
   const useZap = !!zapAddress && !isWrappedCollateral && isCollateralAtTop;
   const useETHZap = useZap && isWstETHMarket && (isNativeETH || isStETH);
   const useUSDCZap = useZap && isFxUSDMarket && (isUSDC || isFxUSD);
+  const useZapV1 = marketUsesZapV1(marketInfo);
+  const ethZapAbi = useZapV1 ? MINTER_ETH_ZAP_V1_ABI : MINTER_ETH_ZAP_V3_ABI;
   const [shakeCollateralNeeded, setShakeCollateralNeeded] = useState(false);
   const [inputAdjusted, setInputAdjusted] = useState(false);
   const [adjustmentReason, setAdjustmentReason] = useState("");
@@ -1243,8 +1249,8 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
               if (isNativeETH) {
                 const hash = await writeContractAsync({
                   address: zapAddress,
-                  abi: MINTER_ETH_ZAP_V3_ABI,
-                  functionName: "zapBaseAssetToPegged",
+                  abi: ethZapAbi,
+                  functionName: minterEthNativeZapFunctionName("ToPegged", useZapV1),
                   args: [
                     minWrappedCollateralOut,
                     userAddress as `0x${string}`,
@@ -1274,7 +1280,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   try {
                     const hash = await writeContractAsync({
                       address: zapAddress,
-                      abi: MINTER_ETH_ZAP_V3_ABI,
+                      abi: ethZapAbi,
                       functionName: "zapCollateralToPeggedWithPermit",
                       args: [
                         parsedAmount,
@@ -1318,7 +1324,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   
                   const hash = await writeContractAsync({
                     address: zapAddress,
-                    abi: MINTER_ETH_ZAP_V3_ABI,
+                    abi: ethZapAbi,
                     functionName: "zapCollateralToPegged",
                     args: [
                       parsedAmount,
@@ -1355,8 +1361,8 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
               if (isNativeETH) {
                 const hash = await writeContractAsync({
                   address: zapAddress,
-                  abi: MINTER_ETH_ZAP_V3_ABI,
-                  functionName: "zapBaseAssetToLeveraged",
+                  abi: ethZapAbi,
+                  functionName: minterEthNativeZapFunctionName("ToLeveraged", useZapV1),
                   args: [
                     minWrappedCollateralOut,
                     userAddress as `0x${string}`,
@@ -1386,7 +1392,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   try {
                     const hash = await writeContractAsync({
                       address: zapAddress,
-                      abi: MINTER_ETH_ZAP_V3_ABI,
+                      abi: ethZapAbi,
                       functionName: "zapCollateralToLeveragedWithPermit",
                       args: [
                         parsedAmount,
@@ -1430,7 +1436,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   
                   const hash = await writeContractAsync({
                     address: zapAddress,
-                    abi: MINTER_ETH_ZAP_V3_ABI,
+                    abi: ethZapAbi,
                     functionName: "zapCollateralToLeveraged",
                     args: [
                       parsedAmount,

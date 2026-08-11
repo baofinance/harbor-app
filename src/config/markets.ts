@@ -22,6 +22,9 @@ export type GenesisActiveSetting = true | false | "soon" | "completed";
 /** On-chain zap contract API (`v1` = harbor-zap-contracts `_v1` family). */
 export type ZapApiVersion = "legacy" | "v1";
 
+/** When true, one-tx zap→stability-pool paths revert until Safe allowlist batch lands. */
+export type ZapStabilityPoolAllowlistPending = boolean;
+
 export const markets = {
   // ============================================================================
   // ETH/fxUSD Market (test2 deployment) - Mainnet deployment Dec 2025
@@ -36,6 +39,8 @@ export const markets = {
     genesisActive: "completed" as GenesisActiveSetting,
     pegTarget: "ETH", // haETH is pegged to ETH
     zapper: true,
+    zapApiVersion: "v1" as ZapApiVersion,
+    zapStabilityPoolAllowlistPending: true,
     anyswap: true,
     chain: {
       name: "Ethereum",
@@ -127,6 +132,8 @@ export const markets = {
     genesisActive: "completed" as GenesisActiveSetting,
     pegTarget: "BTC", // haBTC is pegged to BTC
     zapper: true,
+    zapApiVersion: "v1" as ZapApiVersion,
+    zapStabilityPoolAllowlistPending: true,
     anyswap: true,
     chain: {
       name: "Ethereum",
@@ -217,6 +224,9 @@ export const markets = {
     status: "genesis" as const,
     genesisActive: "completed" as GenesisActiveSetting,
     pegTarget: "BTC", // haBTC is pegged to BTC
+    zapper: true,
+    zapApiVersion: "v1" as ZapApiVersion,
+    zapStabilityPoolAllowlistPending: true,
     chain: {
       name: "Ethereum",
       logo: "icons/eth.png",
@@ -472,6 +482,8 @@ export const markets = {
     status: "genesis" as const,
     genesisActive: true as GenesisActiveSetting,
     pegTarget: "EUR",
+    zapper: true,
+    zapApiVersion: "v1" as ZapApiVersion,
     chain: {
       name: "Ethereum",
       logo: "icons/eth.png",
@@ -554,6 +566,8 @@ export const markets = {
     status: "genesis" as const,
     genesisActive: true as GenesisActiveSetting,
     pegTarget: "EUR",
+    zapper: true,
+    zapApiVersion: "v1" as ZapApiVersion,
     chain: {
       name: "Ethereum",
       logo: "icons/eth.png",
@@ -1302,6 +1316,16 @@ export function isMarketArchived(mkt: unknown): boolean {
 /** Deposits/mints blocked; withdrawals/redeems/claims still allowed. */
 export function depositsBlockedForMarket(mkt: unknown): boolean {
   return isMarketInMaintenance(mkt) || isMarketArchived(mkt);
+}
+
+/** One-tx minter zap → stability pool reverts until Safe allowlists pools on the zap. */
+export function isZapStabilityPoolAllowlistPending(mkt: unknown): boolean {
+  return Boolean(
+    mkt &&
+      typeof mkt === "object" &&
+      (mkt as { zapStabilityPoolAllowlistPending?: boolean })
+        .zapStabilityPoolAllowlistPending === true
+  );
 }
 
 /**
