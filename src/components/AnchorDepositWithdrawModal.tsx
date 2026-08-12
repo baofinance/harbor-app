@@ -7468,18 +7468,18 @@ export const AnchorDepositWithdrawModal = ({
           isNativeETH &&
           shouldDepositToPool &&
           !!stabilityPoolAddress;
-        const useZapAndDeposit =
-          shouldDepositToPool &&
-          !!stabilityPoolAddress &&
-          ((useETHZap && (isNativeETH || isStETH)) ||
-            (useUSDCZap && (isUSDC || isFxUSD)) ||
-            useZapWrappedToPool);
         const useZapWrappedToPool =
           !useZap &&
           (isWstETH || isFxSAVE) &&
           shouldDepositToPool &&
           !!zapAddress &&
           !!stabilityPoolAddress;
+        const useZapAndDeposit =
+          shouldDepositToPool &&
+          !!stabilityPoolAddress &&
+          ((useETHZap && (isNativeETH || isStETH)) ||
+            (useUSDCZap && (isUSDC || isFxUSD)) ||
+            useZapWrappedToPool);
         const useZapWrappedToPoolAndDeposit =
           useZapWrappedToPool && permitEligible;
         const wrappedZapAssetName =
