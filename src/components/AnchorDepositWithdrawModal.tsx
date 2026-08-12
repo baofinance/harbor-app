@@ -6461,7 +6461,8 @@ export const AnchorDepositWithdrawModal = ({
             isActuallyStETH &&
             !!stabilityPoolAddress;
           const useAnyZapAndDepositTokenPath =
-            useZapToPoolWithPermit || useZapEthToPool || useZapStEthToPoolPermit;
+            useZapToPoolWithPermit || useZapEthToPool || useZapStEthToPoolPermit ||
+            (shouldDepositToPool && !!stabilityPoolAddress && (anyTokenDeposit.useUSDCZap || anyTokenDeposit.useETHZap));
 
           setProgressConfig({
             mode: "collateral",
@@ -6927,6 +6928,28 @@ export const AnchorDepositWithdrawModal = ({
                 await publicClient?.waitForTransactionReceipt({ hash: approveHash });
                 setStep("minting");
               }
+
+              if (shouldDepositToPool && stabilityPoolAddress) {
+                const minStabilityPoolOutStEth = (minPeggedOut * (feePercentage !== undefined && feePercentage >= 1 ? 98n : 99n)) / 100n;
+                zapHash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: ethZapAbi,
+                  functionName: "zapCollateralToStabilityPool",
+                  args: [
+                    swappedAmount,
+                    minWSteth,
+                    address as `0x${string}`,
+                    minPeggedOut,
+                    stabilityPoolAddress as `0x${string}`,
+                    minStabilityPoolOutStEth,
+                  ],
+                });
+                await publicClient?.waitForTransactionReceipt({ hash: zapHash });
+                setTxHashes((prev) => ({ ...prev, mint: zapHash }));
+                setStep("success");
+                if (onSuccess) onSuccess();
+                return;
+              }
               
               debugTx("zap/collateralToPegged", {
                 zapAddress,
@@ -7236,6 +7259,47 @@ export const AnchorDepositWithdrawModal = ({
 
             // Call the correct zap function based on asset type
             let zapHash: `0x${string}`;
+            if (
+              shouldDepositToPool &&
+              stabilityPoolAddress &&
+              (isActuallyUSDC || isActuallyFxUSD)
+            ) {
+              const minStabilityPoolOut = (minPeggedOut * (feePercentage !== undefined && feePercentage >= 1 ? 98n : 99n)) / 100n;
+              if (isActuallyUSDC) {
+                zapHash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: MINTER_USDC_ZAP_V3_ABI,
+                  functionName: "zapBaseAssetToStabilityPool",
+                  args: [
+                    swappedAmount,
+                    minFxSaveOut,
+                    address as `0x${string}`,
+                    minPeggedOut,
+                    stabilityPoolAddress as `0x${string}`,
+                    minStabilityPoolOut,
+                  ],
+                });
+              } else {
+                zapHash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: MINTER_USDC_ZAP_V3_ABI,
+                  functionName: "zapCollateralToStabilityPool",
+                  args: [
+                    swappedAmount,
+                    minFxSaveOut,
+                    address as `0x${string}`,
+                    minPeggedOut,
+                    stabilityPoolAddress as `0x${string}`,
+                    minStabilityPoolOut,
+                  ],
+                });
+              }
+              setTxHashes((prev) => ({ ...prev, mint: zapHash }));
+              await publicClient?.waitForTransactionReceipt({ hash: zapHash });
+              setStep("success");
+              if (onSuccess) onSuccess();
+              return;
+            }
             if (isActuallyUSDC) {
               debugTx("zap/baseAssetToPegged", {
                 zapAddress,
@@ -7405,7 +7469,11 @@ export const AnchorDepositWithdrawModal = ({
           shouldDepositToPool &&
           !!stabilityPoolAddress;
         const useZapAndDeposit =
-          useZapToPoolWithPermit || useZapStEthToPool || useZapEthToPool;
+          shouldDepositToPool &&
+          !!stabilityPoolAddress &&
+          ((useETHZap && (isNativeETH || isStETH)) ||
+            (useUSDCZap && (isUSDC || isFxUSD)) ||
+            useZapWrappedToPool);
         const useZapWrappedToPool =
           !useZap &&
           (isWstETH || isFxSAVE) &&
@@ -8005,6 +8073,38 @@ export const AnchorDepositWithdrawModal = ({
                 return;
               }
 
+              if (useZapStEthToPool && stabilityPoolAddress) {
+                debugTx("zap/collateralToStabilityPool", {
+                  zapAddress,
+                  args: [
+                    amountBigInt.toString(),
+                    minWSteth2.toString(),
+                    address,
+                    minPeggedOut.toString(),
+                    stabilityPoolAddress,
+                    minStabilityPoolOutStEth.toString(),
+                  ],
+                });
+                mintHash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: ethZapAbi,
+                  functionName: "zapCollateralToStabilityPool",
+                  args: [
+                    amountBigInt,
+                    minWSteth2,
+                    address as `0x${string}`,
+                    minPeggedOut,
+                    stabilityPoolAddress as `0x${string}`,
+                    minStabilityPoolOutStEth,
+                  ],
+                });
+                setTxHashes((prev) => ({ ...prev, mint: mintHash }));
+                await txClient?.waitForTransactionReceipt({ hash: mintHash });
+                setStep("success");
+                if (onSuccess) await onSuccess();
+                return;
+              }
+
               debugTx("zap/collateralToPegged", {
                 zapAddress,
                 function: "zapCollateralToPegged",
@@ -8122,6 +8222,65 @@ export const AnchorDepositWithdrawModal = ({
                     zapPermit!.permitSig.v,
                     zapPermit!.permitSig.r,
                     zapPermit!.permitSig.s,
+                  ],
+                });
+              }
+              setTxHashes((prev) => ({ ...prev, mint: mintHash }));
+              await txClient?.waitForTransactionReceipt({ hash: mintHash });
+              setStep("success");
+              if (onSuccess) await onSuccess();
+              return;
+            }
+
+            if (shouldDepositToPool && stabilityPoolAddress) {
+              if (isUSDC) {
+                debugTx("zap/baseAssetToStabilityPool", {
+                  zapAddress,
+                  args: [
+                    amountBigInt.toString(),
+                    minFxSaveOut.toString(),
+                    address,
+                    minPeggedOut.toString(),
+                    stabilityPoolAddress,
+                    minStabilityPoolOut.toString(),
+                  ],
+                });
+                mintHash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: MINTER_USDC_ZAP_V3_ABI,
+                  functionName: "zapBaseAssetToStabilityPool",
+                  args: [
+                    amountBigInt,
+                    minFxSaveOut,
+                    address as `0x${string}`,
+                    minPeggedOut,
+                    stabilityPoolAddress as `0x${string}`,
+                    minStabilityPoolOut,
+                  ],
+                });
+              } else if (isFxUSD) {
+                debugTx("zap/collateralToStabilityPool", {
+                  zapAddress,
+                  args: [
+                    amountBigInt.toString(),
+                    minFxSaveOut.toString(),
+                    address,
+                    minPeggedOut.toString(),
+                    stabilityPoolAddress,
+                    minStabilityPoolOut.toString(),
+                  ],
+                });
+                mintHash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: MINTER_USDC_ZAP_V3_ABI,
+                  functionName: "zapCollateralToStabilityPool",
+                  args: [
+                    amountBigInt,
+                    minFxSaveOut,
+                    address as `0x${string}`,
+                    minPeggedOut,
+                    stabilityPoolAddress as `0x${string}`,
+                    minStabilityPoolOut,
                   ],
                 });
               }
@@ -8285,6 +8444,43 @@ export const AnchorDepositWithdrawModal = ({
                 wrapZapPermit.permitSig.v,
                 wrapZapPermit.permitSig.r,
                 wrapZapPermit.permitSig.s,
+              ],
+            });
+          } else {
+            throw new Error("Invalid wrapped zap asset");
+          }
+          setTxHashes((prev) => ({ ...prev, mint: mintHash }));
+          await txClient?.waitForTransactionReceipt({ hash: mintHash });
+          setStep("success");
+          if (onSuccess) await onSuccess();
+          return;
+        } else if (useZapWrappedToPool && stabilityPoolAddress) {
+          const slip = (feePercentage !== undefined && feePercentage >= 1) ? 98n : 99n;
+          const minStabilityPoolOutWrapped = (minPeggedOut * slip) / 100n;
+          if (isWstETH) {
+            mintHash = await writeContractAsync({
+              address: zapAddress,
+              abi: ethZapAbi,
+              functionName: "zapWrappedCollateralToStabilityPool",
+              args: [
+                amountBigInt,
+                address as `0x${string}`,
+                minPeggedOut,
+                stabilityPoolAddress as `0x${string}`,
+                minStabilityPoolOutWrapped,
+              ],
+            });
+          } else if (isFxSAVE) {
+            mintHash = await writeContractAsync({
+              address: zapAddress,
+              abi: MINTER_USDC_ZAP_V3_ABI,
+              functionName: "zapWrappedCollateralToStabilityPool",
+              args: [
+                amountBigInt,
+                address as `0x${string}`,
+                minPeggedOut,
+                stabilityPoolAddress as `0x${string}`,
+                minStabilityPoolOutWrapped,
               ],
             });
           } else {

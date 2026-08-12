@@ -133,7 +133,6 @@ export const markets = {
     pegTarget: "BTC", // haBTC is pegged to BTC
     zapper: true,
     zapApiVersion: "v1" as ZapApiVersion,
-    zapStabilityPoolAllowlistPending: true,
     anyswap: true,
     chain: {
       name: "Ethereum",
@@ -226,7 +225,6 @@ export const markets = {
     pegTarget: "BTC", // haBTC is pegged to BTC
     zapper: true,
     zapApiVersion: "v1" as ZapApiVersion,
-    zapStabilityPoolAllowlistPending: true,
     chain: {
       name: "Ethereum",
       logo: "icons/eth.png",
