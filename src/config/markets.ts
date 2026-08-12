@@ -40,7 +40,6 @@ export const markets = {
     pegTarget: "ETH", // haETH is pegged to ETH
     zapper: true,
     zapApiVersion: "v1" as ZapApiVersion,
-    zapStabilityPoolAllowlistPending: true,
     anyswap: true,
     chain: {
       name: "Ethereum",
