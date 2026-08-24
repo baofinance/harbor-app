@@ -4,9 +4,9 @@ export const DEPOSIT_MODAL_STEP = {
   rewardToken: "Reward token",
   stabilityPool: "Stability pool",
   withdrawStabilityPoolAmount: "Withdraw from Stability Pool & Enter Amount",
-  redeemCollateral: "Redeem collateral",
+  redeemCollateral: "Sell for collateral",
   withdrawCollateralAmount: "Withdraw Collateral & Amount",
-  redeemCollateralAmount: "Redeem Collateral & Amount",
+  redeemCollateralAmount: "Sell Token & Amount",
 } as const;
 
 export function genesisDepositFlowParts(): string[] {

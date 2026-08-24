@@ -12,7 +12,7 @@ export interface FeeDisplayRowProps {
 }
 
 export function FeeDisplayRow({
-  label = "Mint fee:",
+  label = "Buy fee:",
   feePercentage,
   feeAmount,
   feeSymbol,

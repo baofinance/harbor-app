@@ -16,6 +16,7 @@ import { SailMarketInfoFooter } from "./SailMarketInfoFooter";
 import { SailMarketMetricsCollapsible } from "./SailMarketMetricsCollapsible";
 import { SailMobileTradeBar } from "./SailMobileTradeBar";
 import type { SailWalletStatsStripProps } from "./SailWalletStatsStrip";
+import type { SailDropdownPositionTone } from "@/utils/sailMarketDropdownPosition";
 import {
   SAIL_ADVANCED_FROSTED_LIGHT_PANEL,
   SAIL_ADVANCED_MAIN_GRID_CLASS,
@@ -38,6 +39,7 @@ export type SailAdvancedLayoutProps = {
     string,
     { leveragedPriceUSD?: number } | undefined
   >;
+  marketDropdownPnLToneByMarketId?: Record<string, SailDropdownPositionTone>;
   userDeposit?: bigint;
   currentValueUSD?: number;
   onManageSuccess?: () => void;
@@ -60,6 +62,7 @@ export function SailAdvancedLayout({
   isConnected,
   userDepositMap,
   tokenPricesByMarket,
+  marketDropdownPnLToneByMarketId = {},
   userDeposit,
   currentValueUSD,
   onManageSuccess,
@@ -124,6 +127,9 @@ export function SailAdvancedLayout({
           leverageRatio,
           hasPosition: position.hasPosition,
           positionLabel: position.hasPosition ? position.label : undefined,
+          positionTone: position.hasPosition
+            ? marketDropdownPnLToneByMarketId[marketId] ?? "pending"
+            : undefined,
           isComingSoon: comingSoon,
           isDepositsPaused:
             !comingSoon && isSailDepositsPausedByLeverage(leverageRatio),
@@ -137,6 +143,7 @@ export function SailAdvancedLayout({
       sailMarketIdToIndex,
       userDepositMap,
       tokenPricesByMarket,
+      marketDropdownPnLToneByMarketId,
     ],
   );
 

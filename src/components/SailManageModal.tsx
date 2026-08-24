@@ -34,6 +34,7 @@ import {
 import type { SailTradeMarketFees } from "@/components/sail/SailTradeFeeFooter";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { InfoCallout } from "@/components/InfoCallout";
+import { useRegisterAppNotifications } from "@/contexts/AppNotificationsContext";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { AlertOctagon, Info, RefreshCw } from "lucide-react";
 import {
@@ -60,6 +61,7 @@ import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { getDepositMode } from "@/utils/depositMode";
 import type { DefinedMarket } from "@/config/markets";
 import { depositsBlockedForMarket, isMarketArchived } from "@/config/markets";
+import { isTxUserRejection } from "@/utils/anchorMintDepositFlow";
 
 interface SailManageModalProps {
  isOpen: boolean;
@@ -897,8 +899,8 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
    depositsPaused
      ? `Deposits are paused until more ${haTokenSymbol} is minted for leverage to work as expected.`
      : isMarketArchived(market)
-     ? "This market is archived. New mints are not accepted."
-     : "Mints are unavailable while this market is in maintenance."
+     ? "This market is archived. New buys are not accepted."
+     : "Buys are unavailable while this market is in maintenance."
  );
  return;
  }
@@ -1005,21 +1007,21 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
      details: "Sign EIP-2612 permit to authorize deposit (no gas fee)",
    });
  }
- const mintLabel = useZap && zapAssetName
+ const buyLabel = useZap && zapAssetName
    ? `Zap ${zapAssetName} to ${leveragedTokenSymbol}`
-   : `Mint ${leveragedTokenSymbol}`;
+   : `Buy ${leveragedTokenSymbol}`;
  steps.push({
    id:"mint",
-   label: mintLabel,
+   label: buyLabel,
    status:"pending",
-   details: `Mint ${
+   details: `Buy ${
      expectedMintOutput
      ? Number(formatEther(expectedMintOutput)).toFixed(4)
      :"..."
    } ${leveragedTokenSymbol}`,
  });
 
- progress.open(steps, `Mint ${leveragedTokenSymbol}`);
+ progress.open(steps, `Buy ${leveragedTokenSymbol}`);
  flushSync(() => {}); // Force React to paint before first action
 
  try {
@@ -1237,6 +1239,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
               chainId: marketChainId,
             });
           } catch (permitError) {
+            if (isTxUserRejection(permitError)) throw permitError;
             console.error("Permit zap failed, falling back to approval:", permitError);
             // Fall through to approval flow below
             usePermit = false;
@@ -1376,6 +1379,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
             throw new Error("Invalid asset for USDC zap");
           }
         } catch (permitError) {
+          if (isTxUserRejection(permitError)) throw permitError;
           console.error("Permit zap failed, falling back to approval:", permitError);
           // Fall through to approval flow below
           usePermit = false;
@@ -1564,20 +1568,20 @@ details: "Sign permit to skip approval transaction",
 if (needsApproval && !canAttemptPermitRedeem) {
  steps.push({
  id:"approve",
- label: `Approve ${leveragedTokenSymbol} for redemption`,
+ label: `Approve ${leveragedTokenSymbol} for sale`,
  status:"pending",
- details: "Approve token for redemption",
+ details: "Approve token for sale",
  });
  }
  steps.push({
  id:"redeem",
- label: `Redeem ${leveragedTokenSymbol} for collateral`,
+ label: `Sell ${leveragedTokenSymbol} for collateral`,
  status:"pending",
  details: `Receive ${expectedRedeemOutput ? Number(formatEther(expectedRedeemOutput)).toFixed(4) : "..."} ${collateralSymbol}`,
  });
 
  // Open progress modal
- progress.open(steps, `Redeem ${leveragedTokenSymbol}`);
+ progress.open(steps, `Sell ${leveragedTokenSymbol}`);
  flushSync(() => {}); // Force React to paint before first action
 
  try {
@@ -1610,9 +1614,9 @@ if (canAttemptPermitRedeem) {
       const next = [...prev];
       next.splice(redeemIdx >= 0 ? redeemIdx : next.length, 0, {
         id: "approve",
-        label: `Approve ${leveragedTokenSymbol} for redemption`,
+        label: `Approve ${leveragedTokenSymbol} for sale`,
         status: "pending",
-        details: "Approve token for redemption",
+        details: "Approve token for sale",
       });
       return {
         steps: next,
@@ -1664,6 +1668,7 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
       chainId: marketChainId,
     });
   } catch (permitRedeemErr) {
+    if (isTxUserRejection(permitRedeemErr)) throw permitRedeemErr;
     console.warn(
       "[SailManage] redeemLeveragedTokenWithPermit failed, falling back to approve+redeem",
       permitRedeemErr
@@ -1674,9 +1679,9 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
       const next = [...prev];
       next.splice(redeemIdx >= 0 ? redeemIdx : next.length, 0, {
         id: "approve",
-        label: `Approve ${leveragedTokenSymbol} for redemption`,
+        label: `Approve ${leveragedTokenSymbol} for sale`,
         status: "pending",
-        details: "Approve token for redemption",
+        details: "Approve token for sale",
       });
       return {
         steps: next,
@@ -1772,6 +1777,71 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
  setError(null);
  };
 
+ const sailNotificationCount =
+   activeTab === "mint" ? (isCollateralOnlyChain ? 1 : 2) : 1;
+ const sailNotificationSeverities = useMemo(
+   () =>
+     activeTab === "mint"
+       ? isCollateralOnlyChain
+         ? (["navy"] as const)
+         : (["green", "navy"] as const)
+       : (["navy"] as const),
+   [activeTab, isCollateralOnlyChain]
+ );
+ const sailNotificationsBody = useMemo(
+   () => (
+     <>
+       {activeTab === "mint" && (
+         <>
+           {!isCollateralOnlyChain && (
+             <InfoCallout
+               tone="success"
+               icon={
+                 <RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />
+               }
+               title="Tip"
+             >
+               You can deposit any ERC20 token! Non-collateral tokens will be
+               automatically swapped via Velora.
+             </InfoCallout>
+           )}
+           <InfoCallout
+             title="Info"
+             icon={
+               <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />
+             }
+           >
+             For large deposits, Harbor recommends using wstETH or fxSAVE
+             instead of the built-in swap and zaps.
+           </InfoCallout>
+         </>
+       )}
+       {activeTab === "redeem" && (
+         <InfoCallout
+           title="Info"
+           icon={
+             <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />
+           }
+         >
+           You will receive collateral (e.g. {collateralSymbol}) in your
+           wallet.
+         </InfoCallout>
+       )}
+     </>
+   ),
+   [activeTab, isCollateralOnlyChain, collateralSymbol]
+ );
+
+ useRegisterAppNotifications(
+   "sail-embedded-trade",
+   {
+     count: sailNotificationCount,
+     badgeSeverities: [...sailNotificationSeverities],
+     body: sailNotificationsBody,
+   },
+   embedded && (isOpen || embedded)
+ );
+
  if (!isOpen && !embedded) return null;
 
  const isProcessing =
@@ -1843,7 +1913,7 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
      errorMessage={progress.steps.find((s) => s.status === "error")?.error}
    />
  )}
- {!progress.isOpen && (isOpen || embedded) && (
+ {(isOpen || embedded) && (!progress.isOpen || embedded) && (
  <DepositModalShell
    variant={embedded ? "inline" : "modal"}
    isOpen={isOpen || embedded}
@@ -1861,44 +1931,9 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
    notifications={{
      expanded: showNotifications,
      onToggle: () => setShowNotifications((prev) => !prev),
-     count: activeTab === "mint" ? (isCollateralOnlyChain ? 1 : 2) : 1,
-     badgeSeverities:
-       activeTab === "mint"
-         ? isCollateralOnlyChain
-           ? ["navy"]
-           : ["green", "navy"]
-         : ["navy"],
-     children: (
-       <>
-         {activeTab === "mint" && (
-           <>
-             {!isCollateralOnlyChain && (
-               <InfoCallout
-                 tone="success"
-                 icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}
-                 title="Tip"
-               >
-                 You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
-               </InfoCallout>
-             )}
-             <InfoCallout
-               title="Info"
-               icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
-             >
-               For large deposits, Harbor recommends using wstETH or fxSAVE instead of the built-in swap and zaps.
-             </InfoCallout>
-           </>
-         )}
-         {activeTab === "redeem" && (
-           <InfoCallout
-             title="Info"
-             icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
-           >
-             You will receive collateral (e.g. {collateralSymbol}) in your wallet.
-           </InfoCallout>
-         )}
-       </>
-     ),
+     count: sailNotificationCount,
+     badgeSeverities: [...sailNotificationSeverities],
+     children: sailNotificationsBody,
    }}
    tabs={
      <DepositModalTabHeader
@@ -1915,12 +1950,12 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
    closeDisabled={isProcessing}
   panelClassName={
     embedded
-      ? "flex h-full min-h-0 flex-1 flex-col"
+      ? "flex flex-col"
       : "max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col"
   }
   contentClassName={
     embedded
-      ? "flex min-h-0 flex-1 flex-col"
+      ? "flex flex-col"
       : "flex min-h-0 flex-1 flex-col p-3 sm:p-4"
   }
  >
@@ -2119,8 +2154,8 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
  {step ==="approving"
  ?"Approving..."
  : step ==="minting"
- ?"Minting sail tokens..."
- :"Redeeming sail tokens..."}
+ ?"Buying sail tokens..."
+ :"Selling sail tokens..."}
  </p>
  </div>
  )}

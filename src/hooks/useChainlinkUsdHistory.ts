@@ -10,8 +10,20 @@ import type { ChainlinkPricePoint, PegAssetKey } from "@/utils/sailMarketChartSe
 
 /** Stop walking rounds once we reach this age (up to 1Y chart window). */
 const DEFAULT_MAX_HISTORY_AGE_SEC = 366 * 24 * 60 * 60;
-const MAX_ROUNDS = 3000;
+const DEFAULT_MAX_ROUNDS = 3000;
+/** ETH/BTC Chainlink feeds typically update about hourly. */
+const CHAINLINK_ROUND_HEARTBEAT_SEC = 3600;
+const ABSOLUTE_MAX_ROUNDS = 10000;
 const MULTICALL_BATCH_SIZE = 50;
+
+function maxRoundsForLookback(minTimestamp: number | undefined): number {
+  const nowSec = Math.floor(Date.now() / 1000);
+  const cutoffTs =
+    minTimestamp ?? nowSec - DEFAULT_MAX_HISTORY_AGE_SEC;
+  const spanSec = Math.max(0, nowSec - cutoffTs);
+  const estimated = Math.ceil(spanSec / CHAINLINK_ROUND_HEARTBEAT_SEC) + 96;
+  return Math.min(ABSOLUTE_MAX_ROUNDS, Math.max(DEFAULT_MAX_ROUNDS, estimated));
+}
 
 export type { ChainlinkPricePoint };
 
@@ -49,11 +61,12 @@ export async function fetchChainlinkUsdHistory(
   let roundId = latestRound[0];
   const cutoffTs =
     minTimestamp ?? Math.floor(Date.now() / 1000) - DEFAULT_MAX_HISTORY_AGE_SEC;
+  const maxRounds = maxRoundsForLookback(minTimestamp);
 
-  while (points.length < MAX_ROUNDS && roundId > 0n) {
+  while (points.length < maxRounds && roundId > 0n) {
     const batchSize = Math.min(
       MULTICALL_BATCH_SIZE,
-      MAX_ROUNDS - points.length,
+      maxRounds - points.length,
       Number(roundId)
     );
     if (batchSize <= 0) break;

@@ -7,6 +7,10 @@ import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarke
 import NetworkIconCell from "@/components/NetworkIconCell";
 import { formatLeverage } from "@/utils/sailDisplayFormat";
 import { formatSailMarketDropdownTitle } from "@/utils/sailMarketDirectionLabels";
+import {
+  sailDropdownPositionToneClass,
+  type SailDropdownPositionTone,
+} from "@/utils/sailMarketDropdownPosition";
 import { SAIL_ADVANCED_FROSTED_LIGHT_PANEL } from "./sailAdvancedStyles";
 
 const SAIL_DROPDOWN_MENU_CLASS =
@@ -24,8 +28,8 @@ const SAIL_DROPDOWN_LEVERAGE_CLASS =
   "font-mono font-semibold tabular-nums text-[#1E4775]/80";
 const SAIL_DROPDOWN_LEVERAGE_INLINE_CLASS = `${SAIL_DROPDOWN_LEVERAGE_CLASS} text-inherit sm:text-inherit`;
 const SAIL_DROPDOWN_TITLE_SEPARATOR_CLASS = "font-medium text-[#1E4775]/55";
-const SAIL_DROPDOWN_POSITION_CLASS =
-  "mt-0.5 text-xs font-medium tabular-nums text-[#4A9784]";
+const SAIL_DROPDOWN_POSITION_BASE_CLASS =
+  "text-xs font-medium tabular-nums";
 const SAIL_DROPDOWN_STATUS_CHIP_CLASS =
   "shrink-0 rounded-full bg-[#1E4775]/8 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#64748b]";
 const SAIL_DROPDOWN_SECTION_LABEL_CLASS =
@@ -37,6 +41,7 @@ export type SailMarketDropdownOption = {
   leverageRatio?: bigint;
   hasPosition?: boolean;
   positionLabel?: string;
+  positionTone?: SailDropdownPositionTone;
   isComingSoon?: boolean;
   isDepositsPaused?: boolean;
 };
@@ -51,6 +56,10 @@ function optionStatusChip(option: SailMarketDropdownOption): string | null {
   if (option.isComingSoon) return "Coming soon";
   if (option.isDepositsPaused) return "Deposits paused";
   return null;
+}
+
+function formatPositionLabel(label: string): string {
+  return label.replace(/^Your position ·\s*/, "");
 }
 
 function DropdownOptionRow({
@@ -69,6 +78,8 @@ function DropdownOptionRow({
     market,
     leverageRatio,
     positionLabel,
+    positionTone,
+    hasPosition,
     isComingSoon,
     isDepositsPaused,
   } = option;
@@ -120,10 +131,12 @@ function DropdownOptionRow({
         </div>
         {statusChip ? (
           <span className={SAIL_DROPDOWN_STATUS_CHIP_CLASS}>{statusChip}</span>
-        ) : positionLabel ? (
+        ) : hasPosition && positionLabel ? (
           <div className="min-w-[4.5rem] shrink-0 text-right">
-            <div className={SAIL_DROPDOWN_POSITION_CLASS}>
-              {positionLabel.replace(/^Your position ·\s*/, "")}
+            <div
+              className={`${SAIL_DROPDOWN_POSITION_BASE_CLASS} ${sailDropdownPositionToneClass(positionTone)}`}
+            >
+              {formatPositionLabel(positionLabel)}
             </div>
           </div>
         ) : null}
@@ -188,9 +201,11 @@ export function SailMarketDropdown({
           <span className={SAIL_DROPDOWN_STATUS_CHIP_CLASS}>
             {selectedStatusChip}
           </span>
-        ) : selected.positionLabel ? (
-          <div className="hidden shrink-0 truncate text-xs font-medium text-[#4A9784] sm:block">
-            {selected.positionLabel.replace(/^Your position ·\s*/, "")}
+        ) : selected.hasPosition && selected.positionLabel ? (
+          <div
+            className={`hidden shrink-0 truncate sm:block ${SAIL_DROPDOWN_POSITION_BASE_CLASS} ${sailDropdownPositionToneClass(selected.positionTone)}`}
+          >
+            {formatPositionLabel(selected.positionLabel)}
           </div>
         ) : null}
         <ChevronDownIcon

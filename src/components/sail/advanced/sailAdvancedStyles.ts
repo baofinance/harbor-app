@@ -51,7 +51,7 @@ export const SAIL_ADVANCED_HEADER_DIVIDER =
 
 /** Two-column Sail UI+ layout — chart/main left, trade panel right (lg+). */
 export const SAIL_ADVANCED_MAIN_GRID_COLUMNS =
-  "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-stretch";
+  "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-start";
 
 export const SAIL_ADVANCED_MAIN_GRID_CLASS =
   `${SAIL_ADVANCED_MAIN_GRID_COLUMNS} lg:min-h-[36rem]`;
@@ -103,7 +103,7 @@ export const SAIL_ADVANCED_META = MV_META_TEXT;
 export const SAIL_ADVANCED_HEADLINE = MV_HEADLINE;
 
 /** Embedded mint / redeem form — single white frosted shell. */
-export const SAIL_EMBEDDED_FORM_PANEL = `rounded-xl p-3 sm:p-4 text-[#1E4775] ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`;
+export const SAIL_EMBEDDED_FORM_PANEL = `rounded-xl p-2.5 sm:p-3 text-[#1E4775] ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`;
 
 /** Trade panel primary actions on frosted light shell. */
 export const SAIL_TRADE_BUY_BUTTON_CLASS = HARBOR_BTN_GLASS_CTA_FULL_MINT_CLASS;

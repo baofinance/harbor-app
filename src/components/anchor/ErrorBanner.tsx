@@ -18,3 +18,21 @@ export function ErrorBanner({
     </div>
   );
 }
+
+/** Keeps a small slot when an error appears so the footer does not jump. */
+export function ReservedErrorSlot({
+  message,
+  className = "",
+}: {
+  message?: string | null;
+  className?: string;
+}) {
+  if (!message) {
+    return className ? <div className={className} aria-hidden /> : null;
+  }
+  return (
+    <div className={className.trim()} aria-live="polite">
+      <ErrorBanner message={message} />
+    </div>
+  );
+}

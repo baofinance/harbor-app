@@ -73,7 +73,15 @@ import {
 } from "@/components/depositModalFlowSteps";
 import { DepositModalTitle } from "@/components/DepositModalTitle";
 import { InfoCallout } from "@/components/InfoCallout";
-import { ErrorBanner } from "@/components/anchor/ErrorBanner";
+import { ErrorBanner, ReservedErrorSlot } from "@/components/anchor/ErrorBanner";
+import { useRegisterAppNotifications } from "@/contexts/AppNotificationsContext";
+import {
+  attemptCombinedPoolZap,
+  buildCollateralMintProgressFields,
+  depositMintedPeggedToStabilityPool,
+  isTxUserRejection,
+  separatePoolProgressPatch,
+} from "@/utils/anchorMintDepositFlow";
 import { FeeDisplayRow } from "@/components/anchor/FeeDisplayRow";
 import { AnchorDepositFeeFooter } from "@/components/anchor/AnchorDepositFeeFooter";
 import { DepositAmountCard } from "@/components/deposit/DepositAmountCard";
@@ -143,6 +151,8 @@ function isRedeemAmountCapped(
 interface AnchorDepositWithdrawModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Inline panel on Earn advanced layout (no modal overlay). */
+  embedded?: boolean;
   marketId: string;
   market: DefinedMarket;
   /** Parent may pass legacy Sail-style tab names; mapped to deposit/withdraw internally. */
@@ -211,6 +221,7 @@ function getAcceptedDepositAssets(
 export const AnchorDepositWithdrawModal = ({
   isOpen,
   onClose,
+  embedded = false,
   marketId,
   market,
   initialTab = "deposit",
@@ -221,6 +232,7 @@ export const AnchorDepositWithdrawModal = ({
   initialDepositAsset,
   positionsMap,
 }: AnchorDepositWithdrawModalProps) => {
+  const isActive = isOpen || embedded;
   const { address, isConnected, connector } = useAccount();
   // NOTE: `useChainId()` can be misleading when the wallet is on an unsupported chain (e.g. Polygon),
   // so we treat it as a fallback and prefer `connector.getChainId()` when available.
@@ -340,7 +352,7 @@ export const AnchorDepositWithdrawModal = ({
 
   // Get positions from subgraph (same as expanded view)
   const { poolDeposits, haBalances, error: marksError } = useAnchorLedgerMarks({
-    enabled: isOpen && activeTab === "withdraw",
+    enabled: isActive && activeTab === "withdraw",
   });
   const defaultProgressConfig = {
     mode: null as "collateral" | "direct" | "withdraw" | null,
@@ -490,7 +502,7 @@ export const AnchorDepositWithdrawModal = ({
     permitEnabled,
     setPermitEnabled,
   } = usePermitFlow({
-    enabled: isOpen && !!address,
+    enabled: isActive && !!address,
     depositAssetSymbol:
       activeTab === "deposit"
         ? selectedDepositAsset || null
@@ -553,7 +565,7 @@ export const AnchorDepositWithdrawModal = ({
             ? `Zap ${(progressConfig.zapAsset || progressConfig.wrappedZapAsset)!.toUpperCase()} & deposit to stability pool`
             : progressConfig.useZap && progressConfig.zapAsset
               ? `Zap ${progressConfig.zapAsset.toUpperCase()} to anchor token`
-              : "Mint anchor token";
+              : "Buy anchor token";
         addStep("mint", mintLabel, txHashes.mint);
       }
       if (progressConfig.includeApprovePegged) {
@@ -605,10 +617,10 @@ export const AnchorDepositWithdrawModal = ({
         addStep("permit-redeem", "Sign permit for anchor token (no gas)");
       }
       if (progressConfig.includeApproveRedeem || hasApproveRedeemTx) {
-        addStep("approve-redeem", "Approve anchor token for redemption", txHashes.approveRedeem);
+        addStep("approve-redeem", "Approve anchor token for sale", txHashes.approveRedeem);
       }
       if (progressConfig.includeRedeem || hasRedeemTx) {
-        addStep("redeem", "Redeem anchor token for collateral", txHashes.redeem);
+        addStep("redeem", "Sell anchor token for collateral", txHashes.redeem);
       }
     }
 
@@ -819,7 +831,7 @@ export const AnchorDepositWithdrawModal = ({
 
   // Default pool rail to the collateral side where the user has balance (until they pick a tab).
   useEffect(() => {
-    if (!isOpen || activeTab !== "withdraw") return;
+    if (!isActive || activeTab !== "withdraw") return;
     if (withdrawPoolTabUserSelectedRef.current) return;
     let fxBalance = 0n;
     let wstBalance = 0n;
@@ -836,7 +848,7 @@ export const AnchorDepositWithdrawModal = ({
     } else if (fxBalance > 0n) {
       setWithdrawPoolCollateralTab("fxSAVE");
     }
-  }, [isOpen, activeTab, groupedPoolPositions]);
+  }, [isActive, activeTab, groupedPoolPositions]);
 
   // If multiple markets share the same ha token (e.g. haBTC across BTC/fxUSD and BTC/stETH),
   // the "Manage" modal may open on a market that doesn't contain the user's stability pool deposit.
@@ -985,10 +997,10 @@ export const AnchorDepositWithdrawModal = ({
     query: {
       enabled:
         !!address &&
-        isOpen &&
+        isActive &&
         activeTab === "withdraw" &&
         groupBalanceContracts.length > 0,
-      refetchInterval: isOpen ? 15000 : false,
+      refetchInterval: isActive ? 15000 : false,
       retry: 1,
       allowFailure: true,
     },
@@ -1034,7 +1046,7 @@ export const AnchorDepositWithdrawModal = ({
   }, [groupOnchainBalances, marketsForToken, marketIdWithAnyOnchainPoolDeposit, selectedMarketId]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isActive) return;
     if (activeTab !== "withdraw") return;
     // Prefer subgraph-based selection if available, but fall back to onchain detection.
     const preferredMarketId =
@@ -1058,7 +1070,7 @@ export const AnchorDepositWithdrawModal = ({
     }
     setSelectedMarketId(preferredMarketId);
   }, [
-    isOpen,
+    isActive,
     activeTab,
     selectedMarketHasPoolDeposit,
     marketIdWithAnyPoolDeposit,
@@ -1069,7 +1081,7 @@ export const AnchorDepositWithdrawModal = ({
 
   // Debug: log markets being used
   useEffect(() => {
-    if (isOpen && simpleMode) {
+    if (isActive && simpleMode) {
       console.log(
         `[Modal] marketsForToken (${marketsForToken.length}):`,
         marketsForToken.map((m) => ({
@@ -1080,7 +1092,7 @@ export const AnchorDepositWithdrawModal = ({
         }))
       );
     }
-  }, [marketsForToken, isOpen, simpleMode]);
+  }, [marketsForToken, isActive, simpleMode]);
 
   // Get selected market
   const selectedMarket =
@@ -1117,7 +1129,7 @@ export const AnchorDepositWithdrawModal = ({
         receiver: (address as `0x${string}`) || "0x0000000000000000000000000000000000000000",
       },
     },
-    enabled: isOpen && activeTab === "deposit",
+    enabled: isActive && activeTab === "deposit",
   });
 
   const pegTargetPrices = usePegTargetPrices();
@@ -1356,7 +1368,7 @@ export const AnchorDepositWithdrawModal = ({
 
   // Calculate fees for each market separately (for showing per-market fees)
   const marketFeeContracts = useMemo(() => {
-    if (!simpleMode || !isOpen || activeTab !== "deposit") return [];
+    if (!simpleMode || !isActive || activeTab !== "deposit") return [];
 
     const contracts: Array<{
       address: `0x${string}`;
@@ -1389,7 +1401,7 @@ export const AnchorDepositWithdrawModal = ({
     });
 
     return contracts;
-  }, [marketsForToken, simpleMode, isOpen, activeTab]);
+  }, [marketsForToken, simpleMode, isActive, activeTab]);
 
   // Use production-compatible contract reads for market fees
   const { data: marketFeeData } = useContractReads({
@@ -1398,7 +1410,7 @@ export const AnchorDepositWithdrawModal = ({
     query: {
       enabled:
         marketFeeContracts.length > 0 &&
-        isOpen &&
+        isActive &&
         simpleMode &&
         activeTab === "deposit",
       refetchInterval: 30000,
@@ -1494,7 +1506,7 @@ export const AnchorDepositWithdrawModal = ({
     });
 
     return pools;
-  }, [marketsForToken, isOpen, simpleMode]);
+  }, [marketsForToken, isActive, simpleMode]);
 
   // Validate minter address
   const isValidMinterAddress =
@@ -1559,7 +1571,7 @@ export const AnchorDepositWithdrawModal = ({
     query: {
       enabled:
         !!marketForDepositAsset?.addresses?.genesis &&
-        isOpen &&
+        isActive &&
         activeTab === "deposit" &&
         simpleMode &&
         isDirectPeggedDeposit,
@@ -1693,11 +1705,11 @@ export const AnchorDepositWithdrawModal = ({
     query: {
       enabled:
         !!address &&
-        isOpen &&
+        isActive &&
         activeTab === "deposit" &&
         isSelectedAssetNativeETH &&
         simpleMode,
-      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
     },
   });
 
@@ -1718,12 +1730,12 @@ export const AnchorDepositWithdrawModal = ({
       !!address &&
       !!selectedAssetAddress &&
       selectedAssetAddress !== "0x0000000000000000000000000000000000000000" &&
-      isOpen &&
+      isActive &&
       activeTab === "deposit" &&
       simpleMode &&
       !!selectedDepositAsset &&
       useAnvilForBalance,
-    refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+    refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
   });
 
   const wagmiSelectedAssetResult = useContractRead({
@@ -1741,12 +1753,12 @@ export const AnchorDepositWithdrawModal = ({
         !!address &&
         !!selectedAssetAddress &&
         selectedAssetAddress !== "0x0000000000000000000000000000000000000000" &&
-        isOpen &&
+        isActive &&
         activeTab === "deposit" &&
         simpleMode &&
         !!selectedDepositAsset &&
         !useAnvilForBalance,
-      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },
@@ -1756,26 +1768,26 @@ export const AnchorDepositWithdrawModal = ({
     !!address &&
     !!selectedAssetAddress &&
     selectedAssetAddress !== "0x0000000000000000000000000000000000000000" &&
-    isOpen &&
+    isActive &&
     activeTab === "deposit" &&
     simpleMode &&
     !!selectedDepositAsset &&
     !useAnvilForBalance;
 
   useEffect(() => {
-    if (process.env.NODE_ENV === "development" && isOpen && activeTab === "deposit") {
+    if (process.env.NODE_ENV === "development" && isActive && activeTab === "deposit") {
       console.log("[Balance Read Enabled Check]", {
         enabled: wagmiSelectedAssetBalanceEnabled,
         address: !!address,
         selectedAssetAddress: selectedAssetAddress || "null",
-        isOpen,
+        isActive,
         activeTab,
         simpleMode,
         selectedDepositAsset: selectedDepositAsset || "null",
         useAnvilForBalance,
       });
     }
-  }, [wagmiSelectedAssetBalanceEnabled, address, selectedAssetAddress, isOpen, activeTab, simpleMode, selectedDepositAsset, useAnvilForBalance]);
+  }, [wagmiSelectedAssetBalanceEnabled, address, selectedAssetAddress, isActive, activeTab, simpleMode, selectedDepositAsset, useAnvilForBalance]);
 
   const selectedAssetBalanceData = useAnvilForBalance
     ? anvilSelectedAssetResult.data
@@ -1807,7 +1819,7 @@ export const AnchorDepositWithdrawModal = ({
   useEffect(() => {
     if (
       process.env.NODE_ENV === "development" &&
-      isOpen &&
+      isActive &&
       simpleMode &&
       selectedDepositAsset &&
       activeTab === "deposit"
@@ -1824,14 +1836,14 @@ export const AnchorDepositWithdrawModal = ({
           !!selectedAssetAddress &&
           selectedAssetAddress !==
             "0x0000000000000000000000000000000000000000" &&
-          isOpen &&
+          isActive &&
           activeTab === "deposit" &&
           simpleMode &&
           !!selectedDepositAsset,
       });
     }
   }, [
-    isOpen,
+    isActive,
     simpleMode,
     selectedDepositAsset,
     selectedAssetAddress,
@@ -1853,10 +1865,10 @@ export const AnchorDepositWithdrawModal = ({
       enabled:
         !!address &&
         !!collateralAddress &&
-        isOpen &&
+        isActive &&
         activeTab === "deposit" &&
         !simpleMode,
-      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },
@@ -1872,7 +1884,7 @@ export const AnchorDepositWithdrawModal = ({
   useEffect(() => {
     if (
       process.env.NODE_ENV === "development" &&
-      isOpen &&
+      isActive &&
       isDirectPeggedDeposit
     ) {
       console.log("[AnchorDepositModal] Ha token balance check setup:", {
@@ -1887,14 +1899,14 @@ export const AnchorDepositWithdrawModal = ({
         enabled:
           !!address &&
           !!peggedTokenAddressForBalance &&
-          isOpen &&
+          isActive &&
           activeTab === "deposit" &&
           isDirectPeggedDeposit &&
           simpleMode,
       });
     }
   }, [
-    isOpen,
+    isActive,
     isDirectPeggedDeposit,
     selectedDepositAsset,
     marketForDepositAsset,
@@ -1914,12 +1926,12 @@ export const AnchorDepositWithdrawModal = ({
     enabled:
       !!address &&
       !!peggedTokenAddressForBalance &&
-      isOpen &&
+      isActive &&
       activeTab === "deposit" &&
       isDirectPeggedDeposit &&
       simpleMode &&
       useAnvilForBalance,
-    refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+    refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
   });
 
   const wagmiBalanceResult = useContractRead({
@@ -1932,12 +1944,12 @@ export const AnchorDepositWithdrawModal = ({
       enabled:
         !!address &&
         !!peggedTokenAddressForBalance &&
-        isOpen &&
+        isActive &&
         activeTab === "deposit" &&
         isDirectPeggedDeposit &&
         simpleMode &&
         !useAnvilForBalance,
-      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },
@@ -1957,7 +1969,7 @@ export const AnchorDepositWithdrawModal = ({
   useEffect(() => {
     if (
       process.env.NODE_ENV === "development" &&
-      isOpen &&
+      isActive &&
       isDirectPeggedDeposit
     ) {
       console.log("[AnchorDepositModal] Ha token balance read status:", {
@@ -1969,14 +1981,14 @@ export const AnchorDepositWithdrawModal = ({
         enabled:
           !!address &&
           !!peggedTokenAddressForBalance &&
-          isOpen &&
+          isActive &&
           activeTab === "deposit" &&
           isDirectPeggedDeposit &&
           simpleMode,
       });
     }
   }, [
-    isOpen,
+    isActive,
     isDirectPeggedDeposit,
     peggedTokenAddressForBalance,
     address,
@@ -1998,10 +2010,10 @@ export const AnchorDepositWithdrawModal = ({
     enabled:
       !!address &&
       !!peggedTokenAddress &&
-      isOpen &&
+      isActive &&
       (activeTab === "deposit" || activeTab === "withdraw") &&
       useAnvilForPeggedBalance,
-    refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+    refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
   });
 
   const wagmiPeggedBalanceResult = useContractRead({
@@ -2014,10 +2026,10 @@ export const AnchorDepositWithdrawModal = ({
       enabled:
         !!address &&
         !!peggedTokenAddress &&
-        isOpen &&
+        isActive &&
         (activeTab === "deposit" || activeTab === "withdraw") &&
         !useAnvilForPeggedBalance,
-      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },
@@ -2030,7 +2042,7 @@ export const AnchorDepositWithdrawModal = ({
   // Set default selection to ha token when user has ha tokens in wallet or when initialDepositAsset is provided
   useEffect(() => {
     if (
-      isOpen &&
+      isActive &&
       activeTab === "deposit" &&
       simpleMode &&
       !selectedDepositAsset
@@ -2048,7 +2060,7 @@ export const AnchorDepositWithdrawModal = ({
       }
     }
   }, [
-    isOpen,
+    isActive,
     activeTab,
     simpleMode,
     selectedDepositAsset,
@@ -2072,7 +2084,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: STABILITY_POOL_ABI,
     functionName: "totalAssetSupply",
     query: {
-      enabled: !!collateralPoolAddress && isOpen && activeTab === "withdraw",
+      enabled: !!collateralPoolAddress && isActive && activeTab === "withdraw",
       retry: 1,
       allowFailure: true,
     },
@@ -2083,7 +2095,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: STABILITY_POOL_ABI,
     functionName: "MIN_TOTAL_ASSET_SUPPLY",
     query: {
-      enabled: !!collateralPoolAddress && isOpen && activeTab === "withdraw",
+      enabled: !!collateralPoolAddress && isActive && activeTab === "withdraw",
       retry: 1,
       allowFailure: true,
     },
@@ -2094,7 +2106,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: STABILITY_POOL_ABI,
     functionName: "totalAssetSupply",
     query: {
-      enabled: !!sailPoolAddress && isOpen && activeTab === "withdraw",
+      enabled: !!sailPoolAddress && isActive && activeTab === "withdraw",
       retry: 1,
       allowFailure: true,
     },
@@ -2105,7 +2117,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: STABILITY_POOL_ABI,
     functionName: "MIN_TOTAL_ASSET_SUPPLY",
     query: {
-      enabled: !!sailPoolAddress && isOpen && activeTab === "withdraw",
+      enabled: !!sailPoolAddress && isActive && activeTab === "withdraw",
       retry: 1,
       allowFailure: true,
     },
@@ -2120,10 +2132,10 @@ export const AnchorDepositWithdrawModal = ({
     enabled:
       !!address &&
       !!collateralPoolAddress &&
-      isOpen &&
+      isActive &&
       activeTab === "withdraw" &&
       useAnvilForPeggedBalance,
-    refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+    refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
   });
 
   const wagmiCollateralPoolResult = useContractRead({
@@ -2135,10 +2147,10 @@ export const AnchorDepositWithdrawModal = ({
       enabled:
         !!address &&
         !!collateralPoolAddress &&
-        isOpen &&
+        isActive &&
         activeTab === "withdraw" &&
         !useAnvilForPeggedBalance,
-      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },
@@ -2157,10 +2169,10 @@ export const AnchorDepositWithdrawModal = ({
     enabled:
       !!address &&
       !!sailPoolAddress &&
-      isOpen &&
+      isActive &&
       activeTab === "withdraw" &&
       useAnvilForPeggedBalance,
-    refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+    refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
   });
 
   const wagmiSailPoolResult = useContractRead({
@@ -2172,10 +2184,10 @@ export const AnchorDepositWithdrawModal = ({
       enabled:
         !!address &&
         !!sailPoolAddress &&
-        isOpen &&
+        isActive &&
         activeTab === "withdraw" &&
         !useAnvilForPeggedBalance,
-      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },
@@ -2190,7 +2202,7 @@ export const AnchorDepositWithdrawModal = ({
     address: collateralPoolAddress,
     abi: STABILITY_POOL_ABI,
     functionName: "getEarlyWithdrawalFee",
-    enabled: !!collateralPoolAddress && isOpen && useAnvilForPeggedBalance,
+    enabled: !!collateralPoolAddress && isActive && useAnvilForPeggedBalance,
     refetchInterval: 30000,
   });
 
@@ -2199,7 +2211,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: STABILITY_POOL_ABI,
     functionName: "getEarlyWithdrawalFee",
     query: {
-      enabled: !!collateralPoolAddress && isOpen && !useAnvilForPeggedBalance,
+      enabled: !!collateralPoolAddress && isActive && !useAnvilForPeggedBalance,
       refetchInterval: 30000,
       allowFailure: true,
     },
@@ -2213,7 +2225,7 @@ export const AnchorDepositWithdrawModal = ({
     address: sailPoolAddress,
     abi: STABILITY_POOL_ABI,
     functionName: "getEarlyWithdrawalFee",
-    enabled: !!sailPoolAddress && isOpen && useAnvilForPeggedBalance,
+    enabled: !!sailPoolAddress && isActive && useAnvilForPeggedBalance,
     refetchInterval: 30000,
   });
 
@@ -2222,7 +2234,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: STABILITY_POOL_ABI,
     functionName: "getEarlyWithdrawalFee",
     query: {
-      enabled: !!sailPoolAddress && isOpen && !useAnvilForPeggedBalance,
+      enabled: !!sailPoolAddress && isActive && !useAnvilForPeggedBalance,
       refetchInterval: 30000,
       allowFailure: true,
     },
@@ -2237,7 +2249,7 @@ export const AnchorDepositWithdrawModal = ({
     address: collateralPoolAddress,
     abi: STABILITY_POOL_ABI,
     functionName: "getWithdrawalWindow",
-    enabled: !!collateralPoolAddress && isOpen && useAnvilForPeggedBalance,
+    enabled: !!collateralPoolAddress && isActive && useAnvilForPeggedBalance,
     refetchInterval: 30000,
   });
 
@@ -2246,7 +2258,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: STABILITY_POOL_ABI,
     functionName: "getWithdrawalWindow",
     query: {
-      enabled: !!collateralPoolAddress && isOpen && !useAnvilForPeggedBalance,
+      enabled: !!collateralPoolAddress && isActive && !useAnvilForPeggedBalance,
       refetchInterval: 30000,
     },
   });
@@ -2259,7 +2271,7 @@ export const AnchorDepositWithdrawModal = ({
     address: sailPoolAddress,
     abi: STABILITY_POOL_ABI,
     functionName: "getWithdrawalWindow",
-    enabled: !!sailPoolAddress && isOpen && useAnvilForPeggedBalance,
+    enabled: !!sailPoolAddress && isActive && useAnvilForPeggedBalance,
     refetchInterval: 30000,
   });
 
@@ -2268,7 +2280,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: STABILITY_POOL_ABI,
     functionName: "getWithdrawalWindow",
     query: {
-      enabled: !!sailPoolAddress && isOpen && !useAnvilForPeggedBalance,
+      enabled: !!sailPoolAddress && isActive && !useAnvilForPeggedBalance,
       refetchInterval: 30000,
     },
   });
@@ -2283,7 +2295,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: STABILITY_POOL_ABI,
     functionName: "getWithdrawalRequest",
     args: address ? [address] : undefined,
-    enabled: !!collateralPoolAddress && !!address && isOpen && useAnvilForPeggedBalance && activeTab === "withdraw",
+    enabled: !!collateralPoolAddress && !!address && isActive && useAnvilForPeggedBalance && activeTab === "withdraw",
     refetchInterval: 30000,
   });
 
@@ -2293,7 +2305,7 @@ export const AnchorDepositWithdrawModal = ({
     functionName: "getWithdrawalRequest",
     args: address ? [address] : undefined,
     query: {
-      enabled: !!collateralPoolAddress && !!address && isOpen && !useAnvilForPeggedBalance && activeTab === "withdraw",
+      enabled: !!collateralPoolAddress && !!address && isActive && !useAnvilForPeggedBalance && activeTab === "withdraw",
       refetchInterval: 30000,
       allowFailure: true,
     },
@@ -2308,7 +2320,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: STABILITY_POOL_ABI,
     functionName: "getWithdrawalRequest",
     args: address ? [address] : undefined,
-    enabled: !!sailPoolAddress && !!address && isOpen && useAnvilForPeggedBalance && activeTab === "withdraw",
+    enabled: !!sailPoolAddress && !!address && isActive && useAnvilForPeggedBalance && activeTab === "withdraw",
     refetchInterval: 30000,
   });
 
@@ -2318,7 +2330,7 @@ export const AnchorDepositWithdrawModal = ({
     functionName: "getWithdrawalRequest",
     args: address ? [address] : undefined,
     query: {
-      enabled: !!sailPoolAddress && !!address && isOpen && !useAnvilForPeggedBalance && activeTab === "withdraw",
+      enabled: !!sailPoolAddress && !!address && isActive && !useAnvilForPeggedBalance && activeTab === "withdraw",
       refetchInterval: 30000,
       allowFailure: true,
     },
@@ -2506,7 +2518,7 @@ export const AnchorDepositWithdrawModal = ({
   }, []);
 
   useEffect(() => {
-    if (activeTab !== "withdraw" || !isOpen) return;
+    if (activeTab !== "withdraw" || !isActive) return;
     setWithdrawalMethods((prev) => {
       let changed = false;
       const next = { ...prev };
@@ -2530,7 +2542,7 @@ export const AnchorDepositWithdrawModal = ({
     });
   }, [
     activeTab,
-    isOpen,
+    isActive,
     selectedPositions.collateralPool,
     selectedPositions.sailPool,
     collateralPoolRequest,
@@ -2614,8 +2626,8 @@ export const AnchorDepositWithdrawModal = ({
     args: address ? [address] : undefined,
     query: {
       enabled:
-        !!address && !!peggedTokenAddress && isOpen && activeTab === "deposit",
-      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+        !!address && !!peggedTokenAddress && isActive && activeTab === "deposit",
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },
@@ -2680,7 +2692,7 @@ export const AnchorDepositWithdrawModal = ({
       enabled:
         !!minterAddressForPrice &&
         isValidMinterAddressForPrice &&
-        isOpen &&
+        isActive &&
         (activeTab === "deposit" || activeTab === "withdraw"),
       retry: 1,
       allowFailure: true,
@@ -2692,7 +2704,7 @@ export const AnchorDepositWithdrawModal = ({
     if (
       !simpleMode ||
       (activeTab !== "deposit" && activeTab !== "withdraw") ||
-      !isOpen
+      !isActive
     )
       return [];
 
@@ -2725,7 +2737,7 @@ export const AnchorDepositWithdrawModal = ({
       }
     });
     return contracts;
-  }, [allStabilityPools, simpleMode, activeTab, isOpen, address]);
+  }, [allStabilityPools, simpleMode, activeTab, isActive, address]);
 
   const { data: allPoolData, isLoading: isPoolDataLoading } = useContractReads({
     contracts: poolContracts,
@@ -2740,7 +2752,7 @@ export const AnchorDepositWithdrawModal = ({
   // Map pool data to pools (3 reads per pool: TVL, gaugeRewardToken, liquidationToken). APR = emission fallback below.
   const poolsWithData = useMemo(() => {
     if (!allPoolData || allPoolData.length === 0) {
-      if (isOpen && simpleMode) {
+      if (isActive && simpleMode) {
         console.log(
           "[Modal] No pool data available. allPoolData:",
           allPoolData,
@@ -2792,7 +2804,7 @@ export const AnchorDepositWithdrawModal = ({
         liquidationToken,
       };
     });
-  }, [allPoolData, allStabilityPools, isOpen, simpleMode]);
+  }, [allPoolData, allStabilityPools, isActive, simpleMode]);
 
   // ---------------------------------------------------------------------------
   // Pool APR: emission-based (deployed StabilityPool has no getAPRBreakdown view).
@@ -2815,7 +2827,7 @@ export const AnchorDepositWithdrawModal = ({
     const meta: Array<{ poolAddress: `0x${string}`; tokenAddress: `0x${string}` }> =
       [];
     if (
-      !isOpen ||
+      !isActive ||
       !simpleMode ||
       (activeTab !== "deposit" && activeTab !== "withdraw")
     )
@@ -2841,7 +2853,7 @@ export const AnchorDepositWithdrawModal = ({
       });
     }
     return meta;
-  }, [poolsWithData, isOpen, simpleMode, activeTab]);
+  }, [poolsWithData, isActive, simpleMode, activeTab]);
 
   const { data: rewardDataReads, isLoading: isRewardDataLoading } =
     useContractReads({
@@ -2854,7 +2866,7 @@ export const AnchorDepositWithdrawModal = ({
     query: {
       enabled:
         rewardDataMeta.length > 0 &&
-        isOpen &&
+        isActive &&
         simpleMode &&
         (activeTab === "deposit" || activeTab === "withdraw"),
       retry: 1,
@@ -2959,7 +2971,7 @@ export const AnchorDepositWithdrawModal = ({
     // Debug logging
 
     return uniqueAddresses;
-  }, [poolsWithAprFallback, isOpen, simpleMode]);
+  }, [poolsWithAprFallback, isActive, simpleMode]);
 
   const { data: rewardTokenSymbols } = useContractReads({
     contracts: rewardTokenAddresses.map((addr) => ({
@@ -2970,7 +2982,7 @@ export const AnchorDepositWithdrawModal = ({
     query: {
       enabled:
         rewardTokenAddresses.length > 0 &&
-        isOpen &&
+        isActive &&
         simpleMode &&
         activeTab === "deposit",
       retry: 1,
@@ -2989,7 +3001,7 @@ export const AnchorDepositWithdrawModal = ({
     });
 
     return map;
-  }, [rewardTokenAddresses, rewardTokenSymbols, isOpen, simpleMode]);
+  }, [rewardTokenAddresses, rewardTokenSymbols, isActive, simpleMode]);
 
   // Add symbols to pools (combine config reward tokens with fetched ones)
   const poolsWithSymbols = useMemo(() => {
@@ -3044,7 +3056,7 @@ export const AnchorDepositWithdrawModal = ({
       ...rest,
       maxAPR: maxAPRValue,
     }));
-  }, [poolsWithSymbols, isOpen, simpleMode]);
+  }, [poolsWithSymbols, isActive, simpleMode]);
 
   // If there's only one reward token option in simple deposit flow, skip the reward step
   const skipRewardStep =
@@ -3095,7 +3107,7 @@ export const AnchorDepositWithdrawModal = ({
   const advancedStabilityPoolAprReadsEnabled =
     !!isValidStabilityPoolAddress &&
     advAprWrappedOk &&
-    isOpen &&
+    isActive &&
     !simpleMode &&
     ((activeTab === "deposit" && depositInStabilityPool) ||
       activeTab === "deposit");
@@ -3203,9 +3215,9 @@ export const AnchorDepositWithdrawModal = ({
         !!collateralAddress &&
         !!minterAddress &&
         isValidMinterAddress &&
-        isOpen &&
+        isActive &&
         activeTab === "deposit",
-      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },
@@ -3231,9 +3243,9 @@ export const AnchorDepositWithdrawModal = ({
       !!address &&
       !!peggedTokenAddress &&
       !!stabilityPoolAddress &&
-      isOpen &&
+      isActive &&
       activeTab === "deposit",
-    refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+    refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
   });
 
   const {
@@ -3253,9 +3265,9 @@ export const AnchorDepositWithdrawModal = ({
         !!address &&
         !!peggedTokenAddress &&
         !!stabilityPoolAddress &&
-        isOpen &&
+        isActive &&
         activeTab === "deposit",
-      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },
@@ -3321,8 +3333,9 @@ export const AnchorDepositWithdrawModal = ({
       return (inputAmount * 10n**18n) / wrappedRate;
     }
     
-    // If depositing ETH (for ETH market), convert ETH → wstETH
-    if ((depositAsset === "ETH" || depositAsset === collateralSymbol) && isWstETHMarket) {
+    // If depositing ETH into a wstETH market, convert ETH → wstETH (ETH≈stETH 1:1).
+    // Direct wstETH deposits already returned above — do not treat collateralSymbol as ETH.
+    if (depositAsset === "ETH" && isWstETHMarket) {
       // ETH → stETH (1:1) → wstETH (using rate)
       const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
       return (inputAmount * 10n**18n) / wrappedRate;
@@ -3339,11 +3352,14 @@ export const AnchorDepositWithdrawModal = ({
     return undefined;
   }, [debouncedAmount, activeTab, selectedDepositAsset, collateralSymbol, activeWrappedCollateralSymbol, peggedTokenSymbol, marketForDepositAsset, selectedMarket]);
 
-  // For ETH/stETH deposits, query wstETH contract for accurate conversion rate
+  // For ETH/stETH deposits into a wstETH market, query wstETH for the wrap rate.
+  // Direct wstETH deposits must NOT go through getWstETHByStETH (that shrinks the amount by ~rate).
   const wstETHAddressForConversion = useMemo(() => {
     const depositAsset = selectedDepositAsset || collateralSymbol;
     const isWstETHMarket = activeWrappedCollateralSymbol === "wstETH";
-    if ((depositAsset === "ETH" || depositAsset === collateralSymbol || depositAsset === "stETH") && isWstETHMarket) {
+    const needsStEthToWstEth =
+      isWstETHMarket && (depositAsset === "ETH" || depositAsset === "stETH");
+    if (needsStEthToWstEth) {
       return marketForDepositAsset?.addresses?.wrappedCollateralToken || selectedMarket?.addresses?.wrappedCollateralToken;
     }
     return undefined;
@@ -3351,7 +3367,11 @@ export const AnchorDepositWithdrawModal = ({
 
   const ethOrStethAmount = useMemo(() => {
     const depositAsset = selectedDepositAsset || collateralSymbol;
-    if ((depositAsset === "ETH" || depositAsset === collateralSymbol || depositAsset === "stETH") && debouncedAmount && parseFloat(debouncedAmount) > 0) {
+    if (
+      (depositAsset === "ETH" || depositAsset === "stETH") &&
+      debouncedAmount &&
+      parseFloat(debouncedAmount) > 0
+    ) {
       return parseEther(debouncedAmount);
     }
     return undefined;
@@ -3363,7 +3383,7 @@ export const AnchorDepositWithdrawModal = ({
     functionName: "getWstETHByStETH",
     args: ethOrStethAmount ? [ethOrStethAmount] : undefined,
     query: {
-      enabled: !!wstETHAddressForConversion && !!ethOrStethAmount && activeTab === "deposit" && isOpen,
+      enabled: !!wstETHAddressForConversion && !!ethOrStethAmount && activeTab === "deposit" && isActive,
     },
   });
 
@@ -3387,7 +3407,7 @@ export const AnchorDepositWithdrawModal = ({
       isValidMinterAddress &&
       !!accurateDepositAmountInWrappedCollateral &&
       accurateDepositAmountInWrappedCollateral > 0n &&
-      isOpen &&
+      isActive &&
       activeTab === "deposit",
   });
 
@@ -3403,7 +3423,7 @@ export const AnchorDepositWithdrawModal = ({
         isValidMinterAddress &&
         !!accurateDepositAmountInWrappedCollateral &&
         accurateDepositAmountInWrappedCollateral > 0n &&
-        isOpen &&
+        isActive &&
         activeTab === "deposit",
       retry: 1,
       allowFailure: true,
@@ -3499,7 +3519,7 @@ export const AnchorDepositWithdrawModal = ({
         !anyTokenDeposit.isLoadingSwapQuote && // Don't run while swap quote is loading
         !!anyTokenDeposit.swapQuote && // Swap quote must be ready
         parseFloat(debouncedAmount) >= 0.00001 && // Lower threshold for swap assets (0.00001 instead of 0.0001)
-        isOpen &&
+        isActive &&
         activeTab === "deposit",
       retry: 1,
       allowFailure: true,
@@ -3567,9 +3587,9 @@ export const AnchorDepositWithdrawModal = ({
         !!address &&
         !!redeemAllowancePeggedTokenAddress &&
         !!redeemAllowanceMinterAddress &&
-        isOpen &&
+        isActive &&
         activeTab === "withdraw",
-      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },
@@ -3620,7 +3640,7 @@ export const AnchorDepositWithdrawModal = ({
     !!redeemDryRunAddress &&
     !!redeemInputAmount &&
     redeemInputAmount > 0n &&
-    isOpen &&
+    isActive &&
     activeTab === "withdraw" &&
     !withdrawOnly;
 
@@ -3736,7 +3756,7 @@ export const AnchorDepositWithdrawModal = ({
       >();
 
       if (
-        !isOpen ||
+        !isActive ||
         activeTab !== "withdraw" ||
         withdrawOnly ||
         !redeemInputAmount ||
@@ -3774,7 +3794,7 @@ export const AnchorDepositWithdrawModal = ({
 
       return { contracts, indexMap };
     }, [
-      isOpen,
+      isActive,
       activeTab,
       withdrawOnly,
       redeemInputAmount,
@@ -3785,7 +3805,7 @@ export const AnchorDepositWithdrawModal = ({
     contracts: redeemMarketPreviewContracts,
     query: {
       enabled: redeemMarketPreviewContracts.length > 0,
-      refetchInterval: isOpen ? 15000 : false,
+      refetchInterval: isActive ? 15000 : false,
       retry: 1,
       allowFailure: true,
     },
@@ -4077,10 +4097,28 @@ export const AnchorDepositWithdrawModal = ({
     isDirectPeggedDeposit,
   ]);
 
+  useRegisterAppNotifications(
+    "anchor-embedded-deposit",
+    {
+      count: anchorModalNotificationCount,
+      badgeSeverities: anchorModalNotificationSeverities,
+      body: anchorModalNotificationsBody,
+    },
+    embedded && isActive
+  );
+
   const depositFlowParts = useMemo(
     () => anchorDepositFlowParts({ mintOnly, skipRewardStep }),
     [mintOnly, skipRewardStep]
   );
+
+  const depositFlowActiveIndex = useMemo(() => {
+    if (mintOnly) return 0;
+    if (skipRewardStep) {
+      return currentStep === 1 ? 0 : 1;
+    }
+    return Math.max(0, currentStep - 1);
+  }, [mintOnly, skipRewardStep, currentStep]);
 
   const withdrawFlowParts = useMemo(
     () => anchorWithdrawFlowParts(withdrawOnly),
@@ -4125,7 +4163,7 @@ export const AnchorDepositWithdrawModal = ({
         selectedMarket?.name ||
         marketId;
       steps.push({
-        label: `Redeem (${redeemMarketName})`,
+        label: `Sell (${redeemMarketName})`,
         detail: redeemCollateralSymbol || "collateral",
       });
     }
@@ -4154,7 +4192,7 @@ export const AnchorDepositWithdrawModal = ({
     (!!isValidRedeemMinterAddress || !!isValidMinterAddress) &&
     !!redeemInputAmount &&
     redeemInputAmount > 0n &&
-    isOpen &&
+    isActive &&
     activeTab === "withdraw" &&
     !false;
 
@@ -4251,7 +4289,7 @@ export const AnchorDepositWithdrawModal = ({
   const dryRunEnabled =
     !!isValidFeeMinterAddress &&
     !!parsedAmount &&
-    isOpen &&
+    isActive &&
     activeTab === "deposit" &&
     !isDirectPeggedDeposit; // Only run for collateral deposits
 
@@ -4260,7 +4298,7 @@ export const AnchorDepositWithdrawModal = ({
       dryRunEnabled,
       isValidFeeMinterAddress,
       parsedAmount: parsedAmount?.toString(),
-      isOpen,
+      isActive,
       activeTab,
       isDirectPeggedDeposit,
       feeMinterAddress,
@@ -4368,7 +4406,7 @@ export const AnchorDepositWithdrawModal = ({
     query: {
       enabled:
         !!isValidStabilityPoolMinter &&
-        isOpen &&
+        isActive &&
         simpleMode &&
         activeTab === "deposit" &&
         !!selectedStabilityPool,
@@ -4385,7 +4423,7 @@ export const AnchorDepositWithdrawModal = ({
     query: {
       enabled:
         !!isValidStabilityPoolMinter &&
-        isOpen &&
+        isActive &&
         simpleMode &&
         activeTab === "deposit" &&
         !!selectedStabilityPool,
@@ -4586,6 +4624,20 @@ export const AnchorDepositWithdrawModal = ({
     setProgressConfig({ ...defaultProgressConfig });
     setCurrentStep(1);
   };
+
+  const handleDepositFlowStepClick = useCallback(
+    (partIndex: number) => {
+      if (partIndex >= depositFlowActiveIndex) return;
+      if (partIndex === 0) {
+        leaveRewardTokenStepToAmount();
+        return;
+      }
+      if (partIndex === 1 && !skipRewardStep) {
+        leaveStabilityPoolStepToReward();
+      }
+    },
+    [depositFlowActiveIndex, skipRewardStep],
+  );
 
   /** Withdraw: clear pool checkboxes, amounts, and method toggles (e.g. when switching fxSAVE / wstETH rail). */
   const clearWithdrawPoolSelectionAndInputs = useCallback(() => {
@@ -5320,7 +5372,7 @@ export const AnchorDepositWithdrawModal = ({
 
   // Reset positions only when modal opens or tab changes, NOT on balance updates
   useEffect(() => {
-    if (activeTab === "withdraw" && isOpen) {
+    if (activeTab === "withdraw" && isActive) {
       // Only initialize once per withdraw session
       if (!hasInitializedWithdraw.current) {
         if (process.env.NODE_ENV === "development") {
@@ -5359,14 +5411,14 @@ export const AnchorDepositWithdrawModal = ({
       });
       hasInitializedWithdraw.current = false;
     }
-  }, [activeTab, isOpen]);
+  }, [activeTab, isActive]);
 
   // Reset the ref when modal closes
   useEffect(() => {
-    if (!isOpen) {
+    if (!isActive) {
       hasInitializedWithdraw.current = false;
     }
-  }, [isOpen]);
+  }, [isActive]);
 
   // Get available balance based on active tab
   const getAvailableBalance = (): bigint => {
@@ -5448,8 +5500,31 @@ export const AnchorDepositWithdrawModal = ({
   // after the user clicks "Withdraw". That can change `selectedMarket`/`collateralSymbol` and would
   // otherwise re-run this effect, resetting the user's tab choice back to the initial tab.
   const hasInitializedOnOpen = useRef(false);
+
+  // Embedded panel: force re-init when the selected market changes.
   useEffect(() => {
-    if (!isOpen) {
+    if (!embedded) return;
+    hasInitializedOnOpen.current = false;
+  }, [embedded, marketId]);
+
+  // Embedded panel: follow parent Deposit/Withdraw tab.
+  useEffect(() => {
+    if (!embedded || !isActive) return;
+    const tab =
+      initialTab === "mint" ||
+      initialTab === "deposit" ||
+      initialTab === "deposit-mint"
+        ? "deposit"
+        : initialTab === "withdraw" ||
+            initialTab === "redeem" ||
+            initialTab === "withdraw-redeem"
+          ? "withdraw"
+          : "deposit";
+    setActiveTab(tab);
+  }, [embedded, isActive, initialTab]);
+
+  useEffect(() => {
+    if (!isActive) {
       hasInitializedOnOpen.current = false;
       withdrawPoolTabUserSelectedRef.current = false;
       setEarlyWithdraw1PctEnabled(false);
@@ -5505,7 +5580,7 @@ export const AnchorDepositWithdrawModal = ({
       }
     }
   }, [
-    isOpen,
+    isActive,
     initialTab,
     simpleMode,
     bestPoolType,
@@ -5573,6 +5648,7 @@ export const AnchorDepositWithdrawModal = ({
       // Reset back to the market this modal was opened for (prevents withdraw showing no positions on reopen)
       setSelectedMarketId(marketId);
     }
+    if (embedded) return;
     onClose();
   };
 
@@ -5981,6 +6057,59 @@ export const AnchorDepositWithdrawModal = ({
     }
 
     try {
+      const userAddress = address as `0x${string}`;
+
+      const applyPoolProgressFallback = () => {
+        setProgressConfig((prev) => ({ ...prev, ...separatePoolProgressPatch() }));
+      };
+
+      const finishCombinedPoolZapSuccess = async (hash: `0x${string}`) => {
+        setTxHashes((prev) => ({ ...prev, mint: hash }));
+        await publicClient?.waitForTransactionReceipt({ hash });
+        setStep("success");
+        if (onSuccess) onSuccess();
+      };
+
+      const tryCombinedPoolZap = async (
+        logLabel: string,
+        execute: () => Promise<`0x${string}`>,
+      ): Promise<boolean> => {
+        const result = await attemptCombinedPoolZap({
+          logLabel,
+          onFallback: applyPoolProgressFallback,
+          execute,
+        });
+        if (result) {
+          await finishCombinedPoolZapSuccess(result);
+          return true;
+        }
+        return false;
+      };
+
+      const depositMintedToPool = async (balanceBeforeMint?: bigint) => {
+        if (!stabilityPoolAddress || !peggedTokenAddress) {
+          throw new Error(
+            "Stability pool or pegged token address not found. Cannot deposit to stability pool.",
+          );
+        }
+        await depositMintedPeggedToStabilityPool({
+          publicClient: publicClient ?? undefined,
+          writeContractAsync,
+          peggedTokenAddress: peggedTokenAddress as `0x${string}`,
+          stabilityPoolAddress: stabilityPoolAddress as `0x${string}`,
+          userAddress,
+          balanceBeforeMint,
+          erc20Abi: ERC20_ABI,
+          stabilityPoolAbi: STABILITY_POOL_ABI,
+          onApprovingPegged: () => setStep("approvingPegged"),
+          onDepositing: () => setStep("depositing"),
+          onApproveTx: (hash) =>
+            setTxHashes((prev) => ({ ...prev, approvePegged: hash })),
+          onDepositTx: (hash) =>
+            setTxHashes((prev) => ({ ...prev, deposit: hash })),
+        });
+      };
+
       if (isDirectPeggedDeposit) {
         // Direct ha token deposit to stability pool - skip minting
         let targetPoolAddress: `0x${string}` | undefined;
@@ -6447,36 +6576,20 @@ export const AnchorDepositWithdrawModal = ({
                 shouldDepositToPool &&
                 ((anyTokenDeposit.useETHZap && isActuallyStETH) ||
                   (anyTokenDeposit.useUSDCZap && isUsdcOrFxUsdOrFxSave))));
-          const useZapToPoolWithPermit =
-            permitEligible &&
-            shouldDepositToPool &&
-            anyTokenDeposit.useUSDCZap &&
-            isUsdcOrFxUsdOrFxSave &&
-            !!stabilityPoolAddress;
-          const useZapEthToPool =
-            isActuallyETH && shouldDepositToPool && !!stabilityPoolAddress;
-          const useZapStEthToPoolPermit =
-            permitEligible &&
-            shouldDepositToPool &&
-            isActuallyStETH &&
-            !!stabilityPoolAddress;
-          const useAnyZapAndDepositTokenPath =
-            useZapToPoolWithPermit || useZapEthToPool || useZapStEthToPoolPermit ||
-            (shouldDepositToPool && !!stabilityPoolAddress && (anyTokenDeposit.useUSDCZap || anyTokenDeposit.useETHZap));
-
+          const anyTokenPoolProgress = buildCollateralMintProgressFields({
+            shouldDepositToPool,
+            permitEligible,
+            needsZapApproval,
+            needsDirectApproval: false,
+            useZap: true,
+            zapAssetName,
+            wrappedZapAssetName: null,
+          });
           setProgressConfig({
             mode: "collateral",
-            includeApproveCollateral: needsZapApproval && !permitEligible,
-            includePermitCollateral: permitEligible,
-            includeMint: true,
-            includeApprovePegged: !!(useAnyZapAndDepositTokenPath ? false : shouldDepositToPool),
-            includeDeposit: !!(useAnyZapAndDepositTokenPath ? false : shouldDepositToPool),
+            ...anyTokenPoolProgress,
             includeDirectApprove: false,
             includeDirectDeposit: false,
-            useZap: true,
-            zapAsset: zapAssetName,
-            zapAndDeposit: !!useAnyZapAndDepositTokenPath,
-            title: shouldDepositToPool ? "Mint anchor token & Deposit" : "Mint anchor token",
           });
           progress.show();
           setStep(permitEligible || needsZapApproval ? "approving" : "minting");
@@ -6741,24 +6854,30 @@ export const AnchorDepositWithdrawModal = ({
               );
               if (shouldDepositToPool && stabilityPoolAddress) {
                 const minStabilityPoolOut = (minPeggedOut * (feePercentage !== undefined && feePercentage >= 1 ? 98n : 99n)) / 100n;
-                zapHash = await writeContractAsync({
-                  address: zapAddress,
-                  abi: ethZapAbi,
-                  functionName: minterEthNativeZapFunctionName("ToStabilityPool", useZapV1),
-                  args: [
-                    minWEth,
-                    address as `0x${string}`,
-                    minPeggedOut,
-                    stabilityPoolAddress as `0x${string}`,
-                    minStabilityPoolOut,
-                  ],
-                  value: swappedAmount,
-                });
-                setTxHashes((prev) => ({ ...prev, mint: zapHash }));
-                await publicClient?.waitForTransactionReceipt({ hash: zapHash });
-                setStep("success");
-                if (onSuccess) onSuccess();
-                return;
+                if (
+                  await tryCombinedPoolZap(
+                    "ETH zap to stability pool (any-token path)",
+                    () =>
+                      writeContractAsync({
+                        address: zapAddress,
+                        abi: ethZapAbi,
+                        functionName: minterEthNativeZapFunctionName(
+                          "ToStabilityPool",
+                          useZapV1,
+                        ),
+                        args: [
+                          minWEth,
+                          userAddress,
+                          minPeggedOut,
+                          stabilityPoolAddress as `0x${string}`,
+                          minStabilityPoolOut,
+                        ],
+                        value: swappedAmount,
+                      }),
+                  )
+                ) {
+                  return;
+                }
               }
               debugTx("zap/baseAssetToPegged", {
                 zapAddress,
@@ -6836,20 +6955,58 @@ export const AnchorDepositWithdrawModal = ({
                         includePermitCollateral: true,
                       }));
                       setStep("minting");
-                      const minStabilityPoolOutStEth = (minPeggedOut * (feePercentage !== undefined && feePercentage >= 1 ? 98n : 99n)) / 100n;
-                      const deadline = permitResult.deadline || calculateDeadline(3600);
+                      const minStabilityPoolOutStEth =
+                        (minPeggedOut *
+                          (feePercentage !== undefined && feePercentage >= 1
+                            ? 98n
+                            : 99n)) /
+                        100n;
+                      const deadline =
+                        permitResult.deadline || calculateDeadline(3600);
+                      if (
+                        await tryCombinedPoolZap(
+                          "stETH permit zap to stability pool (any-token path)",
+                          () =>
+                            writeContractAsync({
+                              address: zapAddress,
+                              abi: ethZapAbi,
+                              functionName:
+                                "zapCollateralToStabilityPoolWithPermit",
+                              args: [
+                                swappedAmount,
+                                minWSteth,
+                                userAddress,
+                                minPeggedOut,
+                                stabilityPoolAddress as `0x${string}`,
+                                minStabilityPoolOutStEth,
+                                deadline,
+                                permitResult.permitSig.v,
+                                permitResult.permitSig.r,
+                                permitResult.permitSig.s,
+                              ],
+                            }),
+                        )
+                      ) {
+                        return;
+                      }
+                      // Combined permit zap failed — fall through to approve + separate mint/deposit.
+                    } else {
+                      setProgressConfig((prev) => ({
+                        ...prev,
+                        includeApproveCollateral: false,
+                        includePermitCollateral: true,
+                      }));
+                      setStep("minting");
                       const permitHash = await writeContractAsync({
                         address: zapAddress,
                         abi: ethZapAbi,
-                        functionName: "zapCollateralToStabilityPoolWithPermit",
+                        functionName: "zapCollateralToPeggedWithPermit",
                         args: [
                           swappedAmount,
                           minWSteth,
-                          address as `0x${string}`,
+                          userAddress,
                           minPeggedOut,
-                          stabilityPoolAddress as `0x${string}`,
-                          minStabilityPoolOutStEth,
-                          deadline,
+                          permitResult.deadline,
                           permitResult.permitSig.v,
                           permitResult.permitSig.r,
                           permitResult.permitSig.s,
@@ -6863,34 +7020,6 @@ export const AnchorDepositWithdrawModal = ({
                       if (onSuccess) onSuccess();
                       return;
                     }
-                    setProgressConfig((prev) => ({
-                      ...prev,
-                      includeApproveCollateral: false,
-                      includePermitCollateral: true,
-                    }));
-                    setStep("minting");
-                    const permitHash = await writeContractAsync({
-                      address: zapAddress,
-                      abi: ethZapAbi,
-                      functionName: "zapCollateralToPeggedWithPermit",
-                      args: [
-                        swappedAmount,
-                        minWSteth,
-                        address as `0x${string}`,
-                        minPeggedOut,
-                        permitResult.deadline,
-                        permitResult.permitSig.v,
-                        permitResult.permitSig.r,
-                        permitResult.permitSig.s,
-                      ],
-                    });
-                    setTxHashes((prev) => ({ ...prev, mint: permitHash }));
-                    await publicClient?.waitForTransactionReceipt({
-                      hash: permitHash,
-                    });
-                    setStep("success");
-                    if (onSuccess) onSuccess();
-                    return;
                   }
                 } catch (permitError) {
                   if (process.env.NODE_ENV === "development") {
@@ -6930,25 +7059,33 @@ export const AnchorDepositWithdrawModal = ({
               }
 
               if (shouldDepositToPool && stabilityPoolAddress) {
-                const minStabilityPoolOutStEth = (minPeggedOut * (feePercentage !== undefined && feePercentage >= 1 ? 98n : 99n)) / 100n;
-                zapHash = await writeContractAsync({
-                  address: zapAddress,
-                  abi: ethZapAbi,
-                  functionName: "zapCollateralToStabilityPool",
-                  args: [
-                    swappedAmount,
-                    minWSteth,
-                    address as `0x${string}`,
-                    minPeggedOut,
-                    stabilityPoolAddress as `0x${string}`,
-                    minStabilityPoolOutStEth,
-                  ],
-                });
-                await publicClient?.waitForTransactionReceipt({ hash: zapHash });
-                setTxHashes((prev) => ({ ...prev, mint: zapHash }));
-                setStep("success");
-                if (onSuccess) onSuccess();
-                return;
+                const minStabilityPoolOutStEth =
+                  (minPeggedOut *
+                    (feePercentage !== undefined && feePercentage >= 1
+                      ? 98n
+                      : 99n)) /
+                  100n;
+                if (
+                  await tryCombinedPoolZap(
+                    "stETH zap to stability pool (any-token path)",
+                    () =>
+                      writeContractAsync({
+                        address: zapAddress,
+                        abi: ethZapAbi,
+                        functionName: "zapCollateralToStabilityPool",
+                        args: [
+                          swappedAmount,
+                          minWSteth,
+                          userAddress,
+                          minPeggedOut,
+                          stabilityPoolAddress as `0x${string}`,
+                          minStabilityPoolOutStEth,
+                        ],
+                      }),
+                  )
+                ) {
+                  return;
+                }
               }
               
               debugTx("zap/collateralToPegged", {
@@ -6976,68 +7113,7 @@ export const AnchorDepositWithdrawModal = ({
             
             // If a pool was selected, continue by depositing the freshly minted pegged tokens.
             if (shouldDepositToPool) {
-              if (!stabilityPoolAddress) {
-                throw new Error(
-                  "Stability pool address not found. Cannot deposit to stability pool."
-                );
-              }
-              if (!peggedTokenAddress) {
-                throw new Error(
-                  "Pegged token address not found. Cannot deposit to stability pool."
-                );
-              }
-
-              // Wait a bit for state to update after transaction
-              await new Promise((resolve) => setTimeout(resolve, 2000));
-              const balanceAfterZap = (await publicClient?.readContract({
-                address: peggedTokenAddress as `0x${string}`,
-                abi: ERC20_ABI,
-                functionName: "balanceOf",
-                args: [address as `0x${string}`],
-              })) as bigint;
-
-              const minted =
-                balanceBeforeZap !== undefined
-                  ? balanceAfterZap - balanceBeforeZap
-                  : balanceAfterZap;
-              const depositAmount = minted > 0n ? minted : balanceAfterZap;
-
-              if (depositAmount <= 0n) {
-                throw new Error(
-                  "Mint succeeded but could not determine minted amount to deposit."
-                );
-              }
-
-              // Approve pegged token for pool if needed
-              const currentAllowance = (await publicClient?.readContract({
-                address: peggedTokenAddress as `0x${string}`,
-                abi: ERC20_ABI,
-                functionName: "allowance",
-                args: [address as `0x${string}`, stabilityPoolAddress],
-              })) as bigint;
-
-              if (currentAllowance < depositAmount) {
-                setStep("approvingPegged");
-                const approveHash = await writeContractAsync({
-                  address: peggedTokenAddress as `0x${string}`,
-                  abi: ERC20_ABI,
-                  functionName: "approve",
-                  args: [stabilityPoolAddress, depositAmount],
-                });
-                setTxHashes((prev) => ({ ...prev, approvePegged: approveHash }));
-                await publicClient?.waitForTransactionReceipt({ hash: approveHash });
-              }
-
-              // Deposit to stability pool
-              setStep("depositing");
-              const depositHash = await writeContractAsync({
-                address: stabilityPoolAddress,
-                abi: STABILITY_POOL_ABI,
-                functionName: "deposit",
-                args: [depositAmount, address as `0x${string}`, 0n],
-              });
-              setTxHashes((prev) => ({ ...prev, deposit: depositHash }));
-              await publicClient?.waitForTransactionReceipt({ hash: depositHash });
+              await depositMintedToPool(balanceBeforeZap);
             }
 
             setStep("success");
@@ -7154,10 +7230,45 @@ export const AnchorDepositWithdrawModal = ({
                     stabilityPoolAddress &&
                     (isActuallyUSDC || isActuallyFxUSD)
                   ) {
-                    const minStabilityPoolOut = (minPeggedOut * (feePercentage !== undefined && feePercentage >= 1 ? 98n : 99n)) / 100n;
-                    const functionName = isActuallyUSDC
+                    const minStabilityPoolOut =
+                      (minPeggedOut *
+                        (feePercentage !== undefined && feePercentage >= 1
+                          ? 98n
+                          : 99n)) /
+                      100n;
+                    const poolFunctionName = isActuallyUSDC
                       ? "zapBaseAssetToStabilityPoolWithPermit"
                       : "zapCollateralToStabilityPoolWithPermit";
+                    if (
+                      await tryCombinedPoolZap(
+                        "USDC/fxUSD permit zap to stability pool (any-token path)",
+                        () =>
+                          writeContractAsync({
+                            address: zapAddress,
+                            abi: MINTER_USDC_ZAP_V3_ABI,
+                            functionName: poolFunctionName,
+                            args: [
+                              swappedAmount,
+                              minFxSaveOut,
+                              userAddress,
+                              minPeggedOut,
+                              stabilityPoolAddress as `0x${string}`,
+                              minStabilityPoolOut,
+                              deadline,
+                              permitResult.permitSig.v,
+                              permitResult.permitSig.r,
+                              permitResult.permitSig.s,
+                            ],
+                          }),
+                      )
+                    ) {
+                      return;
+                    }
+                    // Combined permit zap failed — fall through to approve + separate mint/deposit.
+                  } else {
+                    const functionName = isActuallyUSDC
+                      ? "zapBaseAssetToPeggedWithPermit"
+                      : "zapCollateralToPeggedWithPermit";
                     const permitHash = await writeContractAsync({
                       address: zapAddress,
                       abi: MINTER_USDC_ZAP_V3_ABI,
@@ -7165,10 +7276,8 @@ export const AnchorDepositWithdrawModal = ({
                       args: [
                         swappedAmount,
                         minFxSaveOut,
-                        address as `0x${string}`,
+                        userAddress,
                         minPeggedOut,
-                        stabilityPoolAddress as `0x${string}`,
-                        minStabilityPoolOut,
                         deadline,
                         permitResult.permitSig.v,
                         permitResult.permitSig.r,
@@ -7183,32 +7292,6 @@ export const AnchorDepositWithdrawModal = ({
                     if (onSuccess) onSuccess();
                     return;
                   }
-
-                  const functionName = isActuallyUSDC
-                    ? "zapBaseAssetToPeggedWithPermit"
-                    : "zapCollateralToPeggedWithPermit";
-                  const permitHash = await writeContractAsync({
-                    address: zapAddress,
-                    abi: MINTER_USDC_ZAP_V3_ABI,
-                    functionName,
-                    args: [
-                      swappedAmount,
-                      minFxSaveOut,
-                      address as `0x${string}`,
-                      minPeggedOut,
-                      deadline,
-                      permitResult.permitSig.v,
-                      permitResult.permitSig.r,
-                      permitResult.permitSig.s,
-                    ],
-                  });
-                  setTxHashes((prev) => ({ ...prev, mint: permitHash }));
-                  await publicClient?.waitForTransactionReceipt({
-                    hash: permitHash,
-                  });
-                  setStep("success");
-                  if (onSuccess) onSuccess();
-                  return;
                 }
               } catch (permitError) {
                 if (process.env.NODE_ENV === "development") {
@@ -7264,41 +7347,35 @@ export const AnchorDepositWithdrawModal = ({
               stabilityPoolAddress &&
               (isActuallyUSDC || isActuallyFxUSD)
             ) {
-              const minStabilityPoolOut = (minPeggedOut * (feePercentage !== undefined && feePercentage >= 1 ? 98n : 99n)) / 100n;
-              if (isActuallyUSDC) {
-                zapHash = await writeContractAsync({
-                  address: zapAddress,
-                  abi: MINTER_USDC_ZAP_V3_ABI,
-                  functionName: "zapBaseAssetToStabilityPool",
-                  args: [
-                    swappedAmount,
-                    minFxSaveOut,
-                    address as `0x${string}`,
-                    minPeggedOut,
-                    stabilityPoolAddress as `0x${string}`,
-                    minStabilityPoolOut,
-                  ],
-                });
-              } else {
-                zapHash = await writeContractAsync({
-                  address: zapAddress,
-                  abi: MINTER_USDC_ZAP_V3_ABI,
-                  functionName: "zapCollateralToStabilityPool",
-                  args: [
-                    swappedAmount,
-                    minFxSaveOut,
-                    address as `0x${string}`,
-                    minPeggedOut,
-                    stabilityPoolAddress as `0x${string}`,
-                    minStabilityPoolOut,
-                  ],
-                });
+              const minStabilityPoolOut =
+                (minPeggedOut *
+                  (feePercentage !== undefined && feePercentage >= 1 ? 98n : 99n)) /
+                100n;
+              if (
+                await tryCombinedPoolZap(
+                  isActuallyUSDC
+                    ? "USDC zap to stability pool (any-token path)"
+                    : "fxUSD zap to stability pool (any-token path)",
+                  () =>
+                    writeContractAsync({
+                      address: zapAddress,
+                      abi: MINTER_USDC_ZAP_V3_ABI,
+                      functionName: isActuallyUSDC
+                        ? "zapBaseAssetToStabilityPool"
+                        : "zapCollateralToStabilityPool",
+                      args: [
+                        swappedAmount,
+                        minFxSaveOut,
+                        userAddress,
+                        minPeggedOut,
+                        stabilityPoolAddress as `0x${string}`,
+                        minStabilityPoolOut,
+                      ],
+                    }),
+                )
+              ) {
+                return;
               }
-              setTxHashes((prev) => ({ ...prev, mint: zapHash }));
-              await publicClient?.waitForTransactionReceipt({ hash: zapHash });
-              setStep("success");
-              if (onSuccess) onSuccess();
-              return;
             }
             if (isActuallyUSDC) {
               debugTx("zap/baseAssetToPegged", {
@@ -7353,65 +7430,7 @@ export const AnchorDepositWithdrawModal = ({
             
             // If a pool was selected, continue by depositing the freshly minted pegged tokens.
             if (shouldDepositToPool) {
-              if (!stabilityPoolAddress) {
-                throw new Error(
-                  "Stability pool address not found. Cannot deposit to stability pool."
-                );
-              }
-              if (!peggedTokenAddress) {
-                throw new Error(
-                  "Pegged token address not found. Cannot deposit to stability pool."
-                );
-              }
-
-              await new Promise((resolve) => setTimeout(resolve, 2000));
-              const balanceAfterZap = (await publicClient?.readContract({
-                address: peggedTokenAddress as `0x${string}`,
-                abi: ERC20_ABI,
-                functionName: "balanceOf",
-                args: [address as `0x${string}`],
-              })) as bigint;
-
-              const minted =
-                balanceBeforeZap !== undefined
-                  ? balanceAfterZap - balanceBeforeZap
-                  : balanceAfterZap;
-              const depositAmount = minted > 0n ? minted : balanceAfterZap;
-
-              if (depositAmount <= 0n) {
-                throw new Error(
-                  "Mint succeeded but could not determine minted amount to deposit."
-                );
-              }
-
-              const currentAllowance = (await publicClient?.readContract({
-                address: peggedTokenAddress as `0x${string}`,
-                abi: ERC20_ABI,
-                functionName: "allowance",
-                args: [address as `0x${string}`, stabilityPoolAddress],
-              })) as bigint;
-
-              if (currentAllowance < depositAmount) {
-                setStep("approvingPegged");
-                const approveHash = await writeContractAsync({
-                  address: peggedTokenAddress as `0x${string}`,
-                  abi: ERC20_ABI,
-                  functionName: "approve",
-                  args: [stabilityPoolAddress, depositAmount],
-                });
-                setTxHashes((prev) => ({ ...prev, approvePegged: approveHash }));
-                await publicClient?.waitForTransactionReceipt({ hash: approveHash });
-              }
-
-              setStep("depositing");
-              const depositHash = await writeContractAsync({
-                address: stabilityPoolAddress,
-                abi: STABILITY_POOL_ABI,
-                functionName: "deposit",
-                args: [depositAmount, address as `0x${string}`, 0n],
-              });
-              setTxHashes((prev) => ({ ...prev, deposit: depositHash }));
-              await publicClient?.waitForTransactionReceipt({ hash: depositHash });
+              await depositMintedToPool(balanceBeforeZap);
             }
 
             setStep("success");
@@ -7452,34 +7471,12 @@ export const AnchorDepositWithdrawModal = ({
           else if (isFxUSD) zapAssetName = "fxUSD";
         }
         
-        const useZapToPoolWithPermit =
-          permitEligible &&
-          shouldDepositToPool &&
-          useZap &&
-          (isFxUSD || isUSDC || isFxSAVE) &&
-          !!stabilityPoolAddress;
-        const useZapStEthToPool =
-          useETHZap &&
-          isStETH &&
-          shouldDepositToPool &&
-          !!stabilityPoolAddress;
-        const useZapEthToPool =
-          useETHZap &&
-          isNativeETH &&
-          shouldDepositToPool &&
-          !!stabilityPoolAddress;
         const useZapWrappedToPool =
           !useZap &&
           (isWstETH || isFxSAVE) &&
           shouldDepositToPool &&
           !!zapAddress &&
           !!stabilityPoolAddress;
-        const useZapAndDeposit =
-          shouldDepositToPool &&
-          !!stabilityPoolAddress &&
-          ((useETHZap && (isNativeETH || isStETH)) ||
-            (useUSDCZap && (isUSDC || isFxUSD)) ||
-            useZapWrappedToPool);
         const useZapWrappedToPoolAndDeposit =
           useZapWrappedToPool && permitEligible;
         const wrappedZapAssetName =
@@ -7488,24 +7485,21 @@ export const AnchorDepositWithdrawModal = ({
             : useZapWrappedToPool && isFxSAVE
               ? "fxSAVE"
               : null;
-        const useAnyZapAndDeposit =
-          useZapAndDeposit || useZapWrappedToPoolAndDeposit;
+        const mainPoolProgress = buildCollateralMintProgressFields({
+          shouldDepositToPool,
+          permitEligible,
+          needsZapApproval,
+          needsDirectApproval,
+          useZap: !!useZap,
+          zapAssetName,
+          wrappedZapAssetName,
+          useZapWrappedToPoolAndDeposit: !!useZapWrappedToPoolAndDeposit,
+        });
         setProgressConfig({
           mode: "collateral",
-          includeApproveCollateral:
-            (needsZapApproval || needsDirectApproval) && !permitEligible,
-          includePermitCollateral: permitEligible,
-          includeMint: true,
-          includeApprovePegged: useAnyZapAndDeposit ? false : includeApprovePegged,
-          includeDeposit: useAnyZapAndDeposit ? false : includeDeposit,
+          ...mainPoolProgress,
           includeDirectApprove: false,
           includeDirectDeposit: false,
-          useZap: !!useZap,
-          zapAsset: zapAssetName,
-          zapAndDeposit: !!useZapAndDeposit,
-          wrappedZapAndDeposit: !!useZapWrappedToPoolAndDeposit,
-          wrappedZapAsset: wrappedZapAssetName,
-          title: includeDeposit ? "Mint anchor token & Deposit" : "Mint anchor token",
         });
         // Show progress modal for transaction feedback
         progress.show();
@@ -7695,6 +7689,12 @@ export const AnchorDepositWithdrawModal = ({
           }
         }
 
+        // wstETH/fxSAVE + stability pool: use one-tx zap only when permit works or permit is off.
+        // If permit was eligible but failed, fall back to mint + separate pool deposit.
+        const effectiveUseZapWrappedToPool =
+          useZapWrappedToPool &&
+          (usePermitWrappedZap || !permitEligible);
+
         // Step 1: Handle approvals - for zap contracts or direct minting
         if (useZap && zapAddress) {
           // Handle approvals for zap contracts
@@ -7803,8 +7803,54 @@ export const AnchorDepositWithdrawModal = ({
           }
           // ETH doesn't need approval (native token) - if approval step is shown, it will be auto-completed
         } else if (
+          effectiveUseZapWrappedToPool &&
+          zapAddress &&
+          collateralAddress &&
+          !usePermitWrappedZap
+        ) {
+          // wstETH/fxSAVE → mint + stability pool in one zap tx (non-permit path)
+          const zapAllowance = await publicClient?.readContract({
+            address: collateralAddress as `0x${string}`,
+            abi: ERC20_ABI,
+            functionName: "allowance",
+            args: [address as `0x${string}`, zapAddress],
+          });
+          const currentZapAllowance = (zapAllowance as bigint) || 0n;
+          if (currentZapAllowance < amountBigInt) {
+            setStep("approving");
+            setError(null);
+            setTxHash(null);
+
+            debugTx("zap/wrappedCollateral/approve", {
+              token: collateralAddress,
+              spender: zapAddress,
+              amount: amountBigInt.toString(),
+              currentAllowance: currentZapAllowance.toString(),
+            });
+
+            const approveHash = await writeContractAsync({
+              address: collateralAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "approve",
+              args: [zapAddress, amountBigInt],
+            });
+            setTxHash(approveHash);
+            setTxHashes((prev) => ({
+              ...prev,
+              approveCollateral: approveHash,
+            }));
+            await txClient?.waitForTransactionReceipt({ hash: approveHash });
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          } else {
+            setTxHashes((prev) => ({
+              ...prev,
+              approveCollateral: undefined,
+            }));
+          }
+        } else if (
           needsApproval &&
-          !(useZapWrappedToPool && usePermitWrappedZap)
+          !(useZapWrappedToPool && usePermitWrappedZap) &&
+          !effectiveUseZapWrappedToPool
         ) {
           // Direct minting - approve wrapped collateral to minter (skip when using wrapped zap permit)
           setStep("approving");
@@ -7982,24 +8028,28 @@ export const AnchorDepositWithdrawModal = ({
                   ],
                   value: amountBigInt.toString(),
                 });
-                mintHash = await writeContractAsync({
-                  address: zapAddress,
-                  abi: ethZapAbi,
-                  functionName: minterEthNativeZapFunctionName("ToStabilityPool", useZapV1),
-                  args: [
-                    minWEth2,
-                    address as `0x${string}`,
-                    minPeggedOut,
-                    stabilityPoolAddress as `0x${string}`,
-                    minStabilityPoolOut,
-                  ],
-                  value: amountBigInt,
-                });
-                setTxHashes((prev) => ({ ...prev, mint: mintHash }));
-                await txClient?.waitForTransactionReceipt({ hash: mintHash });
-                setStep("success");
-                if (onSuccess) await onSuccess();
-                return;
+                if (
+                  await tryCombinedPoolZap("ETH zap to stability pool", () =>
+                    writeContractAsync({
+                      address: zapAddress,
+                      abi: ethZapAbi,
+                      functionName: minterEthNativeZapFunctionName(
+                        "ToStabilityPool",
+                        useZapV1,
+                      ),
+                      args: [
+                        minWEth2,
+                        userAddress,
+                        minPeggedOut,
+                        stabilityPoolAddress as `0x${string}`,
+                        minStabilityPoolOut,
+                      ],
+                      value: amountBigInt,
+                    }),
+                  )
+                ) {
+                  return;
+                }
               }
 
               debugTx("zap/baseAssetToPegged", {
@@ -8049,28 +8099,31 @@ export const AnchorDepositWithdrawModal = ({
                     deadline.toString(),
                   ],
                 });
-                mintHash = await writeContractAsync({
-                  address: zapAddress,
-                  abi: ethZapAbi,
-                  functionName: "zapCollateralToStabilityPoolWithPermit",
-                  args: [
-                    amountBigInt,
-                    minWSteth2,
-                    address as `0x${string}`,
-                    minPeggedOut,
-                    stabilityPoolAddress as `0x${string}`,
-                    minStabilityPoolOutStEth,
-                    deadline,
-                    zapPermit.permitSig.v,
-                    zapPermit.permitSig.r,
-                    zapPermit.permitSig.s,
-                  ],
-                });
-                setTxHashes((prev) => ({ ...prev, mint: mintHash }));
-                await txClient?.waitForTransactionReceipt({ hash: mintHash });
-                setStep("success");
-                if (onSuccess) await onSuccess();
-                return;
+                if (
+                  await tryCombinedPoolZap(
+                    "stETH permit zap to stability pool",
+                    () =>
+                      writeContractAsync({
+                        address: zapAddress,
+                        abi: ethZapAbi,
+                        functionName: "zapCollateralToStabilityPoolWithPermit",
+                        args: [
+                          amountBigInt,
+                          minWSteth2,
+                          userAddress,
+                          minPeggedOut,
+                          stabilityPoolAddress as `0x${string}`,
+                          minStabilityPoolOutStEth,
+                          deadline,
+                          zapPermit.permitSig.v,
+                          zapPermit.permitSig.r,
+                          zapPermit.permitSig.s,
+                        ],
+                      }),
+                  )
+                ) {
+                  return;
+                }
               }
 
               if (useZapStEthToPool && stabilityPoolAddress) {
@@ -8085,24 +8138,25 @@ export const AnchorDepositWithdrawModal = ({
                     minStabilityPoolOutStEth.toString(),
                   ],
                 });
-                mintHash = await writeContractAsync({
-                  address: zapAddress,
-                  abi: ethZapAbi,
-                  functionName: "zapCollateralToStabilityPool",
-                  args: [
-                    amountBigInt,
-                    minWSteth2,
-                    address as `0x${string}`,
-                    minPeggedOut,
-                    stabilityPoolAddress as `0x${string}`,
-                    minStabilityPoolOutStEth,
-                  ],
-                });
-                setTxHashes((prev) => ({ ...prev, mint: mintHash }));
-                await txClient?.waitForTransactionReceipt({ hash: mintHash });
-                setStep("success");
-                if (onSuccess) await onSuccess();
-                return;
+                if (
+                  await tryCombinedPoolZap("stETH zap to stability pool", () =>
+                    writeContractAsync({
+                      address: zapAddress,
+                      abi: ethZapAbi,
+                      functionName: "zapCollateralToStabilityPool",
+                      args: [
+                        amountBigInt,
+                        minWSteth2,
+                        userAddress,
+                        minPeggedOut,
+                        stabilityPoolAddress as `0x${string}`,
+                        minStabilityPoolOutStEth,
+                      ],
+                    }),
+                  )
+                ) {
+                  return;
+                }
               }
 
               debugTx("zap/collateralToPegged", {
@@ -8166,70 +8220,35 @@ export const AnchorDepositWithdrawModal = ({
 
             if (useZapToPoolWithPermit) {
               const deadline = zapPermit!.deadline || calculateDeadline(3600);
-              if (isFxUSD) {
-                debugTx("zap/collateralToStabilityPoolWithPermit", {
-                  zapAddress,
-                  args: [
-                    amountBigInt.toString(),
-                    minFxSaveOut.toString(),
-                    address,
-                    minPeggedOut.toString(),
-                    stabilityPoolAddress,
-                    minStabilityPoolOut.toString(),
-                  ],
-                });
-                mintHash = await writeContractAsync({
-                  address: zapAddress,
-                  abi: MINTER_USDC_ZAP_V3_ABI,
-                  functionName: "zapCollateralToStabilityPoolWithPermit",
-                  args: [
-                    amountBigInt,
-                    minFxSaveOut,
-                    address as `0x${string}`,
-                    minPeggedOut,
-                    stabilityPoolAddress as `0x${string}`,
-                    minStabilityPoolOut,
-                    deadline,
-                    zapPermit!.permitSig.v,
-                    zapPermit!.permitSig.r,
-                    zapPermit!.permitSig.s,
-                  ],
-                });
-              } else {
-                debugTx("zap/baseAssetToStabilityPoolWithPermit", {
-                  zapAddress,
-                  args: [
-                    amountBigInt.toString(),
-                    minFxSaveOut.toString(),
-                    address,
-                    minPeggedOut.toString(),
-                    stabilityPoolAddress,
-                    minStabilityPoolOut.toString(),
-                  ],
-                });
-                mintHash = await writeContractAsync({
-                  address: zapAddress,
-                  abi: MINTER_USDC_ZAP_V3_ABI,
-                  functionName: "zapBaseAssetToStabilityPoolWithPermit",
-                  args: [
-                    amountBigInt,
-                    minFxSaveOut,
-                    address as `0x${string}`,
-                    minPeggedOut,
-                    stabilityPoolAddress as `0x${string}`,
-                    minStabilityPoolOut,
-                    deadline,
-                    zapPermit!.permitSig.v,
-                    zapPermit!.permitSig.r,
-                    zapPermit!.permitSig.s,
-                  ],
-                });
+              if (
+                await tryCombinedPoolZap(
+                  isFxUSD
+                    ? "fxUSD permit zap to stability pool"
+                    : "USDC permit zap to stability pool",
+                  () =>
+                    writeContractAsync({
+                      address: zapAddress,
+                      abi: MINTER_USDC_ZAP_V3_ABI,
+                      functionName: isFxUSD
+                        ? "zapCollateralToStabilityPoolWithPermit"
+                        : "zapBaseAssetToStabilityPoolWithPermit",
+                      args: [
+                        amountBigInt,
+                        minFxSaveOut,
+                        userAddress,
+                        minPeggedOut,
+                        stabilityPoolAddress as `0x${string}`,
+                        minStabilityPoolOut,
+                        deadline,
+                        zapPermit!.permitSig.v,
+                        zapPermit!.permitSig.r,
+                        zapPermit!.permitSig.s,
+                      ],
+                    }),
+                )
+              ) {
+                return;
               }
-              setTxHashes((prev) => ({ ...prev, mint: mintHash }));
-              await txClient?.waitForTransactionReceipt({ hash: mintHash });
-              setStep("success");
-              if (onSuccess) await onSuccess();
-              return;
             }
 
             if (shouldDepositToPool && stabilityPoolAddress) {
@@ -8245,19 +8264,25 @@ export const AnchorDepositWithdrawModal = ({
                     minStabilityPoolOut.toString(),
                   ],
                 });
-                mintHash = await writeContractAsync({
-                  address: zapAddress,
-                  abi: MINTER_USDC_ZAP_V3_ABI,
-                  functionName: "zapBaseAssetToStabilityPool",
-                  args: [
-                    amountBigInt,
-                    minFxSaveOut,
-                    address as `0x${string}`,
-                    minPeggedOut,
-                    stabilityPoolAddress as `0x${string}`,
-                    minStabilityPoolOut,
-                  ],
-                });
+                if (
+                  await tryCombinedPoolZap("USDC zap to stability pool", () =>
+                    writeContractAsync({
+                      address: zapAddress,
+                      abi: MINTER_USDC_ZAP_V3_ABI,
+                      functionName: "zapBaseAssetToStabilityPool",
+                      args: [
+                        amountBigInt,
+                        minFxSaveOut,
+                        userAddress,
+                        minPeggedOut,
+                        stabilityPoolAddress as `0x${string}`,
+                        minStabilityPoolOut,
+                      ],
+                    }),
+                  )
+                ) {
+                  return;
+                }
               } else if (isFxUSD) {
                 debugTx("zap/collateralToStabilityPool", {
                   zapAddress,
@@ -8270,25 +8295,26 @@ export const AnchorDepositWithdrawModal = ({
                     minStabilityPoolOut.toString(),
                   ],
                 });
-                mintHash = await writeContractAsync({
-                  address: zapAddress,
-                  abi: MINTER_USDC_ZAP_V3_ABI,
-                  functionName: "zapCollateralToStabilityPool",
-                  args: [
-                    amountBigInt,
-                    minFxSaveOut,
-                    address as `0x${string}`,
-                    minPeggedOut,
-                    stabilityPoolAddress as `0x${string}`,
-                    minStabilityPoolOut,
-                  ],
-                });
+                if (
+                  await tryCombinedPoolZap("fxUSD zap to stability pool", () =>
+                    writeContractAsync({
+                      address: zapAddress,
+                      abi: MINTER_USDC_ZAP_V3_ABI,
+                      functionName: "zapCollateralToStabilityPool",
+                      args: [
+                        amountBigInt,
+                        minFxSaveOut,
+                        userAddress,
+                        minPeggedOut,
+                        stabilityPoolAddress as `0x${string}`,
+                        minStabilityPoolOut,
+                      ],
+                    }),
+                  )
+                ) {
+                  return;
+                }
               }
-              setTxHashes((prev) => ({ ...prev, mint: mintHash }));
-              await txClient?.waitForTransactionReceipt({ hash: mintHash });
-              setStep("success");
-              if (onSuccess) await onSuccess();
-              return;
             }
 
             if (isUSDC) {
@@ -8381,116 +8407,82 @@ export const AnchorDepositWithdrawModal = ({
           }
         } else if (
           useZapWrappedToPool &&
-          usePermitWrappedZap &&
-          wrapZapPermit?.permitSig &&
-          wrapZapPermit?.deadline &&
-          stabilityPoolAddress
+          shouldDepositToPool &&
+          stabilityPoolAddress &&
+          zapAddress
         ) {
-          const slip = (feePercentage !== undefined && feePercentage >= 1) ? 98n : 99n;
+          const slip =
+            feePercentage !== undefined && feePercentage >= 1 ? 98n : 99n;
           const minStabilityPoolOutWrapped = (minPeggedOut * slip) / 100n;
-          const deadlineWrapped =
-            wrapZapPermit.deadline || calculateDeadline(3600);
-          if (isWstETH) {
-            debugTx("zap/wrappedCollateralToStabilityPoolWithPermit", {
-              zapAddress,
-              args: [
-                amountBigInt.toString(),
-                address,
-                minPeggedOut.toString(),
-                stabilityPoolAddress,
-                minStabilityPoolOutWrapped.toString(),
-                deadlineWrapped.toString(),
-              ],
-            });
-            mintHash = await writeContractAsync({
-              address: zapAddress,
-              abi: ethZapAbi,
-              functionName: "zapWrappedCollateralToStabilityPoolWithPermit",
-              args: [
-                amountBigInt,
-                address as `0x${string}`,
-                minPeggedOut,
-                stabilityPoolAddress as `0x${string}`,
-                minStabilityPoolOutWrapped,
-                deadlineWrapped,
-                wrapZapPermit.permitSig.v,
-                wrapZapPermit.permitSig.r,
-                wrapZapPermit.permitSig.s,
-              ],
-            });
-          } else if (isFxSAVE) {
-            debugTx("zap/wrappedCollateralToStabilityPoolWithPermit", {
-              zapAddress,
-              args: [
-                amountBigInt.toString(),
-                address,
-                minPeggedOut.toString(),
-                stabilityPoolAddress,
-                minStabilityPoolOutWrapped.toString(),
-                deadlineWrapped.toString(),
-              ],
-            });
-            mintHash = await writeContractAsync({
-              address: zapAddress,
-              abi: MINTER_USDC_ZAP_V3_ABI,
-              functionName: "zapWrappedCollateralToStabilityPoolWithPermit",
-              args: [
-                amountBigInt,
-                address as `0x${string}`,
-                minPeggedOut,
-                stabilityPoolAddress as `0x${string}`,
-                minStabilityPoolOutWrapped,
-                deadlineWrapped,
-                wrapZapPermit.permitSig.v,
-                wrapZapPermit.permitSig.r,
-                wrapZapPermit.permitSig.s,
-              ],
-            });
-          } else {
-            throw new Error("Invalid wrapped zap asset");
+          let wrappedPoolZapSucceeded = false;
+
+          if (
+            effectiveUseZapWrappedToPool &&
+            usePermitWrappedZap &&
+            wrapZapPermit?.permitSig &&
+            wrapZapPermit?.deadline
+          ) {
+            const deadlineWrapped =
+              wrapZapPermit.deadline || calculateDeadline(3600);
+            wrappedPoolZapSucceeded = await tryCombinedPoolZap(
+              isWstETH
+                ? "wstETH permit zap to stability pool"
+                : "fxSAVE permit zap to stability pool",
+              () =>
+                writeContractAsync({
+                  address: zapAddress,
+                  abi: isWstETH ? ethZapAbi : MINTER_USDC_ZAP_V3_ABI,
+                  functionName: "zapWrappedCollateralToStabilityPoolWithPermit",
+                  args: [
+                    amountBigInt,
+                    userAddress,
+                    minPeggedOut,
+                    stabilityPoolAddress as `0x${string}`,
+                    minStabilityPoolOutWrapped,
+                    deadlineWrapped,
+                    wrapZapPermit.permitSig.v,
+                    wrapZapPermit.permitSig.r,
+                    wrapZapPermit.permitSig.s,
+                  ],
+                }),
+            );
+            if (wrappedPoolZapSucceeded) return;
           }
-          setTxHashes((prev) => ({ ...prev, mint: mintHash }));
-          await txClient?.waitForTransactionReceipt({ hash: mintHash });
-          setStep("success");
-          if (onSuccess) await onSuccess();
-          return;
-        } else if (useZapWrappedToPool && stabilityPoolAddress) {
-          const slip = (feePercentage !== undefined && feePercentage >= 1) ? 98n : 99n;
-          const minStabilityPoolOutWrapped = (minPeggedOut * slip) / 100n;
-          if (isWstETH) {
-            mintHash = await writeContractAsync({
-              address: zapAddress,
-              abi: ethZapAbi,
-              functionName: "zapWrappedCollateralToStabilityPool",
-              args: [
-                amountBigInt,
-                address as `0x${string}`,
-                minPeggedOut,
-                stabilityPoolAddress as `0x${string}`,
-                minStabilityPoolOutWrapped,
-              ],
-            });
-          } else if (isFxSAVE) {
-            mintHash = await writeContractAsync({
-              address: zapAddress,
-              abi: MINTER_USDC_ZAP_V3_ABI,
-              functionName: "zapWrappedCollateralToStabilityPool",
-              args: [
-                amountBigInt,
-                address as `0x${string}`,
-                minPeggedOut,
-                stabilityPoolAddress as `0x${string}`,
-                minStabilityPoolOutWrapped,
-              ],
-            });
-          } else {
-            throw new Error("Invalid wrapped zap asset");
+
+          if (effectiveUseZapWrappedToPool) {
+            wrappedPoolZapSucceeded = await tryCombinedPoolZap(
+              isWstETH
+                ? "wstETH zap to stability pool"
+                : "fxSAVE zap to stability pool",
+              () =>
+                writeContractAsync({
+                  address: zapAddress,
+                  abi: isWstETH ? ethZapAbi : MINTER_USDC_ZAP_V3_ABI,
+                  functionName: "zapWrappedCollateralToStabilityPool",
+                  args: [
+                    amountBigInt,
+                    userAddress,
+                    minPeggedOut,
+                    stabilityPoolAddress as `0x${string}`,
+                    minStabilityPoolOutWrapped,
+                  ],
+                }),
+            );
+            if (wrappedPoolZapSucceeded) return;
           }
-          setTxHashes((prev) => ({ ...prev, mint: mintHash }));
-          await txClient?.waitForTransactionReceipt({ hash: mintHash });
-          setStep("success");
-          if (onSuccess) await onSuccess();
-          return;
+
+          // Combined wrapped zap failed — mint directly, then deposit in step 3.
+          debugTx("directMint/mintPeggedToken", {
+            minterAddress,
+            function: "mintPeggedToken",
+            args: [amountBigInt.toString(), address, minPeggedOut.toString()],
+          });
+          mintHash = await writeContractAsync({
+            address: minterAddress as `0x${string}`,
+            abi: MINTER_PEGGED_ABI,
+            functionName: "mintPeggedToken",
+            args: [amountBigInt, userAddress, minPeggedOut],
+          });
         } else {
           debugTx("directMint/mintPeggedToken", {
             minterAddress,
@@ -9055,7 +9047,7 @@ export const AnchorDepositWithdrawModal = ({
             errorName === "ActionPaused"
           ) {
             if (errorName === "ActionPaused") {
-              errorMessage = "Minting is currently paused. Please try again later.";
+              errorMessage = "Buying is currently paused. Please try again later.";
             } else {
               errorMessage = "This deposit would bring the collateral ratio below the minimum allowed. Please deposit a smaller amount or try again later when market conditions improve.";
             }
@@ -9298,7 +9290,7 @@ export const AnchorDepositWithdrawModal = ({
         (!targetRedeemMinterAddress || !targetRedeemPeggedTokenAddress)
       ) {
         throw new Error(
-          "Redeem market is not configured. Please choose a different redeem asset."
+          "Sell market is not configured. Please choose a different sell asset."
         );
       }
 
@@ -9336,11 +9328,11 @@ export const AnchorDepositWithdrawModal = ({
         (collateralIsImmediate && !collateralWindowOpen) ||
         (sailIsImmediate && !sailWindowOpen);
 
-      // Title: Request Withdrawal | Withdraw (1% Fee) | Withdraw | Redeem | Withdraw (1% Fee) & Redeem
+      // Title: Request Withdrawal | Withdraw (1% Fee) | Withdraw | Sell | Withdraw (1% Fee) & Sell
       const progressTitle = (() => {
         if (isRequestOnly) return "Request Withdrawal";
         if (withdrawOnly) return hasFee ? "Withdraw (1% Fee)" : "Withdraw";
-        return hasFee ? "Withdraw (1% Fee) & Redeem" : "Redeem";
+        return hasFee ? "Withdraw (1% Fee) & Sell" : "Sell";
       })();
 
       setProgressConfig((prev) => ({
@@ -9829,6 +9821,7 @@ export const AnchorDepositWithdrawModal = ({
               ],
             });
           } catch (permitRedeemErr) {
+            if (isTxUserRejection(permitRedeemErr)) throw permitRedeemErr;
             console.warn(
               "[handleWithdrawExecution] redeemPeggedTokenWithPermit failed, falling back to approve+redeem",
               permitRedeemErr
@@ -10005,7 +9998,7 @@ export const AnchorDepositWithdrawModal = ({
         includeApproveRedeem:
           needsApproval && !(permitEnabled && isPermitCapable),
         includeRedeem: true,
-        title: "Redeem",
+        title: "Sell",
       });
       // Show progress modal for transaction feedback
       progress.show();
@@ -10123,6 +10116,7 @@ export const AnchorDepositWithdrawModal = ({
             ],
           });
         } catch (permitRedeemErr) {
+          if (isTxUserRejection(permitRedeemErr)) throw permitRedeemErr;
           console.warn(
             "[handleRedeem] redeemPeggedTokenWithPermit failed, falling back to approve+redeem",
             permitRedeemErr
@@ -10433,20 +10427,20 @@ export const AnchorDepositWithdrawModal = ({
         case "approving":
           return "Approving...";
         case "minting":
-          return "Minting...";
+          return "Buying...";
         case "depositing":
           return "Depositing...";
         case "success":
-          return mintOnly ? "Mint" : "Mint & Deposit";
+          return mintOnly ? "Buy" : "Buy & Deposit";
         case "error":
           return "Try Again";
         default:
           if (mintOnly) {
-            return needsApproval ? "Approve & Mint" : "Mint";
+            return needsApproval ? "Approve & Buy" : "Buy";
           } else {
             return needsApproval || needsPeggedTokenApproval
-              ? "Approve & Mint & Deposit"
-              : "Mint & Deposit";
+              ? "Approve & Buy & Deposit"
+              : "Buy & Deposit";
           }
       }
     } else if (activeTab === "withdraw") {
@@ -10470,7 +10464,7 @@ export const AnchorDepositWithdrawModal = ({
           case "withdrawing":
             return "Withdrawing...";
           case "redeeming":
-            return "Redeeming...";
+            return "Selling...";
           case "success":
             return baseLabel;
           case "error":
@@ -10575,7 +10569,7 @@ export const AnchorDepositWithdrawModal = ({
       ? redeemCollateralSymbol
       : undefined;
 
-  if (!isOpen) return null;
+  if (!isOpen && !embedded) return null;
 
   // Check if any request withdrawals were made
   const hasRequestWithdrawals =
@@ -10585,7 +10579,7 @@ export const AnchorDepositWithdrawModal = ({
 
   return (
     <>
-      {/* Progress Modal for transaction feedback */}
+      {/* Progress Modal for transaction feedback — portaled center-screen */}
       {showProgressModal && (
         <TransactionProgressModal
           isOpen={showProgressModal}
@@ -10611,10 +10605,11 @@ export const AnchorDepositWithdrawModal = ({
         />
       )}
 
-      {/* Main Modal - hide when progress modal is showing */}
-      {!showProgressModal && isOpen && (
+      {/* Keep embedded panel mounted during progress so layout does not jump. */}
+      {(isOpen || embedded) && (!showProgressModal || embedded) && (
         <DepositModalShell
-          isOpen={isOpen}
+          variant={embedded ? "inline" : "modal"}
+          isOpen={isOpen || embedded}
           onClose={handleClose}
           title={
             <DepositModalTitle
@@ -10654,24 +10649,35 @@ export const AnchorDepositWithdrawModal = ({
           }
           closeDisabled={isProcessing}
           closeTitle={isProcessing ? "Close modal (will cancel transaction)" : "Close"}
-          panelClassName="max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col overflow-hidden"
-          contentClassName="flex min-h-0 flex-1 flex-col p-3 sm:p-4"
+          panelClassName={
+            embedded
+              ? "flex h-full min-h-0 flex-col overflow-hidden"
+              : "max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col overflow-hidden"
+          }
+          contentClassName={
+            embedded
+              ? "flex min-h-0 flex-1 flex-col overflow-hidden"
+              : "flex min-h-0 flex-1 flex-col p-3 sm:p-4"
+          }
         >
             {simpleMode && activeTab === "deposit" ? (
-              // Simple Mode: Step-by-Step Flow
-              <div
-                className={
-                  currentStep === 1 ||
-                  (currentStep === 2 && !mintOnly && !skipRewardStep) ||
-                  (currentStep === stabilityStep && !mintOnly)
-                    ? "flex min-h-0 flex-1 flex-col"
-                    : "space-y-4"
-                }
-              >
-                {currentStep === 1 && (
-                  <div className="flex min-h-0 flex-1 flex-col animate-in fade-in-0 slide-in-from-right-2 duration-200">
+              // Active step only — inactive steps are `hidden` so amount/overview
+              // content on later steps cannot inflate step 1 height.
+              <div className="flex min-h-0 flex-1 flex-col">
+                <div
+                  className={
+                    currentStep === 1
+                      ? "flex min-h-0 flex-1 flex-col"
+                      : "hidden"
+                  }
+                  aria-hidden={currentStep !== 1}
+                >
                     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
-                    <DepositModalFlowOverview parts={depositFlowParts} />
+                    <DepositModalFlowOverview
+                      parts={depositFlowParts}
+                      activeIndex={depositFlowActiveIndex}
+                      onStepClick={handleDepositFlowStepClick}
+                    />
                     <DepositAmountCard
                       tokenRowLabel="Deposit with"
                       tokenSelector={{
@@ -10966,12 +10972,12 @@ export const AnchorDepositWithdrawModal = ({
                         />
                       )}
 
-                      {error ? <ErrorBanner message={error} /> : null}
+                      <ReservedErrorSlot message={error} />
                     </div>
 
-                    {!isProcessing ? (
+                    <div className={`shrink-0 ${embedded ? "" : "mt-auto"} ${isProcessing ? "pointer-events-none opacity-60" : ""}`}>
                       <DepositActionFooter
-                        layout="modal"
+                        layout={embedded ? "embedded" : "modal"}
                         action={step1PrimaryAction}
                         onSubmit={handleContinueStep1}
                         onRetry={handleContinueStep1}
@@ -10980,18 +10986,18 @@ export const AnchorDepositWithdrawModal = ({
                             <AnchorDepositFeeFooter>
                               <span className="font-semibold uppercase tracking-wide">
                                 {amount && parseFloat(amount) > 0
-                                  ? "Mint fee"
+                                  ? "Buy fee"
                                   : feeRange?.hasRange
                                     ? "Fee range"
-                                    : "Mint fee"}
+                                    : "Buy fee"}
                               </span>
                               <SimpleTooltip
                                 side="top"
                                 label={
                                   <div className="space-y-2">
-                                    <p className="font-semibold">Dynamic Minting Fees</p>
+                                    <p className="font-semibold">Dynamic Buy Fees</p>
                                     <p>
-                                      Minting fees adjust in real time based on market
+                                      Buy fees adjust in real time based on market
                                       health and your deposit size.
                                     </p>
                                   </div>
@@ -11032,21 +11038,25 @@ export const AnchorDepositWithdrawModal = ({
                           ) : null
                         }
                       />
-                    ) : null}
-                  </div>
-                )}
-
-                {currentStep !== 1 &&
-                !(currentStep === 2 && !mintOnly && !skipRewardStep) &&
-                !(currentStep === stabilityStep && !mintOnly) ? (
-                  <DepositModalFlowOverview parts={depositFlowParts} />
-                ) : null}
+                    </div>
+                </div>
 
                 {/* Step 2: Reward Token - Only show if not mint only */}
-                {currentStep === 2 && !mintOnly && !skipRewardStep && (
-                  <div className="flex min-h-0 flex-1 flex-col animate-in fade-in-0 slide-in-from-right-2 duration-200">
+                {!mintOnly && !skipRewardStep ? (
+                  <div
+                    className={
+                      currentStep === 2
+                        ? "flex min-h-0 flex-1 flex-col"
+                        : "hidden"
+                    }
+                    aria-hidden={currentStep !== 2}
+                  >
                     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
-                      <DepositModalFlowOverview parts={depositFlowParts} />
+                      <DepositModalFlowOverview
+                        parts={depositFlowParts}
+                        activeIndex={depositFlowActiveIndex}
+                        onStepClick={handleDepositFlowStepClick}
+                      />
                       <DepositRewardTokenCard
                         value={selectedRewardToken || ""}
                         onChange={(token) => {
@@ -11090,28 +11100,36 @@ export const AnchorDepositWithdrawModal = ({
                           }
                         />
                       ) : null}
-                      {error ? <ErrorBanner message={error} /> : null}
+                      <ReservedErrorSlot message={error} />
                     </div>
 
-                    {!isProcessing ? (
+                    <div className={`shrink-0 ${embedded ? "" : "mt-auto"} ${isProcessing ? "pointer-events-none opacity-60" : ""}`}>
                       <DepositActionFooter
-                        layout="modal"
+                        layout={embedded ? "embedded" : "modal"}
                         action={step2PrimaryAction}
                         onSubmit={handleContinueStep2}
                         onRetry={handleContinueStep2}
-                        onCancel={leaveRewardTokenStepToAmount}
-                        showCancel
-                        cancelLabel="Back"
                       />
-                    ) : null}
+                    </div>
                   </div>
-                )}
+                ) : null}
 
                 {/* Step 3: Stability Pool Selection - Only show if not mint only */}
-                {currentStep === stabilityStep && !mintOnly && (
-                  <div className="flex min-h-0 flex-1 flex-col animate-in fade-in-0 slide-in-from-right-2 duration-200">
+                {!mintOnly ? (
+                  <div
+                    className={
+                      currentStep === stabilityStep
+                        ? "flex min-h-0 flex-1 flex-col"
+                        : "hidden"
+                    }
+                    aria-hidden={currentStep !== stabilityStep}
+                  >
                     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
-                      <DepositModalFlowOverview parts={depositFlowParts} />
+                      <DepositModalFlowOverview
+                        parts={depositFlowParts}
+                        activeIndex={depositFlowActiveIndex}
+                        onStepClick={handleDepositFlowStepClick}
+                      />
                       {zapSpAllowlistPending && useZap && (
                         <InfoCallout variant="info">
                           Stability pool zap deposits are temporarily unavailable for
@@ -11250,10 +11268,10 @@ export const AnchorDepositWithdrawModal = ({
                                 {/* Separator */}
                                 <div className="border-t border-[#1E4775]/30"></div>
                                 
-                                {/* Mint Fee */}
+                                {/* Buy Fee */}
                                 {feePercentage !== undefined && (
                                   <FeeDisplayRow
-                                    label="Mint fee:"
+                                    label="Buy fee:"
                                     feePercentage={feePercentage}
                                     feeAmount={feeAmountInDepositToken}
                                     feeSymbol={depositTokenSymbol}
@@ -11299,11 +11317,11 @@ export const AnchorDepositWithdrawModal = ({
                               {/* + Deposit Amount - show input amount (e.g. +5 fxUSD) like Genesis */}
                               {depositAmount > 0 && (
                                 <div className="flex flex-col gap-0.5">
-                                  <div className="flex justify-between items-baseline">
-                                    <span className="text-sm font-medium text-[#1E4775]/70">+ Deposit Amount:</span>
-                                    <span className="text-[#1E4775]">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <span className="shrink-0 text-sm font-medium text-[#1E4775]/70">+ Deposit Amount:</span>
+                                    <span className="min-w-0 text-right text-[#1E4775] break-words">
                                       +{depositAmount.toFixed(6)} {depositTokenSymbol}
-                                      {depositAmountUSD > 0 && <span className="text-[#1E4775]/50 ml-1">(+${depositAmountUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>}
+                                      {depositAmountUSD > 0 && <span className="text-[#1E4775]/50 ml-1 whitespace-nowrap">(+${depositAmountUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>}
                                     </span>
                                   </div>
                                   {/* Conversion to haETH - match Genesis: "(5.000000 fxUSD ≈ 0.001651 haETH)" */}
@@ -11365,11 +11383,11 @@ export const AnchorDepositWithdrawModal = ({
                               {/* Separator */}
                               <div className="border-t border-[#1E4775]/30"></div>
                               
-                              {/* Mint Fee */}
+                              {/* Buy Fee */}
                               {feePercentage !== undefined && (
                                 <div className="flex justify-between items-center text-xs">
                                   <span className="text-[#1E4775]/70">
-                                    Mint fee:
+                                    Buy fee:
                                   </span>
                                   <span
                                     className={`font-bold font-mono ${
@@ -11420,8 +11438,8 @@ export const AnchorDepositWithdrawModal = ({
                           </div>
                         )}
 
-                        {/* Error - beneath transaction overview (match step 1; show when user cancels on Mint & Deposit) */}
-                        {error ? <ErrorBanner message={error} className="mt-3" /> : null}
+                        {/* Reserved so reject state does not grow the panel */}
+                        <ReservedErrorSlot message={error} className="mt-3" />
                       </div>
                     ) : (
                       // No reward token selected - direct receive
@@ -11471,12 +11489,12 @@ export const AnchorDepositWithdrawModal = ({
                             </div>
                           )}
 
-                          {/* Mint Fee */}
+                          {/* Buy Fee */}
                           {feePercentage !== undefined && (
                             <div className="pt-2 border-t border-[#1E4775]/20">
                               <div className="flex justify-between items-center text-xs">
                                 <span className="text-[#1E4775]/70">
-                                  Mint fee:
+                                  Buy fee:
                                 </span>
                                 <span
                                   className={`font-bold font-mono ${
@@ -11548,27 +11566,24 @@ export const AnchorDepositWithdrawModal = ({
                           </div>
                         )}
 
-                        {error ? <ErrorBanner message={error} className="mt-3" /> : null}
+                        <ReservedErrorSlot message={error} className="mt-3" />
                       </div>
                     )}
                     </div>
 
-                    {!isProcessing ? (
+                    <div className={`shrink-0 ${embedded ? "" : "mt-auto"} ${isProcessing ? "pointer-events-none opacity-60" : ""}`}>
                       <DepositActionFooter
-                        layout="modal"
+                        layout={embedded ? "embedded" : "modal"}
                         action={step3PrimaryAction}
                         onSubmit={handleContinueStep3}
                         onRetry={handleContinueStep3}
-                        onCancel={handleBackFromStep3}
-                        showCancel
-                        cancelLabel="Back"
                         feeFooter={
                           !isDirectPeggedDeposit &&
                           selectedDepositAsset &&
                           feePercentage !== undefined ? (
                             <AnchorDepositFeeFooter>
                               <span className="font-semibold uppercase tracking-wide">
-                                Mint fee
+                                Buy fee
                               </span>
                               <span className="font-semibold tabular-nums text-[#1E4775]/70">
                                 {feePercentage.toFixed(2)}%
@@ -11578,9 +11593,9 @@ export const AnchorDepositWithdrawModal = ({
                           ) : null
                         }
                       />
-                    ) : null}
+                    </div>
                   </div>
-                )}
+                ) : null}
               </div>
             ) : (
               // Advanced Mode: Original Content
@@ -12391,7 +12406,7 @@ export const AnchorDepositWithdrawModal = ({
                     <div className="mt-3 mb-2 p-3 rounded-lg border border-[#1E4775]/10 bg-[#17395F]/5 space-y-2">
                       <div>
                         <div className="text-sm font-semibold text-[#1E4775]">
-                          Redeem via market
+                          Sell via market
                         </div>
                         <p className="text-[11px] text-[#1E4775]/60 mt-0.5 leading-snug">
                           {redeemMarketSelectionMode === "auto"
@@ -12862,7 +12877,7 @@ export const AnchorDepositWithdrawModal = ({
 
                     {simpleMode && !isProcessing && step !== "success" ? (
                       <DepositActionFooter
-                        layout="modal"
+                        layout={embedded ? "embedded" : "modal"}
                         action={withdrawPrimaryAction}
                         onSubmit={handleAction}
                         onRetry={handleAction}
@@ -12968,13 +12983,13 @@ export const AnchorDepositWithdrawModal = ({
                                 ({parseFloat(amount).toFixed(6)} {selectedDepositAsset || collateralSymbol} ≈ {Number(formatEther(expectedOutput)).toFixed(6)} {outputSymbol})
                               </div>
                             )}
-                            {/* Mint fee */}
+                            {/* Buy fee */}
                             {feePercentage !== undefined && amount && parseFloat(amount) > 0 && (
                               <>
                                 {expectedOutput && <div className="border-t border-[#1E4775]/20"></div>}
                                 <div className="flex justify-between items-center text-xs">
                                   <span className="text-[#1E4775]/70">
-                                    Mint fee:
+                                    Buy fee:
                                   </span>
                                   <span
                                     className={`font-bold font-mono ${
@@ -13087,7 +13102,7 @@ export const AnchorDepositWithdrawModal = ({
                         <div className="mt-2 pt-2 border-t border-[#1E4775]/20">
                           <div className="flex justify-between items-center text-xs">
                             <span className="text-[#1E4775]/70">
-                              Mint fee:
+                              Buy fee:
                             </span>
                             <span
                               className={`font-bold font-mono ${
@@ -13771,10 +13786,10 @@ export const AnchorDepositWithdrawModal = ({
                   <div className="p-3 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/30 text-[#1E4775] text-sm text-center">
                     ✅{" "}
                     {activeTab === "deposit"
-                      ? "Mint"
+                      ? "Buy"
                       : activeTab === "withdraw"
                       ? "Withdraw"
-                      : "Redeem"}
+                      : "Sell"}
                     {" "}
                     successful!
                   </div>

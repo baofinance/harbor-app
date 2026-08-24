@@ -61,6 +61,7 @@ export default function SailPage() {
     refetchUserDeposits,
     sailUserStats,
     pnlFromMarkets,
+    marketDropdownPnLToneByMarketId,
     activeSailBoostEndTimestamp,
     displayedArchivedSailMarkets,
     tableMarkets,
@@ -187,6 +188,7 @@ export default function SailPage() {
             isConnected={isConnected}
             userDepositMap={userDepositMap}
             tokenPricesByMarket={tokenPricesByMarket}
+            marketDropdownPnLToneByMarketId={marketDropdownPnLToneByMarketId}
             userDeposit={selectedUserDeposit}
             currentValueUSD={selectedCurrentValueUSD}
             onManageSuccess={refetchAfterManage}

@@ -91,15 +91,10 @@ import {
 import { useAnchorPageData } from "@/hooks/anchor/useAnchorPageData";
 import { useAnchorClaimCompound } from "@/hooks/anchor/useAnchorClaimCompound";
 import { RewardTokensDisplay } from "@/components/anchor/RewardTokensDisplay";
-import { AnchorMarketGroupCollapsedRow } from "@/components/anchor/AnchorMarketGroupCollapsedRow";
-import { AnchorMarketsSections } from "@/components/anchor/AnchorMarketsSections";
-import { AnchorMarketGroupExpandedSection } from "@/components/anchor/AnchorMarketGroupExpandedSection";
-import { AnchorMarketsTableHeader } from "@/components/anchor/AnchorMarketsTableHeader";
-import { AnchorRewardsStrip } from "@/components/anchor/AnchorRewardsStrip";
-import { AnchorEarningsSection } from "@/components/anchor/AnchorEarningsSection";
-import { AnchorWalletPositionsSection } from "@/components/anchor/AnchorWalletPositionsSection";
-import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
+import { AnchorAdvancedLayout } from "@/components/anchor/advanced";
+import { useAnchorSelectedMarket } from "@/hooks/anchor/useAnchorSelectedMarket";
 import { IndexMarketsLoadError } from "@/components/shared/IndexMarketsLoadError";
+import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
 import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
 import {
   ANCHOR_MARKETS_WALLET_ROW_LG_CLASSNAME,
@@ -121,28 +116,11 @@ import {
   INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL,
 } from "@/utils/indexPageManageButton";
 import { calculateReadOffset } from "@/utils/anchor/calculateReadOffset";
-import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
 import { computeGenesisWrappedCollateralPriceUSD } from "@/utils/wrappedCollateralPriceUSD";
 import { DEBUG_ANCHOR } from "@/config/debug";
 import { getDepositMode } from "@/utils/depositMode";
 import NetworkIconCell from "@/components/NetworkIconCell";
-import { useExpandedMarketIds } from "@/hooks/useExpandedMarketIds";
 import { useOpenMarketManageModal } from "@/hooks/useOpenMarketManageModal";
-
-// Flag to temporarily disable anchor marks (set to false to pause marks)
-const ANCHOR_MARKS_ENABLED = true;
-
-// Token metadata types are now in useAnchorTokenMetadata hook
-import { usePoolRewardAPR } from "@/hooks/usePoolRewardAPR";
-import { usePoolRewardTokens } from "@/hooks/usePoolRewardTokens";
-import { WithdrawalTimer } from "@/components/WithdrawalTimer";
-// Use shared ABIs from @/abis/shared
-const minterABI = MINTER_ABI_EXTENDED;
-const stabilityPoolABI = STABILITY_POOL_ABI;
-const stabilityPoolManagerABI = STABILITY_POOL_MANAGER_ABI;
-const erc20ABI = ERC20_ABI;
-const wrappedPriceOracleABI = WRAPPED_PRICE_ORACLE_ABI;
-const chainlinkOracleABI = WRAPPED_PRICE_ORACLE_ABI;
 
 type AnchorManageModalPayload = {
   marketId: string;
@@ -174,7 +152,6 @@ export default function AnchorPage() {
   const publicClient = usePublicClient();
 
   // Prices + reads: composed in useAnchorPageData (see below)
-  const { expandedMarkets, toggleExpandedMarket } = useExpandedMarketIds();
   const [manageModal, setManageModal] = useState<AnchorManageModalPayload | null>(
     null
   );
@@ -204,7 +181,6 @@ export default function AnchorPage() {
     [openManageModalBase]
   );
   const [mounted, setMounted] = useState(false);
-  const [isEarningsExpanded, setIsEarningsExpanded] = useState(false);
   const [contractAddressesModal, setContractAddressesModal] = useState<{
     marketId: string;
     market: any;
@@ -370,19 +346,98 @@ export default function AnchorPage() {
     return map;
   }, [allMarketsData]);
 
-  // Fetch collateral prices for all markets using the hook
-  const collateralPriceOracleAddresses = useMemo(() => {
-    return anchorMarkets.map(
-      ([_, market]) =>
-      (market as any).addresses?.collateralPrice as `0x${string}` | undefined
-    );
-  }, [anchorMarkets]);
+  const marketsReady = !isLoadingReads && !isReadsError;
 
-  const { prices: collateralPricesMap } = useMultipleCollateralPrices(
-    collateralPriceOracleAddresses,
-    { refetchInterval: 60_000, enabled: stagger[4] }
-  );
+  const {
+    selectedMarketId,
+    setSelectedMarketId,
+    selectedMarket,
+    selectedMarketData,
+  } = useAnchorSelectedMarket({
+    markets: displayedAnchorMarkets,
+    marketsReady,
+    marketPositions,
+    marketsDataById: marketsDataMap,
+  });
 
+  const claimableRewardsUSD = useMemo(() => {
+    let total = 0;
+    for (const md of allMarketsData) {
+      total += (md.collateralRewardsUSD || 0) + (md.sailRewardsUSD || 0);
+    }
+    return total;
+  }, [allMarketsData]);
+
+  const positionsCount = useMemo(() => {
+    let count = 0;
+    for (const md of allMarketsData) {
+      if ((md.collateralPoolDepositUSD || 0) > 0) count += 1;
+      if ((md.sailPoolDepositUSD || 0) > 0) count += 1;
+    }
+    return count;
+  }, [allMarketsData]);
+
+  const blendedVaprPercent = useMemo(() => {
+    let weighted = 0;
+    let depositUSD = 0;
+    for (const md of allMarketsData) {
+      const collateralUSD = md.collateralPoolDepositUSD || 0;
+      const sailUSD = md.sailPoolDepositUSD || 0;
+      const collateralApr = md.collateralPoolAPR
+        ? (md.collateralPoolAPR.collateral || 0) +
+          (md.collateralPoolAPR.steam || 0)
+        : 0;
+      const sailApr = md.sailPoolAPR
+        ? (md.sailPoolAPR.collateral || 0) + (md.sailPoolAPR.steam || 0)
+        : 0;
+      if (collateralUSD > 0) {
+        weighted += collateralUSD * collateralApr;
+        depositUSD += collateralUSD;
+      }
+      if (sailUSD > 0) {
+        weighted += sailUSD * sailApr;
+        depositUSD += sailUSD;
+      }
+    }
+    if (depositUSD <= 0) return null;
+    return weighted / depositUSD;
+  }, [allMarketsData]);
+
+  const marksPerDay =
+    totalAnchorLedgerMarksPerDay ||
+    totalAnchorMarksPerDay ||
+    totalMarksPerDay ||
+    0;
+
+  const allMarketsForSelectedToken = useMemo(() => {
+    if (!selectedMarket) return undefined;
+    const peg = selectedMarket.market.peggedToken?.symbol;
+    const chain = harborMarketChainKey(selectedMarket.market);
+    return displayedAnchorMarkets
+      .filter(
+        ([, m]) =>
+          m.peggedToken?.symbol === peg && harborMarketChainKey(m) === chain,
+      )
+      .map(([marketId, market]) => {
+        const marketData = marketsDataMap.get(marketId);
+        return {
+          marketId,
+          market: {
+            ...market,
+            wrappedRate: marketData?.wrappedRate,
+          },
+        };
+      });
+  }, [selectedMarket, displayedAnchorMarkets, marketsDataMap]);
+
+  const refetchAfterManage = useCallback(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await Promise.all([
+      refetchReads(),
+      refetchUserDeposits(),
+      refetchPositions(),
+    ]);
+  }, [refetchReads, refetchUserDeposits, refetchPositions]);
 
   return (
     <>
@@ -391,411 +446,35 @@ export default function AnchorPage() {
             <IndexMarksSubgraphErrorBanner error={ledgerMarksError} />
           )}
 
-          {/* Rewards Bar - Under Title Boxes */}
-          <AnchorRewardsStrip
-            anchorMarkets={anchorMarkets}
-            reads={reads}
-            isConnected={isConnected}
-            address={address}
-            marketPositions={marketPositions}
-            poolRewardsMap={poolRewardsMap}
-            allMarketsData={allMarketsData}
-            totalAnchorMarks={totalAnchorMarks}
-            totalAnchorMarksPerDay={totalAnchorMarksPerDay}
-            totalMarksPerDay={totalMarksPerDay}
-            sailMarksPerDay={sailMarksPerDay}
-            maidenVoyageMarksPerDay={maidenVoyageMarksPerDay}
-            isLoadingAnchorMarks={isLoadingAnchorMarks}
-            showLiveAprLoading={showLiveAprLoading}
-            isErrorAllRewards={isErrorAllRewards}
-            projectedAPR={projectedAPR}
-            mounted={mounted}
-            isLoadingLedgerMarks={isLoadingLedgerMarks}
-            totalAnchorLedgerMarks={totalAnchorLedgerMarks}
-            totalAnchorLedgerMarksPerDay={totalAnchorLedgerMarksPerDay}
-            isClaimingAll={isClaimingAll}
-            isCompoundingAll={isCompoundingAll}
-            onClaimAll={() => setIsClaimAllModalOpen(true)}
-            dropdownRef={dropdownRef}
-            isDropdownOpen={isDropdownOpen}
-            setIsDropdownOpen={setIsDropdownOpen}
-            selectedMarketForClaim={selectedMarketForClaim}
-            setSelectedMarketForClaim={setSelectedMarketForClaim}
-            setIsClaimMarketModalOpen={setIsClaimMarketModalOpen}
-          />
-
-          {/* Earnings Section */}
-          <AnchorEarningsSection
-            anchorMarkets={anchorMarkets}
-            reads={reads}
-            poolRewardsMap={poolRewardsMap}
-            allMarketsData={allMarketsData}
-            marketPositions={marketPositions}
-            isEarningsExpanded={isEarningsExpanded}
-            setIsEarningsExpanded={setIsEarningsExpanded}
-            isClaimingAll={isClaimingAll}
-            handleClaimRewards={handleClaimRewards}
-            handleCompoundRewards={handleCompoundRewards}
-            createCompoundHandlers={createCompoundHandlers}
-            setCompoundModal={setCompoundModal}
-          />
-
-          {/* Wallet Positions Not Earning Yield */}
-          <AnchorWalletPositionsSection
-            isConnected={isConnected}
-            address={address}
-            allMarketsData={allMarketsData}
-            peggedPriceUSDMap={peggedPriceUSDMap}
-            mergedPeggedPriceMap={mergedPeggedPriceMap}
-            coinGeckoPrices={coinGeckoPrices}
-            eurPrice={eurPrice}
-            btcPrice={btcPrice}
-            ethPrice={ethPrice}
-            openManageModal={openManageModal}
-          />
-
-          {/* Markets List */}
-          <AnchorMarketsSections
-            toolbarProps={{
-              anchorChainOptions,
-              chainFilterSelected,
-              onChainFilterChange: setChainFilterSelected,
-              onClearFilters: () => setChainFilterSelected([]),
-            }}
-          >
-            {/* Market Cards/Rows */}
-            {(() => {
-              // Show loading state while fetching market data
-              if (isLoadingReads) {
-                return null; // Don't show anything while loading
-              }
-
-              // Show error state if there's an issue loading markets
-              if (isReadsError) {
-                return <IndexMarketsLoadError onRetry={() => refetchReads()} />;
-              }
-
-              // Check if any markets have finished genesis (marketsDataMap only contains finished markets)
-              if (marketsDataMap.size === 0) {
-                return (
-                  <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
-                    <p className="text-white text-lg font-medium mb-4">
-                      No markets available
-                    </p>
-                    <button
-                      onClick={() => refetchReads()}
-                      className={HARBOR_BTN_GLASS_COMPACT_CORAL_CLASS}
-                    >
-                      Try again
-                    </button>
-                  </div>
-                );
-              }
-
-              // Show grouped markets by ha token (use displayed markets for chain filter)
-              const groups: Record<
-                string,
-                Array<{
-                  marketId: string;
-                  market: any;
-                  marketIndex: number;
-                }>
-              > = {};
-
-              displayedAnchorMarkets.forEach(([id, m]) => {
-                const marketIndex = anchorMarkets.findIndex(([mid]) => mid === id);
-                if (marketIndex < 0) return;
-                const pegSymbol = m.peggedToken?.symbol || "UNKNOWN";
-                const groupKey = `${pegSymbol}::${harborMarketChainKey(m)}`;
-                if (!groups[groupKey]) {
-                  groups[groupKey] = [];
-                }
-                groups[groupKey].push({
-                  marketId: id,
-                  market: m,
-                  marketIndex,
-                });
-              });
-
-              return (
-                <>
-                  <AnchorMarketsTableHeader />
-                  {Object.entries(groups).map(([groupKey, marketList]) => {
-                const symbol = groupKey.split("::")[0] ?? groupKey;
-                // UI+ rows are one chain each; soon/active is per market config.
-                const isComingSoonRow = marketList.every(({ market }) =>
-                  isAnchorSoonUi(market)
-                );
-
-                // Collect all data for markets in this group from the hook
-                const marketsData = marketList
-                  .map(({ marketId }) => marketsDataMap.get(marketId))
-                      .filter(
-                        (m): m is NonNullable<typeof m> => m !== undefined
-                      );
-
-                // Use all markets in the group (not just those with collateral > 0)
-                // This ensures all markets are displayed in the expanded view
-                const activeMarketsData = marketsData;
-
-                if (marketList.length === 0) {
-                  return null;
-                }
-
-                // Calculate combined values - only include stability pool deposits (not wallet balances)
-                const combinedPositionUSD = activeMarketsData.reduce(
-                  (sum, m) => {
-                        return (
-                          sum +
-                          m.collateralPoolDepositUSD +
-                          m.sailPoolDepositUSD
-                        );
-                  },
-                  0
-                );
-                // Also track total token amounts (for display when USD isn't available) - only pool deposits
-                const combinedPositionTokens = activeMarketsData.reduce(
-                  (sum, m) =>
-                    sum +
-                    Number(m.collateralPoolDeposit || 0n) / 1e18 +
-                    Number(m.sailPoolDeposit || 0n) / 1e18,
-                  0
-                );
-                const combinedRewardsUSD = activeMarketsData.reduce(
-                      (sum, m) =>
-                        sum + m.collateralRewardsUSD + m.sailRewardsUSD,
-                  0
-                );
-
-                // Calculate APR ranges across all markets in group
-                const allMinAPRs = activeMarketsData
-                  .map((m) => m.minAPR)
-                  .filter((v) => v > 0);
-                const allMaxAPRs = activeMarketsData
-                  .map((m) => m.maxAPR)
-                  .filter((v) => v > 0);
-                const minAPR =
-                  allMinAPRs.length > 0 ? Math.min(...allMinAPRs) : 0;
-                const maxAPR =
-                  allMaxAPRs.length > 0 ? Math.max(...allMaxAPRs) : 0;
-
-                // Collect actual APRs from stability pools for tooltip
-                const collateralPoolAPRs = activeMarketsData
-                  .map((m) => m.collateralPoolAPR)
-                  .filter(
-                    (apr): apr is { collateral: number; steam: number } =>
-                      apr !== undefined
-                  )
-                  .map((apr) => apr.collateral + apr.steam)
-                  .filter((v) => v > 0);
-                const sailPoolAPRs = activeMarketsData
-                  .map((m) => m.sailPoolAPR)
-                  .filter(
-                    (apr): apr is { collateral: number; steam: number } =>
-                      apr !== undefined
-                  )
-                  .map((apr) => apr.collateral + apr.steam)
-                  .filter((v) => v > 0);
-                const collateralPoolAPRMin =
-                  collateralPoolAPRs.length > 0
-                    ? Math.min(...collateralPoolAPRs)
-                    : null;
-                const collateralPoolAPRMax =
-                  collateralPoolAPRs.length > 0
-                    ? Math.max(...collateralPoolAPRs)
-                    : null;
-                const sailPoolAPRMin =
-                      sailPoolAPRs.length > 0
-                        ? Math.min(...sailPoolAPRs)
-                        : null;
-                const sailPoolAPRMax =
-                      sailPoolAPRs.length > 0
-                        ? Math.max(...sailPoolAPRs)
-                        : null;
-
-                // Calculate projected APR ranges
-                const allMinProjectedAPRs = activeMarketsData
-                  .map((m) => m.minProjectedAPR)
-                  .filter((v): v is number => v !== null && v > 0);
-                const allMaxProjectedAPRs = activeMarketsData
-                  .map((m) => m.maxProjectedAPR)
-                  .filter((v): v is number => v !== null && v > 0);
-                const minProjectedAPR =
-                  allMinProjectedAPRs.length > 0
-                    ? Math.min(...allMinProjectedAPRs)
-                    : null;
-                const maxProjectedAPR =
-                  allMaxProjectedAPRs.length > 0
-                    ? Math.max(...allMaxProjectedAPRs)
-                    : null;
-
-                // Collect all unique wrapped collateral assets (only show wrapped collateral, not all accepted assets)
-                const assetMap = new Map<
-                  string,
-                  { symbol: string; name: string }
-                >();
-                marketList.forEach(({ market }) => {
-                  if (market?.collateral?.symbol) {
-                    const wrappedCollateral = {
-                      symbol: market.collateral.symbol,
-                      name:
-                        market.collateral.name || market.collateral.symbol,
-                    };
-                    if (!assetMap.has(wrappedCollateral.symbol)) {
-                      assetMap.set(
-                        wrappedCollateral.symbol,
-                        wrappedCollateral
-                      );
-                    }
-                  }
-                });
-                const allDepositAssets = Array.from(assetMap.values());
-
-                // Collect all unique reward tokens from pools for markets in this group
-                const firstMarket = marketList[0]?.market;
-                const depositModeRow = getDepositMode(firstMarket);
-                const isCollateralOnlyRow = depositModeRow.collateralOnly;
-                const isMegaEthRow = depositModeRow.isMegaEth;
-
-                // Helper function to get directly zappable assets (no slippage)
-                // Excludes wrapped collateral since it's already shown in the main deposit assets view
-                    const getDirectlyZappableAssets = (
-                      market: any
-                    ): Array<{ symbol: string; name: string }> => {
-                      const collateralSymbol =
-                        market?.collateral?.symbol?.toLowerCase() || "";
-                  const isFxSAVEMarket = collateralSymbol === "fxsave";
-                  const isWstETHMarket = collateralSymbol === "wsteth";
-                  
-                  if (isFxSAVEMarket) {
-                    // Exclude fxSAVE (wrapped collateral) - only show USDC and fxUSD
-                    return [
-                      { symbol: "USDC", name: "USD Coin" },
-                      { symbol: "fxUSD", name: "f(x) USD" },
-                    ];
-                  } else if (isWstETHMarket) {
-                    // Exclude wstETH (wrapped collateral) - only show ETH and stETH
-                    return [
-                      { symbol: "ETH", name: "Ethereum" },
-                      { symbol: "stETH", name: "Lido Staked ETH" },
-                    ];
-                  }
-                  return [];
-                };
-                
-                // Collect zappable assets from all markets in the group
-                const zappableAssetsMap = new Map<
-                  string,
-                  { symbol: string; name: string }
-                >();
-                if (!isComingSoonRow) {
-                  marketList.forEach(({ market }) => {
-                    const zappableAssets = getDirectlyZappableAssets(market);
-                    zappableAssets.forEach((asset) => {
-                      if (!zappableAssetsMap.has(asset.symbol)) {
-                        zappableAssetsMap.set(asset.symbol, asset);
-                      }
-                    });
-                  });
-                }
-                    const directlyZappableAssets = Array.from(
-                      zappableAssetsMap.values()
-                    );
-                const collateralPoolAddress = firstMarket?.addresses
-                  ?.stabilityPoolCollateral as `0x${string}` | undefined;
-                const sailPoolAddress = firstMarket?.addresses
-                  ?.stabilityPoolLeveraged as `0x${string}` | undefined;
-                const peggedTokenSymbol = firstMarket?.peggedToken?.symbol;
-                    const collateralSymbol =
-                      firstMarket?.collateral?.symbol || "";
-
-                    const isExpanded = expandedMarkets.includes(groupKey);
-                    const groupHasMaintenance = marketList.some(({ market }) =>
-                      isMarketInMaintenance(market)
-                    );
-
-                    const rewardPoolAddresses = marketList
-                      .map(
-                        ({ market }) =>
-                          market.addresses?.stabilityPoolCollateral
-                      )
-                      .filter(Boolean) as `0x${string}`[];
-
-                return (
-                  <React.Fragment key={groupKey}>
-                    <div className="rounded-md border border-[#1E4775]/10 overflow-hidden">
-                      <AnchorMarketGroupCollapsedRow
-                        symbol={symbol}
-                        rowKey={groupKey}
-                        isComingSoonRow={isComingSoonRow}
-                        isExpanded={isExpanded}
-                        peggedTokenSymbol={peggedTokenSymbol}
-                        groupHasMaintenance={groupHasMaintenance}
-                        marketList={marketList}
-                        marketsData={marketsData}
-                        minAPR={minAPR}
-                        maxAPR={maxAPR}
-                        minProjectedAPR={minProjectedAPR}
-                        maxProjectedAPR={maxProjectedAPR}
-                        collateralPoolAPRMin={collateralPoolAPRMin}
-                        collateralPoolAPRMax={collateralPoolAPRMax}
-                        sailPoolAPRMin={sailPoolAPRMin}
-                        sailPoolAPRMax={sailPoolAPRMax}
-                        combinedPositionUSD={combinedPositionUSD}
-                        combinedPositionTokens={combinedPositionTokens}
-                        combinedRewardsUSD={combinedRewardsUSD}
-                        collateralPoolAddress={collateralPoolAddress}
-                        sailPoolAddress={sailPoolAddress}
-                        rewardPoolAddresses={rewardPoolAddresses}
-                        allDepositAssets={allDepositAssets}
-                        directlyZappableAssets={directlyZappableAssets}
-                        isCollateralOnlyRow={isCollateralOnlyRow}
-                        isMegaEthRow={isMegaEthRow}
-                        collateralSymbol={collateralSymbol}
-                        poolRewardsMap={poolRewardsMap}
-                        isErrorAllRewards={isErrorAllRewards}
-                        showLiveAprLoading={showLiveAprLoading}
-                        projectedAPR={projectedAPR}
-                        isConnected={isConnected}
-                        onToggleExpand={toggleExpandedMarket}
-                        onOpenManage={(payload) => {
-                          void openManageModal(payload);
-                        }}
-                      />
-
-                      {/* Expanded View - Show all markets in group */}
-                      {isExpanded && (
-                        <AnchorMarketGroupExpandedSection
-                          activeMarketsData={activeMarketsData}
-                          withdrawalRequests={withdrawalRequests}
-                          volProtectionData={volProtectionData}
-                          marketPositions={marketPositions}
-                          poolRewardsMap={poolRewardsMap}
-                          collateralPricesMap={collateralPricesMap}
-                          peggedPriceUSDMap={peggedPriceUSDMap}
-                          coinGeckoPrices={coinGeckoPrices}
-                          coinGeckoLoading={coinGeckoLoading}
-                          ethPrice={ethPrice}
-                          btcPrice={btcPrice}
-                          eurPrice={eurPrice}
-                          goldPrice={goldPrice}
-                          silverPrice={silverPrice}
-                          showLiveAprLoading={showLiveAprLoading}
-                          setWithdrawAmountModal={setWithdrawAmountModal}
-                          setEarlyWithdrawModal={setEarlyWithdrawModal}
-                          setWithdrawAmountInput={setWithdrawAmountInput}
-                          setWithdrawAmountError={setWithdrawAmountError}
-                          setContractAddressesModal={setContractAddressesModal}
-                        />
-                      )}
-                    </div>
-                  </React.Fragment>
-                );
-              })}
-                </>
-              );
-            })()}
-          </AnchorMarketsSections>
+          {isLoadingReads ? null : isReadsError ? (
+            <IndexMarketsLoadError onRetry={() => refetchReads()} />
+          ) : (
+            <AnchorAdvancedLayout
+              selectedMarketId={selectedMarketId}
+              selectedMarket={selectedMarket?.market ?? null}
+              selectedMarketData={selectedMarketData}
+              dropdownMarkets={displayedAnchorMarkets}
+              onSelectMarket={setSelectedMarketId}
+              isConnected={isConnected}
+              marketPositions={marketPositions}
+              marketsDataById={marketsDataMap}
+              peggedPriceUSDMap={peggedPriceUSDMap}
+              allMarketsForSelectedToken={allMarketsForSelectedToken}
+              onManageSuccess={refetchAfterManage}
+              claimableRewardsUSD={claimableRewardsUSD}
+              isClaiming={isClaimingAll || isCompoundingAll}
+              onClaim={() => setIsClaimAllModalOpen(true)}
+              walletStats={{
+                isConnected,
+                earnPortfolioUSD: allMarketsTotalPositionUSD || 0,
+                positionsCount,
+                vaprPercent: blendedVaprPercent,
+                isLoadingMarks: isLoadingLedgerMarks || isLoadingAnchorMarks,
+                totalMarks: totalAnchorLedgerMarks || totalAnchorMarks || 0,
+                marksPerDay,
+              }}
+            />
+          )}
 
           <ArchivedMarketsListSection
             markets={displayedArchivedAnchorMarkets}
@@ -804,11 +483,21 @@ export default function AnchorPage() {
             onManage={(marketId) => {
               const m = (marketsConfig as Record<string, DefinedMarket>)[marketId];
               if (!m) return;
+              const peg = m.peggedToken?.symbol;
+              const chain = harborMarketChainKey(m);
+              const allMarkets = Object.entries(marketsConfig)
+                .filter(
+                  ([, market]) =>
+                    market.peggedToken?.symbol === peg &&
+                    harborMarketChainKey(market) === chain,
+                )
+                .map(([id, market]) => ({ marketId: id, market }));
               void openManageModal({
                 marketId,
                 market: m,
                 initialTab: "withdraw",
                 simpleMode: true,
+                allMarkets,
               });
             }}
           />

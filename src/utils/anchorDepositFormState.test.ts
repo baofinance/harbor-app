@@ -52,7 +52,7 @@ describe("anchorDepositFormState", () => {
       ...base,
       mintOnly: true,
     });
-    expect(depositPrimaryActionLabel(action)).toBe("Mint");
+    expect(depositPrimaryActionLabel(action)).toBe("Buy");
   });
 
   it("returns stability pool when skipping reward step", () => {
@@ -88,7 +88,7 @@ describe("resolveAnchorDepositStep2PrimaryAction", () => {
   it("returns mint without pool when no reward token", () => {
     const action = resolveAnchorDepositStep2PrimaryAction(step2Base);
     expect(depositPrimaryActionLabel(action)).toBe(
-      "Mint (no stability pool deposit)",
+      "Buy (no stability pool deposit)",
     );
   });
 
@@ -118,7 +118,7 @@ describe("resolveAnchorDepositStep3PrimaryAction", () => {
 
   it("returns mint and deposit when pool selected", () => {
     const action = resolveAnchorDepositStep3PrimaryAction(step3Base);
-    expect(depositPrimaryActionLabel(action)).toBe("Mint & Deposit");
+    expect(depositPrimaryActionLabel(action)).toBe("Buy & Deposit");
   });
 
   it("returns select pool when reward token chosen but pool missing", () => {

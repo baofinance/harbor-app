@@ -23,6 +23,8 @@ import {
   filterBySelectedNetworks,
 } from "@/utils/networkFilter";
 import { partitionMarketsByArchived } from "@/utils/marketPartitions";
+import type { SailDropdownPositionTone } from "@/utils/sailMarketDropdownPosition";
+import { resolveSailDropdownPositionTone } from "@/utils/sailMarketDropdownPosition";
 
 /**
  * Sail index route: filters, subgraph marks/PnL, aggregates, and derived `activeMarkets`.
@@ -224,7 +226,7 @@ export function useSailPageData() {
   }, [sailMarkets, userDepositMap, marketOffsets, reads, tokenPricesByMarket]);
 
   const graphUrl = getSailPriceGraphUrlOptional();
-  const { data: positionsData } = useQuery({
+  const { data: positionsData, isLoading: positionsPnLLoading } = useQuery({
     queryKey: ["sailPositionsForPnL", graphUrl, address],
     queryFn: async () => {
       if (!graphUrl || !address) {
@@ -332,6 +334,68 @@ export function useSailPageData() {
     sailPnLSummary,
   ]);
 
+  const marketDropdownPnLToneByMarketId = useMemo(() => {
+    const tones: Record<string, SailDropdownPositionTone> = {};
+    if (!isConnected) return tones;
+
+    const positions = (positionsData?.userSailPositions ?? []) as Array<{
+      tokenAddress: string;
+      totalCostBasisUSD: number;
+      realizedPnLUSD: number;
+    }>;
+
+    const positionMap = new Map<string, (typeof positions)[0]>();
+    for (const pos of positions) {
+      positionMap.set(pos.tokenAddress.toLowerCase(), pos);
+    }
+
+    for (const [marketId, market] of sailMarkets) {
+      const globalIndex = sailMarketIdToIndex.get(marketId);
+      const userDeposit =
+        globalIndex !== undefined ? userDepositMap.get(globalIndex) : undefined;
+      if (!userDeposit || userDeposit <= 0n) continue;
+
+      const leveragedTokenAddress = market.addresses?.leveragedToken as
+        | `0x${string}`
+        | undefined;
+      if (!leveragedTokenAddress) {
+        tones[marketId] = "pending";
+        continue;
+      }
+
+      if (positionsPnLLoading) {
+        tones[marketId] = "pending";
+        continue;
+      }
+
+      const position = positionMap.get(leveragedTokenAddress.toLowerCase());
+      const currentPriceUSD =
+        tokenPricesByMarket[marketId]?.leveragedPriceUSD ?? 0;
+      if (!position || !currentPriceUSD || currentPriceUSD <= 0) {
+        tones[marketId] = "pending";
+        continue;
+      }
+
+      const currentValueUSD = (Number(userDeposit) / 1e18) * currentPriceUSD;
+      const costBasisUSD = Number(position.totalCostBasisUSD) || 0;
+      const unrealizedPnL = currentValueUSD - costBasisUSD;
+      tones[marketId] = resolveSailDropdownPositionTone(
+        unrealizedPnL,
+        false,
+      );
+    }
+
+    return tones;
+  }, [
+    isConnected,
+    sailMarkets,
+    sailMarketIdToIndex,
+    userDepositMap,
+    tokenPricesByMarket,
+    positionsData,
+    positionsPnLLoading,
+  ]);
+
   const activeMarkets = useMemo((): SailMarketTuple[] => {
     if (!reads) return [];
     return filterSailActiveMarkets(
@@ -405,6 +469,8 @@ export function useSailPageData() {
     refetchUserDeposits,
     sailUserStats,
     pnlFromMarkets,
+    positionsPnLLoading,
+    marketDropdownPnLToneByMarketId,
     activeSailBoostEndTimestamp,
     activeMarkets,
     tableMarkets,

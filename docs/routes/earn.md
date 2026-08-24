@@ -1,13 +1,18 @@
 # Earn (`/earn`)
 
-**Stability pool** hub: browse pools by market group, then open a **per-pool** page for deposit, withdraw, chart, and rewards. This is **not** the same as the main nav **“Earn”** link, which goes to [`/anchor`](./anchor.md) (full markets / haETH UX).
+**Primary Earn UX** lives at [`/anchor`](./anchor.md) (nav label **Earn**). The `/earn` route **re-exports** that page:
 
-**Routes:**
+```ts
+// src/app/earn/page.tsx
+export { default } from "@/app/anchor/page";
+```
+
+Legacy **per-pool** deep links remain for older links:
 
 | Path | Purpose |
 |------|---------|
-| `/earn` | Pool directory — grouped list with links to each pool. |
-| `/earn/[marketId]/[poolType]` | Pool detail (`collateral` or `leveraged`); static paths from `generateStaticParams`. |
+| `/earn` | Same Sail-style Earn dashboard as `/anchor`. |
+| `/earn/[marketId]/[poolType]` | Legacy pool detail (`collateral` or `leveraged`); static paths from `generateStaticParams`. |
 
 ---
 
@@ -15,20 +20,12 @@
 
 | File | Role |
 |------|------|
-| [`page.tsx`](../../src/app/earn/page.tsx) | Landing: loads pools via [`usePools`](../../src/hooks/usePools.ts), groups by `groupName`, renders cards linking to `/earn/[marketId]/[poolType]`. |
-| [`[marketId]/[poolType]/page.tsx`](../../src/app/earn/[marketId]/[poolType]/page.tsx) | Server wrapper: `generateStaticParams` from [`markets`](../../src/config/contracts.ts); renders `PoolClient`. |
-| [`PoolClient.tsx`](../../src/app/earn/[marketId]/[poolType]/PoolClient.tsx) | Client UI: balances, deposit/withdraw, historical chart, APR (base + boost), claimable rewards (TIDE label), etc. |
-
----
-
-## Config
-
-- Pool definitions and metadata: [`src/config/pools.ts`](../../src/config/pools.ts) (consumed by `usePools`).
-- Static param generation uses contract `markets` keys in [`src/config/contracts.ts`](../../src/config/contracts.ts) (see `page.tsx` under `[marketId]/[poolType]/`).
+| [`page.tsx`](../../src/app/earn/page.tsx) | Re-exports Anchor Earn dashboard. |
+| [`[marketId]/[poolType]/page.tsx`](../../src/app/earn/[marketId]/[poolType]/page.tsx) | Server wrapper → `PoolClient`. |
+| [`PoolClient.tsx`](../../src/app/earn/[marketId]/[poolType]/PoolClient.tsx) | Legacy pool UI (balances, deposit/withdraw, mock chart history). |
 
 ---
 
 ## See also
 
-- [`docs/routes/anchor.md`](./anchor.md) — primary **Earn** nav destination and refactor notes.
-- [`docs/INDEX_PAGE_REFACTOR_PLAYBOOK.md`](../INDEX_PAGE_REFACTOR_PLAYBOOK.md) — if pool UI grows to match index patterns (table/grid, modals).
+- [`docs/routes/anchor.md`](./anchor.md) — authoritative Earn / Anchor architecture (single-market layout).

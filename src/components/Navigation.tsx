@@ -27,6 +27,10 @@ import { PageLayoutToggle } from "@/components/PageLayoutToggle";
 import { useAppBackground } from "@/contexts/AppBackgroundContext";
 import { ImpersonateDialog } from "@/components/ImpersonateDialog";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
+import {
+  AppNotificationsStrip,
+  NavNotificationBell,
+} from "@/components/AppNotifications";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { IMPERSONATION_ENABLED } from "@/config/impersonation";
 
@@ -68,7 +72,7 @@ export default function Example() {
     ) : null}
     <Disclosure<"nav">
       as="nav"
-      className={`app-nav-shell sticky top-0 z-50 w-full max-w-[1300px] shrink-0 ${navBgClass} after:pointer-events-none mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/20 mb-4 sm:mb-6`}
+      className={`app-nav-shell sticky top-0 z-50 w-full max-w-[1300px] shrink-0 ${navBgClass} after:pointer-events-none mx-auto mb-4 after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/20 sm:mb-6`}
     >
       {/* Match index pages: `max-w-[1300px]` + `px-4 sm:px-10` on main */}
       <div className="w-full px-4 sm:px-10">
@@ -142,6 +146,7 @@ export default function Example() {
                 <PageLayoutToggle />
               </Suspense>
               <ConnectWallet />
+              <NavNotificationBell />
               <Popover className="relative" modal={false}>
                 <PopoverButton
                   className={HARBOR_NAV_ICON_BUTTON_CLASS}
@@ -192,7 +197,8 @@ export default function Example() {
                 </PopoverPanel>
               </Popover>
             </div>
-            <div className="-mr-2 flex sm:hidden">
+            <div className="-mr-2 flex items-center gap-1 sm:hidden">
+              <NavNotificationBell />
               {/* Mobile menu button */}
               <DisclosureButton className={`group relative inline-flex items-center justify-center ${HARBOR_NAV_MOBILE_MENU_BUTTON_CLASS}`}>
                 <span className="absolute -inset-0.5" />
@@ -342,6 +348,7 @@ export default function Example() {
         </div>
       </DisclosurePanel>
     </Disclosure>
+    <AppNotificationsStrip />
     </>
   );
 }
