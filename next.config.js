@@ -71,6 +71,16 @@ const nextConfig = {
   async redirects() {
     return [
       {
+        source: "/",
+        destination: "/anchor",
+        permanent: false,
+      },
+      {
+        source: "/earn",
+        destination: "/anchor",
+        permanent: false,
+      },
+      {
         source: "/harbor",
         destination: "/hytoken",
         permanent: true,

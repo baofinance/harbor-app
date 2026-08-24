@@ -48,7 +48,7 @@ export const metadata: Metadata = {
  openGraph: {
  title: siteTitleDefault,
  description,
- url: siteUrl,
+ url: `${siteUrl}/anchor`,
  siteName: siteTitleDefault,
  images: [
  {
@@ -69,7 +69,7 @@ export const metadata: Metadata = {
  images: [`${siteUrl}/logowhitenobg.png`],
  },
  alternates: {
- canonical: siteUrl,
+   canonical: `${siteUrl}/anchor`,
  },
 };
 
