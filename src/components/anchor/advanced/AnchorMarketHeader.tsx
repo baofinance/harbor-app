@@ -1,7 +1,8 @@
 "use client";
 
 import type { DefinedMarket } from "@/config/markets";
-import { AnchorMarketDropdown, type AnchorMarketDropdownOption } from "./AnchorMarketDropdown";
+import type { MarketData } from "@/hooks/anchor/useAnchorMarketData";
+import { AnchorPegBackingSelectors } from "./AnchorPegBackingSelectors";
 import { AnchorMarketEducationStrip } from "./AnchorMarketEducationStrip";
 import { AnchorMarketPositionBar, type AnchorMarketPositionBarProps } from "./AnchorMarketPositionBar";
 import { AnchorMarketTagline } from "./AnchorMarketTagline";
@@ -17,7 +18,12 @@ const HEADER_STATS_GRID_CLASS =
 type AnchorMarketHeaderProps = {
   selectedMarketId: string | null;
   selectedMarket: DefinedMarket | null;
-  dropdownOptions: AnchorMarketDropdownOption[];
+  dropdownMarkets: readonly [string, DefinedMarket][];
+  marketsDataById: Map<string, MarketData>;
+  marketPositions: Record<
+    string,
+    { collateralPool: bigint; sailPool: bigint } | undefined
+  >;
   onSelectMarket: (marketId: string) => void;
   walletStats: AnchorWalletStatsStripProps;
   marketPosition: Omit<AnchorMarketPositionBarProps, "market">;
@@ -27,7 +33,9 @@ type AnchorMarketHeaderProps = {
 export function AnchorMarketHeader({
   selectedMarketId,
   selectedMarket,
-  dropdownOptions,
+  dropdownMarkets,
+  marketsDataById,
+  marketPositions,
   onSelectMarket,
   walletStats,
   marketPosition,
@@ -38,18 +46,18 @@ export function AnchorMarketHeader({
   const isConnected = marketPosition.isConnected;
 
   return (
-    <header className="relative z-10 flex flex-col gap-4">
-      <div className="min-w-0">
+    <header className="relative z-10 flex flex-col gap-4 overflow-visible">
+      <div className="min-w-0 overflow-visible">
         <p className={`mb-1 ${ANCHOR_ADVANCED_LABEL}`}>Market</p>
-        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-          <div className="w-full min-w-0 max-w-xs shrink-0 sm:max-w-sm">
-            <AnchorMarketDropdown
-              selectedMarketId={selectedMarketId}
-              options={dropdownOptions}
-              onSelect={onSelectMarket}
-            />
-          </div>
-          <div className="flex min-w-0 flex-1 items-center justify-center text-center sm:pl-1">
+        <div className="grid min-w-0 gap-4 overflow-visible lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center lg:gap-8">
+          <AnchorPegBackingSelectors
+            markets={dropdownMarkets}
+            selectedMarketId={selectedMarketId}
+            marketsDataById={marketsDataById}
+            marketPositions={marketPositions}
+            onSelectMarket={onSelectMarket}
+          />
+          <div className="flex w-full min-w-0 items-center justify-center">
             <AnchorMarketTagline market={selectedMarket} />
           </div>
         </div>

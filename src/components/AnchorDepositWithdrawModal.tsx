@@ -80,6 +80,7 @@ import {
   buildCollateralMintProgressFields,
   depositMintedPeggedToStabilityPool,
   isTxUserRejection,
+  permitToApproveCombinedPoolPatch,
   separatePoolProgressPatch,
 } from "@/utils/anchorMintDepositFlow";
 import { FeeDisplayRow } from "@/components/anchor/FeeDisplayRow";
@@ -6546,6 +6547,7 @@ export const AnchorDepositWithdrawModal = ({
             : depositInStabilityPool && !mintOnly;
           const shouldDepositToPool =
             wantsDepositToPool && !(useZap && zapSpAllowlistPending);
+          const useCombinedPoolZap = shouldDepositToPool;
 
           // Set up progress modal before zap transaction
           // Determine the actual asset being zapped (after swap if applicable)
@@ -6584,6 +6586,7 @@ export const AnchorDepositWithdrawModal = ({
             useZap: true,
             zapAssetName,
             wrappedZapAssetName: null,
+            useCombinedPoolZap,
           });
           setProgressConfig({
             mode: "collateral",
@@ -7031,8 +7034,10 @@ export const AnchorDepositWithdrawModal = ({
                 }
                 setProgressConfig((prev) => ({
                   ...prev,
-                  includePermitCollateral: false,
-                  includeApproveCollateral: needsZapApproval,
+                  ...permitToApproveCombinedPoolPatch({
+                    needsApproval: needsZapApproval,
+                    combinedPoolZap: shouldDepositToPool,
+                  }),
                 }));
               }
 
@@ -7303,8 +7308,10 @@ export const AnchorDepositWithdrawModal = ({
               }
               setProgressConfig((prev) => ({
                 ...prev,
-                includePermitCollateral: false,
-                includeApproveCollateral: needsZapApproval,
+                ...permitToApproveCombinedPoolPatch({
+                  needsApproval: needsZapApproval,
+                  combinedPoolZap: shouldDepositToPool,
+                }),
               }));
             }
 
@@ -7447,9 +7454,6 @@ export const AnchorDepositWithdrawModal = ({
           : depositInStabilityPool && !mintOnly;
         const shouldDepositToPool =
           wantsDepositToPool && !(useZap && zapSpAllowlistPending);
-        const includeApprovePegged =
-          shouldDepositToPool && needsPeggedTokenApproval;
-        const includeDeposit = shouldDepositToPool;
         // Determine if we need approval (for zap or direct minting)
         const needsZapApproval =
           useZap &&
@@ -7477,8 +7481,11 @@ export const AnchorDepositWithdrawModal = ({
           shouldDepositToPool &&
           !!zapAddress &&
           !!stabilityPoolAddress;
-        const useZapWrappedToPoolAndDeposit =
-          useZapWrappedToPool && permitEligible;
+        const useCombinedPoolZap =
+          shouldDepositToPool && (!!useZap || !!useZapWrappedToPool);
+        const includeApprovePegged =
+          shouldDepositToPool && needsPeggedTokenApproval && !useCombinedPoolZap;
+        const includeDeposit = shouldDepositToPool && !useCombinedPoolZap;
         const wrappedZapAssetName =
           useZapWrappedToPool && isWstETH
             ? "wstETH"
@@ -7493,7 +7500,8 @@ export const AnchorDepositWithdrawModal = ({
           useZap: !!useZap,
           zapAssetName,
           wrappedZapAssetName,
-          useZapWrappedToPoolAndDeposit: !!useZapWrappedToPoolAndDeposit,
+          useZapWrappedToPoolAndDeposit: !!useZapWrappedToPool,
+          useCombinedPoolZap,
         });
         setProgressConfig({
           mode: "collateral",
@@ -7618,11 +7626,10 @@ export const AnchorDepositWithdrawModal = ({
           } else {
             setProgressConfig((prev) => ({
               ...prev,
-              includePermitCollateral: false,
-              includeApproveCollateral: needsZapApproval || needsDirectApproval,
-              zapAndDeposit: false,
-              includeApprovePegged: !!includeApprovePegged,
-              includeDeposit: !!includeDeposit,
+              ...permitToApproveCombinedPoolPatch({
+                needsApproval: needsZapApproval || needsDirectApproval,
+                combinedPoolZap: !!(prev.zapAndDeposit || prev.wrappedZapAndDeposit),
+              }),
             }));
           }
         }
@@ -7652,9 +7659,10 @@ export const AnchorDepositWithdrawModal = ({
           } else {
             setProgressConfig((prev) => ({
               ...prev,
-              wrappedZapAndDeposit: false,
-              includeApprovePegged: !!includeApprovePegged,
-              includeDeposit: !!includeDeposit,
+              ...permitToApproveCombinedPoolPatch({
+                needsApproval: true,
+                combinedPoolZap: false,
+              }),
             }));
           }
         } else if (

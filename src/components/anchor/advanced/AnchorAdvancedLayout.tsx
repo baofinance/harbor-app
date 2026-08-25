@@ -4,8 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DefinedMarket } from "@/config/markets";
 import { isAnchorSoonUi } from "@/config/markets";
 import type { MarketData } from "@/hooks/anchor/useAnchorMarketData";
-import { formatUSD } from "@/utils/formatters";
-import { formatAPR } from "@/utils/anchor";
 import { AnchorMarketActionPanel } from "./AnchorMarketActionPanel";
 import { AnchorMarketChartColumn } from "./AnchorMarketChartColumn";
 import { AnchorMarketHeader } from "./AnchorMarketHeader";
@@ -83,33 +81,6 @@ export function AnchorAdvancedLayout({
     [scrollToTradePanel],
   );
 
-  const dropdownOptions = useMemo(
-    () =>
-      dropdownMarkets.map(([marketId, market]) => {
-        const data = marketsDataById.get(marketId);
-        const positionUSD =
-          (data?.collateralPoolDepositUSD || 0) +
-          (data?.sailPoolDepositUSD || 0);
-        const bestApr = Math.max(data?.maxAPR || 0, data?.minAPR || 0);
-        const comingSoon = isAnchorSoonUi(market);
-        return {
-          marketId,
-          market,
-          hasPosition: positionUSD > 0,
-          positionLabel:
-            positionUSD > 0
-              ? formatUSD(positionUSD, { compact: true })
-              : undefined,
-          apyLabel:
-            !comingSoon && bestApr > 0
-              ? `${formatAPR(bestApr)} APY`
-              : undefined,
-          isComingSoon: comingSoon,
-        };
-      }),
-    [dropdownMarkets, marketsDataById],
-  );
-
   const peggedPriceUSD = useMemo(() => {
     if (!selectedMarketId || !peggedPriceUSDMap) return undefined;
     const raw = peggedPriceUSDMap[selectedMarketId];
@@ -143,7 +114,9 @@ export function AnchorAdvancedLayout({
       <AnchorMarketHeader
         selectedMarketId={selectedMarketId}
         selectedMarket={selectedMarket}
-        dropdownOptions={dropdownOptions}
+        dropdownMarkets={dropdownMarkets}
+        marketsDataById={marketsDataById}
+        marketPositions={marketPositions}
         onSelectMarket={onSelectMarket}
         walletStats={walletStats}
         marketPosition={{

@@ -125,8 +125,13 @@ export type CollateralMintProgressInput = {
   useZap: boolean;
   zapAssetName: string | null;
   wrappedZapAssetName: string | null;
-  /** True while attempting a one-tx permit wrapped zap (UI may show combined mint label). */
+  /** Wrapped collateral (wstETH/fxSAVE) one-tx zap → stability pool. */
   useZapWrappedToPoolAndDeposit?: boolean;
+  /**
+   * One-tx minter zap → stability pool is planned (USDC/fxUSD/ETH/stETH/wstETH/fxSAVE).
+   * When false but `shouldDepositToPool`, UI shows separate mint + pool deposit steps.
+   */
+  useCombinedPoolZap?: boolean;
 };
 
 /** Progress steps for mint-only or full stability-pool path. */
@@ -154,10 +159,35 @@ export function buildCollateralMintProgressFields(
     zapAssetName,
     wrappedZapAssetName,
     useZapWrappedToPoolAndDeposit = false,
+    useCombinedPoolZap = false,
   } = input;
 
   const includeApproveCollateral =
     (needsZapApproval || needsDirectApproval) && !permitEligible;
+
+  const combinedWrappedPoolZap =
+    shouldDepositToPool &&
+    useCombinedPoolZap &&
+    useZapWrappedToPoolAndDeposit &&
+    !!wrappedZapAssetName;
+  const combinedZapPoolZap =
+    shouldDepositToPool && useCombinedPoolZap && useZap && !!zapAssetName;
+
+  if (shouldDepositToPool && (combinedZapPoolZap || combinedWrappedPoolZap)) {
+    return {
+      includePermitCollateral: permitEligible,
+      includeApproveCollateral,
+      includeMint: true,
+      includeApprovePegged: false,
+      includeDeposit: false,
+      useZap,
+      zapAsset: zapAssetName,
+      zapAndDeposit: combinedZapPoolZap,
+      wrappedZapAndDeposit: combinedWrappedPoolZap,
+      wrappedZapAsset: wrappedZapAssetName,
+      title: "Buy anchor token & Deposit",
+    };
+  }
 
   if (shouldDepositToPool) {
     return {
@@ -169,7 +199,7 @@ export function buildCollateralMintProgressFields(
       useZap,
       zapAsset: zapAssetName,
       zapAndDeposit: false,
-      wrappedZapAndDeposit: useZapWrappedToPoolAndDeposit,
+      wrappedZapAndDeposit: false,
       wrappedZapAsset: wrappedZapAssetName,
       title: "Buy anchor token & Deposit",
     };
@@ -190,9 +220,45 @@ export function buildCollateralMintProgressFields(
   };
 }
 
-/** Switch progress UI to the explicit 4-step pool deposit path. */
+/** Permit failed — switch to approve while keeping a 2-step combined pool zap UI. */
+export function permitToApproveCombinedPoolPatch(options: {
+  needsApproval: boolean;
+  combinedPoolZap: boolean;
+}): {
+  includePermitCollateral: boolean;
+  includeApproveCollateral: boolean;
+  zapAndDeposit: boolean;
+  wrappedZapAndDeposit: boolean;
+  includeApprovePegged: boolean;
+  includeDeposit: boolean;
+} {
+  if (options.combinedPoolZap) {
+    return {
+      includePermitCollateral: false,
+      includeApproveCollateral: options.needsApproval,
+      zapAndDeposit: true,
+      wrappedZapAndDeposit: true,
+      includeApprovePegged: false,
+      includeDeposit: false,
+    };
+  }
+  return {
+    includePermitCollateral: false,
+    includeApproveCollateral: options.needsApproval,
+    zapAndDeposit: false,
+    wrappedZapAndDeposit: false,
+    includeApprovePegged: true,
+    includeDeposit: true,
+  };
+}
+
+/**
+ * Combined zap → pool failed — expand to mint-only zap then approve ha + deposit.
+ * Collateral permit/approve is already done at this point.
+ */
 export function separatePoolProgressPatch(): {
   includePermitCollateral: boolean;
+  includeApproveCollateral: boolean;
   zapAndDeposit: boolean;
   wrappedZapAndDeposit: boolean;
   includeMint: boolean;
@@ -202,12 +268,13 @@ export function separatePoolProgressPatch(): {
 } {
   return {
     includePermitCollateral: false,
+    includeApproveCollateral: false,
     zapAndDeposit: false,
     wrappedZapAndDeposit: false,
     includeMint: true,
     includeApprovePegged: true,
     includeDeposit: true,
-    title: "Mint anchor token & Deposit",
+    title: "Buy anchor token & Deposit",
   };
 }
 

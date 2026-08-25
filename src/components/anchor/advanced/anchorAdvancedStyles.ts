@@ -23,4 +23,4 @@ export {
 } from "@/components/sail/advanced/sailAdvancedStyles";
 
 /** Fixed embedded Earn panel height — stability-pool step with error + CTA. */
-export const ANCHOR_EMBEDDED_PANEL_HEIGHT = "h-[690px] max-h-[690px] min-h-[690px]";
+export const ANCHOR_EMBEDDED_PANEL_HEIGHT = "h-[700px] max-h-[700px] min-h-[700px]";

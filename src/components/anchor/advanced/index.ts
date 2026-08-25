@@ -2,6 +2,7 @@ export { AnchorAdvancedLayout } from "./AnchorAdvancedLayout";
 export { AnchorEmbeddedClaimBar } from "./AnchorEmbeddedClaimBar";
 export { AnchorMarketActionPanel } from "./AnchorMarketActionPanel";
 export { AnchorMarketChartColumn } from "./AnchorMarketChartColumn";
+export { AnchorPegBackingSelectors } from "./AnchorPegBackingSelectors";
 export { AnchorMarketDropdown } from "./AnchorMarketDropdown";
 export { AnchorMarketHeader } from "./AnchorMarketHeader";
 export { AnchorMarketInfoFooter } from "./AnchorMarketInfoFooter";
