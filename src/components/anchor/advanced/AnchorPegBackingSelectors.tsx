@@ -40,7 +40,7 @@ const SECTION_LABEL_CLASS =
 
 const SELECTOR_ICON_SIZE = 22;
 const PEG_FIELD_CLASS = "w-[9.25rem] shrink-0 sm:w-[10rem]";
-const BACKING_FIELD_CLASS = "w-[13.5rem] shrink-0 sm:w-[14.75rem]";
+const BACKING_FIELD_CLASS = "w-[14.5rem] shrink-0 sm:w-[16rem]";
 
 function normalizeApyDisplay(apyLabel?: string): string | null {
   if (!apyLabel) return null;
@@ -396,6 +396,7 @@ export function AnchorPegBackingSelectors({
             {selectedBacking.isComingSoon ? (
               <span className={STATUS_CHIP_CLASS}>Coming soon</span>
             ) : null}
+            <span className="min-w-0 flex-1" aria-hidden="true" />
           </>
         }
       >
