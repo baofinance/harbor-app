@@ -10,7 +10,10 @@ import { useEffect, useState } from "react";
 import { usePermitCapability, type UsePermitCapabilityOptions } from "./usePermitCapability";
 import { usePermitOrApproval } from "./usePermitOrApproval";
 
-export interface UsePermitFlowOptions extends UsePermitCapabilityOptions {}
+export interface UsePermitFlowOptions extends UsePermitCapabilityOptions {
+  /** Initial permit toggle state; defaults to true for backward compatibility */
+  defaultEnabled?: boolean;
+}
 
 export interface UsePermitFlowResult {
   /** Whether permit is expected to work */
@@ -21,7 +24,7 @@ export interface UsePermitFlowResult {
   isLoading: boolean;
   /** Handler to execute permit or fallback to approval */
   handlePermitOrApproval: ReturnType<typeof usePermitOrApproval>["handlePermitOrApproval"];
-  /** User's permit toggle state - syncs with capability (off when not capable, on when capable) */
+  /** User's permit toggle state */
   permitEnabled: boolean;
   /** Set permit toggle state */
   setPermitEnabled: React.Dispatch<React.SetStateAction<boolean>>;
@@ -29,7 +32,7 @@ export interface UsePermitFlowResult {
 
 /**
  * Unified permit flow for Genesis, Sail, and Anchor modals.
- * Syncs permitEnabled with isPermitCapable (off when not capable, on when capable).
+ * Syncs permitEnabled off when wallet/token is not permit-capable; does not auto-enable.
  */
 export function usePermitFlow(
   enabledOrOptions: boolean | UsePermitFlowOptions = true
@@ -41,12 +44,12 @@ export function usePermitFlow(
 
   const { isPermitCapable, disableReason, isLoading } = usePermitCapability(opts);
   const { handlePermitOrApproval } = usePermitOrApproval();
+  const defaultEnabled = opts.defaultEnabled ?? true;
 
-  const [permitEnabled, setPermitEnabled] = useState(true);
+  const [permitEnabled, setPermitEnabled] = useState(defaultEnabled);
 
   useEffect(() => {
     if (!isPermitCapable) setPermitEnabled(false);
-    else setPermitEnabled(true);
   }, [isPermitCapable]);
 
   return {

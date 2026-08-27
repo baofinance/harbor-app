@@ -1,5 +1,9 @@
 /** Shared flow labels for Anchor / Genesis / Sail manage modals. */
 export const DEPOSIT_MODAL_STEP = {
+  buyMint: "Buy / Mint",
+  deposit: "Deposit",
+  withdraw: "Withdraw",
+  sellRedeem: "Sell / Redeem",
   depositCollateralAmount: "Deposit Collateral & Amount",
   rewardToken: "Reward token",
   stabilityPool: "Stability pool",
@@ -23,6 +27,18 @@ export function sailMintFlowParts(): string[] {
 
 export function sailRedeemFlowParts(): string[] {
   return [DEPOSIT_MODAL_STEP.redeemCollateralAmount];
+}
+
+/** Simple-mode deposit: buy/mint then deposit (unless mint-only). */
+export function anchorSimpleDepositFlowParts(mintOnly: boolean): string[] {
+  if (mintOnly) return [DEPOSIT_MODAL_STEP.buyMint];
+  return [DEPOSIT_MODAL_STEP.buyMint, DEPOSIT_MODAL_STEP.deposit];
+}
+
+/** Simple-mode withdraw: withdraw then sell/redeem (unless withdraw-only). */
+export function anchorSimpleWithdrawFlowParts(withdrawOnly: boolean): string[] {
+  if (withdrawOnly) return [DEPOSIT_MODAL_STEP.withdraw];
+  return [DEPOSIT_MODAL_STEP.withdraw, DEPOSIT_MODAL_STEP.sellRedeem];
 }
 
 export function anchorDepositFlowParts(options: {

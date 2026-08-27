@@ -26,13 +26,9 @@ function continueLabel(input: ResolveAnchorDepositStep1ActionInput): string {
     return "Buy";
   }
   if (input.isDirectPeggedDeposit) {
-    return input.rewardTokenOptionsCount > 1 && !input.skipRewardStep
-      ? "Continue to Step 2 →"
-      : "Continue to Stability Pool →";
+    return "Continue to Deposit →";
   }
-  return input.skipRewardStep
-    ? "Continue to Stability Pool →"
-    : "Continue to Step 2 →";
+  return "Continue to Deposit →";
 }
 
 export function resolveAnchorDepositStep1PrimaryAction(

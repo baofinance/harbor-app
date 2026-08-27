@@ -22,5 +22,5 @@ export {
   SAIL_MOBILE_TRADE_SELL_BUTTON_CLASS as ANCHOR_MOBILE_WITHDRAW_BUTTON_CLASS,
 } from "@/components/sail/advanced/sailAdvancedStyles";
 
-/** Fixed embedded Earn panel height — stability-pool step with error + CTA. */
+/** Fixed embedded Earn panel height — withdraw manual market + overview + CTA. */
 export const ANCHOR_EMBEDDED_PANEL_HEIGHT = "h-[700px] max-h-[700px] min-h-[700px]";

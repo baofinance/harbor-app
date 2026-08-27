@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import type { DepositPrimaryAction } from "@/utils/depositFormState";
 import { DepositPrimaryButton } from "@/components/deposit/DepositPrimaryButton";
-import { DEPOSIT_CANCEL_BUTTON_CLASS } from "@/components/deposit/depositFlowStyles";
+import { DEPOSIT_CANCEL_BUTTON_CLASS, ANCHOR_MODAL_FOOTER_CHROME } from "@/components/deposit/depositFlowStyles";
 
 type DepositActionFooterProps = {
   layout?: "embedded" | "modal";
@@ -27,7 +27,7 @@ export function DepositActionFooter({
   cancelLabel = "Cancel",
 }: DepositActionFooterProps) {
   return (
-    <div className="mt-auto shrink-0 space-y-2.5 border-t border-[#1E4775]/8 pt-3">
+    <div className={ANCHOR_MODAL_FOOTER_CHROME}>
       {feeFooter}
       <div className={layout === "modal" ? "flex gap-3" : "w-full"}>
         {showCancel && onCancel ? (
