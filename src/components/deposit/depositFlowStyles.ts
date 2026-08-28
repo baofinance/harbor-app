@@ -37,6 +37,10 @@ export const ANCHOR_MODAL_FOOTER_CHROME =
 export const DEPOSIT_SECTION_LABEL_CLASS =
   "text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/50";
 
+/** Compact native select for Anchor deposit / withdraw panels. */
+export const DEPOSIT_COMPACT_SELECT_CLASS =
+  "mt-1 w-full rounded-lg border border-[#1E4775]/20 bg-white/85 px-2.5 py-2 text-sm text-[#1E4775] focus:border-[#1E4775] focus:outline-none focus:ring-2 focus:ring-[#1E4775]/20 disabled:cursor-not-allowed disabled:opacity-50";
+
 const DEPOSIT_PRIMARY_BASE =
   "inline-flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4775]/25";
 

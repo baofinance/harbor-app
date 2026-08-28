@@ -63,6 +63,7 @@ import {
   TransactionStep,
 } from "@/components/TransactionProgressModal";
 import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
+import TokenIconClient from "@/components/TokenIconClient";
 import { TokenAmountSection } from "@/components/TokenAmountSection";
 import { DepositModalShell } from "@/components/DepositModalShell";
 import { DepositModalTabHeader } from "@/components/DepositModalTabHeader";
@@ -99,6 +100,7 @@ import {
   ANCHOR_MODAL_FOOTER_WRAPPER,
   ANCHOR_MODAL_SCROLL_CLASS,
   ANCHOR_MODAL_SECTION_GAP,
+  DEPOSIT_SECTION_LABEL_CLASS,
 } from "@/components/deposit/depositFlowStyles";
 import {
   resolveAnchorDepositStep1PrimaryAction,
@@ -456,6 +458,10 @@ export const AnchorDepositWithdrawModal = ({
   // Default: withdraw from pools + redeem selected ha tokens to collateral.
   const [withdrawOnly, setWithdrawOnly] = useState(false);
   const [sellFromWalletOnly, setSellFromWalletOnly] = useState(false);
+  /** Sell page: pool withdraw vs wallet (mutually exclusive redeem source). */
+  const [sellRedeemSource, setSellRedeemSource] = useState<"pool" | "wallet">(
+    "pool",
+  );
   const [withdrawFromCollateralPool, setWithdrawFromCollateralPool] =
     useState(false);
   const [withdrawFromSailPool, setWithdrawFromSailPool] = useState(false);
@@ -3768,14 +3774,14 @@ export const AnchorDepositWithdrawModal = ({
 
   // Calculate total amount for redeem output calculation (from position amounts or single amount)
   const redeemInputAmount = useMemo(() => {
+    let total = 0n;
+
     if (
       activeTab === "withdraw" &&
       (positionAmounts.wallet ||
         positionAmounts.collateralPool ||
         positionAmounts.sailPool)
     ) {
-      // Sum up all position amounts
-      let total = 0n;
       if (positionAmounts.wallet && parseFloat(positionAmounts.wallet) > 0) {
         total += parseEther(positionAmounts.wallet);
       }
@@ -3791,14 +3797,50 @@ export const AnchorDepositWithdrawModal = ({
       ) {
         total += parseEther(positionAmounts.sailPool);
       }
-      return total > 0n ? total : undefined;
+    } else if (amount && parseFloat(amount) > 0) {
+      total = parseEther(amount);
     }
-    // Use single amount field
-    if (amount && parseFloat(amount) > 0) {
-      return parseEther(amount);
+
+    if (
+      simpleMode &&
+      activeTab === "withdraw" &&
+      flowPage === 2 &&
+      !withdrawOnly
+    ) {
+      let poolTotal = 0n;
+      if (
+        positionAmounts.collateralPool &&
+        parseFloat(positionAmounts.collateralPool) > 0
+      ) {
+        poolTotal += parseEther(positionAmounts.collateralPool);
+      }
+      if (
+        positionAmounts.sailPool &&
+        parseFloat(positionAmounts.sailPool) > 0
+      ) {
+        poolTotal += parseEther(positionAmounts.sailPool);
+      }
+
+      if (sellRedeemSource === "wallet" || poolTotal === 0n) {
+        if (positionAmounts.wallet && parseFloat(positionAmounts.wallet) > 0) {
+          return parseEther(positionAmounts.wallet);
+        }
+        return undefined;
+      }
+
+      return poolTotal > 0n ? poolTotal : undefined;
     }
-    return undefined;
-  }, [activeTab, positionAmounts, amount]);
+
+    return total > 0n ? total : undefined;
+  }, [
+    activeTab,
+    positionAmounts,
+    amount,
+    simpleMode,
+    flowPage,
+    withdrawOnly,
+    sellRedeemSource,
+  ]);
 
   // Dry-run redeem to fetch fee/discount and output before user confirms
   const redeemDryRunAddress = isValidRedeemMinterAddress
@@ -10729,6 +10771,7 @@ export const AnchorDepositWithdrawModal = ({
     if (sellFromWalletOnly) {
       if (peggedBalance === 0n) return;
       setWithdrawOnly(false);
+      setSellRedeemSource("wallet");
       setSelectedPositions((prev) => ({
         ...prev,
         wallet: true,
@@ -10747,10 +10790,48 @@ export const AnchorDepositWithdrawModal = ({
     }
     if (!hasValidWithdrawSelection) return;
     setWithdrawOnly(false);
+    setSellRedeemSource("pool");
+    setSelectedPositions((prev) => ({
+      ...prev,
+      wallet: false,
+    }));
+    setPositionAmounts((prev) => ({
+      ...prev,
+      wallet: "",
+    }));
     setFlowPage(2);
     setStep("input");
     setError(null);
   }, [sellFromWalletOnly, peggedBalance, hasValidWithdrawSelection]);
+
+  const handleSellRedeemSourceChange = useCallback(
+    (source: "pool" | "wallet") => {
+      setSellRedeemSource(source);
+      if (source === "pool") {
+        setSelectedPositions((prev) => ({ ...prev, wallet: false }));
+        setPositionAmounts((prev) => ({ ...prev, wallet: "" }));
+        return;
+      }
+      setSelectedPositions((prev) => ({ ...prev, wallet: true }));
+    },
+    [],
+  );
+
+  const handleSellMarketSelectChange = useCallback(
+    (value: string) => {
+      if (value === "auto") {
+        setRedeemMarketSelectionMode("auto");
+        return;
+      }
+      setRedeemMarketSelectionMode("manual");
+      setSelectedRedeemMarketId(value);
+      const market = marketsForToken.find((m) => m.marketId === value)?.market;
+      if (market?.collateral?.symbol) {
+        setSelectedRedeemAsset(market.collateral.symbol);
+      }
+    },
+    [marketsForToken],
+  );
 
   const depositPagePrimaryAction = useMemo(
     () =>
@@ -11183,7 +11264,7 @@ export const AnchorDepositWithdrawModal = ({
           fees: earlyFee
             ? [
                 {
-                  label: "Early fee",
+                  label: "Early withdraw fee",
                   percentage: earlyFee.feePercent,
                   usd: earlyFeeUsd > 0 ? earlyFeeUsd : undefined,
                 },
@@ -11277,11 +11358,47 @@ export const AnchorDepositWithdrawModal = ({
         collateralSym,
         withdrawRedeemPriceInputs,
       );
-      const priceUSD = getTokenPriceUSD(collateralSym, withdrawRedeemPriceInputs);
-      const earlyFeeUsd =
-        earlyFee && priceUSD > 0
-          ? (Number(earlyFee.amount) / 1e18) * priceUSD
+      const peggedPriceUSD =
+        withdrawRedeemPriceInputs.peggedPriceUSD > 0
+          ? withdrawRedeemPriceInputs.peggedPriceUSD
           : 0;
+      const earlyFeeUsd =
+        earlyFee && peggedPriceUSD > 0
+          ? (Number(earlyFee.amount) / 1e18) * peggedPriceUSD
+          : 0;
+
+      const overviewFees: Array<{
+        label: string;
+        percentage: number;
+        usd?: number;
+      }> = [];
+
+      if (redeemDryRun.feePercentage !== undefined) {
+        const sellFeeAmount = Number(formatEther(redeemDryRun.fee));
+        const sellFeeUsd = amountToUSD(
+          sellFeeAmount,
+          collateralSym,
+          withdrawRedeemPriceInputs,
+        );
+        overviewFees.push({
+          label: "Sell fee",
+          percentage: redeemDryRun.feePercentage,
+          usd: sellFeeUsd > 0 ? sellFeeUsd : undefined,
+        });
+      }
+
+      if (earlyFee) {
+        overviewFees.push({
+          label: "Early withdraw fee",
+          percentage: earlyFee.feePercent,
+          usd: earlyFeeUsd > 0 ? earlyFeeUsd : undefined,
+        });
+      }
+
+      const totalFeeUsd = overviewFees.reduce(
+        (sum, fee) => sum + (fee.usd ?? 0),
+        0,
+      );
 
       return {
         receiveAmount: Number(formatEther(receiveWei)).toFixed(4),
@@ -11290,18 +11407,12 @@ export const AnchorDepositWithdrawModal = ({
         receiveLabel: redeemPreview?.isCapped
           ? "You will receive (partial)"
           : "You will receive",
-        sourceLine: hasPoolSell
-          ? `From ${poolLabelShort} · ${Number(formatEther(redeemInputAmount)).toFixed(4)} ${peggedTokenSymbol}`
-          : `From wallet · ${Number(formatEther(redeemInputAmount)).toFixed(4)} ${peggedTokenSymbol}`,
-        fees: earlyFee
-          ? [
-              {
-                label: "Early fee",
-                percentage: earlyFee.feePercent,
-                usd: earlyFeeUsd > 0 ? earlyFeeUsd : undefined,
-              },
-            ]
-          : undefined,
+        sourceLine:
+          sellRedeemSource === "wallet" || !hasPoolSell
+            ? `From wallet · ${Number(formatEther(redeemInputAmount ?? 0n)).toFixed(4)} ${peggedTokenSymbol}`
+            : `From ${poolLabelShort} · ${Number(formatEther(redeemInputAmount ?? 0n)).toFixed(4)} ${peggedTokenSymbol}`,
+        fees: overviewFees.length > 0 ? overviewFees : undefined,
+        totalFeeUsd: overviewFees.length > 1 ? totalFeeUsd : undefined,
         bonus:
           redeemDryRun.discountPercentage > 0
             ? { percentage: redeemDryRun.discountPercentage }
@@ -11317,6 +11428,7 @@ export const AnchorDepositWithdrawModal = ({
       step,
       withdrawOnly,
       sellFromWalletOnly,
+      sellRedeemSource,
       peggedBalance,
       selectedPositions.collateralPool,
       selectedPositions.sailPool,
@@ -12654,114 +12766,283 @@ export const AnchorDepositWithdrawModal = ({
 
                     {(simpleMode ? flowPage === 2 : true) ? (
                     <>
-                    {simpleMode && hasPoolSellAmount && !sellFromWalletOnly ? (
-                      <div className="rounded-xl border border-[#1E4775]/12 bg-white/70 px-3 py-2.5 text-xs shadow-sm backdrop-blur-sm">
-                        <div className="text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/50 mb-1">
-                          From pool withdraw
-                        </div>
-                        <div className="font-mono font-semibold text-[#1E4775]">
-                          {formatTokenAmount18(poolSellAmountWei, 6)} {peggedTokenSymbol}
-                        </div>
-                        <p className="mt-1 text-[11px] text-[#1E4775]/55">
-                          Withdrawn on the previous step — confirm market and proceed below.
-                        </p>
-                      </div>
-                    ) : null}
+                    {!withdrawOnly && (
+                      <div className={`${DEPOSIT_AMOUNT_CARD_CLASS} space-y-3`}>
+                        <div>
+                          <div className={DEPOSIT_SECTION_LABEL_CLASS}>
+                            Sell from
+                          </div>
+                          <div
+                            className={`${WITHDRAW_POOL_SEGMENT_TRACK_CLASS} mt-1`}
+                            role="tablist"
+                            aria-label="Sell from"
+                          >
+                            {hasPoolSellAmount ? (
+                              <button
+                                type="button"
+                                role="tab"
+                                aria-selected={
+                                  (hasPoolSellAmount
+                                    ? sellRedeemSource
+                                    : "wallet") === "pool"
+                                }
+                                disabled={isProcessing}
+                                onClick={() =>
+                                  handleSellRedeemSourceChange("pool")
+                                }
+                                className={`flex flex-1 items-center justify-center rounded-md px-2 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
+                                  (hasPoolSellAmount
+                                    ? sellRedeemSource
+                                    : "wallet") === "pool"
+                                    ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
+                                    : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
+                                }`}
+                              >
+                                Pool withdraw
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              role="tab"
+                              aria-selected={
+                                (hasPoolSellAmount
+                                  ? sellRedeemSource
+                                  : "wallet") === "wallet"
+                              }
+                              disabled={isProcessing || !canSellFromWallet}
+                              onClick={() =>
+                                handleSellRedeemSourceChange("wallet")
+                              }
+                              className={`flex flex-1 items-center justify-center rounded-md px-2 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                                (hasPoolSellAmount
+                                  ? sellRedeemSource
+                                  : "wallet") === "wallet"
+                                  ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
+                                  : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
+                              }`}
+                            >
+                              Wallet
+                            </button>
+                          </div>
 
-                    {/* Wallet sell — primary for wallet-only, optional add-on after pool withdraw */}
-                    {canSellFromWallet ? (
-                        <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#17395F]/20">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-3">
-                              {(sellFromWalletOnly || !hasPoolSellAmount) ? (
-                              <span className="text-sm font-medium text-[#1E4775]">
-                                {hasPoolSellAmount
-                                  ? "Also sell from wallet"
-                                  : "Sell from wallet"}
-                              </span>
-                              ) : (
-                              <>
-                              <input
-                                type="checkbox"
-                              checked={selectedPositions.wallet}
-                                onChange={(e) => {
-                                  setSelectedPositions((prev) => ({
-                                    ...prev,
-                                  wallet: e.target.checked,
-                                  }));
-                                  if (!e.target.checked) {
+                          {(hasPoolSellAmount
+                            ? sellRedeemSource
+                            : "wallet") === "pool" && hasPoolSellAmount ? (
+                            <div className="mt-2 rounded-lg border border-[#1E4775]/12 bg-white/60 px-2.5 py-2">
+                              <div className="text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/50">
+                                Amount to sell
+                              </div>
+                              <div className="font-mono text-sm font-semibold text-[#1E4775]">
+                                {formatTokenAmount18(poolSellAmountWei, 6)}{" "}
+                                {peggedTokenSymbol}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {sellRedeemSource === "wallet" ||
+                          !hasPoolSellAmount ? (
+                            <div className="mt-2">
+                              <label
+                                htmlFor="sell-wallet-amount"
+                                className={DEPOSIT_SECTION_LABEL_CLASS}
+                              >
+                                Wallet amount
+                              </label>
+                              <div className="relative mt-1">
+                                <input
+                                  id="sell-wallet-amount"
+                                  type="text"
+                                  value={positionAmounts.wallet}
+                                  onChange={(e) =>
+                                    handlePositionAmountChange(
+                                      "wallet",
+                                      e.target.value,
+                                      peggedBalance,
+                                    )
+                                  }
+                                  placeholder="0.0"
+                                  className={`w-full h-10 px-3 pr-16 bg-white/85 backdrop-blur-sm text-[#1E4775] border focus:ring-2 focus:outline-none text-sm font-mono ${
+                                    positionExceedsBalance.wallet
+                                      ? "border-red-500 focus:border-red-500 focus:ring-red-200"
+                                      : "border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-[#1E4775]/20"
+                                  }`}
+                                  disabled={isProcessing || !canSellFromWallet}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
                                     setPositionAmounts((prev) => ({
                                       ...prev,
-                                    wallet: "",
+                                      wallet: formatEther(peggedBalance),
                                     }));
-                                  }
-                                }}
-                                disabled={isProcessing}
-                                className="w-5 h-5 text-[#1E4775] border-[#1E4775]/30 focus:ring-2 focus:ring-[#1E4775]/20 focus:ring-offset-0 cursor-pointer disabled:opacity-50"
-                              />
-                              <span className="text-sm font-medium text-[#1E4775]">
-                              Also sell from wallet
-                              </span>
-                              </>
-                              )}
+                                  }}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs rounded-md bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500"
+                                  disabled={isProcessing || !canSellFromWallet}
+                                >
+                                  MAX
+                                </button>
+                              </div>
                             </div>
-                            <div className="text-sm text-[#1E4775]/70 font-mono">
-                            Balance: {formatTokenAmount18(peggedBalance)}
-                              {" "}
-                              {peggedTokenSymbol}
-                            </div>
-                          </div>
-                        {(sellFromWalletOnly ||
-                          selectedPositions.wallet ||
-                          !hasPoolSellAmount) && (
-                                <div className="relative mt-2">
-                                  <input
-                                    type="text"
-                              value={positionAmounts.wallet}
-                                    onChange={(e) =>
-                                      handlePositionAmountChange(
-                                  "wallet",
-                                        e.target.value,
-                                  peggedBalance
-                                      )
-                                    }
-                                    placeholder="0.0"
-                                    className={`w-full h-10 px-3 pr-16 bg-white/85 backdrop-blur-sm text-[#1E4775] border focus:ring-2 focus:outline-none text-sm font-mono ${
-                                positionExceedsBalance.wallet
-                                        ? "border-red-500 focus:border-red-500 focus:ring-red-200"
-                                        : "border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-[#1E4775]/20"
-                                    }`}
-                                    disabled={isProcessing}
-                                  />
-                                  <button
-                                    onClick={() => {
-                                      setPositionAmounts((prev) => ({
-                                        ...prev,
-                                  wallet: formatEther(peggedBalance),
-                                      }));
-                                    }}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs rounded-md bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500"
-                                    disabled={isProcessing}
-                                  >
-                                    MAX
-                                  </button>
-                                </div>
-                          )}
+                          ) : null}
                         </div>
-                      ) : (
-                        <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#17395F]/20 opacity-50">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-[#1E4775]/50">
-                              Sell from wallet
-                            </span>
-                            <span className="text-sm text-[#1E4775]/40 font-mono">
-                              Balance: 0 {peggedTokenSymbol}
-                            </span>
-                          </div>
-                        </div>
-                      )}
 
-                    {/* No positions message (sell page) */}
+                        {marketsForToken.length > 1 ? (
+                          <div>
+                            <div className={DEPOSIT_SECTION_LABEL_CLASS}>
+                              Sell via market
+                            </div>
+                            <div
+                              className={`${WITHDRAW_POOL_SEGMENT_TRACK_CLASS} mt-1`}
+                              role="tablist"
+                              aria-label="Sell via market"
+                            >
+                              <button
+                                type="button"
+                                role="tab"
+                                aria-selected={
+                                  redeemMarketSelectionMode === "auto"
+                                }
+                                disabled={isProcessing}
+                                onClick={() =>
+                                  setRedeemMarketSelectionMode("auto")
+                                }
+                                className={`flex-1 rounded-md px-2.5 py-2 text-xs font-semibold transition disabled:opacity-50 ${
+                                  redeemMarketSelectionMode === "auto"
+                                    ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
+                                    : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
+                                }`}
+                              >
+                                Auto
+                              </button>
+                              <button
+                                type="button"
+                                role="tab"
+                                aria-selected={
+                                  redeemMarketSelectionMode === "manual"
+                                }
+                                disabled={isProcessing}
+                                onClick={() =>
+                                  setRedeemMarketSelectionMode("manual")
+                                }
+                                className={`flex-1 rounded-md px-2.5 py-2 text-xs font-semibold transition disabled:opacity-50 ${
+                                  redeemMarketSelectionMode === "manual"
+                                    ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
+                                    : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
+                                }`}
+                              >
+                                Manual
+                              </button>
+                            </div>
+
+                            {redeemMarketSelectionMode === "auto" ? (
+                              <p className="mt-2 text-[11px] leading-snug text-[#1E4775]/65 px-0.5">
+                                Best path ·{" "}
+                                <span className="font-medium text-[#1E4775]">
+                                  {marketsForToken.find(
+                                    (m) =>
+                                      m.marketId === recommendedRedeemMarketId,
+                                  )?.market?.name ||
+                                    selectedRedeemMarket?.market?.name ||
+                                    "..."}
+                                </span>
+                                {" · "}
+                                {redeemCollateralSymbol}
+                              </p>
+                            ) : (
+                              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                {marketsForToken.map(
+                                  ({ marketId: mid, market: m }) => {
+                                    const preview =
+                                      redeemMarketPreviews.get(mid);
+                                    const collateralSym =
+                                      m?.collateral?.symbol || "";
+                                    const collateralKey =
+                                      collateralSym.toLowerCase() === "fxsave"
+                                        ? "fxSAVE"
+                                        : collateralSym.toLowerCase() ===
+                                            "wsteth"
+                                          ? "wstETH"
+                                          : collateralSym;
+                                    const isSelected =
+                                      (selectedRedeemMarketId ||
+                                        selectedMarketId) === mid;
+                                    const isCapped =
+                                      preview?.isCapped ?? false;
+                                    const isRecommended =
+                                      recommendedRedeemMarketId === mid &&
+                                      !isCapped;
+
+                                    return (
+                                      <button
+                                        key={mid}
+                                        type="button"
+                                        disabled={isProcessing}
+                                        onClick={() =>
+                                          handleSellMarketSelectChange(mid)
+                                        }
+                                        className={`rounded-lg border px-2.5 py-2.5 text-left transition disabled:opacity-50 ${
+                                          isSelected
+                                            ? "border-[#1E4775] bg-[#17395F]/10 shadow-sm"
+                                            : "border-[#1E4775]/15 bg-white/50 hover:bg-[#17395F]/5"
+                                        }`}
+                                      >
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div className="flex min-w-0 items-center gap-2">
+                                            <TokenIconClient
+                                              symbol={collateralKey}
+                                              size={20}
+                                              className="shrink-0"
+                                            />
+                                            <div className="text-sm font-semibold text-[#1E4775]">
+                                              {collateralKey}
+                                            </div>
+                                          </div>
+                                          <div
+                                            className={`mt-0.5 h-3.5 w-3.5 shrink-0 rounded-full border-2 ${
+                                              isSelected
+                                                ? "border-[#1E4775] bg-[#1E4775]"
+                                                : "border-[#1E4775]/30"
+                                            }`}
+                                          />
+                                        </div>
+                                        <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                                          {isRecommended ? (
+                                            <span className="text-[9px] font-semibold uppercase tracking-wide px-1 py-0.5 rounded bg-[#4A9784]/15 text-[#4A9784]">
+                                              Recommended
+                                            </span>
+                                          ) : null}
+                                          {isCapped ? (
+                                            <span className="text-[9px] font-semibold uppercase tracking-wide px-1 py-0.5 rounded bg-amber-100 text-amber-800">
+                                              Capped
+                                            </span>
+                                          ) : null}
+                                        </div>
+                                        {preview &&
+                                        preview.wrappedOut > 0n &&
+                                        redeemInputAmount &&
+                                        redeemInputAmount > 0n ? (
+                                          <div className="mt-1 font-mono text-[11px] text-[#1E4775]/70">
+                                            ~{" "}
+                                            {Number(
+                                              formatEther(preview.wrappedOut),
+                                            ).toFixed(4)}{" "}
+                                            {collateralSym}
+                                            {preview.isCapped
+                                              ? " (partial)"
+                                              : ""}
+                                          </div>
+                                        ) : null}
+                                      </button>
+                                    );
+                                  },
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+
                     {!simpleMode &&
                       peggedBalance === 0n &&
                       collateralPoolBalance === 0n &&
@@ -12770,138 +13051,6 @@ export const AnchorDepositWithdrawModal = ({
                         No positions found
                       </div>
                     )}
-
-                    {(simpleMode ? flowPage === 2 : true) &&
-                    marketsForToken.length > 1 && (
-                    <div className={`${DEPOSIT_AMOUNT_CARD_CLASS} ${ANCHOR_MODAL_SECTION_GAP}`}>
-                      <div>
-                        <div className="text-sm font-semibold text-[#1E4775]">
-                          Sell via market
-                        </div>
-                        <p className="text-[11px] text-[#1E4775]/60 mt-0.5 leading-snug">
-                          {redeemMarketSelectionMode === "auto"
-                            ? "Auto picks the best path for full redemption."
-                            : "Choose which minter pays collateral."}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center rounded-lg overflow-hidden bg-[#17395F]/10 p-0.5">
-                        <button
-                          type="button"
-                          disabled={isProcessing}
-                          onClick={() => setRedeemMarketSelectionMode("auto")}
-                          className={`flex-1 px-2.5 py-1.5 text-xs font-medium transition-all rounded-md ${
-                            redeemMarketSelectionMode === "auto"
-                              ? "bg-[#1E4775] text-white shadow-sm"
-                              : "text-[#1E4775]/70 hover:text-[#1E4775]"
-                          } disabled:opacity-50`}
-                        >
-                          Auto
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isProcessing}
-                          onClick={() => setRedeemMarketSelectionMode("manual")}
-                          className={`flex-1 px-2.5 py-1.5 text-xs font-medium transition-all rounded-md ${
-                            redeemMarketSelectionMode === "manual"
-                              ? "bg-[#1E4775] text-white shadow-sm"
-                              : "text-[#1E4775]/70 hover:text-[#1E4775]"
-                          } disabled:opacity-50`}
-                        >
-                          Manual
-                        </button>
-                      </div>
-
-                      {redeemMarketSelectionMode === "auto" ? (
-                        <div className="text-xs text-[#1E4775]/80 px-2.5 py-2 rounded-lg bg-white/60 border border-[#1E4775]/10">
-                          <span className="font-medium text-[#1E4775]">
-                            {selectedRedeemMarket?.market?.name ||
-                              selectedRedeemMarketId ||
-                              "..."}
-                          </span>
-                          <span className="text-[#1E4775]/60">
-                            {" "}
-                            · Receive {redeemCollateralSymbol}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {marketsForToken.map(({ marketId: mid, market: m }) => {
-                            const preview = redeemMarketPreviews.get(mid);
-                            const collateralSym = m?.collateral?.symbol || "";
-                            const isSelected =
-                              (selectedRedeemMarketId || selectedMarketId) === mid;
-                            const isCapped = preview?.isCapped ?? false;
-                            const isRecommended =
-                              recommendedRedeemMarketId === mid && !isCapped;
-
-                            return (
-                              <button
-                                key={mid}
-                                type="button"
-                                disabled={isProcessing}
-                                onClick={() => {
-                                  setSelectedRedeemMarketId(mid);
-                                  if (collateralSym) {
-                                    setSelectedRedeemAsset(collateralSym);
-                                  }
-                                }}
-                                className={`w-full text-left px-2.5 py-2 rounded-lg border transition-colors disabled:opacity-50 ${
-                                  isSelected
-                                    ? "border-[#1E4775] bg-[#17395F]/10"
-                                    : "border-[#1E4775]/15 bg-white/40 hover:bg-[#17395F]/5"
-                                }`}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <div
-                                    className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${
-                                      isSelected
-                                        ? "border-[#1E4775] bg-[#1E4775]"
-                                        : "border-[#1E4775]/30"
-                                    }`}
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex flex-wrap items-center gap-1.5">
-                                      <span className="text-xs font-medium text-[#1E4775]">
-                                        {m?.name || mid}
-                                      </span>
-                                      {isRecommended && (
-                                        <span className="text-[9px] font-semibold uppercase tracking-wide px-1 py-0.5 rounded bg-[#4A9784]/15 text-[#4A9784]">
-                                          Recommended
-                                        </span>
-                                      )}
-                                      {isCapped && (
-                                        <span className="text-[9px] font-semibold uppercase tracking-wide px-1 py-0.5 rounded bg-amber-100 text-amber-800">
-                                          Capped
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="text-[11px] text-[#1E4775]/60">
-                                      {collateralSym}
-                                      {preview &&
-                                        preview.wrappedOut > 0n &&
-                                        redeemInputAmount &&
-                                        redeemInputAmount > 0n && (
-                                          <>
-                                            {" "}
-                                            ·{" "}
-                                            {Number(
-                                              formatEther(preview.wrappedOut)
-                                            ).toFixed(4)}
-                                            {preview.isCapped && " (partial)"}
-                                          </>
-                                        )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                    </div>
-                  )}
 
                     </>
                     ) : null}

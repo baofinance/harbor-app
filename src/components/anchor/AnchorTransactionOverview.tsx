@@ -26,6 +26,8 @@ export type AnchorTransactionOverviewProps = {
   statusMessage?: string;
   statusVariant?: "default" | "error";
   fees?: TransactionOverviewFee[];
+  /** Sum of fee USD values when multiple fees apply (do not add percentages). */
+  totalFeeUsd?: number;
   bonus?: { percentage: number };
   bannerMessage?: string;
   /** Tighter layout for withdraw step 1 */
@@ -43,6 +45,7 @@ export function AnchorTransactionOverview({
   statusMessage,
   statusVariant = "default",
   fees,
+  totalFeeUsd,
   bonus,
   bannerMessage,
   compact = false,
@@ -119,7 +122,7 @@ export function AnchorTransactionOverview({
               </div>
             </div>
 
-            {(fees?.length || bonus) && (
+            {(fees?.length || bonus || (totalFeeUsd !== undefined && totalFeeUsd > 0)) && (
               <div className={ANCHOR_TRANSACTION_OVERVIEW_FEE_DIVIDER}>
                 {fees?.map((fee) => (
                   <div
@@ -142,6 +145,18 @@ export function AnchorTransactionOverview({
                     </span>
                   </div>
                 ))}
+                {totalFeeUsd !== undefined && totalFeeUsd > 0 && (fees?.length ?? 0) > 1 ? (
+                  <div className="flex justify-between items-center gap-2 border-t border-[#1E4775]/10 pt-1.5 mt-0.5">
+                    <span className="font-medium text-[#1E4775]/80">Total fees</span>
+                    <span className="font-semibold font-mono tabular-nums text-[#1E4775]">
+                      $
+                      {totalFeeUsd.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                ) : null}
                 {bonus ? (
                   <div className="flex justify-between items-center gap-2 text-green-700">
                     <span>Bonus</span>
