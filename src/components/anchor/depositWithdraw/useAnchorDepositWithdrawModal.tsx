@@ -1,0 +1,12045 @@
+"use client";
+
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { flushSync } from "react-dom";
+import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
+import {
+  formatTokenAmount18,
+  formatUsd18,
+} from "@/utils/formatters";
+import { amountToUSD, getTokenPriceUSD } from "@/utils/tokenPriceToUSD";
+import { REWARD_TOKEN_ADDRESSES } from "@/config/chainlink";
+import { getDepositMode } from "@/utils/depositMode";
+import {
+  useAccount,
+  useBalance,
+  useContractRead,
+  useContractReads,
+  useWriteContract,
+  usePublicClient,
+  useSendTransaction,
+  useChainId,
+  useSwitchChain,
+} from "wagmi";
+import { mainnet } from "wagmi/chains";
+import { BaseError, ContractFunctionRevertedError } from "viem";
+import {
+  ERC20_ABI,
+  ERC20_PERMIT_ABI,
+  GENESIS_ABI,
+  STABILITY_POOL_ABI,
+  MINTER_PEGGED_ABI,
+} from "@/abis";
+import { REDEEM_PEGGED_WITH_PERMIT_ABI } from "@/abis/redeemPermit";
+import { stabilityPoolABI } from "@/abis/stabilityPool";
+import { ZAP_ABI, USDC_ZAP_ABI, WSTETH_ABI } from "@/abis";
+import { MINTER_ETH_ZAP_V3_ABI, MINTER_ETH_ZAP_V1_ABI } from "@/abis";
+import { MINTER_USDC_ZAP_V3_ABI } from "@/abis";
+import {
+  marketUsesZapV1,
+  minterEthNativeZapFunctionName,
+} from "@/utils/zapApiVersion";
+import Image from "next/image";
+import SimpleTooltip from "@/components/SimpleTooltip";
+import {
+  Banknote,
+  AlertOctagon,
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  RefreshCw,
+} from "lucide-react";
+import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
+import { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
+import { getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
+import { useCollateralPrice } from "@/hooks/useCollateralPrice";
+import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
+import { usePegTargetPrices } from "@/hooks/usePegTargetPrices";
+import { usePermitFlow } from "@/hooks/usePermitFlow";
+import { useTransactionProgress } from "@/hooks/useTransactionProgress";
+import {
+  TransactionProgressModal,
+  TransactionStep,
+} from "@/components/TransactionProgressModal";
+import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
+import TokenIconClient from "@/components/TokenIconClient";
+import { TokenAmountSection } from "@/components/TokenAmountSection";
+import { DepositModalShell } from "@/components/DepositModalShell";
+import { DepositModalTabHeader } from "@/components/DepositModalTabHeader";
+import { DepositModalFlowOverview } from "@/components/DepositModalFlowOverview";
+import {
+  anchorDepositFlowParts,
+  anchorSimpleDepositFlowParts,
+  anchorSimpleSellFlowParts,
+  anchorSimpleWithdrawFlowParts,
+} from "@/components/depositModalFlowSteps";
+import { DepositModalTitle } from "@/components/DepositModalTitle";
+import { InfoCallout } from "@/components/InfoCallout";
+import { ErrorBanner, ReservedErrorSlot } from "@/components/anchor/ErrorBanner";
+import { useRegisterAppNotifications } from "@/contexts/AppNotificationsContext";
+import {
+  attemptCombinedPoolZap,
+  buildCollateralMintProgressFields,
+  depositMintedPeggedToStabilityPool,
+  isTxUserRejection,
+  permitToApproveCombinedPoolPatch,
+  separatePoolProgressPatch,
+} from "@/utils/anchorMintDepositFlow";
+import { DepositPermitToggle } from "@/components/deposit/DepositPermitToggle";
+import {
+  DepositTradeFeeFooter,
+  type DepositTradeFeeItem,
+} from "@/components/deposit/DepositTradeFeeFooter";
+import { DepositModalLayout } from "@/components/deposit/DepositModalLayout";
+import { AnchorBuyTransactionOverview } from "@/components/anchor/AnchorBuyTransactionOverview";
+import {
+  AnchorTransactionOverview,
+  type AnchorTransactionOverviewProps,
+} from "@/components/anchor/AnchorTransactionOverview";
+import { DepositAmountCard } from "@/components/deposit/DepositAmountCard";
+import { DepositReceivePreview } from "@/components/deposit/DepositReceivePreview";
+import { DepositActionFooter } from "@/components/deposit/DepositActionFooter";
+import {
+  DEPOSIT_AMOUNT_CARD_CLASS,
+  ANCHOR_MODAL_CARD_STACK,
+  ANCHOR_MODAL_FOOTER_WRAPPER,
+  ANCHOR_MODAL_SCROLL_CLASS,
+  ANCHOR_MODAL_SECTION_GAP,
+  DEPOSIT_SECTION_LABEL_CLASS,
+  DEPOSIT_SEGMENT_STACK_CLASS,
+  DEPOSIT_SEGMENT_TRACK_CLASS,
+} from "@/components/deposit/depositFlowStyles";
+import {
+  resolveAnchorDepositStep1PrimaryAction,
+  resolveAnchorDepositStep3PrimaryAction,
+  resolveAnchorWithdrawPrimaryAction,
+  hasAnchorWithdrawValidSelection,
+} from "@/utils/anchorDepositFormState";
+import type { DepositPrimaryAction } from "@/utils/depositFormState";
+import { DepositStabilityPoolCard } from "@/components/deposit/DepositStabilityPoolCard";
+import { TokenLogo } from "@/components/shared";
+import { getRevertReason } from "@/utils/parseViemRevert";
+import type { DefinedMarket } from "@/config/markets";
+import { depositsBlockedForMarket, isMarketArchived, isZapStabilityPoolAllowlistPending } from "@/config/markets";
+import { anchorAddressByName } from "@/types/anchor";
+import { calculateDeadline } from "@/utils/permit";
+import {
+  DEFAULT_WRAP_LEG_SLIPPAGE_BPS,
+  minWrappedCollateralAfterUnderlyingToWrapped,
+  minWrappedCollateralForEthBaseZap,
+} from "@/utils/minterZapV4";
+
+import { getAcceptedDepositAssets } from "@/utils/anchor";
+import { buildDepositTokenDropdownGroups } from "@/utils/depositTokenDropdownOptions";
+import type { AnchorDepositWithdrawModalProps } from "./types";
+import { debugTx } from "./debugTx";
+import {
+  isRedeemAmountCapped,
+  parseRedeemDryRunTuple,
+  parseRedeemFeePercentage,
+} from "./redeemDryRunParsing";
+import type {
+  AnchorDepositWithdrawInitialTab,
+  AnchorDepositWithdrawStep,
+  AnchorDepositWithdrawTab,
+  AnchorDepositWithdrawTransactionStatus,
+} from "./types";
+
+type TabType = AnchorDepositWithdrawTab;
+type InitialTabInput = AnchorDepositWithdrawInitialTab;
+type ModalStep = AnchorDepositWithdrawStep;
+type TransactionStatus = AnchorDepositWithdrawTransactionStatus;
+
+
+export function useAnchorDepositWithdrawModal({
+  isOpen,
+  onClose,
+  embedded = false,
+  marketId,
+  market,
+  initialTab = "deposit",
+  onSuccess,
+  simpleMode = false,
+  bestPoolType = "collateral",
+  allMarkets,
+  initialDepositAsset,
+  positionsMap,
+}: AnchorDepositWithdrawModalProps) {
+  const isActive = isOpen || embedded;
+  const { address, isConnected, connector } = useAccount();
+  // NOTE: `useChainId()` can be misleading when the wallet is on an unsupported chain (e.g. Polygon),
+  // so we treat it as a fallback and prefer `connector.getChainId()` when available.
+  const chainId = useChainId();
+  const { switchChain, isPending: isSwitchingChain } = useSwitchChain();
+
+  const [walletChainId, setWalletChainId] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const readWalletChainId = async () => {
+      if (!connector?.getChainId) {
+        if (!cancelled) setWalletChainId(null);
+        return;
+      }
+      try {
+        const id = await connector.getChainId();
+        if (!cancelled) setWalletChainId(id);
+      } catch (e) {
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[Network] Failed to read connector chainId:", e);
+        }
+        if (!cancelled) setWalletChainId(null);
+      }
+    };
+    readWalletChainId();
+    return () => {
+      cancelled = true;
+    };
+  }, [connector]);
+
+  const effectiveChainId = walletChainId ?? chainId;
+  const depositMode = getDepositMode(market ?? (effectiveChainId != null ? { chainId: effectiveChainId } : undefined));
+  const { collateralOnly: isCollateralOnlyChain, nativeTokenLabel, isMegaEth } = depositMode;
+
+  // Target chain for this market (multi-chain: mainnet or e.g. MegaETH 4326)
+  const marketChainId = (market as DefinedMarket & { chainId?: number }).chainId ?? mainnet.id;
+  const depositsBlocked = depositsBlockedForMarket(market);
+  const marketArchived = isMarketArchived(market);
+  const isCorrectNetwork = effectiveChainId === marketChainId;
+  const shouldShowNetworkSwitch = !isCorrectNetwork && isConnected;
+
+  const handleTxError = useCallback((msg: string) => {
+    setError(msg);
+    setStep("error");
+  }, []);
+
+  // Function to handle network switching (manual trigger from UI)
+  const handleSwitchNetwork = async () => {
+    try {
+      await switchChain({ chainId: marketChainId });
+      setError(null);
+      if (connector?.getChainId) {
+        const id = await connector.getChainId();
+        setWalletChainId(id);
+      }
+    } catch (err) {
+      console.error("[Network Switch] Error:", err);
+      handleTxError(
+        `Failed to switch network. Please switch to the correct network (${marketChainId === 4326 ? "MegaETH" : "Ethereum Mainnet"}) in your wallet.`
+      );
+    }
+  };
+
+  // Ensure we're on the market's chain before any transaction (multi-chain support).
+  const ensureCorrectNetwork = async (): Promise<boolean> => {
+    if (!isConnected) return true;
+
+    let currentWalletChainId: number | null = null;
+    try {
+      currentWalletChainId = connector?.getChainId ? await connector.getChainId() : null;
+    } catch {
+      currentWalletChainId = null;
+    }
+
+    const chainToCheck = currentWalletChainId ?? effectiveChainId;
+    if (chainToCheck === marketChainId) return true;
+
+    try {
+      await switchChain({ chainId: marketChainId });
+      if (connector?.getChainId) {
+        const id = await connector.getChainId();
+        setWalletChainId(id);
+      }
+      return true;
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[Network] Auto switch rejected/failed:", err);
+      }
+      handleTxError(
+        `Please switch to ${marketChainId === 4326 ? "MegaETH" : "Ethereum Mainnet"} to continue.`
+      );
+      return false;
+    }
+  };
+
+  // Map old initialTab to new tab structure
+  const getInitialTab = (): TabType => {
+    if (
+      initialTab === "mint" ||
+      initialTab === "deposit" ||
+      initialTab === "deposit-mint"
+    ) {
+      return "deposit";
+    }
+    if (initialTab === "redeem") {
+      return "sell";
+    }
+    if (
+      initialTab === "withdraw" ||
+      initialTab === "withdraw-redeem"
+    ) {
+      return "withdraw";
+    }
+    return "deposit";
+  };
+
+  const [activeTab, setActiveTab] = useState<TabType>(getInitialTab());
+
+  // Get positions from subgraph (same as expanded view)
+  const { poolDeposits, haBalances, error: marksError } = useAnchorLedgerMarks({
+    enabled: isActive && activeTab === "withdraw",
+  });
+  const defaultProgressConfig = {
+    mode: null as "collateral" | "direct" | "withdraw" | null,
+    includeApproveCollateral: false,
+    includePermitCollateral: false,
+    includeMint: false,
+    includeApprovePegged: false,
+    includeDeposit: false,
+    includeDirectApprove: false,
+    includeDirectDeposit: false,
+    includeWithdrawCollateral: false,
+    includeWithdrawSail: false,
+    useZap: false,
+    zapAsset: null as string | null,
+    zapAndDeposit: false,
+    wrappedZapAndDeposit: false,
+    wrappedZapAsset: null as string | null,
+    includePermitRedeem: false,
+    includeApproveRedeem: false,
+    includeRedeem: false,
+    withdrawCollateralLabel: "Withdraw from collateral pool",
+    withdrawSailLabel: "Withdraw from sail pool",
+    title: "Processing Transaction",
+  };
+
+  const [amount, setAmount] = useState("");
+  const [step, setStep] = useState<ModalStep>("input");
+  const [error, setError] = useState<string | null>(null);
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [txHashes, setTxHashes] = useState<{
+    approveCollateral?: string;
+    mint?: string;
+    approvePegged?: string;
+    deposit?: string;
+    directApprove?: string;
+    directDeposit?: string;
+    withdrawCollateral?: string;
+    withdrawSail?: string;
+    requestCollateral?: string;
+    requestSail?: string;
+    approveRedeem?: string;
+    redeem?: string;
+  }>({});
+
+  const [progressConfig, setProgressConfig] = useState(defaultProgressConfig);
+  const progress = useTransactionProgress();
+
+  // Track the last non-error step so the progress modal can highlight the step that actually failed.
+  const lastNonErrorStepRef = useRef<ModalStep>("input");
+  useEffect(() => {
+    if (step !== "error") {
+      lastNonErrorStepRef.current = step;
+    }
+  }, [step]);
+
+  // Slippage input state for swap preview
+  const [slippageTolerance, setSlippageTolerance] = useState<number>(0.5); // Default 0.5% slippage
+  const [showSlippageInput, setShowSlippageInput] = useState(false);
+  const [slippageInputValue, setSlippageInputValue] = useState("0.5");
+
+  // Debounced amount for dry runs (reduces unnecessary contract calls)
+  const [debouncedAmount, setDebouncedAmount] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedAmount(amount);
+    }, 500); // 500ms debounce
+    return () => clearTimeout(timer);
+  }, [amount]);
+
+  // Deposit/Mint tab options
+  const [mintOnly, setMintOnly] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [withdrawOverviewExpanded, setWithdrawOverviewExpanded] =
+    useState(false);
+  const [depositInStabilityPool, setDepositInStabilityPool] = useState(true);
+  const [stabilityPoolType, setStabilityPoolType] = useState<
+    "collateral" | "sail"
+  >("collateral");
+
+  // Withdraw/Redeem tab options
+  // Default: withdraw from pools + redeem selected ha tokens to collateral.
+  const [withdrawOnly, setWithdrawOnly] = useState(false);
+  /** Sell page: pool withdraw vs wallet (mutually exclusive redeem source). */
+  const [sellRedeemSource, setSellRedeemSource] = useState<"pool" | "wallet">(
+    "pool",
+  );
+  const [withdrawFromCollateralPool, setWithdrawFromCollateralPool] =
+    useState(false);
+  const [withdrawFromSailPool, setWithdrawFromSailPool] = useState(false);
+
+  // Withdrawal method per position:"immediate" (with fee) or"request" (free, wait for window)
+  const [withdrawalMethods, setWithdrawalMethods] = useState<{
+    collateralPool: "immediate" | "request";
+    sailPool: "immediate" | "request";
+  }>({
+    collateralPool: "request",
+    sailPool: "request",
+  });
+
+  // Toggle to enable 1% early withdraw option (hidden by default; user must opt-in)
+  const [earlyWithdraw1PctEnabled, setEarlyWithdraw1PctEnabled] = useState(false);
+
+  // Transaction status tracking
+  const [transactionSteps, setTransactionSteps] = useState<TransactionStatus[]>(
+    []
+  );
+
+  // Selected positions for withdrawal (multiple selections allowed).
+  // Pool market ids are stored so checkboxes stay checked even if selectedMarketId
+  // is briefly adjusted by auto-select / tab heuristics.
+  const [selectedPositions, setSelectedPositions] = useState<{
+    wallet: boolean;
+    collateralPool: boolean;
+    sailPool: boolean;
+    collateralPoolMarketId: string | null;
+    sailPoolMarketId: string | null;
+  }>({
+    wallet: false,
+    collateralPool: false,
+    sailPool: false,
+    collateralPoolMarketId: null,
+    sailPoolMarketId: null,
+  });
+
+  // Track if we've initialized positions for the current withdraw session
+  // This prevents resetting selections when balances update from polling
+  const hasInitializedWithdraw = React.useRef(false);
+  /** User picked a withdraw pool market — do not auto-override selectedMarketId. */
+  const withdrawPoolUserSelectedMarketRef = useRef(false);
+
+  // Individual amounts for each position
+  const [positionAmounts, setPositionAmounts] = useState<{
+    wallet: string;
+    collateralPool: string;
+    sailPool: string;
+  }>({
+    wallet: "",
+    collateralPool: "",
+    sailPool: "",
+  });
+
+  // Withdraw tab: fxSAVE | wstETH pool rail when both collateral types exist
+  const [withdrawPoolCollateralTab, setWithdrawPoolCollateralTab] = useState<
+    "fxSAVE" | "wstETH"
+  >("fxSAVE");
+  const [withdrawPoolTypeTab, setWithdrawPoolTypeTab] = useState<
+    "collateral" | "sail"
+  >("collateral");
+
+  /** After user picks fxSAVE/wstETH rail, do not auto-reset from balance heuristics. */
+  const withdrawPoolTabUserSelectedRef = useRef(false);
+  /** After user picks Collateral/Sail tab, do not auto-reset from balance heuristics. */
+  const withdrawPoolTypeTabUserSelectedRef = useRef(false);
+
+  // Simple mode: deposit asset selection
+  const [selectedDepositAsset, setSelectedDepositAsset] = useState<string>("");
+
+  const {
+    isPermitCapable,
+    disableReason,
+    handlePermitOrApproval,
+    permitEnabled,
+    setPermitEnabled,
+  } = usePermitFlow({
+    enabled: isActive && !!address,
+    defaultEnabled: false,
+    depositAssetSymbol:
+      activeTab === "deposit"
+        ? selectedDepositAsset || null
+        : market?.peggedToken?.symbol || null,
+    tokenCheckMode: activeTab === "withdraw" ? "optimistic" : "strict",
+  });
+
+  // Simple mode: stability pool selection - now includes marketId and pool type
+  const [selectedStabilityPool, setSelectedStabilityPool] = useState<{
+    marketId: string;
+    poolType: "none" | "collateral" | "sail";
+  } | null>(null);
+
+  // Selected market for minting (when multiple markets exist)
+  const [selectedMarketId, setSelectedMarketId] = useState<string>(marketId);
+
+  // Selected reward token for filtering pools (simple mode)
+  const [selectedRewardToken, setSelectedRewardToken] = useState<string | null>(
+    null
+  );
+
+  // Step tracking for simple mode (1: deposit token/amount, 2: reward token, 3: stability pool)
+  type FlowPage = 1 | 2;
+  const [flowPage, setFlowPage] = useState<FlowPage>(
+    initialTab === "redeem" ? 2 : 1,
+  );
+
+  const configureSellFromWalletTab = useCallback(() => {
+    setFlowPage(2);
+    setWithdrawOnly(false);
+    setSellRedeemSource("wallet");
+    setSelectedPositions((prev) => ({
+      ...prev,
+      wallet: true,
+      collateralPool: false,
+      sailPool: false,
+    }));
+    setPositionAmounts((prev) => ({
+      ...prev,
+      collateralPool: "",
+      sailPool: "",
+    }));
+  }, []);
+
+  useEffect(() => {
+    if (!isActive || !simpleMode || activeTab !== "sell") return;
+    configureSellFromWalletTab();
+  }, [isActive, simpleMode, activeTab, configureSellFromWalletTab]);
+
+  // Progress modal state (reuses TransactionProgressModal)
+  const progressSteps = useMemo<TransactionStep[]>(() => {
+    if (!progressConfig.mode) return [];
+
+    const steps: TransactionStep[] = [];
+    const addStep = (id: string, label: string, txHash?: string) =>
+      steps.push({ id, label, status: "pending", txHash });
+
+    if (progressConfig.mode === "collateral") {
+      if (progressConfig.includePermitCollateral) {
+        const asset =
+          (progressConfig.useZap && progressConfig.zapAsset) ||
+          (progressConfig.wrappedZapAndDeposit && progressConfig.wrappedZapAsset);
+        const permitLabel = asset
+          ? `Sign permit for ${asset!.toUpperCase()} (no gas)`
+          : "Sign permit for collateral (no gas)";
+        addStep("permit-collateral", permitLabel);
+      }
+      if (progressConfig.includeApproveCollateral) {
+        const asset =
+          (progressConfig.useZap && progressConfig.zapAsset) ||
+          (progressConfig.wrappedZapAndDeposit && progressConfig.wrappedZapAsset);
+        const approveLabel = asset
+          ? `Approve ${asset!.toUpperCase()} for deposit`
+          : "Approve collateral for deposit";
+        addStep(
+          "approve-collateral",
+          approveLabel,
+          txHashes.approveCollateral
+        );
+      }
+      if (progressConfig.includeMint) {
+        const mintLabel =
+          (progressConfig.zapAndDeposit && progressConfig.useZap && progressConfig.zapAsset) ||
+          (progressConfig.wrappedZapAndDeposit && progressConfig.wrappedZapAsset)
+            ? `Zap ${(progressConfig.zapAsset || progressConfig.wrappedZapAsset)!.toUpperCase()} & deposit to stability pool`
+            : progressConfig.useZap && progressConfig.zapAsset
+              ? `Zap ${progressConfig.zapAsset.toUpperCase()} to anchor token`
+              : "Buy anchor token";
+        addStep("mint", mintLabel, txHashes.mint);
+      }
+      if (progressConfig.includeApprovePegged) {
+        addStep(
+          "approve-pegged",
+          "Approve anchor token for deposit",
+          txHashes.approvePegged
+        );
+      }
+      if (progressConfig.includeDeposit) {
+        addStep("deposit", "Deposit to stability pool", txHashes.deposit);
+      }
+    } else if (progressConfig.mode === "direct") {
+      if (progressConfig.includeDirectApprove) {
+        addStep("approve-direct", "Approve anchor token for deposit", txHashes.directApprove);
+      }
+      if (progressConfig.includeDirectDeposit) {
+        addStep(
+          "deposit-direct",
+          "Deposit to stability pool",
+          txHashes.directDeposit
+        );
+      }
+    } else if (progressConfig.mode === "withdraw") {
+      // NOTE: Step list should reflect what we actually send to the wallet.
+      // Rely primarily on progressConfig, but also include steps if we already have tx hashes
+      // (e.g. allowance reads can be stale, causing an extra approve tx not pre-listed).
+      const hasWithdrawCollateralTx = !!(txHashes.withdrawCollateral || txHashes.requestCollateral);
+      const hasWithdrawSailTx = !!(txHashes.withdrawSail || txHashes.requestSail);
+      const hasApproveRedeemTx = !!txHashes.approveRedeem;
+      const hasRedeemTx = !!txHashes.redeem;
+
+      if (progressConfig.includeWithdrawCollateral || hasWithdrawCollateralTx) {
+        addStep(
+          "withdraw-collateral",
+          progressConfig.withdrawCollateralLabel ||
+            "Withdraw from collateral pool",
+          txHashes.withdrawCollateral || txHashes.requestCollateral
+        );
+      }
+      if (progressConfig.includeWithdrawSail || hasWithdrawSailTx) {
+        addStep(
+          "withdraw-sail",
+          progressConfig.withdrawSailLabel || "Withdraw from sail pool",
+          txHashes.withdrawSail || txHashes.requestSail
+        );
+      }
+      if (progressConfig.includePermitRedeem) {
+        addStep("permit-redeem", "Sign permit for anchor token (no gas)");
+      }
+      if (progressConfig.includeApproveRedeem || hasApproveRedeemTx) {
+        addStep("approve-redeem", "Approve anchor token for sale", txHashes.approveRedeem);
+      }
+      if (progressConfig.includeRedeem || hasRedeemTx) {
+        addStep("redeem", "Sell anchor token for collateral", txHashes.redeem);
+      }
+    }
+
+    // Determine current step index based on modal step state
+    const getCurrentIndex = () => {
+      const stepForIndex = step === "error" ? lastNonErrorStepRef.current : step;
+      const permitCollateralIndex = steps.findIndex(
+        (s) => s.id === "permit-collateral"
+      );
+      const approveCollateralIndex = steps.findIndex(
+        (s) => s.id === "approve-collateral"
+      );
+      const approveDirectIndex = steps.findIndex((s) => s.id === "approve-direct");
+      const mintIndex = steps.findIndex((s) => s.id === "mint");
+      const approvePeggedIndex = steps.findIndex(
+        (s) => s.id === "approve-pegged"
+      );
+      const depositIndex = steps.findIndex((s) => s.id.startsWith("deposit"));
+      const withdrawCollateralIndex = steps.findIndex(
+        (s) => s.id === "withdraw-collateral"
+      );
+      const withdrawSailIndex = steps.findIndex(
+        (s) => s.id === "withdraw-sail"
+      );
+      const permitRedeemIndex = steps.findIndex(
+        (s) => s.id === "permit-redeem"
+      );
+      const approveRedeemIndex = steps.findIndex(
+        (s) => s.id === "approve-redeem"
+      );
+      const redeemIndex = steps.findIndex((s) => s.id === "redeem");
+      if (stepForIndex === "minting") return mintIndex >= 0 ? mintIndex : 0;
+      if (stepForIndex === "approvingPegged")
+        return approvePeggedIndex >= 0
+          ? approvePeggedIndex
+          : depositIndex >= 0
+          ? depositIndex - 1
+          : steps.length - 1;
+      if (stepForIndex === "depositing")
+        return depositIndex >= 0 ? depositIndex : steps.length - 1;
+      if (
+        stepForIndex === "withdrawing" ||
+        stepForIndex === "withdrawingCollateral" ||
+        stepForIndex === "requestingCollateral"
+      ) {
+        if (withdrawCollateralIndex >= 0) return withdrawCollateralIndex;
+        if (withdrawSailIndex >= 0) return withdrawSailIndex;
+      }
+      if (stepForIndex === "withdrawingSail" || stepForIndex === "requestingSail") {
+        if (withdrawSailIndex >= 0) return withdrawSailIndex;
+        if (withdrawCollateralIndex >= 0) return withdrawCollateralIndex;
+      }
+      if (stepForIndex === "redeeming")
+        return redeemIndex >= 0 ? redeemIndex : steps.length - 1;
+      if (stepForIndex === "approving") {
+        // "approving" is used in multiple flows:
+        // - collateral mode: approve collateral token
+        // - direct mode: approve ha token
+        // - withdraw/redeem mode: approve redeem
+        if (permitCollateralIndex >= 0) return permitCollateralIndex;
+        if (permitRedeemIndex >= 0) return permitRedeemIndex;
+        if (approveCollateralIndex >= 0) return approveCollateralIndex;
+        if (approveDirectIndex >= 0) return approveDirectIndex;
+        if (approveRedeemIndex >= 0) return approveRedeemIndex;
+        if (redeemIndex >= 0) return Math.max(redeemIndex - 1, 0);
+        return 0;
+      }
+      if (stepForIndex === "success") return steps.length - 1;
+      return 0;
+    };
+
+    const currentIdx = Math.max(0, getCurrentIndex());
+    const isError = step === "error";
+    steps.forEach((s, idx) => {
+      if (isError && idx === currentIdx) {
+        s.status = "error";
+      } else if (idx < currentIdx || step === "success") {
+        s.status = "completed";
+      } else if (idx === currentIdx) {
+        s.status = isError ? "error" : "in_progress";
+      } else {
+        s.status = "pending";
+      }
+    });
+
+    return steps;
+  }, [progressConfig, step, txHashes]);
+
+  const currentProgressIndex = useMemo(() => {
+    const activeIdx = progressSteps.findIndex(
+      (s) => s.status === "in_progress"
+    );
+    if (activeIdx >= 0) return activeIdx;
+    const pendingIdx = progressSteps.findIndex((s) => s.status === "pending");
+    if (pendingIdx >= 0) return pendingIdx;
+    if (progressSteps.length === 0) return 0;
+    return progressSteps.length - 1;
+  }, [progressSteps]);
+
+  const handleProgressClose = () => {
+    progress.close();
+    setProgressConfig(defaultProgressConfig);
+    setTxHashes({});
+    // Close the manage modal when user closes the progress modal (for both deposit and withdraw)
+    onClose();
+  };
+
+  const showProgressModal =
+    progress.isOpen && progressSteps.length > 0 && step !== "input";
+
+  // Handler for"Try Again" button in progress modal
+  const handleProgressRetry = () => {
+    progress.close();
+    setProgressConfig(defaultProgressConfig);
+    setTxHashes({});
+    setStep("input");
+    setError(null);
+  };
+
+  // Selected redeem asset (collateral asset to redeem to)
+  const [selectedRedeemAsset, setSelectedRedeemAsset] = useState<string>("");
+  /** Which market minter to use for redeem (can differ from pool's selectedMarketId). */
+  const [selectedRedeemMarketId, setSelectedRedeemMarketId] =
+    useState<string>("");
+  /** Auto picks best uncapped redeem path; manual shows market cards. */
+  const [redeemMarketSelectionMode, setRedeemMarketSelectionMode] = useState<
+    "auto" | "manual"
+  >("auto");
+
+  const publicClient = usePublicClient();
+
+  // Get all markets for this ha token (use allMarkets if provided, otherwise just the single market)
+  const marketsForToken =
+    allMarkets && allMarkets.length > 0 ? allMarkets : [{ marketId, market }];
+
+  // In withdraw mode for grouped markets, show each pool position per-market so users can see
+  // (and select) collateral + sail deposits across different markets in the same ha token group.
+  // Include all pools (fxSAVE and wstETH) even with 0 balance so users see both collateral types.
+  // Prefer contract-based positionsMap (same as dashboard) when provided; fallback to subgraph poolDeposits.
+  const groupedPoolPositions = useMemo(() => {
+    const rows: Array<{
+      key: string;
+      marketId: string;
+      market: any;
+      poolType: "collateral" | "sail";
+      poolAddress: string;
+      balance: bigint;
+    }> = [];
+
+    for (const entry of marketsForToken) {
+      const m = entry.market;
+      const collateralAddr = (m as any)?.addresses?.stabilityPoolCollateral as
+        | string
+        | undefined;
+      const sailAddr = (m as any)?.addresses?.stabilityPoolLeveraged as
+        | string
+        | undefined;
+
+      const collateralLower = collateralAddr?.toLowerCase();
+      const sailLower = sailAddr?.toLowerCase();
+
+      const pos = positionsMap?.[entry.marketId];
+
+      if (collateralLower) {
+        let bal = 0n;
+        if (pos !== undefined) bal = pos.collateralPool ?? 0n;
+        else {
+          const d = poolDeposits?.find(
+            (x) =>
+              x.poolType === "collateral" &&
+              x.poolAddress.toLowerCase() === collateralLower
+          );
+          bal = d ? parseEther(d.balance) : 0n;
+        }
+        rows.push({
+          key: `${entry.marketId}-collateral`,
+          marketId: entry.marketId,
+          market: m,
+          poolType: "collateral",
+          poolAddress: collateralAddr!,
+          balance: bal,
+        });
+      }
+
+      if (sailLower) {
+        let bal = 0n;
+        if (pos !== undefined) bal = pos.sailPool ?? 0n;
+        else {
+          const d = poolDeposits?.find(
+            (x) =>
+              x.poolType === "sail" && x.poolAddress.toLowerCase() === sailLower
+          );
+          bal = d ? parseEther(d.balance) : 0n;
+        }
+        rows.push({
+          key: `${entry.marketId}-sail`,
+          marketId: entry.marketId,
+          market: m,
+          poolType: "sail",
+          poolAddress: sailAddr!,
+          balance: bal,
+        });
+      }
+    }
+
+    return rows;
+  }, [poolDeposits, marketsForToken, positionsMap]);
+
+  // Default pool rail to the collateral side where the user has balance (until they pick a tab).
+  useEffect(() => {
+    if (!isActive || activeTab !== "withdraw") return;
+    if (withdrawPoolTabUserSelectedRef.current) return;
+    let fxBalance = 0n;
+    let wstBalance = 0n;
+    for (const p of groupedPoolPositions) {
+      const sym =
+        p.market?.collateral?.symbol ||
+        p.market?.wrappedCollateralToken?.symbol ||
+        "";
+      if (sym === "fxSAVE") fxBalance += p.balance;
+      if (sym === "wstETH") wstBalance += p.balance;
+    }
+    if (wstBalance > fxBalance && wstBalance > 0n) {
+      setWithdrawPoolCollateralTab("wstETH");
+    } else if (fxBalance > 0n) {
+      setWithdrawPoolCollateralTab("fxSAVE");
+    }
+  }, [isActive, activeTab, groupedPoolPositions]);
+
+  // If multiple markets share the same ha token (e.g. haBTC across BTC/fxUSD and BTC/stETH),
+  // the "Manage" modal may open on a market that doesn't contain the user's stability pool deposit.
+  // In withdraw mode, auto-select the market within the group that actually has a deposit so the UI
+  // doesn't incorrectly show "no positions". Prefer positionsMap (contract) when provided.
+  const selectedMarketHasPoolDeposit = useMemo(() => {
+    const pos = positionsMap?.[selectedMarketId];
+    if (pos !== undefined) {
+      return (pos.collateralPool ?? 0n) > 0n || (pos.sailPool ?? 0n) > 0n;
+    }
+    if (!poolDeposits || poolDeposits.length === 0) return false;
+    const m = marketsForToken.find((x) => x.marketId === selectedMarketId)?.market;
+    if (!m) return false;
+
+    const collateralAddr = (m as any)?.addresses?.stabilityPoolCollateral as
+      | string
+      | undefined;
+    const sailAddr = (m as any)?.addresses?.stabilityPoolLeveraged as
+      | string
+      | undefined;
+
+    const collateralLower = collateralAddr?.toLowerCase();
+    const sailLower = sailAddr?.toLowerCase();
+
+    const collateralDeposit = collateralLower
+      ? poolDeposits.find(
+          (d) =>
+            d.poolType === "collateral" &&
+            d.poolAddress.toLowerCase() === collateralLower
+        )
+      : null;
+    const sailDeposit = sailLower
+      ? poolDeposits.find(
+          (d) =>
+            d.poolType === "sail" && d.poolAddress.toLowerCase() === sailLower
+        )
+      : null;
+
+    const collateralBal = collateralDeposit ? parseEther(collateralDeposit.balance) : 0n;
+    const sailBal = sailDeposit ? parseEther(sailDeposit.balance) : 0n;
+    return collateralBal > 0n || sailBal > 0n;
+  }, [poolDeposits, marketsForToken, selectedMarketId, positionsMap]);
+
+  const marketIdWithAnyPoolDeposit = useMemo(() => {
+    if (positionsMap && Object.keys(positionsMap).length > 0) {
+      for (const entry of marketsForToken) {
+        const pos = positionsMap[entry.marketId];
+        if (pos && ((pos.collateralPool ?? 0n) > 0n || (pos.sailPool ?? 0n) > 0n)) {
+          return entry.marketId;
+        }
+      }
+      if (marketsForToken.length <= 1) return null;
+    }
+    if (!poolDeposits || poolDeposits.length === 0) return null;
+    if (!marketsForToken || marketsForToken.length <= 1) return null;
+
+    for (const entry of marketsForToken) {
+      const m = entry.market;
+      const collateralAddr = (m as any)?.addresses?.stabilityPoolCollateral as
+        | string
+        | undefined;
+      const sailAddr = (m as any)?.addresses?.stabilityPoolLeveraged as
+        | string
+        | undefined;
+
+      const collateralLower = collateralAddr?.toLowerCase();
+      const sailLower = sailAddr?.toLowerCase();
+
+      const collateralDeposit = collateralLower
+        ? poolDeposits.find(
+            (d) =>
+              d.poolType === "collateral" &&
+              d.poolAddress.toLowerCase() === collateralLower
+          )
+        : null;
+      const sailDeposit = sailLower
+        ? poolDeposits.find(
+            (d) =>
+              d.poolType === "sail" && d.poolAddress.toLowerCase() === sailLower
+          )
+        : null;
+
+      const collateralBal = collateralDeposit ? parseEther(collateralDeposit.balance) : 0n;
+      const sailBal = sailDeposit ? parseEther(sailDeposit.balance) : 0n;
+
+      if (collateralBal > 0n || sailBal > 0n) return entry.marketId;
+    }
+    return null;
+  }, [poolDeposits, marketsForToken, positionsMap]);
+
+  // Onchain fallback for selecting the correct market in withdraw mode:
+  // If the marks subgraph is pointing at a different environment (e.g., prod) it may return no deposits.
+  // In that case, we detect deposits directly via StabilityPool.assetBalanceOf across all markets in the group.
+  const { contracts: groupBalanceContracts, indexMap: groupBalanceIndexMap } =
+    useMemo(() => {
+      const idxMap = new Map<
+        number,
+        { marketId: string; kind: "collateralPool" | "sailPool" }
+      >();
+      const items: any[] = [];
+
+      if (!address || !marketsForToken || marketsForToken.length <= 1) {
+        return { contracts: items, indexMap: idxMap };
+      }
+
+      for (const entry of marketsForToken) {
+        const m = entry.market;
+        const collateralAddr = (m as any)?.addresses?.stabilityPoolCollateral as
+          | `0x${string}`
+          | undefined;
+        const sailAddr = (m as any)?.addresses?.stabilityPoolLeveraged as
+          | `0x${string}`
+          | undefined;
+
+        if (collateralAddr) {
+          idxMap.set(items.length, {
+            marketId: entry.marketId,
+            kind: "collateralPool",
+          });
+          items.push({
+            address: collateralAddr,
+            abi: STABILITY_POOL_ABI,
+            functionName: "assetBalanceOf",
+            args: [address as `0x${string}`],
+          });
+        }
+        if (sailAddr) {
+          idxMap.set(items.length, {
+            marketId: entry.marketId,
+            kind: "sailPool",
+          });
+          items.push({
+            address: sailAddr,
+            abi: STABILITY_POOL_ABI,
+            functionName: "assetBalanceOf",
+            args: [address as `0x${string}`],
+          });
+        }
+      }
+
+      return { contracts: items, indexMap: idxMap };
+    }, [address, marketsForToken]);
+
+  const { data: groupOnchainBalances } = useContractReads({
+    contracts: groupBalanceContracts,
+    query: {
+      enabled:
+        !!address &&
+        isActive &&
+        activeTab === "withdraw" &&
+        groupBalanceContracts.length > 0,
+      refetchInterval: isActive ? 15000 : false,
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  const marketIdWithAnyOnchainPoolDeposit = useMemo(() => {
+    if (!groupOnchainBalances || groupOnchainBalances.length === 0) return null;
+    const balancesByMarket = new Map<
+      string,
+      { collateralPool: bigint; sailPool: bigint }
+    >();
+
+    groupOnchainBalances.forEach((res, idx) => {
+      const meta = groupBalanceIndexMap.get(idx);
+      if (!meta) return;
+      const prev = balancesByMarket.get(meta.marketId) || {
+        collateralPool: 0n,
+        sailPool: 0n,
+      };
+      const val =
+        res?.status === "success" && res.result !== undefined && res.result !== null
+          ? (res.result as bigint)
+          : 0n;
+      if (meta.kind === "collateralPool") prev.collateralPool = val;
+      if (meta.kind === "sailPool") prev.sailPool = val;
+      balancesByMarket.set(meta.marketId, prev);
+    });
+
+    for (const [marketId, b] of balancesByMarket.entries()) {
+      if (b.collateralPool > 0n || b.sailPool > 0n) return marketId;
+    }
+    return null;
+  }, [groupOnchainBalances, groupBalanceIndexMap]);
+
+  const selectedMarketHasOnchainPoolDeposit = useMemo(() => {
+    if (!groupOnchainBalances || groupOnchainBalances.length === 0) return false;
+    // If we only have one market, the per-market hooks below already cover it.
+    if (!marketsForToken || marketsForToken.length <= 1) return false;
+
+    // Reuse computed market id if any; if it equals selectedMarketId, we know selected has deposit.
+    if (!marketIdWithAnyOnchainPoolDeposit) return false;
+    return marketIdWithAnyOnchainPoolDeposit === selectedMarketId;
+  }, [groupOnchainBalances, marketsForToken, marketIdWithAnyOnchainPoolDeposit, selectedMarketId]);
+
+  useEffect(() => {
+    if (!isActive) return;
+    if (activeTab !== "withdraw") return;
+    // Prefer subgraph-based selection if available, but fall back to onchain detection.
+    // Do not override after the user explicitly picks a pool / collateral rail market.
+    if (withdrawPoolUserSelectedMarketRef.current) return;
+
+    const preferredMarketId =
+      marketIdWithAnyPoolDeposit || marketIdWithAnyOnchainPoolDeposit;
+
+    const hasDeposit =
+      selectedMarketHasPoolDeposit || selectedMarketHasOnchainPoolDeposit;
+
+    if (hasDeposit) return;
+    if (!preferredMarketId) return;
+    if (selectedMarketId === preferredMarketId) return;
+
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        "[AnchorDepositWithdrawModal] Auto-selecting market with pool deposit:",
+        {
+          from: selectedMarketId,
+          to: preferredMarketId,
+        }
+      );
+    }
+    setSelectedMarketId(preferredMarketId);
+  }, [
+    isActive,
+    activeTab,
+    selectedMarketHasPoolDeposit,
+    marketIdWithAnyPoolDeposit,
+    selectedMarketHasOnchainPoolDeposit,
+    marketIdWithAnyOnchainPoolDeposit,
+    selectedMarketId,
+  ]);
+
+  // Debug: log markets being used
+  useEffect(() => {
+    if (isActive && simpleMode) {
+      console.log(
+        `[Modal] marketsForToken (${marketsForToken.length}):`,
+        marketsForToken.map((m) => ({
+          marketId: m.marketId,
+          marketName: m.market?.name,
+          hasAddresses: !!m.market?.addresses,
+          collateralSymbol: m.market?.collateral?.symbol,
+        }))
+      );
+    }
+  }, [marketsForToken, isActive, simpleMode]);
+
+  // Get selected market
+  const selectedMarket =
+    marketsForToken.find((m) => m.marketId === selectedMarketId)?.market ||
+    market;
+
+  // Extract key addresses and symbols from selected market (needed for anyTokenDeposit hook)
+  const minterAddress = selectedMarket?.addresses?.minter;
+  // All markets deposit the wrapped collateral token (fxSAVE, wstETH, etc).
+  // If this is missing, the config is wrong and we should fail fast.
+  const collateralAddress = selectedMarket?.addresses
+    ?.wrappedCollateralToken as `0x${string}` | undefined;
+  const peggedTokenAddress = selectedMarket?.addresses?.peggedToken;
+  const leveragedTokenAddress = selectedMarket?.addresses?.leveragedToken;
+  const collateralSymbol = selectedMarket?.collateral?.symbol || "ETH";
+  const peggedTokenSymbol = selectedMarket?.peggedToken?.symbol || "ha";
+
+  // Get accepted deposit assets for "any token" functionality
+  const acceptedDepositAssets = React.useMemo(
+    () => getAcceptedDepositAssets(selectedMarket),
+    [selectedMarket]
+  );
+
+  // "Any token" deposit hook - allows deposits from any token in user's wallet
+  const anyTokenDeposit = useAnyTokenDeposit({
+    collateralSymbol,
+    marketAddresses: selectedMarket?.addresses,
+    acceptedAssets: acceptedDepositAssets,
+    depositTarget: {
+      type: "minter",
+      address: minterAddress || "",
+      minterParams: {
+        minPeggedOut: 0n, // Will be calculated based on slippage
+        receiver: (address as `0x${string}`) || "0x0000000000000000000000000000000000000000",
+      },
+    },
+    enabled: isActive && activeTab === "deposit",
+  });
+
+  const pegTargetPrices = usePegTargetPrices();
+  const btcPrice = pegTargetPrices.btcPrice ?? undefined;
+  const ethPrice = pegTargetPrices.ethPrice ?? undefined;
+  const eurPrice = pegTargetPrices.eurPrice ?? undefined;
+  // Reward token USD prices (used for APR fallback in stability pool selector)
+  const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
+  const { price: wstETHPrice } = useCoinGeckoPrice("wrapped-steth", 120000);
+  const { price: stETHPrice } = useCoinGeckoPrice(
+    "lido-staked-ethereum-steth",
+    120000
+  );
+
+  // Find market for selected deposit asset (in simple mode, deposit asset determines which market to use)
+  const marketForDepositAsset = useMemo(() => {
+    if (!simpleMode || !selectedDepositAsset) return null;
+
+    // Check if selected asset is a ha token (pegged token)
+    for (const { market: m } of marketsForToken) {
+      const peggedTokenSymbol = m?.peggedToken?.symbol || "ha";
+      if (
+        selectedDepositAsset.toLowerCase() === peggedTokenSymbol.toLowerCase()
+      ) {
+        return m;
+      }
+    }
+
+    // Find the market whose collateral symbol matches the deposit asset
+    // Prioritize markets where the selected asset is the native collateral (no swap needed)
+    const normalizedAsset = selectedDepositAsset.toLowerCase();
+    
+    // First pass: find market where selected asset is the native wrapped collateral
+    for (const { market: m } of marketsForToken) {
+      const wrappedSymbol = m?.collateral?.symbol?.toLowerCase();
+      if (wrappedSymbol === normalizedAsset) {
+        return m;
+      }
+    }
+    
+    // Second pass: find best market where selected asset is in accepted assets (may need wrapping/zap/swap)
+    const getAssetMarketPriority = (assetSymbol: string, m: any): number => {
+      const sym = assetSymbol?.toLowerCase?.() || "";
+      const collateralSym = m?.collateral?.symbol?.toLowerCase?.() || "";
+      const underlyingSym = m?.collateral?.underlyingSymbol?.toLowerCase?.() || "";
+
+      if (collateralSym && sym === collateralSym) return 100;
+      if (underlyingSym && sym === underlyingSym) return 90;
+
+      if (
+        (sym === "eth" || sym === "steth" || sym === "wsteth") &&
+        collateralSym === "wsteth"
+      ) {
+        return 80;
+      }
+
+      if (
+        (sym === "fxusd" || sym === "fxsave" || sym === "usdc") &&
+        collateralSym === "fxsave"
+      ) {
+        return 80;
+      }
+
+      return 0;
+    };
+
+    let bestMarket: any = null;
+    let bestPriority = -1;
+    for (const { market: m } of marketsForToken) {
+      const assets = getAcceptedDepositAssets(m);
+      if (assets.some((asset) => asset.symbol === selectedDepositAsset)) {
+        const p = getAssetMarketPriority(selectedDepositAsset, m);
+        if (p > bestPriority) {
+          bestPriority = p;
+          bestMarket = m;
+      }
+    }
+    }
+    if (bestMarket) return bestMarket;
+    return null;
+  }, [selectedDepositAsset, marketsForToken, simpleMode]);
+
+  // Update selectedMarketId when deposit asset changes (Step 1 only)
+  // This ensures the minting market is locked to the deposit asset
+  // We only update in Step 1 to prevent resets when selecting pools in Step 3
+  useEffect(() => {
+    if (simpleMode && flowPage === 1 && marketForDepositAsset) {
+      // Find the marketId for the marketForDepositAsset
+      const matchingMarket = marketsForToken.find(
+        ({ market: m }) => m === marketForDepositAsset
+      );
+      if (matchingMarket) {
+        setSelectedMarketId(matchingMarket.marketId);
+      }
+    }
+  }, [marketForDepositAsset, flowPage, simpleMode, marketsForToken]);
+
+  // Use market for deposit asset if available, otherwise use selected market
+  const activeMarketForFees = marketForDepositAsset || selectedMarket;
+  const activeMinterAddress = activeMarketForFees?.addresses?.minter;
+  const activeCollateralSymbol =
+    activeMarketForFees?.collateral?.symbol ||
+    selectedMarket?.collateral?.symbol ||
+    "ETH";
+  const activeWrappedCollateralSymbol =
+    activeMarketForFees?.wrappedCollateral?.symbol || activeCollateralSymbol;
+
+  // Collect all unique deposit assets from all markets with their corresponding markets
+  const allDepositAssetsWithMarkets = useMemo(() => {
+    const getAssetMarketPriority = (assetSymbol: string, m: any): number => {
+      const sym = assetSymbol?.toLowerCase?.() || "";
+      const collateralSym = m?.collateral?.symbol?.toLowerCase?.() || "";
+      const underlyingSym = m?.collateral?.underlyingSymbol?.toLowerCase?.() || "";
+
+      // Strongest signals: this market's collateral (wrapped or underlying) matches the asset.
+      if (collateralSym && sym === collateralSym) return 100;
+      if (underlyingSym && sym === underlyingSym) return 90;
+
+      // Heuristics for multi-market ha tokens (e.g., haBTC across fxSAVE-collateral and wstETH-collateral markets)
+      // Ensure ETH-based inputs map to the wstETH-collateral market.
+      if (
+        (sym === "eth" || sym === "steth" || sym === "wsteth") &&
+        collateralSym === "wsteth"
+      ) {
+        return 80;
+      }
+
+      // Ensure USD-based inputs map to the fxSAVE-collateral market.
+      if (
+        (sym === "fxusd" || sym === "fxsave" || sym === "usdc") &&
+        collateralSym === "fxsave"
+      ) {
+        return 80;
+      }
+
+      return 0;
+    };
+
+    const assetMap = new Map<
+      string,
+      {
+        symbol: string;
+        name: string;
+        market: any;
+        marketId: string;
+        minterAddress: string | undefined;
+        isPeggedToken?: boolean; // Flag to indicate this is a ha token (direct deposit, no minting)
+      }
+    >();
+    marketsForToken.forEach(({ marketId, market: m }) => {
+      const assets = getAcceptedDepositAssets(m);
+      const minterAddr = m?.addresses?.minter;
+      const peggedTokenSymbol = m?.peggedToken?.symbol || "ha";
+
+      // Add collateral-based assets (require minting)
+      assets.forEach((asset) => {
+        const existing = assetMap.get(asset.symbol);
+        const next = {
+            ...asset,
+            market: m,
+          marketId,
+            minterAddress: minterAddr,
+            isPeggedToken: false,
+        };
+
+        if (!existing) {
+          assetMap.set(asset.symbol, next);
+          return;
+        }
+
+        const prevPriority = getAssetMarketPriority(existing.symbol, existing.market);
+        const nextPriority = getAssetMarketPriority(next.symbol, next.market);
+        if (nextPriority > prevPriority) {
+          assetMap.set(asset.symbol, next);
+        }
+      });
+
+      // Add ha token option (direct deposit to stability pool, no minting)
+      if (!assetMap.has(peggedTokenSymbol)) {
+        assetMap.set(peggedTokenSymbol, {
+          symbol: peggedTokenSymbol,
+          name: m?.peggedToken?.name || `${peggedTokenSymbol} Token`,
+          market: m,
+          marketId,
+          minterAddress: undefined, // No minter needed for direct ha deposits
+          isPeggedToken: true,
+        });
+      }
+    });
+
+    return Array.from(assetMap.values());
+  }, [marketsForToken]);
+
+  // For dropdown display, we just need the asset info
+  const allDepositAssets = useMemo(() => {
+    return allDepositAssetsWithMarkets.map(({ symbol, name }) => ({
+      symbol,
+      name,
+    }));
+  }, [allDepositAssetsWithMarkets]);
+
+  // Dropdown deposit assets (no estimated fees shown). Non-mainnet: collateral only, no "any token".
+  const depositAssetsForDropdown = useMemo(() => {
+    let result = allDepositAssetsWithMarkets.map((asset) => ({
+      ...asset,
+      isUserToken: false,
+    }));
+
+    // Merge with "any token" assets from user's wallet (mainnet only)
+    if (!isCollateralOnlyChain && anyTokenDeposit.allAvailableAssets.length > 0) {
+      const existingSymbols = new Set(result.map((a) => a.symbol.toUpperCase()));
+
+      anyTokenDeposit.allAvailableAssets.forEach((token) => {
+        if (!existingSymbols.has(token.symbol.toUpperCase())) {
+          result.push({
+            symbol: token.symbol,
+            name: token.name,
+            marketId: selectedMarketId, // Use selected market for "any token" deposits
+            market: selectedMarket,
+            minterAddress: selectedMarket?.addresses?.minter,
+            isUserToken: token.isUserToken ?? true,
+            isPeggedToken: false,
+          } as any);
+      }
+    });
+    }
+
+    return result;
+  }, [
+    allDepositAssetsWithMarkets,
+    anyTokenDeposit.allAvailableAssets,
+    selectedMarketId,
+    selectedMarket,
+    isCollateralOnlyChain,
+  ]);
+
+  const depositAssetChoiceCount = useMemo(() => {
+    const seen = new Set<string>();
+    for (const asset of depositAssetsForDropdown) {
+      seen.add(asset.symbol.toUpperCase());
+    }
+    return seen.size;
+  }, [depositAssetsForDropdown]);
+
+  const useDepositCollateralSegment = depositAssetChoiceCount === 2;
+
+  const depositAssetSegmentOptions = useMemo(() => {
+    if (!useDepositCollateralSegment) return [];
+    const seen = new Set<string>();
+    const symbols: string[] = [];
+    for (const asset of depositAssetsForDropdown) {
+      const key = asset.symbol.toUpperCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      symbols.push(asset.symbol);
+    }
+    return symbols;
+  }, [depositAssetsForDropdown, useDepositCollateralSegment]);
+
+  // Calculate fees for each market separately (for showing per-market fees)
+  const marketFeeContracts = useMemo(() => {
+    if (!simpleMode || !isActive || activeTab !== "deposit") return [];
+
+    const contracts: Array<{
+      address: `0x${string}`;
+      abi: typeof MINTER_PEGGED_ABI;
+      functionName: "mintPeggedTokenDryRun";
+      args: [bigint];
+      marketId: string;
+    }> = [];
+
+    marketsForToken.forEach(({ marketId, market: m }) => {
+      const minterAddr = m?.addresses?.minter;
+      if (
+        minterAddr &&
+        typeof minterAddr === "string" &&
+        minterAddr.startsWith("0x") &&
+        minterAddr.length === 42
+      ) {
+        // For market fees, we use wrapped collateral directly since we're comparing across markets
+        // The sample amount should already be in wrapped collateral units
+        const wrappedAmount = parseEther("1.0");
+        
+        contracts.push({
+          address: minterAddr as `0x${string}`,
+          abi: MINTER_PEGGED_ABI,
+          functionName: "mintPeggedTokenDryRun" as const,
+          args: [wrappedAmount] as const,
+          marketId,
+        });
+      }
+    });
+
+    return contracts;
+  }, [marketsForToken, simpleMode, isActive, activeTab]);
+
+  // Use production-compatible contract reads for market fees
+  const { data: marketFeeData } = useContractReads({
+    contracts: marketFeeContracts.map(({ marketId, ...contract }) => contract),
+    allowFailure: true, // Allow individual contract reads to fail without breaking the whole batch
+    query: {
+      enabled:
+        marketFeeContracts.length > 0 &&
+        isActive &&
+        simpleMode &&
+        activeTab === "deposit",
+      refetchInterval: 30000,
+    },
+  });
+
+  // Map fees to markets
+  const marketFeesMap = useMemo(() => {
+    const feeMap = new Map<string, number | undefined>();
+
+    marketFeeContracts.forEach((contract, index) => {
+      const feeResult = marketFeeData?.[index];
+      let feePercentage: number | undefined = undefined;
+
+      let resultData: any = undefined;
+      if (feeResult) {
+        if ("status" in feeResult && feeResult.status === "success") {
+          resultData = feeResult.result;
+        } else if ("status" in feeResult && feeResult.status === "failure") {
+          feeMap.set(contract.marketId, undefined);
+          return;
+        } else if (!("status" in feeResult)) {
+          resultData = feeResult;
+        }
+      }
+
+      if (resultData && Array.isArray(resultData) && resultData.length >= 2) {
+        const wrappedFee = resultData[1] as bigint;
+        const inputAmount = parseEther("1.0");
+        if (inputAmount > 0n) {
+          feePercentage = (Number(wrappedFee) / Number(inputAmount)) * 100;
+        }
+      }
+
+      feeMap.set(contract.marketId, feePercentage);
+    });
+
+    return feeMap;
+  }, [marketFeeContracts, marketFeeData]);
+
+  // Calculate fee range across all markets
+  const feeRange = useMemo(() => {
+    const fees = Array.from(marketFeesMap.values()).filter(
+      (f): f is number => f !== undefined
+    );
+    if (fees.length === 0) return null;
+
+    const minFee = Math.min(...fees);
+    const maxFee = Math.max(...fees);
+
+    return {
+      min: minFee,
+      max: maxFee,
+      hasRange: minFee !== maxFee,
+      count: fees.length,
+    };
+  }, [marketFeesMap]);
+
+  // Redeem (sell) fee range across markets for withdraw tab
+  const redeemMarketFeeContracts = useMemo(() => {
+    if (
+      !simpleMode ||
+      !isActive ||
+      (activeTab !== "withdraw" && activeTab !== "sell") ||
+      (activeTab === "withdraw" && withdrawOnly)
+    ) {
+      return [];
+    }
+
+    const contracts: Array<{
+      address: `0x${string}`;
+      abi: typeof MINTER_PEGGED_ABI;
+      functionName: "redeemPeggedTokenDryRun";
+      args: [bigint];
+      marketId: string;
+    }> = [];
+
+    marketsForToken.forEach(({ marketId, market: m }) => {
+      const minterAddr = m?.addresses?.minter;
+      if (
+        minterAddr &&
+        typeof minterAddr === "string" &&
+        minterAddr.startsWith("0x") &&
+        minterAddr.length === 42
+      ) {
+        contracts.push({
+          address: minterAddr as `0x${string}`,
+          abi: MINTER_PEGGED_ABI,
+          functionName: "redeemPeggedTokenDryRun" as const,
+          args: [parseEther("1.0")] as const,
+          marketId,
+        });
+      }
+    });
+
+    return contracts;
+  }, [marketsForToken, simpleMode, isActive, activeTab, withdrawOnly]);
+
+  const { data: redeemMarketFeeData } = useContractReads({
+    contracts: redeemMarketFeeContracts.map(({ marketId, ...contract }) => contract),
+    allowFailure: true,
+    query: {
+      enabled:
+        redeemMarketFeeContracts.length > 0 &&
+        isActive &&
+        simpleMode &&
+        ((activeTab === "withdraw" && !withdrawOnly) || activeTab === "sell"),
+      refetchInterval: 30000,
+    },
+  });
+
+  const redeemMarketFeesMap = useMemo(() => {
+    const feeMap = new Map<string, number | undefined>();
+
+    redeemMarketFeeContracts.forEach((contract, index) => {
+      const feeResult = redeemMarketFeeData?.[index];
+      let resultData: unknown = undefined;
+
+      if (feeResult) {
+        if ("status" in feeResult && feeResult.status === "success") {
+          resultData = feeResult.result;
+        } else if ("status" in feeResult && feeResult.status === "failure") {
+          feeMap.set(contract.marketId, undefined);
+          return;
+        } else if (!("status" in feeResult)) {
+          resultData = feeResult;
+        }
+      }
+
+      feeMap.set(contract.marketId, parseRedeemFeePercentage(resultData));
+    });
+
+    return feeMap;
+  }, [redeemMarketFeeContracts, redeemMarketFeeData]);
+
+  const sellFeeRange = useMemo(() => {
+    const fees = Array.from(redeemMarketFeesMap.values()).filter(
+      (f): f is number => f !== undefined,
+    );
+    if (fees.length === 0) return null;
+
+    const minFee = Math.min(...fees);
+    const maxFee = Math.max(...fees);
+
+    return {
+      min: minFee,
+      max: maxFee,
+      hasRange: minFee !== maxFee,
+      count: fees.length,
+    };
+  }, [redeemMarketFeesMap]);
+
+  // Use production-compatible contract reads (works on both mainnet and Anvil)
+  // (Removed) Estimated fee fetching for dropdown options.
+
+  // Collect all stability pools from all markets
+  const allStabilityPools = useMemo(() => {
+    const pools: Array<{
+      marketId: string;
+      market: any;
+      poolType: "collateral" | "sail";
+      address: `0x${string}`;
+      marketName: string;
+    }> = [];
+
+    marketsForToken.forEach(({ marketId, market: m }) => {
+      const marketName = m?.name || marketId;
+
+      if (m?.addresses?.stabilityPoolCollateral) {
+        pools.push({
+          marketId,
+          market: m,
+          poolType: "collateral",
+          address: m.addresses.stabilityPoolCollateral as `0x${string}`,
+          marketName,
+        });
+      }
+      if (m?.addresses?.stabilityPoolLeveraged) {
+        pools.push({
+          marketId,
+          market: m,
+          poolType: "sail",
+          address: m.addresses.stabilityPoolLeveraged as `0x${string}`,
+          marketName,
+        });
+      }
+    });
+
+    return pools;
+  }, [marketsForToken, isActive, simpleMode]);
+
+  // Validate minter address
+  const isValidMinterAddress =
+    minterAddress &&
+    typeof minterAddress === "string" &&
+    minterAddress.startsWith("0x") &&
+    minterAddress.length === 42;
+
+  // Get stability pool address based on selected type
+  // In simple mode, use selectedStabilityPool; otherwise use depositInStabilityPool and stabilityPoolType
+  const stabilityPoolAddress = (() => {
+    if (activeTab === "deposit") {
+      if (simpleMode) {
+        // In simple mode, use selectedStabilityPool (which now includes marketId)
+        if (!selectedStabilityPool || selectedStabilityPool.poolType === "none")
+          return undefined;
+        const poolMarket = marketsForToken.find(
+          (m) => m.marketId === selectedStabilityPool.marketId
+        )?.market;
+        if (!poolMarket) return undefined;
+        return selectedStabilityPool.poolType === "collateral"
+          ? (poolMarket?.addresses?.stabilityPoolCollateral as
+              | `0x${string}`
+              | undefined)
+          : (poolMarket?.addresses?.stabilityPoolLeveraged as
+              | `0x${string}`
+              | undefined);
+      } else {
+        // In advanced mode, use depositInStabilityPool and stabilityPoolType
+        return depositInStabilityPool
+          ? stabilityPoolType === "collateral"
+            ? (selectedMarket?.addresses?.stabilityPoolCollateral as
+                | `0x${string}`
+                | undefined)
+            : (selectedMarket?.addresses?.stabilityPoolLeveraged as
+                | `0x${string}`
+                | undefined)
+          : undefined;
+      }
+    }
+    return undefined;
+  })();
+
+  // Check if selected deposit asset is ha token (works in both simple and advanced mode)
+  const isDirectPeggedDeposit = useMemo(() => {
+    if (!selectedDepositAsset || activeTab !== "deposit")
+      return false;
+    // Check if selected asset matches any market's pegged token symbol
+    return marketsForToken.some(({ market: m }) => {
+      const peggedTokenSymbol = m?.peggedToken?.symbol || "ha";
+      return (
+        selectedDepositAsset.toLowerCase() === peggedTokenSymbol.toLowerCase()
+      );
+    });
+  }, [selectedDepositAsset, activeTab, marketsForToken]);
+
+  // Read pegged token address from Genesis contract (source of truth)
+  const { data: genesisPeggedTokenAddress } = useContractRead({
+    address: marketForDepositAsset?.addresses?.genesis as `0x${string}`,
+    abi: GENESIS_ABI,
+    functionName: "peggedToken",
+    query: {
+      enabled:
+        !!marketForDepositAsset?.addresses?.genesis &&
+        isActive &&
+        activeTab === "deposit" &&
+        simpleMode &&
+        isDirectPeggedDeposit,
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  // Get token address for selected deposit asset
+  const getSelectedAssetAddress = useMemo(() => {
+    if (!selectedDepositAsset) return null;
+    
+    // Use marketForDepositAsset in simple mode, selectedMarket in advanced mode
+    const market = marketForDepositAsset || selectedMarket;
+    if (!market) return null;
+
+    const normalized = selectedDepositAsset.toLowerCase();
+    
+    if (process.env.NODE_ENV === "development") {
+      console.log("[getSelectedAssetAddress]", {
+        selectedDepositAsset,
+        normalized,
+        marketId: market?.id,
+        marketName: market?.name,
+        collateralSymbol: market?.collateral?.symbol,
+        wrappedCollateralToken: market?.addresses?.wrappedCollateralToken,
+        collateralToken: market?.addresses?.collateralToken,
+      });
+    }
+
+    // Check if it's ha token - use Genesis contract's pegged token address if available, otherwise fall back to market config
+    const peggedTokenSymbol = market?.peggedToken?.symbol || "ha";
+    if (normalized === peggedTokenSymbol.toLowerCase()) {
+      // Prefer the address from Genesis contract (source of truth)
+      if (genesisPeggedTokenAddress) {
+        return genesisPeggedTokenAddress as `0x${string}`;
+      }
+      // Fall back to market config address
+      const address = market?.addresses?.peggedToken;
+      return address ? (address as `0x${string}`) : null;
+    }
+
+    // Check if it's native ETH
+    if (normalized === "eth") {
+      return "0x0000000000000000000000000000000000000000" as `0x${string}`; // Marker for native ETH
+    }
+
+    // Check if it's wrapped collateral token (fxSAVE, wstETH, etc.)
+    // collateral.symbol is the wrapped version (what's actually deposited)
+    const wrappedCollateralSymbol = market?.collateral?.symbol || "";
+    if (normalized === wrappedCollateralSymbol.toLowerCase()) {
+      const address = market?.addresses?.wrappedCollateralToken;
+      if (process.env.NODE_ENV === "development") {
+        console.log("[getSelectedAssetAddress] Matched wrapped collateral:", {
+          normalized,
+          wrappedCollateralSymbol,
+          address,
+        });
+      }
+      return address ? (address as `0x${string}`) : null;
+    }
+
+    // Check if it's underlying collateral token (fxUSD, stETH, etc.)
+    // collateral.underlyingSymbol is the base token
+    const underlyingCollateralSymbol = market?.collateral?.underlyingSymbol || "";
+    if (normalized === underlyingCollateralSymbol.toLowerCase()) {
+      // Special case: for stETH in wstETH markets, use underlyingCollateralToken or hardcoded address
+      // Do NOT use collateralToken as it might be wstETH
+      if (normalized === "steth" && wrappedCollateralSymbol.toLowerCase() === "wsteth") {
+        const stETHAddress = market?.addresses?.underlyingCollateralToken || 
+                             "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
+        return stETHAddress as `0x${string}`;
+      }
+      // For other underlying tokens (like fxUSD), use collateralToken
+      const address = market?.addresses?.collateralToken;
+      return address ? (address as `0x${string}`) : null;
+    }
+
+    // Backward compatibility fallbacks
+    // stETH can be either wrapped (BTC/stETH market) or underlying (wstETH market)
+    if (normalized === "steth") {
+      // Check if this is a wstETH market (stETH is underlying) or BTC/stETH market (stETH is wrapped)
+      const isWstETHMarket = wrappedCollateralSymbol.toLowerCase() === "wsteth";
+      if (isWstETHMarket) {
+        // For wstETH markets, stETH is the underlying collateral
+        // Use underlyingCollateralToken if available (from contracts.ts), otherwise fallback to hardcoded stETH address
+        // NOTE: Do NOT use collateralToken as it might be wstETH in some market configs
+        const stETHAddress = market?.addresses?.underlyingCollateralToken || 
+                             "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
+        return stETHAddress as `0x${string}`;
+      } else {
+      // For BTC/stETH market, stETH is the wrapped collateral
+        const address = market?.addresses?.wrappedCollateralToken;
+        return address ? (address as `0x${string}`) : null;
+      }
+    }
+
+    // wstETH is wrapped, stETH is underlying
+    if (normalized === "wsteth") {
+      const address = market?.addresses?.wrappedCollateralToken;
+      return address ? (address as `0x${string}`) : null;
+    }
+
+    // fxSAVE is wrapped, fxUSD is underlying
+    if (normalized === "fxsave") {
+      const address = market?.addresses?.wrappedCollateralToken;
+      return address ? (address as `0x${string}`) : null;
+    }
+
+    // fxUSD is the underlying token
+    if (normalized === "fxusd") {
+      const address = market?.addresses?.collateralToken;
+      return address ? (address as `0x${string}`) : null;
+    }
+
+    // Check if it's USDC (standard USDC address on Ethereum mainnet)
+    if (normalized === "usdc") {
+      return "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
+    }
+
+    return null;
+  }, [selectedDepositAsset, marketForDepositAsset, selectedMarket, genesisPeggedTokenAddress]);
+
+  const isSelectedAssetNativeETH =
+    selectedDepositAsset?.toLowerCase() === "eth";
+
+  // Get native ETH balance (for ETH deposits) — read on market's chain so modal shows correct chain balance
+  const { data: nativeBalanceData } = useBalance({
+    address: address,
+    chainId: marketChainId,
+    query: {
+      enabled:
+        !!address &&
+        isActive &&
+        activeTab === "deposit" &&
+        isSelectedAssetNativeETH &&
+        simpleMode,
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+    },
+  });
+
+  // Contract read hooks - balance for selected deposit asset
+  // Use Anvil-specific read if in development, otherwise use wagmi
+  const useAnvilForBalance = false;
+  const selectedAssetAddress = getSelectedAssetAddress;
+  const anvilSelectedAssetResult = useContractRead({
+    address:
+      selectedAssetAddress &&
+      selectedAssetAddress !== "0x0000000000000000000000000000000000000000"
+        ? selectedAssetAddress
+        : undefined,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    enabled:
+      !!address &&
+      !!selectedAssetAddress &&
+      selectedAssetAddress !== "0x0000000000000000000000000000000000000000" &&
+      isActive &&
+      activeTab === "deposit" &&
+      simpleMode &&
+      !!selectedDepositAsset &&
+      useAnvilForBalance,
+    refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+  });
+
+  const wagmiSelectedAssetResult = useContractRead({
+    address:
+      selectedAssetAddress &&
+      selectedAssetAddress !== "0x0000000000000000000000000000000000000000"
+        ? selectedAssetAddress
+        : undefined,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    chainId: marketChainId,
+    query: {
+      enabled:
+        !!address &&
+        !!selectedAssetAddress &&
+        selectedAssetAddress !== "0x0000000000000000000000000000000000000000" &&
+        isActive &&
+        activeTab === "deposit" &&
+        simpleMode &&
+        !!selectedDepositAsset &&
+        !useAnvilForBalance,
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  const wagmiSelectedAssetBalanceEnabled = 
+    !!address &&
+    !!selectedAssetAddress &&
+    selectedAssetAddress !== "0x0000000000000000000000000000000000000000" &&
+    isActive &&
+    activeTab === "deposit" &&
+    simpleMode &&
+    !!selectedDepositAsset &&
+    !useAnvilForBalance;
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development" && isActive && activeTab === "deposit") {
+      console.log("[Balance Read Enabled Check]", {
+        enabled: wagmiSelectedAssetBalanceEnabled,
+        address: !!address,
+        selectedAssetAddress: selectedAssetAddress || "null",
+        isActive,
+        activeTab,
+        simpleMode,
+        selectedDepositAsset: selectedDepositAsset || "null",
+        useAnvilForBalance,
+      });
+    }
+  }, [wagmiSelectedAssetBalanceEnabled, address, selectedAssetAddress, isActive, activeTab, simpleMode, selectedDepositAsset, useAnvilForBalance]);
+
+  const selectedAssetBalanceData = useAnvilForBalance
+    ? anvilSelectedAssetResult.data
+    : wagmiSelectedAssetResult.data;
+  const selectedAssetBalanceError = useAnvilForBalance
+    ? anvilSelectedAssetResult.error
+    : wagmiSelectedAssetResult.error;
+  const selectedAssetBalanceLoading = useAnvilForBalance
+    ? anvilSelectedAssetResult.isLoading
+    : wagmiSelectedAssetResult.isLoading;
+
+  // Debug: Log the actual balance value being returned from the contract
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development" && selectedDepositAsset) {
+      console.log("[Balance Read from Contract]", {
+        asset: selectedDepositAsset,
+        address: selectedAssetAddress,
+        hasData: !!selectedAssetBalanceData,
+        rawBalance: selectedAssetBalanceData ? selectedAssetBalanceData.toString() : "null/undefined",
+        formatted: selectedAssetBalanceData ? formatEther(selectedAssetBalanceData as bigint) : "null/undefined",
+        isLoading: selectedAssetBalanceLoading,
+        error: selectedAssetBalanceError?.message || null,
+        wagmiResultData: wagmiSelectedAssetResult.data ? wagmiSelectedAssetResult.data.toString() : "null/undefined",
+      });
+    }
+  }, [selectedAssetBalanceData, selectedDepositAsset, selectedAssetAddress, selectedAssetBalanceLoading, selectedAssetBalanceError, wagmiSelectedAssetResult.data]);
+
+  // Debug: Log selected asset balance read status
+  useEffect(() => {
+    if (
+      process.env.NODE_ENV === "development" &&
+      isActive &&
+      simpleMode &&
+      selectedDepositAsset &&
+      activeTab === "deposit"
+    ) {
+      console.log("[AnchorDepositModal] Selected asset balance read status:", {
+        selectedDepositAsset,
+        selectedAssetAddress,
+        userAddress: address,
+        data: selectedAssetBalanceData?.toString(),
+        error: selectedAssetBalanceError?.message,
+        isLoading: selectedAssetBalanceLoading,
+        enabled:
+          !!address &&
+          !!selectedAssetAddress &&
+          selectedAssetAddress !==
+            "0x0000000000000000000000000000000000000000" &&
+          isActive &&
+          activeTab === "deposit" &&
+          simpleMode &&
+          !!selectedDepositAsset,
+      });
+    }
+  }, [
+    isActive,
+    simpleMode,
+    selectedDepositAsset,
+    selectedAssetAddress,
+    address,
+    selectedAssetBalanceData,
+    selectedAssetBalanceError,
+    selectedAssetBalanceLoading,
+    activeTab,
+  ]);
+
+  // Contract read hooks - collateral balance for mint (only when not using ha token directly) — market's chain
+  const { data: collateralBalanceData } = useContractRead({
+    address: collateralAddress as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    chainId: marketChainId,
+    query: {
+      enabled:
+        !!address &&
+        !!collateralAddress &&
+        isActive &&
+        activeTab === "deposit" &&
+        !simpleMode,
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  // Contract read hooks - pegged token balance for direct ha deposits (in simple mode)
+  // Use Genesis contract's pegged token address if available, otherwise use market config
+  // Priority: 1) Genesis contract peggedToken() 2) Market config peggedToken 3) Direct from contracts.ts
+  const peggedTokenAddressForBalance =
+    genesisPeggedTokenAddress || marketForDepositAsset?.addresses?.peggedToken;
+
+  // Debug: Log the address being used
+  useEffect(() => {
+    if (
+      process.env.NODE_ENV === "development" &&
+      isActive &&
+      isDirectPeggedDeposit
+    ) {
+      console.log("[AnchorDepositModal] Ha token balance check setup:", {
+        selectedDepositAsset,
+        marketForDepositAsset: marketForDepositAsset?.name,
+        genesisPeggedTokenAddress,
+        marketConfigPeggedTokenAddress:
+          marketForDepositAsset?.addresses?.peggedToken,
+        peggedTokenAddressForBalance,
+        address,
+        useAnvil: useAnvilForBalance,
+        enabled:
+          !!address &&
+          !!peggedTokenAddressForBalance &&
+          isActive &&
+          activeTab === "deposit" &&
+          isDirectPeggedDeposit &&
+          simpleMode,
+      });
+    }
+  }, [
+    isActive,
+    isDirectPeggedDeposit,
+    selectedDepositAsset,
+    marketForDepositAsset,
+    genesisPeggedTokenAddress,
+    peggedTokenAddressForBalance,
+    address,
+    activeTab,
+    simpleMode,
+    useAnvilForBalance,
+  ]);
+
+  const anvilBalanceResult = useContractRead({
+    address: peggedTokenAddressForBalance as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    enabled:
+      !!address &&
+      !!peggedTokenAddressForBalance &&
+      isActive &&
+      activeTab === "deposit" &&
+      isDirectPeggedDeposit &&
+      simpleMode &&
+      useAnvilForBalance,
+    refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+  });
+
+  const wagmiBalanceResult = useContractRead({
+    address: peggedTokenAddressForBalance as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    chainId: marketChainId,
+    query: {
+      enabled:
+        !!address &&
+        !!peggedTokenAddressForBalance &&
+        isActive &&
+        activeTab === "deposit" &&
+        isDirectPeggedDeposit &&
+        simpleMode &&
+        !useAnvilForBalance,
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  const directPeggedBalanceData = useAnvilForBalance
+    ? anvilBalanceResult.data
+    : wagmiBalanceResult.data;
+  const directPeggedBalanceError = useAnvilForBalance
+    ? anvilBalanceResult.error
+    : wagmiBalanceResult.error;
+  const directPeggedBalanceLoading = useAnvilForBalance
+    ? anvilBalanceResult.isLoading
+    : wagmiBalanceResult.isLoading;
+
+  // Debug: Log balance read status
+  useEffect(() => {
+    if (
+      process.env.NODE_ENV === "development" &&
+      isActive &&
+      isDirectPeggedDeposit
+    ) {
+      console.log("[AnchorDepositModal] Ha token balance read status:", {
+        address: peggedTokenAddressForBalance,
+        userAddress: address,
+        data: directPeggedBalanceData?.toString(),
+        error: directPeggedBalanceError?.message,
+        isLoading: directPeggedBalanceLoading,
+        enabled:
+          !!address &&
+          !!peggedTokenAddressForBalance &&
+          isActive &&
+          activeTab === "deposit" &&
+          isDirectPeggedDeposit &&
+          simpleMode,
+      });
+    }
+  }, [
+    isActive,
+    isDirectPeggedDeposit,
+    peggedTokenAddressForBalance,
+    address,
+    directPeggedBalanceData,
+    directPeggedBalanceError,
+    directPeggedBalanceLoading,
+    activeTab,
+    simpleMode,
+  ]);
+
+  // Read pegged token balance - use Anvil hook when on local chain
+  const useAnvilForPeggedBalance = false;
+
+  const anvilPeggedBalanceResult = useContractRead({
+    address: peggedTokenAddress as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    enabled:
+      !!address &&
+      !!peggedTokenAddress &&
+      isActive &&
+      (activeTab === "deposit" || activeTab === "withdraw" || activeTab === "sell") &&
+      useAnvilForPeggedBalance,
+    refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+  });
+
+  const wagmiPeggedBalanceResult = useContractRead({
+    address: peggedTokenAddress as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    chainId: marketChainId,
+    query: {
+      enabled:
+        !!address &&
+        !!peggedTokenAddress &&
+        isActive &&
+        (activeTab === "deposit" || activeTab === "withdraw" || activeTab === "sell") &&
+        !useAnvilForPeggedBalance,
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  const peggedBalanceData = useAnvilForPeggedBalance
+    ? anvilPeggedBalanceResult.data
+    : wagmiPeggedBalanceResult.data;
+
+  // Set default selection to ha token when user has ha tokens in wallet or when initialDepositAsset is provided
+  useEffect(() => {
+    if (
+      isActive &&
+      activeTab === "deposit" &&
+      simpleMode &&
+      !selectedDepositAsset
+    ) {
+      // Priority: use initialDepositAsset if provided, otherwise use ha token if user has balance
+      if (initialDepositAsset) {
+        setSelectedDepositAsset(initialDepositAsset);
+      } else if (
+        peggedTokenSymbol &&
+        peggedBalanceData !== undefined &&
+        peggedBalanceData !== null &&
+        peggedBalanceData > 0n
+      ) {
+        setSelectedDepositAsset(peggedTokenSymbol);
+      }
+    }
+  }, [
+    isActive,
+    activeTab,
+    simpleMode,
+    selectedDepositAsset,
+    initialDepositAsset,
+    peggedTokenSymbol,
+    peggedBalanceData,
+  ]);
+
+  // Get stability pool balances for withdraw
+  const collateralPoolAddress = selectedMarket?.addresses
+    ?.stabilityPoolCollateral as `0x${string}` | undefined;
+  const sailPoolAddress = selectedMarket?.addresses?.stabilityPoolLeveraged as
+    | `0x${string}`
+    | undefined;
+
+  // ---------------------------------------------------------------------------
+  // Stability Pool minimum-supply floor reads (used to prevent 0-withdraw txs)
+  // ---------------------------------------------------------------------------
+  const { data: collateralPoolTotalSupply } = useContractRead({
+    address: collateralPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "totalAssetSupply",
+    query: {
+      enabled: !!collateralPoolAddress && isActive && activeTab === "withdraw",
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  const { data: collateralPoolMinTotalSupply } = useContractRead({
+    address: collateralPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "MIN_TOTAL_ASSET_SUPPLY",
+    query: {
+      enabled: !!collateralPoolAddress && isActive && activeTab === "withdraw",
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  const { data: sailPoolTotalSupply } = useContractRead({
+    address: sailPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "totalAssetSupply",
+    query: {
+      enabled: !!sailPoolAddress && isActive && activeTab === "withdraw",
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  const { data: sailPoolMinTotalSupply } = useContractRead({
+    address: sailPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "MIN_TOTAL_ASSET_SUPPLY",
+    query: {
+      enabled: !!sailPoolAddress && isActive && activeTab === "withdraw",
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  // Collateral pool balance - use Anvil hook when on local chain
+  const anvilCollateralPoolResult = useContractRead({
+    address: collateralPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "assetBalanceOf",
+    args: address ? [address] : undefined,
+    enabled:
+      !!address &&
+      !!collateralPoolAddress &&
+      isActive &&
+      activeTab === "withdraw" &&
+      useAnvilForPeggedBalance,
+    refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+  });
+
+  const wagmiCollateralPoolResult = useContractRead({
+    address: collateralPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "assetBalanceOf",
+    args: address ? [address] : undefined,
+    query: {
+      enabled:
+        !!address &&
+        !!collateralPoolAddress &&
+        isActive &&
+        activeTab === "withdraw" &&
+        !useAnvilForPeggedBalance,
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  const collateralPoolBalanceData = useAnvilForPeggedBalance
+    ? anvilCollateralPoolResult.data
+    : wagmiCollateralPoolResult.data;
+
+  // Sail pool balance - use Anvil hook when on local chain
+  const anvilSailPoolResult = useContractRead({
+    address: sailPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "assetBalanceOf",
+    args: address ? [address] : undefined,
+    enabled:
+      !!address &&
+      !!sailPoolAddress &&
+      isActive &&
+      activeTab === "withdraw" &&
+      useAnvilForPeggedBalance,
+    refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+  });
+
+  const wagmiSailPoolResult = useContractRead({
+    address: sailPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "assetBalanceOf",
+    args: address ? [address] : undefined,
+    query: {
+      enabled:
+        !!address &&
+        !!sailPoolAddress &&
+        isActive &&
+        activeTab === "withdraw" &&
+        !useAnvilForPeggedBalance,
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  const sailPoolBalanceData = useAnvilForPeggedBalance
+    ? anvilSailPoolResult.data
+    : wagmiSailPoolResult.data;
+
+  // Early withdrawal fees - read from both pools
+  const anvilCollateralPoolFeeResult = useContractRead({
+    address: collateralPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getEarlyWithdrawalFee",
+    enabled: !!collateralPoolAddress && isActive && useAnvilForPeggedBalance,
+    refetchInterval: 30000,
+  });
+
+  const wagmiCollateralPoolFeeResult = useContractRead({
+    address: collateralPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getEarlyWithdrawalFee",
+    query: {
+      enabled: !!collateralPoolAddress && isActive && !useAnvilForPeggedBalance,
+      refetchInterval: 30000,
+      allowFailure: true,
+    },
+  });
+
+  const collateralPoolEarlyFee = useAnvilForPeggedBalance
+    ? anvilCollateralPoolFeeResult.data
+    : wagmiCollateralPoolFeeResult.data;
+
+  const anvilSailPoolFeeResult = useContractRead({
+    address: sailPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getEarlyWithdrawalFee",
+    enabled: !!sailPoolAddress && isActive && useAnvilForPeggedBalance,
+    refetchInterval: 30000,
+  });
+
+  const wagmiSailPoolFeeResult = useContractRead({
+    address: sailPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getEarlyWithdrawalFee",
+    query: {
+      enabled: !!sailPoolAddress && isActive && !useAnvilForPeggedBalance,
+      refetchInterval: 30000,
+      allowFailure: true,
+    },
+  });
+
+  const sailPoolEarlyFee = useAnvilForPeggedBalance
+    ? anvilSailPoolFeeResult.data
+    : wagmiSailPoolFeeResult.data;
+
+  // Read withdrawal window data from both pools
+  const anvilCollateralWindowResult = useContractRead({
+    address: collateralPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getWithdrawalWindow",
+    enabled: !!collateralPoolAddress && isActive && useAnvilForPeggedBalance,
+    refetchInterval: 30000,
+  });
+
+  const wagmiCollateralWindowResult = useContractRead({
+    address: collateralPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getWithdrawalWindow",
+    query: {
+      enabled: !!collateralPoolAddress && isActive && !useAnvilForPeggedBalance,
+      refetchInterval: 30000,
+    },
+  });
+
+  const collateralPoolWindow = useAnvilForPeggedBalance
+    ? anvilCollateralWindowResult.data
+    : wagmiCollateralWindowResult.data;
+
+  const anvilSailWindowResult = useContractRead({
+    address: sailPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getWithdrawalWindow",
+    enabled: !!sailPoolAddress && isActive && useAnvilForPeggedBalance,
+    refetchInterval: 30000,
+  });
+
+  const wagmiSailWindowResult = useContractRead({
+    address: sailPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getWithdrawalWindow",
+    query: {
+      enabled: !!sailPoolAddress && isActive && !useAnvilForPeggedBalance,
+      refetchInterval: 30000,
+    },
+  });
+
+  const sailPoolWindow = useAnvilForPeggedBalance
+    ? anvilSailWindowResult.data
+    : wagmiSailWindowResult.data;
+
+  // Read withdrawal request data for both pools to check if fee-free window is open
+  const anvilCollateralRequestResult = useContractRead({
+    address: collateralPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getWithdrawalRequest",
+    args: address ? [address] : undefined,
+    enabled: !!collateralPoolAddress && !!address && isActive && useAnvilForPeggedBalance && activeTab === "withdraw",
+    refetchInterval: 30000,
+  });
+
+  const wagmiCollateralRequestResult = useContractRead({
+    address: collateralPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getWithdrawalRequest",
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!collateralPoolAddress && !!address && isActive && !useAnvilForPeggedBalance && activeTab === "withdraw",
+      refetchInterval: 30000,
+      allowFailure: true,
+    },
+  });
+
+  const collateralPoolRequest: readonly [bigint, bigint] | undefined = useAnvilForPeggedBalance
+    ? (anvilCollateralRequestResult.data as readonly [bigint, bigint] | undefined)
+    : (wagmiCollateralRequestResult.data as readonly [bigint, bigint] | undefined);
+
+  const anvilSailRequestResult = useContractRead({
+    address: sailPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getWithdrawalRequest",
+    args: address ? [address] : undefined,
+    enabled: !!sailPoolAddress && !!address && isActive && useAnvilForPeggedBalance && activeTab === "withdraw",
+    refetchInterval: 30000,
+  });
+
+  const wagmiSailRequestResult = useContractRead({
+    address: sailPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getWithdrawalRequest",
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!sailPoolAddress && !!address && isActive && !useAnvilForPeggedBalance && activeTab === "withdraw",
+      refetchInterval: 30000,
+      allowFailure: true,
+    },
+  });
+
+  const sailPoolRequest: readonly [bigint, bigint] | undefined = useAnvilForPeggedBalance
+    ? (anvilSailRequestResult.data as readonly [bigint, bigint] | undefined)
+    : (wagmiSailRequestResult.data as readonly [bigint, bigint] | undefined);
+
+  // Helper function to format seconds to hours
+  const formatDuration = (seconds: bigint | number): string => {
+    const totalSeconds = Number(seconds);
+    const hours = Math.round(totalSeconds / 3600);
+    if (hours === 0) {
+      const minutes = Math.floor(totalSeconds / 60);
+      return `${minutes} minute${minutes !== 1 ? "s" : ""}`;
+    }
+    return `${hours} hour${hours !== 1 ? "s" : ""}`;
+  };
+
+  // Helper function to calculate remaining time in fee-free window and format display
+  // Returns fee percentage (e.g., "1%") BEFORE window opens or AFTER window closes
+  // Returns "(free)" DURING the open window (time remaining is shown in banner, not button)
+  const getFeeFreeDisplay = useCallback((
+    request: readonly [bigint, bigint] | undefined,
+    feePercent: number | undefined
+  ): string => {
+    if (!request || !feePercent) {
+      return `${feePercent?.toFixed(0) ?? "1"}%`;
+    }
+
+    const [start, end] = request;
+    // Check if there's no active request
+    if (start === 0n && end === 0n) {
+      return `${feePercent.toFixed(0)}%`;
+    }
+
+    // Get current time
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    
+    // Check if window is currently open (now is between start and end)
+    if (now >= start && now <= end) {
+      // Window is OPEN - return "free" (template adds parens: " (free)")
+      return "free";
+    }
+
+    // Window is NOT open (either before it opens: now < start, or after it closes: now > end)
+    // Show fee percentage (e.g., "1%")
+    return `${feePercent.toFixed(0)}%`;
+  }, []);
+
+  // Helper function to get request status text for button
+  const getRequestStatusText = useCallback((
+    request: readonly [bigint, bigint] | undefined
+  ): string => {
+    if (!request) {
+      return "";
+    }
+
+    const [start, end] = request;
+    // Check if there's no active request
+    if (start === 0n && end === 0n) {
+      return "";
+    }
+
+    // Get current time
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    
+    // Check if window is open
+    if (now >= start && now <= end) {
+      return " (open)";
+    }
+
+    // Check if window is coming (start > now)
+    if (start > now) {
+      return " (pending)";
+    }
+
+    // Window has passed (end < now)
+    return "";
+  }, []);
+
+  // Helper function to format time as HH:MM
+  const formatTime = (timestamp: bigint): string => {
+    const date = new Date(Number(timestamp) * 1000);
+    return date.toLocaleTimeString("en-US", { 
+      hour: "2-digit", 
+      minute: "2-digit",
+      hour12: false 
+    });
+  };
+
+  // Helper function to get window banner info
+  const getWindowBannerInfo = useCallback((
+    request: readonly [bigint, bigint] | undefined,
+    window: readonly [bigint, bigint] | undefined
+  ): { type: "coming" | "open" | null; message: string } | null => {
+    if (!request || !window) {
+      return null;
+    }
+
+    const [start, end] = request;
+    // Check if there's no active request
+    if (start === 0n && end === 0n) {
+      return null;
+    }
+
+    const [startDelay, endWindow] = window;
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    
+    // Check if window is open
+    if (now >= start && now <= end) {
+      const remainingSeconds = Number(end - now);
+      const remainingHours = remainingSeconds / 3600;
+      const remainingMinutes = Math.floor(remainingSeconds / 60);
+      
+      const startTimeStr = formatTime(start);
+      const endTimeStr = formatTime(end);
+      
+      let timeRemaining: string;
+      if (remainingHours < 1) {
+        timeRemaining = `${remainingMinutes} minute${remainingMinutes !== 1 ? "s" : ""} remaining`;
+      } else {
+        const hours = Math.floor(remainingHours);
+        timeRemaining = `${hours} hour${hours !== 1 ? "s" : ""} remaining`;
+      }
+      
+      return {
+        type: "open",
+        message: `Withdrawal window open: ${startTimeStr}–${endTimeStr} (${timeRemaining})`,
+      };
+    }
+
+    // Check if window is coming (start > now)
+    if (start > now) {
+      const secondsUntilStart = Number(start - now);
+      const minutesUntilStart = Math.floor(secondsUntilStart / 60);
+      const startTimeStr = formatTime(start);
+      
+      return {
+        type: "coming",
+        message: `Withdrawal window opens at ${startTimeStr} in ${minutesUntilStart} minute${minutesUntilStart !== 1 ? "s" : ""}`,
+      };
+    }
+
+    // Window has passed
+    return null;
+  }, []);
+
+  // Convert fee from wei (1e18 scale) to percentage
+  const collateralPoolFeePercent = useMemo(() => {
+    if (!collateralPoolEarlyFee) return undefined;
+    const percent = (Number(collateralPoolEarlyFee) / 1e18) * 100;
+    if (process.env.NODE_ENV === "development") {
+      console.log("[AnchorDepositWithdrawModal] Collateral Pool Early Fee:", {
+        raw: collateralPoolEarlyFee,
+        percent,
+        address: collateralPoolAddress,
+      });
+    }
+    return percent;
+  }, [collateralPoolEarlyFee, collateralPoolAddress]);
+
+  const sailPoolFeePercent = useMemo(() => {
+    if (!sailPoolEarlyFee) return undefined;
+    const percent = (Number(sailPoolEarlyFee) / 1e18) * 100;
+    if (process.env.NODE_ENV === "development") {
+      console.log("[AnchorDepositWithdrawModal] Sail Pool Early Fee:", {
+        raw: sailPoolEarlyFee,
+        percent,
+        address: sailPoolAddress,
+      });
+    }
+    return percent;
+  }, [sailPoolEarlyFee, sailPoolAddress]);
+
+  // Sync withdrawal method to "request" or "immediate" based on window status when pool is selected
+  const isWindowOpen = useCallback((
+    request: readonly [bigint, bigint] | undefined
+  ): boolean => {
+    if (!request || request[0] === 0n && request[1] === 0n) return false;
+    const [start, end] = request;
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    return now >= start && now <= end;
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== "withdraw" || !isActive) return;
+    setWithdrawalMethods((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      if (selectedPositions.collateralPool) {
+        const windowOpen = isWindowOpen(collateralPoolRequest);
+        const desired = windowOpen ? "immediate" : (prev.collateralPool === "immediate" && earlyWithdraw1PctEnabled ? "immediate" : "request");
+        if (next.collateralPool !== desired) {
+          next.collateralPool = desired;
+          changed = true;
+        }
+      }
+      if (selectedPositions.sailPool) {
+        const windowOpen = isWindowOpen(sailPoolRequest);
+        const desired = windowOpen ? "immediate" : (prev.sailPool === "immediate" && earlyWithdraw1PctEnabled ? "immediate" : "request");
+        if (next.sailPool !== desired) {
+          next.sailPool = desired;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [
+    activeTab,
+    isActive,
+    selectedPositions.collateralPool,
+    selectedPositions.sailPool,
+    collateralPoolRequest,
+    sailPoolRequest,
+    earlyWithdraw1PctEnabled,
+    isWindowOpen,
+  ]);
+
+  // Calculate early withdrawal fee amounts based on withdrawal amounts
+  const earlyWithdrawalFees = useMemo(() => {
+    const fees: Array<{
+      poolType: "collateral" | "sail";
+      amount: bigint;
+      feePercent: number;
+      withdrawalAmount: bigint;
+    }> = [];
+
+    // Collateral pool fee
+    if (
+      selectedPositions.collateralPool &&
+      positionAmounts.collateralPool &&
+      withdrawalMethods.collateralPool === "immediate" &&
+      !isWindowOpen(collateralPoolRequest) &&
+      collateralPoolEarlyFee &&
+      collateralPoolFeePercent !== undefined
+    ) {
+      const withdrawalAmount = parseEther(positionAmounts.collateralPool);
+      const feeAmount =
+        (withdrawalAmount * collateralPoolEarlyFee) / parseEther("1");
+      fees.push({
+        poolType: "collateral",
+        amount: feeAmount,
+        feePercent: collateralPoolFeePercent,
+        withdrawalAmount,
+      });
+    }
+
+    // Sail pool fee
+    if (
+      selectedPositions.sailPool &&
+      positionAmounts.sailPool &&
+      withdrawalMethods.sailPool === "immediate" &&
+      !isWindowOpen(sailPoolRequest) &&
+      sailPoolEarlyFee &&
+      sailPoolFeePercent !== undefined
+    ) {
+      const withdrawalAmount = parseEther(positionAmounts.sailPool);
+      const feeAmount = (withdrawalAmount * sailPoolEarlyFee) / parseEther("1");
+      fees.push({
+        poolType: "sail",
+        amount: feeAmount,
+        feePercent: sailPoolFeePercent,
+        withdrawalAmount,
+      });
+    }
+
+    return fees;
+  }, [
+    selectedPositions,
+    positionAmounts,
+    withdrawalMethods,
+    collateralPoolEarlyFee,
+    collateralPoolFeePercent,
+    sailPoolEarlyFee,
+    sailPoolFeePercent,
+    collateralPoolRequest,
+    sailPoolRequest,
+    isWindowOpen,
+  ]);
+
+  const showEarlyWithdrawalFees =
+    earlyWithdrawalFees.length > 0 &&
+    (withdrawalMethods.collateralPool === "immediate" ||
+      withdrawalMethods.sailPool === "immediate");
+
+  const selectedPoolEarlyWithdrawFee = useMemo((): {
+    displayValue: string;
+    percent: number;
+  } | null => {
+    if (activeTab !== "withdraw" || !simpleMode) {
+      return null;
+    }
+
+    const poolConfig = selectedPositions.collateralPool
+      ? {
+          method: withdrawalMethods.collateralPool,
+          request: collateralPoolRequest,
+          feePercent: collateralPoolFeePercent,
+        }
+      : selectedPositions.sailPool
+        ? {
+            method: withdrawalMethods.sailPool,
+            request: sailPoolRequest,
+            feePercent: sailPoolFeePercent,
+          }
+        : null;
+
+    if (!poolConfig) return null;
+
+    if (poolConfig.method === "request" || isWindowOpen(poolConfig.request)) {
+      return { displayValue: "0%", percent: 0 };
+    }
+
+    const pct = poolConfig.feePercent ?? 1;
+    return {
+      displayValue: `${pct.toFixed(0)}%`,
+      percent: pct,
+    };
+  }, [
+    activeTab,
+    simpleMode,
+    selectedPositions.collateralPool,
+    selectedPositions.sailPool,
+    withdrawalMethods.collateralPool,
+    withdrawalMethods.sailPool,
+    collateralPoolRequest,
+    sailPoolRequest,
+    collateralPoolFeePercent,
+    sailPoolFeePercent,
+    isWindowOpen,
+  ]);
+
+  // Get user's current deposit (pegged token balance) for mint tab
+  const { data: currentDepositData } = useContractRead({
+    address: peggedTokenAddress as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: {
+      enabled:
+        !!address && !!peggedTokenAddress && isActive && activeTab === "deposit",
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  // Get the minter address for the market we're depositing into
+  // For ha token deposits, use the market for the deposit asset
+  // For other deposits, use the selected market
+  const minterAddressForPrice = useMemo(() => {
+    if (isDirectPeggedDeposit && marketForDepositAsset?.addresses?.minter) {
+      return marketForDepositAsset.addresses.minter;
+    }
+    return minterAddress;
+  }, [isDirectPeggedDeposit, marketForDepositAsset, minterAddress]);
+
+  const pegTargetForPrice = useMemo(() => {
+    const m =
+      isDirectPeggedDeposit && marketForDepositAsset
+        ? marketForDepositAsset
+        : selectedMarket;
+    return (m as any)?.pegTarget?.toLowerCase?.() || "usd";
+  }, [isDirectPeggedDeposit, marketForDepositAsset, selectedMarket]);
+
+  const pegTargetUsdWei = useMemo(() => {
+    if (pegTargetForPrice === "btc" || pegTargetForPrice === "bitcoin") {
+      return pegTargetPrices.btcPriceWei;
+    }
+    if (pegTargetForPrice === "eth" || pegTargetForPrice === "ethereum") {
+      return pegTargetPrices.ethPriceWei;
+    }
+    if (pegTargetForPrice === "eur" || pegTargetForPrice === "euro") {
+      return pegTargetPrices.eurPriceWei;
+    }
+    if (pegTargetForPrice === "gold") {
+      return pegTargetPrices.goldPriceWei;
+    }
+    if (pegTargetForPrice === "silver") {
+      return pegTargetPrices.silverPriceWei;
+    }
+    return 10n ** 18n; // USD-pegged
+  }, [
+    pegTargetForPrice,
+    pegTargetPrices.btcPriceWei,
+    pegTargetPrices.ethPriceWei,
+    pegTargetPrices.eurPriceWei,
+    pegTargetPrices.goldPriceWei,
+    pegTargetPrices.silverPriceWei,
+  ]);
+
+  const isValidMinterAddressForPrice =
+    minterAddressForPrice &&
+    typeof minterAddressForPrice === "string" &&
+    minterAddressForPrice.startsWith("0x") &&
+    minterAddressForPrice.length === 42;
+
+  // Get pegged token price to calculate USD value
+  const { data: peggedTokenPrice } = useContractRead({
+    address: minterAddressForPrice as `0x${string}`,
+    abi: MINTER_PEGGED_ABI,
+    functionName: "peggedTokenPrice",
+    query: {
+      enabled:
+        !!minterAddressForPrice &&
+        isValidMinterAddressForPrice &&
+        isActive &&
+        (activeTab === "deposit" || activeTab === "withdraw" || activeTab === "sell"),
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  // Fetch data for all stability pools from all markets (for simple mode)
+  const poolContracts = useMemo(() => {
+    if (
+      !simpleMode ||
+      (activeTab !== "deposit" && activeTab !== "withdraw") ||
+      !isActive
+    )
+      return [];
+
+    const contracts: any[] = [];
+    allStabilityPools.forEach((pool) => {
+      const isValidAddress =
+        pool.address &&
+        typeof pool.address === "string" &&
+        pool.address.startsWith("0x") &&
+        pool.address.length === 42;
+
+      if (isValidAddress) {
+        // TVL
+        contracts.push({
+          address: pool.address,
+          abi: STABILITY_POOL_ABI,
+          functionName: "totalAssetSupply",
+        });
+        // Reward tokens
+        contracts.push({
+          address: pool.address,
+          abi: stabilityPoolABI,
+          functionName: "GAUGE_REWARD_TOKEN",
+        });
+        contracts.push({
+          address: pool.address,
+          abi: stabilityPoolABI,
+          functionName: "LIQUIDATION_TOKEN",
+        });
+      }
+    });
+    return contracts;
+  }, [allStabilityPools, simpleMode, activeTab, isActive, address]);
+
+  const { data: allPoolData, isLoading: isPoolDataLoading } = useContractReads({
+    contracts: poolContracts,
+    query: {
+      enabled: poolContracts.length > 0,
+      refetchInterval: 30000,
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  // Map pool data to pools (3 reads per pool: TVL, gaugeRewardToken, liquidationToken). APR = emission fallback below.
+  const poolsWithData = useMemo(() => {
+    if (!allPoolData || allPoolData.length === 0) {
+      if (isActive && simpleMode) {
+        console.log(
+          "[Modal] No pool data available. allPoolData:",
+          allPoolData,
+          "allStabilityPools:",
+          allStabilityPools
+        );
+      }
+      return allStabilityPools.map((pool) => ({
+        ...pool,
+        apr: undefined,
+        tvl: undefined,
+        rewardTokens: [],
+      }));
+    }
+
+    // IMPORTANT: poolContracts only includes reads for *valid* pool addresses.
+    // So we must advance through allPoolData with a cursor, not by index*3.
+    let cursor = 0;
+    return allStabilityPools.map((pool) => {
+      const isValidAddress =
+        pool.address &&
+        typeof pool.address === "string" &&
+        pool.address.startsWith("0x") &&
+        pool.address.length === 42;
+
+      if (!isValidAddress) {
+        return {
+          ...pool,
+          apr: undefined,
+          tvl: undefined,
+          rewardTokens: [],
+        };
+      }
+
+      const tvl = allPoolData[cursor]?.result as bigint | undefined;
+      const gaugeRewardToken = allPoolData[cursor + 1]?.result as
+        | `0x${string}`
+        | undefined;
+      const liquidationToken = allPoolData[cursor + 2]?.result as
+        | `0x${string}`
+        | undefined;
+      cursor += 3;
+
+      return {
+        ...pool,
+        apr: undefined,
+        tvl,
+        gaugeRewardToken,
+        liquidationToken,
+      };
+    });
+  }, [allPoolData, allStabilityPools, isActive, simpleMode]);
+
+  // ---------------------------------------------------------------------------
+  // Pool APR: emission-based (deployed StabilityPool has no getAPRBreakdown view).
+  // ---------------------------------------------------------------------------
+  const rewardTokenUsdPriceMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (fxSAVEPrice && fxSAVEPrice > 0)
+      map.set(REWARD_TOKEN_ADDRESSES.FXSAVE.toLowerCase(), fxSAVEPrice);
+    if (wstETHPrice && wstETHPrice > 0)
+      map.set(REWARD_TOKEN_ADDRESSES.WSTETH.toLowerCase(), wstETHPrice);
+    // Use stETH spot for stETH address (some pools may pay stETH directly)
+    if (stETHPrice && stETHPrice > 0)
+      map.set(REWARD_TOKEN_ADDRESSES.STETH.toLowerCase(), stETHPrice);
+    return map;
+  }, [fxSAVEPrice, wstETHPrice, stETHPrice]);
+
+  const rewardDataMeta = useMemo(() => {
+    // Only compute APR from the *collateral reward token* (wrapped collateral),
+    // so we don't surface hs/leveraged reward tokens in the UI.
+    const meta: Array<{ poolAddress: `0x${string}`; tokenAddress: `0x${string}` }> =
+      [];
+    if (
+      !isActive ||
+      !simpleMode ||
+      (activeTab !== "deposit" && activeTab !== "withdraw")
+    )
+      return meta;
+
+    for (const pool of poolsWithData) {
+      const poolAddr = pool.address as unknown as string;
+      const isValidPool =
+        poolAddr &&
+        typeof poolAddr === "string" &&
+        poolAddr.startsWith("0x") &&
+        poolAddr.length === 42;
+      if (!isValidPool) continue;
+
+      const wrapped = (pool.market as any)?.addresses?.wrappedCollateralToken as
+        | `0x${string}`
+        | undefined;
+      if (!wrapped || !wrapped.startsWith("0x") || wrapped.length !== 42) continue;
+
+      meta.push({
+        poolAddress: pool.address as `0x${string}`,
+        tokenAddress: wrapped.toLowerCase() as `0x${string}`,
+      });
+    }
+    return meta;
+  }, [poolsWithData, isActive, simpleMode, activeTab]);
+
+  const { data: rewardDataReads, isLoading: isRewardDataLoading } =
+    useContractReads({
+    contracts: rewardDataMeta.map((m) => ({
+      address: m.poolAddress,
+      abi: STABILITY_POOL_ABI,
+      functionName: "rewardData",
+      args: [m.tokenAddress],
+    })),
+    query: {
+      enabled:
+        rewardDataMeta.length > 0 &&
+        isActive &&
+        simpleMode &&
+        (activeTab === "deposit" || activeTab === "withdraw" || activeTab === "sell"),
+      retry: 1,
+      allowFailure: true,
+    },
+    });
+
+  const poolAprFallbackByAddress = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!rewardDataReads || rewardDataReads.length === 0) return map;
+
+    const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
+
+    // Group reward rates by pool address (collateral reward token only)
+    const ratesByPool = new Map<string, Array<{ token: string; rate: bigint }>>();
+    for (let i = 0; i < rewardDataMeta.length; i++) {
+      const meta = rewardDataMeta[i];
+      const r = rewardDataReads[i];
+      if (!meta || !r || r.status !== "success" || !r.result) continue;
+      const tuple = r.result as [bigint, bigint, bigint, bigint]; // [lastUpdate, finishAt, rate, queued]
+      const rate = tuple?.[2];
+      if (typeof rate !== "bigint" || rate <= 0n) continue;
+
+      const poolKey = String(meta.poolAddress).toLowerCase();
+      const tokenKey = String(meta.tokenAddress).toLowerCase();
+      const arr = ratesByPool.get(poolKey) ?? [];
+      arr.push({ token: tokenKey, rate });
+      ratesByPool.set(poolKey, arr);
+    }
+
+    for (const pool of poolsWithData) {
+      const poolKey = String(pool.address).toLowerCase();
+      const tvl = pool.tvl as bigint | undefined;
+      if (!tvl || tvl <= 0n) continue;
+
+      // We already have a USD conversion path for TVL in the modal (peggedTokenPrice * pegTargetUsdWei).
+      // This assumes the current market's peggedTokenPrice is representative in simple mode.
+      if (!peggedTokenPrice || (peggedTokenPrice as bigint) <= 0n || pegTargetUsdWei <= 0n)
+        continue;
+
+      const tvlUsdWei =
+        (tvl * (peggedTokenPrice as bigint) * pegTargetUsdWei) / 10n ** 36n;
+      const tvlUsd = parseFloat(formatUnits(tvlUsdWei, 18));
+      if (!Number.isFinite(tvlUsd) || tvlUsd <= 0) continue;
+
+      let totalApr = 0;
+      const rates = ratesByPool.get(poolKey) ?? [];
+      for (const rr of rates) {
+        const tokenPriceUsd = rewardTokenUsdPriceMap.get(rr.token);
+        if (!tokenPriceUsd || tokenPriceUsd <= 0) continue;
+
+        const annualRewardsTokens = (Number(rr.rate) * SECONDS_PER_YEAR) / 1e18;
+        const annualRewardsUsd = annualRewardsTokens * tokenPriceUsd;
+        if (annualRewardsUsd > 0) {
+          totalApr += (annualRewardsUsd / tvlUsd) * 100;
+        }
+      }
+
+      if (totalApr > 0) map.set(poolKey, totalApr);
+    }
+
+    return map;
+  }, [
+    rewardDataMeta,
+    rewardDataReads,
+    poolsWithData,
+    rewardTokenUsdPriceMap,
+    peggedTokenPrice,
+    pegTargetUsdWei,
+  ]);
+
+  const poolsWithAprFallback = useMemo(() => {
+    return poolsWithData.map((pool) => {
+      const key = String(pool.address).toLowerCase();
+      const fallback = poolAprFallbackByAddress.get(key);
+      return {
+        ...pool,
+        apr: pool.apr ?? fallback,
+      };
+    });
+  }, [poolsWithData, poolAprFallbackByAddress]);
+
+  // Fetch reward token symbols for all pools
+  const rewardTokenAddresses = useMemo(() => {
+    const addresses: `0x${string}`[] = [];
+    // Only include the wrapped collateral token for each pool (collateral reward token)
+    poolsWithAprFallback.forEach((pool) => {
+      const wrapped = (pool.market as any)?.addresses?.wrappedCollateralToken as
+        | `0x${string}`
+        | undefined;
+      if (
+        wrapped &&
+        wrapped !== "0x0000000000000000000000000000000000000000" &&
+        wrapped.startsWith("0x") &&
+        wrapped.length === 42
+      ) {
+        addresses.push(wrapped);
+      }
+    });
+    const uniqueAddresses = [...new Set(addresses)]; // Remove duplicates
+
+    // Debug logging
+
+    return uniqueAddresses;
+  }, [poolsWithAprFallback, isActive, simpleMode]);
+
+  const { data: rewardTokenSymbols } = useContractReads({
+    contracts: rewardTokenAddresses.map((addr) => ({
+      address: addr,
+      abi: ERC20_ABI,
+      functionName: "symbol",
+    })),
+    query: {
+      enabled:
+        rewardTokenAddresses.length > 0 &&
+        isActive &&
+        simpleMode &&
+        activeTab === "deposit",
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  // Create a map of reward token addresses to symbols
+  const rewardTokenSymbolMap = useMemo(() => {
+    const map = new Map<string, string>();
+    rewardTokenAddresses.forEach((addr, index) => {
+      const symbol = rewardTokenSymbols?.[index]?.result as string | undefined;
+      const status = rewardTokenSymbols?.[index]?.status;
+
+      if (symbol) map.set(addr.toLowerCase(), symbol);
+    });
+
+    return map;
+  }, [rewardTokenAddresses, rewardTokenSymbols, isActive, simpleMode]);
+
+  // Add symbols to pools (combine config reward tokens with fetched ones)
+  const poolsWithSymbols = useMemo(() => {
+    return poolsWithAprFallback.map((pool) => {
+      // Get reward tokens from market config (default is collateral)
+      const marketConfig = pool.market;
+      // Revert behavior: only show collateral reward tokens (config default),
+      // not every registered/active reward token (e.g. leveraged/hs tokens).
+      const configRewardTokens = marketConfig?.rewardTokens?.default || [];
+      const allRewardTokens = [...new Set(configRewardTokens)];
+
+      return {
+        ...pool,
+        rewardTokens: allRewardTokens,
+      };
+    });
+  }, [poolsWithAprFallback, rewardTokenSymbolMap]);
+
+  // Get all unique reward tokens from all pools with max APR for each
+  const rewardTokenOptions = useMemo(() => {
+    const tokenMap = new Map<
+      string,
+      { maxAPR: number | undefined; pools: typeof poolsWithSymbols }
+    >();
+
+    poolsWithSymbols.forEach((pool) => {
+      pool.rewardTokens.forEach((token) => {
+        if (!tokenMap.has(token)) {
+          tokenMap.set(token, { maxAPR: undefined, pools: [] });
+        }
+        const tokenData = tokenMap.get(token)!;
+        tokenData.pools.push(pool);
+        // Use pool.apr if it's defined and (maxAPR is undefined or pool.apr is greater)
+        if (pool.apr !== undefined && !isNaN(pool.apr)) {
+          if (tokenData.maxAPR === undefined || pool.apr > tokenData.maxAPR) {
+            tokenData.maxAPR = pool.apr;
+          }
+        }
+      });
+    });
+
+    const options = Array.from(tokenMap.entries())
+      .map(([token, data]) => ({
+        token,
+        maxAPR: data.maxAPR ?? 0, // Default to 0 if undefined for sorting
+        maxAPRValue: data.maxAPR, // Keep original undefined for display
+        poolCount: data.pools.length,
+      }))
+      .sort((a, b) => (b.maxAPR ?? 0) - (a.maxAPR ?? 0)); // Sort by max APR descending
+
+    return options.map(({ maxAPRValue, ...rest }) => ({
+      ...rest,
+      maxAPR: maxAPRValue,
+    }));
+  }, [poolsWithSymbols, isActive, simpleMode]);
+
+  // If there's only one reward token option in simple deposit flow, skip the reward step
+  const skipRewardStep =
+    simpleMode &&
+    activeTab === "deposit" &&
+    !mintOnly &&
+    rewardTokenOptions.length === 1;
+
+  // Auto-select the single reward token when skipping the reward step
+  useEffect(() => {
+    if (skipRewardStep && rewardTokenOptions.length === 1) {
+      const soleToken = rewardTokenOptions[0].token;
+      if (selectedRewardToken !== soleToken) {
+        setSelectedRewardToken(soleToken);
+      }
+    }
+  }, [skipRewardStep, rewardTokenOptions, selectedRewardToken]);
+
+  // Filter pools by selected reward token
+  // Always filter by the selected reward token, regardless of deposit type
+  const filteredPools = useMemo(() => {
+    if (!selectedRewardToken) return [];
+    return poolsWithSymbols.filter((pool) =>
+      pool.rewardTokens.includes(selectedRewardToken)
+    );
+  }, [poolsWithSymbols, selectedRewardToken]);
+
+  // APR for selected stability pool (advanced): emission from rewardData(wrapped collateral) + TVL USD
+  const isValidStabilityPoolAddress =
+    stabilityPoolAddress &&
+    typeof stabilityPoolAddress === "string" &&
+    stabilityPoolAddress.startsWith("0x") &&
+    stabilityPoolAddress.length === 42;
+
+  const wrappedForAdvancedApr = selectedMarket?.addresses
+    ?.wrappedCollateralToken as `0x${string}` | undefined;
+  const advAprWrappedOk =
+    !!wrappedForAdvancedApr &&
+    wrappedForAdvancedApr.startsWith("0x") &&
+    wrappedForAdvancedApr.length === 42;
+
+  const advancedStabilityPoolAprReadsEnabled =
+    !!isValidStabilityPoolAddress &&
+    advAprWrappedOk &&
+    isActive &&
+    !simpleMode &&
+    ((activeTab === "deposit" && depositInStabilityPool) ||
+      activeTab === "deposit");
+
+  const { data: advancedStabilityPoolAprReads } = useContractReads({
+    contracts:
+      advancedStabilityPoolAprReadsEnabled &&
+      stabilityPoolAddress &&
+      wrappedForAdvancedApr
+        ? [
+            {
+              address: stabilityPoolAddress as `0x${string}`,
+              abi: STABILITY_POOL_ABI,
+              functionName: "totalAssetSupply",
+            },
+            {
+              address: stabilityPoolAddress as `0x${string}`,
+              abi: STABILITY_POOL_ABI,
+              functionName: "rewardData",
+              args: [wrappedForAdvancedApr],
+            },
+          ]
+        : [],
+    query: {
+      enabled: advancedStabilityPoolAprReadsEnabled,
+      refetchInterval: 30000,
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  // Format APR
+  const formatAPR = (apr: number): string => {
+    if (apr === 0) return "0.00%";
+    if (apr < 0.01) return "<0.01%";
+    if (apr > 1000) return ">1000%";
+    return `${apr.toFixed(2)}%`;
+  };
+
+  const stabilityPoolAPR = useMemo(() => {
+    if (
+      !advancedStabilityPoolAprReadsEnabled ||
+      !advancedStabilityPoolAprReads?.length
+    ) {
+      return 0;
+    }
+    const tvlRead = advancedStabilityPoolAprReads[0];
+    const rdRead = advancedStabilityPoolAprReads[1];
+    if (
+      tvlRead?.status !== "success" ||
+      rdRead?.status !== "success" ||
+      tvlRead.result === undefined ||
+      rdRead.result === undefined
+    ) {
+      return 0;
+    }
+    const tvl = tvlRead.result as bigint;
+    const tuple = rdRead.result as readonly [bigint, bigint, bigint, bigint];
+    const rate = tuple[2];
+    if (tvl <= 0n || rate <= 0n) return 0;
+    if (!peggedTokenPrice || (peggedTokenPrice as bigint) <= 0n || pegTargetUsdWei <= 0n)
+      return 0;
+    const tvlUsdWei =
+      (tvl * (peggedTokenPrice as bigint) * pegTargetUsdWei) / 10n ** 36n;
+    const tvlUsd = parseFloat(formatUnits(tvlUsdWei, 18));
+    if (!Number.isFinite(tvlUsd) || tvlUsd <= 0) return 0;
+    const tokenKey = (wrappedForAdvancedApr as string).toLowerCase();
+    const rewardUsd = new Map<string, number>();
+    if (fxSAVEPrice && fxSAVEPrice > 0)
+      rewardUsd.set(REWARD_TOKEN_ADDRESSES.FXSAVE.toLowerCase(), fxSAVEPrice);
+    if (wstETHPrice && wstETHPrice > 0)
+      rewardUsd.set(REWARD_TOKEN_ADDRESSES.WSTETH.toLowerCase(), wstETHPrice);
+    if (stETHPrice && stETHPrice > 0)
+      rewardUsd.set(REWARD_TOKEN_ADDRESSES.STETH.toLowerCase(), stETHPrice);
+    const tokenPriceUsd = rewardUsd.get(tokenKey);
+    if (!tokenPriceUsd || tokenPriceUsd <= 0) return 0;
+    const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
+    const annualRewardsTokens = (Number(rate) * SECONDS_PER_YEAR) / 1e18;
+    const annualRewardsUsd = annualRewardsTokens * tokenPriceUsd;
+    return (annualRewardsUsd / tvlUsd) * 100;
+  }, [
+    advancedStabilityPoolAprReadsEnabled,
+    advancedStabilityPoolAprReads,
+    wrappedForAdvancedApr,
+    peggedTokenPrice,
+    pegTargetUsdWei,
+    fxSAVEPrice,
+    wstETHPrice,
+    stETHPrice,
+  ]);
+
+  // Check allowance for collateral to minter (for mint tab) — market's chain
+  const { data: allowanceData, refetch: refetchAllowance } = useContractRead({
+    address: collateralAddress as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "allowance",
+    args:
+      address && minterAddress
+        ? [address, minterAddress as `0x${string}`]
+        : undefined,
+    chainId: marketChainId,
+    query: {
+      enabled:
+        !!address &&
+        !!collateralAddress &&
+        !!minterAddress &&
+        isValidMinterAddress &&
+        isActive &&
+        activeTab === "deposit",
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  // Check allowance for pegged token to stability pool (for mint tab if depositing to stability pool, or for deposit tab)
+  // Use Anvil hook when on local chain
+  const useAnvilForPeggedAllowance = false;
+
+  const {
+    data: anvilPeggedTokenAllowanceData,
+    refetch: refetchAnvilPeggedTokenAllowance,
+  } = useContractRead({
+    address: peggedTokenAddress as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "allowance",
+    args:
+      address && stabilityPoolAddress
+        ? [address, stabilityPoolAddress]
+        : undefined,
+    enabled:
+      useAnvilForPeggedAllowance &&
+      !!address &&
+      !!peggedTokenAddress &&
+      !!stabilityPoolAddress &&
+      isActive &&
+      activeTab === "deposit",
+    refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+  });
+
+  const {
+    data: wagmiPeggedTokenAllowanceData,
+    refetch: refetchWagmiPeggedTokenAllowance,
+  } = useContractRead({
+    address: peggedTokenAddress as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "allowance",
+    args:
+      address && stabilityPoolAddress
+        ? [address, stabilityPoolAddress]
+        : undefined,
+    query: {
+      enabled:
+        !useAnvilForPeggedAllowance &&
+        !!address &&
+        !!peggedTokenAddress &&
+        !!stabilityPoolAddress &&
+        isActive &&
+        activeTab === "deposit",
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  // Combine Anvil and wagmi results for pegged token allowance
+  const peggedTokenAllowanceData = useAnvilForPeggedAllowance
+    ? anvilPeggedTokenAllowanceData
+    : wagmiPeggedTokenAllowanceData;
+  const refetchPeggedTokenAllowance = useAnvilForPeggedAllowance
+    ? refetchAnvilPeggedTokenAllowance
+    : refetchWagmiPeggedTokenAllowance;
+
+  // Use Anvil hook flag (shared by redeem + mint fee dry-runs)
+  const shouldUseAnvilHook = false;
+
+  // Convert deposit amount to wrapped collateral units for dry run
+  // Use debounced amount to reduce unnecessary contract calls
+  const depositAmountInWrappedCollateral = useMemo(() => {
+    if (!debouncedAmount || parseFloat(debouncedAmount) === 0 || activeTab !== "deposit") return undefined;
+    
+    // Skip dry run for very small amounts (< 0.0001) to reduce calls
+    if (parseFloat(debouncedAmount) < 0.0001) return undefined;
+    
+    const depositAsset = selectedDepositAsset || collateralSymbol;
+    const inputAmount = parseEther(debouncedAmount);
+    
+    // Determine which market we're depositing into
+    const isFxSAVEMarket = activeWrappedCollateralSymbol === "fxSAVE";
+    const isWstETHMarket = activeWrappedCollateralSymbol === "wstETH";
+    
+    // If depositing wrapped collateral directly (fxSAVE or wstETH), no conversion needed
+    if (depositAsset === activeWrappedCollateralSymbol) {
+      return inputAmount;
+    }
+    
+    // If depositing pegged token (fxUSD or haETH), convert to wrapped collateral
+    if (depositAsset === peggedTokenSymbol) {
+      // fxSAVE = fxUSD / rate OR wstETH = haETH / rate
+      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
+      return (inputAmount * 10n**18n) / wrappedRate;
+    }
+    
+    // If depositing USDC (for USD market), convert USDC → fxUSD → fxSAVE
+    if (depositAsset === "USDC" && isFxSAVEMarket) {
+      // Parse USDC with 6 decimals - use debouncedAmount and validate
+      const amountFloat = parseFloat(debouncedAmount);
+      if (isNaN(amountFloat) || amountFloat <= 0) {
+        return undefined;
+      }
+      const usdcAmount = BigInt(Math.floor(amountFloat * 10**6));
+      // Convert to 18 decimals
+      const usdcIn18Decimals = usdcAmount * 10n**12n;
+      // Convert fxUSD to fxSAVE
+      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
+      return (usdcIn18Decimals * 10n**18n) / wrappedRate;
+    }
+    
+    // If depositing fxUSD (for USD market), convert fxUSD → fxSAVE
+    if (depositAsset === "fxUSD" && isFxSAVEMarket) {
+      // fxUSD is already in 18 decimals, just convert to fxSAVE using wrapped rate
+      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
+      return (inputAmount * 10n**18n) / wrappedRate;
+    }
+    
+    // If depositing ETH into a wstETH market, convert ETH → wstETH (ETH≈stETH 1:1).
+    // Direct wstETH deposits already returned above — do not treat collateralSymbol as ETH.
+    if (depositAsset === "ETH" && isWstETHMarket) {
+      // ETH → stETH (1:1) → wstETH (using rate)
+      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
+      return (inputAmount * 10n**18n) / wrappedRate;
+    }
+    
+    // If depositing stETH (for ETH market), convert stETH → wstETH
+    if (depositAsset === "stETH" && isWstETHMarket) {
+      // stETH → wstETH (using wrapped rate)
+      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
+      return (inputAmount * 10n**18n) / wrappedRate;
+    }
+    
+    // For other assets (swap assets handled separately), return undefined
+    return undefined;
+  }, [debouncedAmount, activeTab, selectedDepositAsset, collateralSymbol, activeWrappedCollateralSymbol, peggedTokenSymbol, marketForDepositAsset, selectedMarket]);
+
+  // For ETH/stETH deposits into a wstETH market, query wstETH for the wrap rate.
+  // Direct wstETH deposits must NOT go through getWstETHByStETH (that shrinks the amount by ~rate).
+  const wstETHAddressForConversion = useMemo(() => {
+    const depositAsset = selectedDepositAsset || collateralSymbol;
+    const isWstETHMarket = activeWrappedCollateralSymbol === "wstETH";
+    const needsStEthToWstEth =
+      isWstETHMarket && (depositAsset === "ETH" || depositAsset === "stETH");
+    if (needsStEthToWstEth) {
+      return marketForDepositAsset?.addresses?.wrappedCollateralToken || selectedMarket?.addresses?.wrappedCollateralToken;
+    }
+    return undefined;
+  }, [selectedDepositAsset, collateralSymbol, activeWrappedCollateralSymbol, marketForDepositAsset, selectedMarket]);
+
+  const ethOrStethAmount = useMemo(() => {
+    const depositAsset = selectedDepositAsset || collateralSymbol;
+    if (
+      (depositAsset === "ETH" || depositAsset === "stETH") &&
+      debouncedAmount &&
+      parseFloat(debouncedAmount) > 0
+    ) {
+      return parseEther(debouncedAmount);
+    }
+    return undefined;
+  }, [selectedDepositAsset, collateralSymbol, debouncedAmount]);
+
+  const { data: wstETHAmountFromContract } = useContractRead({
+    address: wstETHAddressForConversion as `0x${string}`,
+    abi: WSTETH_ABI,
+    functionName: "getWstETHByStETH",
+    args: ethOrStethAmount ? [ethOrStethAmount] : undefined,
+    query: {
+      enabled: !!wstETHAddressForConversion && !!ethOrStethAmount && activeTab === "deposit" && isActive,
+    },
+  });
+
+  // Use wstETH contract rate if available, otherwise fall back to depositAmountInWrappedCollateral
+  const accurateDepositAmountInWrappedCollateral = useMemo(() => {
+    if (wstETHAmountFromContract) {
+      return wstETHAmountFromContract as bigint;
+    }
+    return depositAmountInWrappedCollateral;
+  }, [wstETHAmountFromContract, depositAmountInWrappedCollateral]);
+
+  // Calculate expected output based on active tab - use Anvil hook when on Anvil
+  const { data: anvilExpectedMintOutput } = useContractRead({
+    address: minterAddress as `0x${string}`,
+    abi: MINTER_PEGGED_ABI,
+    functionName: "mintPeggedTokenDryRun",
+    args: accurateDepositAmountInWrappedCollateral ? [accurateDepositAmountInWrappedCollateral] : undefined,
+    enabled:
+      shouldUseAnvilHook &&
+      !!minterAddress &&
+      isValidMinterAddress &&
+      !!accurateDepositAmountInWrappedCollateral &&
+      accurateDepositAmountInWrappedCollateral > 0n &&
+      isActive &&
+      activeTab === "deposit",
+  });
+
+  const { data: regularExpectedMintOutput } = useContractRead({
+    address: minterAddress as `0x${string}`,
+    abi: MINTER_PEGGED_ABI,
+    functionName: "mintPeggedTokenDryRun",
+    args: accurateDepositAmountInWrappedCollateral ? [accurateDepositAmountInWrappedCollateral] : undefined,
+    query: {
+      enabled:
+        !shouldUseAnvilHook &&
+        !!minterAddress &&
+        isValidMinterAddress &&
+        !!accurateDepositAmountInWrappedCollateral &&
+        accurateDepositAmountInWrappedCollateral > 0n &&
+        isActive &&
+        activeTab === "deposit",
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  // Use the appropriate expected mint output based on environment
+  // Extract peggedMinted (index 3) from mintPeggedTokenDryRun
+  const rawExpectedMintOutput = useMemo(() => {
+    const data = shouldUseAnvilHook
+      ? anvilExpectedMintOutput
+      : regularExpectedMintOutput;
+    if (!data) return undefined;
+    if (Array.isArray(data)) return data[3] as bigint;
+    if (typeof data === "object" && "peggedMinted" in data) {
+      return (data as any).peggedMinted as bigint;
+    }
+    return undefined;
+  }, [anvilExpectedMintOutput, regularExpectedMintOutput, shouldUseAnvilHook]);
+
+  // For swap deposits, convert ParaSwap's estimated output to wrapped collateral for dry run
+  // NOTE: We use the swap quote's actual toAmount (not a manual estimation)
+  const swappedAmountForDryRun = useMemo(() => {
+    if (!anyTokenDeposit.needsSwap || !anyTokenDeposit.swapQuote) return undefined;
+    
+    // Use ParaSwap's estimated output directly (already in smallest units: 6 for USDC, 18 for ETH)
+    const swapEstimatedOutput = BigInt(anyTokenDeposit.swapQuote.toAmount);
+    
+    // Determine target market
+    const isFxSAVEMarket = activeWrappedCollateralSymbol === "fxSAVE";
+    const isWstETHMarket = activeWrappedCollateralSymbol === "wstETH";
+    const isSwappingToUSDC = anyTokenDeposit.swapTargetToken !== "ETH";
+    
+    // Convert swap output to wrapped collateral (what minter expects)
+    if (isSwappingToUSDC && isFxSAVEMarket) {
+      // Swap gives us: USDC (6 decimals) → Need: fxSAVE (18 decimals)
+      const usdcIn18Decimals = swapEstimatedOutput * 10n**12n; // Scale to 18 decimals
+      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
+      const fxSaveAmount = (usdcIn18Decimals * 10n**18n) / wrappedRate; // USDC → fxUSD (1:1) → fxSAVE
+      
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Dry Run] Using ParaSwap quote output:", {
+          fromSwapQuote_USDC: swapEstimatedOutput.toString(),
+          convertedTo_fxSAVE: fxSaveAmount.toString(),
+          wrappedRate: wrappedRate.toString(),
+        });
+      }
+      
+      return fxSaveAmount;
+    }
+    
+    if (!isSwappingToUSDC && isWstETHMarket) {
+      // Swap gives us: ETH (18 decimals) → Need: wstETH (18 decimals)
+      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
+      const wstEthAmount = (swapEstimatedOutput * 10n**18n) / wrappedRate; // ETH → stETH (1:1) → wstETH
+      
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Dry Run] Using ParaSwap quote output:", {
+          fromSwapQuote_ETH: swapEstimatedOutput.toString(),
+          convertedTo_wstETH: wstEthAmount.toString(),
+          wrappedRate: wrappedRate.toString(),
+        });
+      }
+      
+      return wstEthAmount;
+    }
+    
+    // Invalid configuration
+    if (process.env.NODE_ENV === "development") {
+      console.error("[Dry Run] Cannot convert swap output - unknown market:", {
+        isSwappingToUSDC,
+        isFxSAVEMarket,
+        isWstETHMarket,
+      });
+    }
+    return undefined;
+  }, [anyTokenDeposit.needsSwap, anyTokenDeposit.swapQuote, anyTokenDeposit.swapTargetToken, marketForDepositAsset, selectedMarket, activeWrappedCollateralSymbol]);
+
+  // Dry run for swapped amounts to check if minter will accept full amount
+  // Only run when swap quote is ready and amount is debounced
+  const { data: swapDryRunOutput } = useContractRead({
+    address: minterAddress as `0x${string}`,
+    abi: MINTER_PEGGED_ABI,
+    functionName: "mintPeggedTokenDryRun",
+    args: swappedAmountForDryRun ? [swappedAmountForDryRun] : undefined,
+    query: {
+      enabled:
+        !!minterAddress &&
+        isValidMinterAddress &&
+        !!swappedAmountForDryRun &&
+        swappedAmountForDryRun > 0n &&
+        anyTokenDeposit.needsSwap &&
+        !anyTokenDeposit.isLoadingSwapQuote && // Don't run while swap quote is loading
+        !!anyTokenDeposit.swapQuote && // Swap quote must be ready
+        parseFloat(debouncedAmount) >= 0.00001 && // Lower threshold for swap assets (0.00001 instead of 0.0001)
+        isActive &&
+        activeTab === "deposit",
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  // Calculate expected redeem output - need to check if withdrawing from stability pool or ha tokens
+  // If from stability pool, we need to withdraw first to get pegged tokens, then redeem
+  // If from ha tokens, we can redeem directly
+  // Get minter address for selected redeem asset
+  const selectedRedeemMarket = useMemo(() => {
+    if (selectedRedeemMarketId) {
+      const fromRedeem = marketsForToken.find(
+        (m) => m.marketId === selectedRedeemMarketId
+      );
+      if (fromRedeem) return fromRedeem;
+    }
+
+    const fromPool = marketsForToken.find(
+      (m) => m.marketId === selectedMarketId
+    );
+    if (fromPool) return fromPool;
+
+    const assetSymbol = selectedRedeemAsset || collateralSymbol;
+    return marketsForToken.find(
+      ({ market: m }) => m?.collateral?.symbol === assetSymbol
+    );
+  }, [
+    selectedRedeemMarketId,
+    selectedMarketId,
+    selectedRedeemAsset,
+    collateralSymbol,
+    marketsForToken,
+  ]);
+
+  const redeemCollateralSymbol =
+    selectedRedeemMarket?.market?.collateral?.symbol || collateralSymbol;
+
+  const redeemMinterAddress = selectedRedeemMarket?.market?.addresses?.minter;
+  const isValidRedeemMinterAddress =
+    redeemMinterAddress &&
+    typeof redeemMinterAddress === "string" &&
+    redeemMinterAddress.startsWith("0x") &&
+    redeemMinterAddress.length === 42;
+
+  // Check allowance for pegged token to the redeem minter (uses the redeem market)
+  const redeemAllowancePeggedTokenAddress =
+    selectedRedeemMarket?.market?.addresses?.peggedToken || peggedTokenAddress;
+  const redeemAllowanceMinterAddress =
+    selectedRedeemMarket?.market?.addresses?.minter || minterAddress;
+
+  const {
+    data: peggedTokenMinterAllowanceData,
+    refetch: refetchPeggedTokenMinterAllowance,
+  } = useContractRead({
+    address: redeemAllowancePeggedTokenAddress as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "allowance",
+    args:
+      address && redeemAllowanceMinterAddress
+        ? [address, redeemAllowanceMinterAddress as `0x${string}`]
+        : undefined,
+    query: {
+      enabled:
+        !!address &&
+        !!redeemAllowancePeggedTokenAddress &&
+        !!redeemAllowanceMinterAddress &&
+        isActive &&
+        activeTab === "withdraw",
+      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  // Calculate total amount for redeem output calculation (from position amounts or single amount)
+  const redeemInputAmount = useMemo(() => {
+    let total = 0n;
+
+    if (
+      (activeTab === "withdraw" || activeTab === "sell") &&
+      (positionAmounts.wallet ||
+        positionAmounts.collateralPool ||
+        positionAmounts.sailPool)
+    ) {
+      if (positionAmounts.wallet && parseFloat(positionAmounts.wallet) > 0) {
+        total += parseEther(positionAmounts.wallet);
+      }
+      if (
+        positionAmounts.collateralPool &&
+        parseFloat(positionAmounts.collateralPool) > 0
+      ) {
+        total += parseEther(positionAmounts.collateralPool);
+      }
+      if (
+        positionAmounts.sailPool &&
+        parseFloat(positionAmounts.sailPool) > 0
+      ) {
+        total += parseEther(positionAmounts.sailPool);
+      }
+    } else if (amount && parseFloat(amount) > 0) {
+      total = parseEther(amount);
+    }
+
+    if (simpleMode && activeTab === "sell") {
+      if (positionAmounts.wallet && parseFloat(positionAmounts.wallet) > 0) {
+        return parseEther(positionAmounts.wallet);
+      }
+      return undefined;
+    }
+
+    if (
+      simpleMode &&
+      activeTab === "withdraw" &&
+      flowPage === 2 &&
+      !withdrawOnly
+    ) {
+      let poolTotal = 0n;
+      if (
+        positionAmounts.collateralPool &&
+        parseFloat(positionAmounts.collateralPool) > 0
+      ) {
+        poolTotal += parseEther(positionAmounts.collateralPool);
+      }
+      if (
+        positionAmounts.sailPool &&
+        parseFloat(positionAmounts.sailPool) > 0
+      ) {
+        poolTotal += parseEther(positionAmounts.sailPool);
+      }
+
+      if (sellRedeemSource === "wallet" || poolTotal === 0n) {
+        if (positionAmounts.wallet && parseFloat(positionAmounts.wallet) > 0) {
+          return parseEther(positionAmounts.wallet);
+        }
+        return undefined;
+      }
+
+      return poolTotal > 0n ? poolTotal : undefined;
+    }
+
+    return total > 0n ? total : undefined;
+  }, [
+    activeTab,
+    positionAmounts,
+    amount,
+    simpleMode,
+    flowPage,
+    withdrawOnly,
+    sellRedeemSource,
+  ]);
+
+  // Dry-run redeem to fetch fee/discount and output before user confirms
+  const redeemDryRunAddress = isValidRedeemMinterAddress
+    ? (redeemMinterAddress as `0x${string}`)
+    : isValidMinterAddress
+    ? (minterAddress as `0x${string}`)
+    : undefined;
+
+  const redeemDryRunEnabled =
+    !!redeemDryRunAddress &&
+    !!redeemInputAmount &&
+    redeemInputAmount > 0n &&
+    isActive &&
+    ((activeTab === "withdraw" && !withdrawOnly) || activeTab === "sell");
+
+  // Prefer the anvil hook on local dev (matches mint-fee flow)
+  const { data: anvilRedeemDryRunData, error: anvilRedeemDryRunError } =
+    useContractRead({
+      address: redeemDryRunAddress,
+      abi: MINTER_PEGGED_ABI,
+      functionName: "redeemPeggedTokenDryRun",
+      args: redeemInputAmount && redeemInputAmount > 0n ? [redeemInputAmount] : undefined,
+      enabled: shouldUseAnvilHook && redeemDryRunEnabled && !!redeemInputAmount && redeemInputAmount > 0n,
+    });
+
+  const { data: regularRedeemDryRunData, error: regularRedeemDryRunError } =
+    useContractRead({
+      address: redeemDryRunAddress,
+      abi: MINTER_PEGGED_ABI,
+      functionName: "redeemPeggedTokenDryRun",
+      args: redeemInputAmount && redeemInputAmount > 0n ? [redeemInputAmount] : undefined,
+      query: {
+        enabled: !shouldUseAnvilHook && redeemDryRunEnabled && !!redeemInputAmount && redeemInputAmount > 0n,
+        retry: 1,
+        allowFailure: true,
+      },
+    });
+
+  const redeemDryRunData = shouldUseAnvilHook
+    ? anvilRedeemDryRunData
+    : regularRedeemDryRunData;
+  const redeemDryRunError = shouldUseAnvilHook
+    ? anvilRedeemDryRunError
+    : regularRedeemDryRunError;
+  const redeemDryRunLoading =
+    redeemDryRunEnabled && !redeemDryRunError && redeemDryRunData === undefined;
+
+  const redeemDryRun = useMemo(() => {
+    if (!redeemDryRunData || !Array.isArray(redeemDryRunData)) return null;
+    const [
+      incentiveRatio,
+      fee,
+      discount,
+      peggedRedeemed,
+      wrappedCollateralReturned,
+      price,
+      rate,
+    ] = redeemDryRunData as unknown as [
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      bigint
+    ];
+
+    const incentiveRatioBN = BigInt(incentiveRatio);
+    const isDisallowed = incentiveRatioBN === 1000000000000000000n; // 1e18
+
+    let feePercentage = 0;
+    let discountPercentage = 0;
+    if (incentiveRatioBN > 0n) {
+      feePercentage = Number(incentiveRatioBN) / 1e16; // convert to percent
+    } else if (incentiveRatioBN < 0n) {
+      discountPercentage = Number(-incentiveRatioBN) / 1e16;
+    }
+
+    return {
+      incentiveRatio: incentiveRatioBN,
+      fee,
+      discount,
+      peggedRedeemed,
+      wrappedCollateralReturned,
+      price,
+      rate,
+      feePercentage,
+      discountPercentage,
+      isDisallowed,
+      netCollateralReturned: wrappedCollateralReturned,
+    };
+  }, [redeemDryRunData]);
+
+  /** When collateral ratio limits redemption, dry-run caps peggedRedeemed below the requested amount. */
+  const redeemPreview = useMemo(() => {
+    if (!redeemDryRun || !redeemInputAmount || redeemInputAmount === 0n) {
+      return null;
+    }
+    const peggedRedeemed = redeemDryRun.peggedRedeemed ?? 0n;
+    const wrappedOut = redeemDryRun.wrappedCollateralReturned ?? 0n;
+    const isCapped = isRedeemAmountCapped(redeemInputAmount, peggedRedeemed);
+    const estimatedTotalWrapped =
+      isCapped && peggedRedeemed > 0n
+        ? (wrappedOut * redeemInputAmount) / peggedRedeemed
+        : wrappedOut;
+    return {
+      isCapped,
+      peggedRedeemed,
+      wrappedOut,
+      estimatedTotalWrapped,
+    };
+  }, [redeemDryRun, redeemInputAmount]);
+
+  const { contracts: redeemMarketPreviewContracts, indexMap: redeemMarketPreviewIndexMap } =
+    useMemo(() => {
+      const contracts: Array<{
+        address: `0x${string}`;
+        abi: typeof MINTER_PEGGED_ABI;
+        functionName: "peggedTokenBalance" | "redeemPeggedTokenDryRun";
+        args?: readonly [bigint];
+      }> = [];
+      const indexMap = new Map<
+        number,
+        { marketId: string; kind: "supply" | "dryRun" }
+      >();
+
+      if (
+        !isActive ||
+        activeTab !== "withdraw" ||
+        withdrawOnly ||
+        !redeemInputAmount ||
+        redeemInputAmount === 0n ||
+        marketsForToken.length <= 1
+      ) {
+        return { contracts, indexMap };
+      }
+
+      for (const { marketId, market: m } of marketsForToken) {
+        const minter = m?.addresses?.minter;
+        if (
+          !minter ||
+          typeof minter !== "string" ||
+          !minter.startsWith("0x") ||
+          minter.length !== 42
+        ) {
+          continue;
+        }
+        const addr = minter as `0x${string}`;
+        indexMap.set(contracts.length, { marketId, kind: "supply" });
+        contracts.push({
+          address: addr,
+          abi: MINTER_PEGGED_ABI,
+          functionName: "peggedTokenBalance",
+        });
+        indexMap.set(contracts.length, { marketId, kind: "dryRun" });
+        contracts.push({
+          address: addr,
+          abi: MINTER_PEGGED_ABI,
+          functionName: "redeemPeggedTokenDryRun",
+          args: [redeemInputAmount],
+        });
+      }
+
+      return { contracts, indexMap };
+    }, [
+      isActive,
+      activeTab,
+      withdrawOnly,
+      redeemInputAmount,
+      marketsForToken,
+    ]);
+
+  const { data: redeemMarketPreviewReads } = useContractReads({
+    contracts: redeemMarketPreviewContracts,
+    query: {
+      enabled: redeemMarketPreviewContracts.length > 0,
+      refetchInterval: isActive ? 15000 : false,
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  const redeemMarketPreviews = useMemo(() => {
+    const previews = new Map<
+      string,
+      {
+        peggedSupply: bigint;
+        wrappedOut: bigint;
+        peggedRedeemed: bigint;
+        isCapped: boolean;
+        collateralSymbol: string;
+        marketName: string;
+      }
+    >();
+
+    if (!redeemMarketPreviewReads || !redeemInputAmount || redeemInputAmount === 0n) {
+      return previews;
+    }
+
+    for (const { marketId, market: m } of marketsForToken) {
+      previews.set(marketId, {
+        peggedSupply: 0n,
+        wrappedOut: 0n,
+        peggedRedeemed: 0n,
+        isCapped: false,
+        collateralSymbol: m?.collateral?.symbol || "",
+        marketName: m?.name || marketId,
+      });
+    }
+
+    redeemMarketPreviewReads.forEach((res, idx) => {
+      const meta = redeemMarketPreviewIndexMap.get(idx);
+      if (!meta) return;
+      const prev = previews.get(meta.marketId);
+      if (!prev) return;
+
+      if (meta.kind === "supply" && res?.status === "success" && res.result != null) {
+        prev.peggedSupply = res.result as bigint;
+        return;
+      }
+
+      if (meta.kind === "dryRun" && res?.status === "success") {
+        const parsed = parseRedeemDryRunTuple(res.result);
+        if (!parsed) return;
+        prev.peggedRedeemed = parsed.peggedRedeemed;
+        prev.wrappedOut = parsed.wrappedCollateralReturned;
+        prev.isCapped = isRedeemAmountCapped(
+          redeemInputAmount,
+          parsed.peggedRedeemed
+        );
+      }
+    });
+
+    return previews;
+  }, [
+    redeemMarketPreviewReads,
+    redeemMarketPreviewIndexMap,
+    marketsForToken,
+    redeemInputAmount,
+  ]);
+
+  const recommendedRedeemMarketId = useMemo(() => {
+    if (marketsForToken.length <= 1) return null;
+
+    let bestId: string | null = null;
+    let bestScore = -1n;
+
+    for (const { marketId } of marketsForToken) {
+      const preview = redeemMarketPreviews.get(marketId);
+      // Never recommend a capped path — partial redeems need extra txs.
+      if (!preview || preview.wrappedOut === 0n || preview.isCapped) continue;
+
+      if (preview.wrappedOut > bestScore) {
+        bestScore = preview.wrappedOut;
+        bestId = marketId;
+      }
+    }
+
+    return bestId;
+  }, [marketsForToken, redeemMarketPreviews]);
+
+  const isCrossMarketRedeem =
+    !!selectedRedeemMarketId &&
+    !!selectedMarketId &&
+    selectedRedeemMarketId !== selectedMarketId;
+
+  // Auto mode: follow the recommended (uncapped) redeem market.
+  useEffect(() => {
+    if (redeemMarketSelectionMode !== "auto" || !recommendedRedeemMarketId) {
+      return;
+    }
+    const recommended = marketsForToken.find(
+      (m) => m.marketId === recommendedRedeemMarketId
+    );
+    if (!recommended) return;
+    setSelectedRedeemMarketId(recommendedRedeemMarketId);
+    const sym = recommended.market?.collateral?.symbol;
+    if (sym) setSelectedRedeemAsset(sym);
+  }, [
+    redeemMarketSelectionMode,
+    recommendedRedeemMarketId,
+    marketsForToken,
+  ]);
+
+  const showWithdrawRedemptionCapNotice =
+    !withdrawOnly &&
+    !!redeemInputAmount &&
+    redeemInputAmount > 0n &&
+    !!redeemPreview?.isCapped;
+
+  const showWithdrawCrossMarketNotice =
+    !withdrawOnly &&
+    marketsForToken.length > 1 &&
+    isCrossMarketRedeem;
+
+  const withdrawNotificationCount = useMemo(() => {
+    let count = 1;
+    if (showWithdrawRedemptionCapNotice) count += 1;
+    if (showWithdrawCrossMarketNotice) count += 1;
+    return count;
+  }, [showWithdrawRedemptionCapNotice, showWithdrawCrossMarketNotice]);
+
+  const depositNotificationCount = useMemo(() => {
+    if (activeTab !== "deposit") return 0;
+    let count = 1;
+    if (mintOnly && !isDirectPeggedDeposit) count += 1;
+    if (!isCollateralOnlyChain && !anyTokenDeposit.needsSwap) count += 1;
+    if (
+      selectedDepositAsset &&
+      !anyTokenDeposit.needsSwap &&
+      selectedDepositAsset !== activeCollateralSymbol &&
+      selectedDepositAsset !== activeWrappedCollateralSymbol &&
+      !isDirectPeggedDeposit
+    ) {
+      count += 1;
+    }
+    return count;
+  }, [
+    activeTab,
+    mintOnly,
+    isDirectPeggedDeposit,
+    isCollateralOnlyChain,
+    anyTokenDeposit.needsSwap,
+    selectedDepositAsset,
+    activeCollateralSymbol,
+    activeWrappedCollateralSymbol,
+  ]);
+
+  const anchorModalNotificationCount =
+    activeTab === "withdraw" ? withdrawNotificationCount : depositNotificationCount;
+
+  const anchorModalNotificationSeverities = useMemo((): Array<
+    "navy" | "green" | "amber" | "coral"
+  > => {
+    if (activeTab === "withdraw") {
+      const severities: Array<"navy" | "green" | "amber" | "coral"> = ["navy"];
+      if (showWithdrawRedemptionCapNotice) severities.push("amber");
+      if (showWithdrawCrossMarketNotice) severities.push("amber");
+      return severities;
+    }
+    const severities: Array<"navy" | "green" | "amber" | "coral"> = ["navy"];
+    if (mintOnly && !isDirectPeggedDeposit) severities.push("navy");
+    if (!isCollateralOnlyChain && !anyTokenDeposit.needsSwap) {
+      severities.push("green");
+    }
+    if (
+      selectedDepositAsset &&
+      !anyTokenDeposit.needsSwap &&
+      selectedDepositAsset !== activeCollateralSymbol &&
+      selectedDepositAsset !== activeWrappedCollateralSymbol &&
+      !isDirectPeggedDeposit
+    ) {
+      severities.push("coral");
+    }
+    return severities;
+  }, [
+    activeTab,
+    showWithdrawRedemptionCapNotice,
+    showWithdrawCrossMarketNotice,
+    isCollateralOnlyChain,
+    anyTokenDeposit.needsSwap,
+    selectedDepositAsset,
+    activeCollateralSymbol,
+    activeWrappedCollateralSymbol,
+    isDirectPeggedDeposit,
+  ]);
+
+  const anchorModalNotificationsBody = useMemo(() => {
+    if (activeTab === "withdraw") {
+      return (
+        <>
+          <InfoCallout
+            tone="info"
+            title="Info:"
+            icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
+          >
+            Select positions to withdraw. If you include wallet tokens and/or do
+            immediate pool withdrawals, we will automatically redeem the resulting
+            anchor tokens to collateral.
+          </InfoCallout>
+          {showWithdrawRedemptionCapNotice && redeemPreview && (
+            <InfoCallout
+              tone="warning"
+              title="Warning:"
+              icon={
+                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
+              }
+            >
+              Redemption is limited by the market collateral ratio. One transaction
+              redeems about{" "}
+              {Number(formatEther(redeemPreview.peggedRedeemed)).toFixed(6)}{" "}
+              {peggedTokenSymbol} of your{" "}
+              {Number(formatEther(redeemInputAmount || 0n)).toFixed(6)}{" "}
+              {peggedTokenSymbol}. You may need multiple redeem transactions for the
+              full amount.
+            </InfoCallout>
+          )}
+          {showWithdrawCrossMarketNotice && (
+            <InfoCallout
+              tone="warning"
+              title="Warning:"
+              icon={
+                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
+              }
+            >
+              Cross-market: pool is {selectedMarket?.name || selectedMarketId},
+              redeem via{" "}
+              {selectedRedeemMarket?.market?.name || selectedRedeemMarketId}. You
+              receive {redeemCollateralSymbol}, not{" "}
+              {selectedMarket?.collateral?.symbol || "pool collateral"}.
+            </InfoCallout>
+          )}
+        </>
+      );
+    }
+
+    return (
+      <>
+        {mintOnly && !isDirectPeggedDeposit && (
+          <InfoCallout
+            tone="info"
+            title="Info:"
+            icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
+          >
+            You&apos;ll receive anchor tokens directly to your wallet. No stability
+            pool deposit required.
+          </InfoCallout>
+        )}
+        {!isCollateralOnlyChain && !anyTokenDeposit.needsSwap && (
+          <InfoCallout
+            tone="success"
+            title="Tip:"
+            icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}
+          >
+            You can deposit any ERC20 token! Non-collateral tokens will be
+            automatically swapped via Velora.
+          </InfoCallout>
+        )}
+        <InfoCallout
+          title="Info:"
+          icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
+        >
+          For large deposits, Harbor recommends using wstETH or fxSAVE instead of
+          the built-in swap and zaps.
+        </InfoCallout>
+        {selectedDepositAsset &&
+          !anyTokenDeposit.needsSwap &&
+          selectedDepositAsset !== activeCollateralSymbol &&
+          selectedDepositAsset !== activeWrappedCollateralSymbol &&
+          !isDirectPeggedDeposit && (
+            <InfoCallout
+              tone="pearl"
+              icon={<Banknote className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#D57A3D]" />}
+            >
+              <span className="font-semibold">Deposit:</span> Your tokens will be
+              converted to {activeWrappedCollateralSymbol} on deposit. Withdrawals
+              will be in {activeWrappedCollateralSymbol} only.
+            </InfoCallout>
+          )}
+      </>
+    );
+  }, [
+    activeTab,
+    showWithdrawRedemptionCapNotice,
+    redeemPreview,
+    peggedTokenSymbol,
+    redeemInputAmount,
+    showWithdrawCrossMarketNotice,
+    selectedMarket,
+    selectedMarketId,
+    selectedRedeemMarket,
+    selectedRedeemMarketId,
+    redeemCollateralSymbol,
+    isCollateralOnlyChain,
+    anyTokenDeposit.needsSwap,
+    selectedDepositAsset,
+    activeCollateralSymbol,
+    activeWrappedCollateralSymbol,
+    isDirectPeggedDeposit,
+  ]);
+
+  useRegisterAppNotifications(
+    "anchor-embedded-deposit",
+    {
+      count: anchorModalNotificationCount,
+      badgeSeverities: anchorModalNotificationSeverities,
+      body: anchorModalNotificationsBody,
+    },
+    embedded && isActive
+  );
+
+  const depositFlowParts = useMemo(
+    () => anchorDepositFlowParts({ mintOnly, skipRewardStep }),
+    [mintOnly, skipRewardStep]
+  );
+
+  const simpleDepositFlowParts = useMemo(
+    () => anchorSimpleDepositFlowParts(mintOnly),
+    [mintOnly],
+  );
+
+  const simpleWithdrawFlowParts = useMemo(
+    () => anchorSimpleWithdrawFlowParts(withdrawOnly),
+    [withdrawOnly],
+  );
+
+  const simpleSellFlowParts = useMemo(() => anchorSimpleSellFlowParts(), []);
+
+  const poolSellAmountWei = useMemo(() => {
+    let total = 0n;
+    if (
+      positionAmounts.collateralPool &&
+      parseFloat(positionAmounts.collateralPool) > 0
+    ) {
+      total += parseEther(positionAmounts.collateralPool);
+    }
+    if (positionAmounts.sailPool && parseFloat(positionAmounts.sailPool) > 0) {
+      total += parseEther(positionAmounts.sailPool);
+    }
+    return total;
+  }, [positionAmounts.collateralPool, positionAmounts.sailPool]);
+
+  const hasPoolSellAmount = poolSellAmountWei > 0n;
+
+  const withdrawOverviewSteps = useMemo(() => {
+    if (activeTab !== "withdraw" || withdrawOnly) return [];
+
+    const steps: Array<{ label: string; detail: string }> = [];
+
+    let poolPegged = 0n;
+    if (
+      positionAmounts.collateralPool &&
+      parseFloat(positionAmounts.collateralPool) > 0
+    ) {
+      poolPegged += parseEther(positionAmounts.collateralPool);
+    }
+    if (positionAmounts.sailPool && parseFloat(positionAmounts.sailPool) > 0) {
+      poolPegged += parseEther(positionAmounts.sailPool);
+    }
+
+    if (poolPegged > 0n) {
+      let netPool = poolPegged;
+      if (showEarlyWithdrawalFees && earlyWithdrawalFees.length > 0) {
+        const feeTotal = earlyWithdrawalFees.reduce(
+          (sum, f) => sum + f.amount,
+          0n
+        );
+        netPool = poolPegged > feeTotal ? poolPegged - feeTotal : poolPegged;
+      }
+      steps.push({
+        label: "Pool withdraw",
+        detail: `~${formatTokenAmount18(netPool, 4)} ${peggedTokenSymbol}`,
+      });
+    }
+
+    if (redeemInputAmount && redeemInputAmount > 0n) {
+      const redeemMarketName =
+        selectedRedeemMarket?.market?.name ||
+        selectedRedeemMarketId ||
+        selectedMarket?.name ||
+        marketId;
+      steps.push({
+        label: `Sell (${redeemMarketName})`,
+        detail: redeemCollateralSymbol || "collateral",
+      });
+    }
+
+    return steps.map((step, index) => ({
+      label: `${index + 1}. ${step.label}`,
+      detail: step.detail,
+    }));
+  }, [
+    activeTab,
+    withdrawOnly,
+    positionAmounts,
+    showEarlyWithdrawalFees,
+    earlyWithdrawalFees,
+    peggedTokenSymbol,
+    redeemInputAmount,
+    selectedRedeemMarket,
+    selectedRedeemMarketId,
+    selectedMarket?.name,
+    marketId,
+    redeemCollateralSymbol,
+  ]);
+
+  // On Anvil, the redeem view call can revert; skip it and rely on dry-run instead
+  const enableRedeemView =
+    (!!isValidRedeemMinterAddress || !!isValidMinterAddress) &&
+    !!redeemInputAmount &&
+    redeemInputAmount > 0n &&
+    isActive &&
+    (activeTab === "withdraw" || activeTab === "sell") &&
+    !false;
+
+  const { data: expectedRedeemOutput } = useContractRead({
+    address: isValidRedeemMinterAddress
+      ? (redeemMinterAddress as `0x${string}`)
+      : isValidMinterAddress
+      ? (minterAddress as `0x${string}`)
+      : undefined,
+    abi: MINTER_PEGGED_ABI,
+    functionName: "calculateRedeemPeggedTokenOutput",
+    args: redeemInputAmount ? [redeemInputAmount] : undefined,
+    query: {
+      enabled: enableRedeemView,
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  // Prefer dry-run fee when available; otherwise estimate from output ratio.
+  const redeemFeePercentage = useMemo(() => {
+    if (redeemDryRun?.feePercentage !== undefined) {
+      return redeemDryRun.feePercentage;
+    }
+
+    const output =
+      redeemDryRun?.wrappedCollateralReturned || expectedRedeemOutput;
+
+    if (!output || !redeemInputAmount || redeemInputAmount === 0n)
+      return undefined;
+
+    const inputValue = Number(redeemInputAmount);
+    const outputValue = Number(output);
+
+    if (outputValue >= inputValue) return 0;
+
+    return ((inputValue - outputValue) / inputValue) * 100;
+  }, [expectedRedeemOutput, redeemDryRun, redeemInputAmount]);
+
+  // Get fee information from dry run (for both simple and advanced modes)
+  // In simple mode, use the market corresponding to the selected deposit asset
+  // Only run dry run for collateral deposits (not direct ha token deposits)
+  const feeMinterAddress =
+    simpleMode && activeMarketForFees ? activeMinterAddress : minterAddress;
+  const isValidFeeMinterAddress =
+    feeMinterAddress &&
+    typeof feeMinterAddress === "string" &&
+    feeMinterAddress.startsWith("0x") &&
+    feeMinterAddress.length === 42;
+
+  // Parse amount to BigInt, converting to wrapped collateral (fxSAVE) if needed
+  // Use debounced amount to reduce unnecessary contract calls
+  const parsedAmount = useMemo(() => {
+    if (!debouncedAmount || parseFloat(debouncedAmount) <= 0) return undefined;
+    
+    // Skip dry run for very small amounts (< 0.0001) to reduce calls
+    if (parseFloat(debouncedAmount) < 0.0001) return undefined;
+    
+    try {
+      const inputAmount = parseEther(debouncedAmount);
+      
+      // Use marketForDepositAsset in simple mode, selectedMarket in advanced mode
+      const relevantMarket = marketForDepositAsset || selectedMarket;
+      
+      // If user selected wrapped collateral (fxSAVE, wstETH), use amount as-is
+      const wrappedCollateralSymbol = relevantMarket?.collateral?.symbol || "";
+      const underlyingCollateralSymbol = relevantMarket?.collateral?.underlyingSymbol || "";
+      
+      if (selectedDepositAsset?.toLowerCase() === wrappedCollateralSymbol.toLowerCase()) {
+        // User selected fxSAVE or wstETH directly
+        return inputAmount;
+      } else if (selectedDepositAsset?.toLowerCase() === underlyingCollateralSymbol.toLowerCase()) {
+        // User selected fxUSD or stETH - need to convert to wrapped collateral for dry run
+        // fxSAVE = fxUSD / rate (where rate is fxSAVE:fxUSD ratio, e.g., 1.07 means 1 fxSAVE = 1.07 fxUSD)
+        // wstETH = stETH / rate
+        const wrappedRate = relevantMarket?.wrappedRate;
+        if (wrappedRate && wrappedRate > 0n) {
+          // Convert: amountInWrapped = amountInUnderlying * 1e18 / rate
+          const amountInWrapped = (inputAmount * BigInt(1e18)) / wrappedRate;
+          return amountInWrapped;
+        }
+        // Fallback: 1:1 if no rate available
+        return inputAmount;
+      } else {
+        // For other assets (USDC, ETH, etc.), use amount as-is
+        // The actual conversion will happen in the contract
+        return inputAmount;
+      }
+    } catch (error) {
+      return undefined;
+    }
+  }, [debouncedAmount, selectedDepositAsset, marketForDepositAsset, selectedMarket]);
+
+  const dryRunEnabled =
+    !!isValidFeeMinterAddress &&
+    !!parsedAmount &&
+    isActive &&
+    activeTab === "deposit" &&
+    !isDirectPeggedDeposit; // Only run for collateral deposits
+
+  if (process.env.NODE_ENV === "development" && activeTab === "deposit") {
+    console.log("[Dry Run Enabled Check]", {
+      dryRunEnabled,
+      isValidFeeMinterAddress,
+      parsedAmount: parsedAmount?.toString(),
+      isActive,
+      activeTab,
+      isDirectPeggedDeposit,
+      feeMinterAddress,
+    });
+  }
+
+  // Dry run query using Anvil hook for local development
+  // For ETH/stETH deposits, use accurate wstETH amount for fee calculation dry run
+  const amountForFeeDryRun = useMemo(() => {
+    // If we have accurate wstETH amount from contract, use it
+    if (wstETHAmountFromContract) {
+      return wstETHAmountFromContract as bigint;
+    }
+    // Otherwise use parsedAmount (for direct wstETH deposits or other assets)
+    return parsedAmount;
+  }, [wstETHAmountFromContract, parsedAmount]);
+
+  const { data: anvilDryRunData, error: anvilDryRunError } = useContractRead({
+    address: feeMinterAddress as `0x${string}`,
+    abi: MINTER_PEGGED_ABI,
+    functionName: "mintPeggedTokenDryRun",
+    args: amountForFeeDryRun ? [amountForFeeDryRun] : undefined,
+    enabled: shouldUseAnvilHook && dryRunEnabled && !!amountForFeeDryRun,
+  });
+
+  // Dry run query using regular hook for production
+  const { data: regularDryRunData, error: regularDryRunError } =
+    useContractRead({
+      address: feeMinterAddress as `0x${string}`,
+      abi: MINTER_PEGGED_ABI,
+      functionName: "mintPeggedTokenDryRun",
+      args: amountForFeeDryRun ? [amountForFeeDryRun] : undefined,
+      query: {
+        enabled: !shouldUseAnvilHook && dryRunEnabled && !!amountForFeeDryRun,
+        retry: 1,
+      },
+    });
+
+  // Use the appropriate dry run data based on environment
+  const dryRunData = shouldUseAnvilHook ? anvilDryRunData : regularDryRunData;
+  const dryRunError = shouldUseAnvilHook
+    ? anvilDryRunError
+    : regularDryRunError;
+
+  if (process.env.NODE_ENV === "development" && activeTab === "deposit") {
+    console.log("[Dry Run Data]", {
+      dryRunData: dryRunData ? (Array.isArray(dryRunData) ? dryRunData.map(v => typeof v === "bigint" ? v.toString() : v) : dryRunData) : null,
+      dryRunError: dryRunError?.message || null,
+      parsedAmount: parsedAmount?.toString(),
+    });
+  }
+
+  // Use dry run data's peggedMinted as fallback when calculateMintPeggedTokenOutput fails
+  // dryRunData is an array: [incentiveRatio, fee, discount, peggedMinted, price, rate]
+  const expectedMintOutput = useMemo(() => {
+    // For swap deposits, use swapDryRunOutput
+    if (anyTokenDeposit.needsSwap && swapDryRunOutput && Array.isArray(swapDryRunOutput) && swapDryRunOutput.length >= 4) {
+      return swapDryRunOutput[3] as bigint;
+    }
+    
+    // For swap deposits without dry run, estimate from swap quote
+    // This provides a rough estimate when dry run isn't available (e.g., very small amounts)
+    if (anyTokenDeposit.needsSwap && anyTokenDeposit.swapQuote && swappedAmountForDryRun && amount && parseFloat(amount) > 0) {
+      // Use swappedAmountForDryRun as an estimate - it's the wrapped collateral amount
+      // The minter typically mints close to 1:1 with wrapped collateral (minus fees)
+      // This is a rough estimate, but better than showing 0
+      const estimatedOutput = swappedAmountForDryRun * 95n / 100n; // Estimate 5% fee
+      if (estimatedOutput > 0n) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[expectedMintOutput] Using estimated output from swap quote:", estimatedOutput.toString());
+        }
+        return estimatedOutput;
+      }
+    }
+    
+    // For regular deposits, use rawExpectedMintOutput
+    if (rawExpectedMintOutput) return rawExpectedMintOutput;
+    // Fallback to dry run data's peggedMinted (index 3)
+    if (dryRunData && Array.isArray(dryRunData) && dryRunData.length >= 4) {
+      return dryRunData[3] as bigint;
+    }
+    return undefined;
+  }, [anyTokenDeposit.needsSwap, swapDryRunOutput, rawExpectedMintOutput, dryRunData, anyTokenDeposit.swapQuote, swappedAmountForDryRun, amount]);
+
+  // Get minter address for the selected stability pool's market (for collateral ratio display)
+  const stabilityPoolMarket = useMemo(() => {
+    if (!selectedStabilityPool || !simpleMode) return null;
+    return marketsForToken.find(
+      (m) => m.marketId === selectedStabilityPool.marketId
+    )?.market;
+  }, [selectedStabilityPool, marketsForToken, simpleMode]);
+
+  const stabilityPoolMinterAddress = stabilityPoolMarket?.addresses?.minter;
+  const isValidStabilityPoolMinter =
+    stabilityPoolMinterAddress &&
+    typeof stabilityPoolMinterAddress === "string" &&
+    stabilityPoolMinterAddress.startsWith("0x") &&
+    stabilityPoolMinterAddress.length === 42;
+
+  // Fetch collateral ratio for the stability pool's market (only when pool is selected)
+  const { data: collateralRatioData } = useContractRead({
+    address: stabilityPoolMinterAddress as `0x${string}`,
+    abi: MINTER_PEGGED_ABI,
+    functionName: "collateralRatio",
+    query: {
+      enabled:
+        !!isValidStabilityPoolMinter &&
+        isActive &&
+        simpleMode &&
+        activeTab === "deposit" &&
+        !!selectedStabilityPool,
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  // Fetch config to get minimum collateral ratio for the stability pool's market
+  const { data: minterConfigData } = useContractRead({
+    address: stabilityPoolMinterAddress as `0x${string}`,
+    abi: MINTER_PEGGED_ABI,
+    functionName: "config",
+    query: {
+      enabled:
+        !!isValidStabilityPoolMinter &&
+        isActive &&
+        simpleMode &&
+        activeTab === "deposit" &&
+        !!selectedStabilityPool,
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  // Extract minimum collateral ratio from config (typically in the first band upper bound)
+  const minCollateralRatio = useMemo(() => {
+    if (!minterConfigData) return undefined;
+    const config = minterConfigData as any;
+    // Minimum collateral ratio is typically the first band upper bound
+    const bands =
+      config?.mintPeggedIncentiveConfig?.collateralRatioBandUpperBounds;
+    if (bands && Array.isArray(bands) && bands.length > 0) {
+      return bands[0] as bigint;
+    }
+    return undefined;
+  }, [minterConfigData]);
+
+  // Format collateral ratio as percentage
+  const formatCollateralRatio = (ratio: bigint | undefined): string => {
+    if (!ratio) return "-";
+    // Collateral ratio is typically stored as a value where 1e18 = 100%
+    return `${(Number(ratio) / 1e16).toFixed(2)}%`;
+  };
+
+  // Calculate fee percentage from dry run result and detect mint cap
+  const feePercentage = useMemo(() => {
+    // Don't calculate fee for direct pegged token deposits (no minting)
+    if (isDirectPeggedDeposit) return undefined;
+
+    // For swap deposits, use swapDryRunOutput
+    if (anyTokenDeposit.needsSwap) {
+      if (!swapDryRunOutput || !swappedAmountForDryRun || swappedAmountForDryRun === 0n) return undefined;
+      
+      const dryRunResult = swapDryRunOutput as [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
+      if (!dryRunResult || dryRunResult.length < 2) return undefined;
+
+      // Use incentiveRatio (index 0) from dry run to get the fee percentage
+      const incentiveRatio = dryRunResult[0];
+      const incentiveRatioBN = BigInt(incentiveRatio);
+      
+      // Check if minting is disallowed (incentiveRatio === 1e18)
+      const isDisallowed = incentiveRatioBN === 1000000000000000000n; // 1e18
+      if (isDisallowed) {
+        return undefined; // Don't show fee if minting is disallowed
+      }
+      
+      // Convert incentiveRatio to percentage: divide by 1e16 to get percentage
+      let feePercent = 0;
+      if (incentiveRatioBN > 0n) {
+        feePercent = Number(incentiveRatioBN) / 1e16; // convert to percent
+      } else if (incentiveRatioBN < 0n) {
+        // Negative means discount, but we still show it as 0% fee
+        feePercent = 0;
+      }
+      
+      return feePercent;
+    }
+
+    // For regular deposits, use dryRunData
+    // If there's an error, return undefined (will show fallback fee)
+    if (dryRunError) {
+      return undefined;
+    }
+
+    if (!dryRunData || !parsedAmount || parsedAmount === 0n) return undefined;
+
+    // Handle both array and object formats
+    let dryRunResult: [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
+    if (Array.isArray(dryRunData)) {
+      dryRunResult = dryRunData as [bigint, bigint, bigint, bigint, bigint, bigint];
+    } else if (typeof dryRunData === "object" && dryRunData !== null) {
+      // Handle object format if returned
+      const obj = dryRunData as any;
+      if (obj.incentiveRatio !== undefined) {
+        dryRunResult = [
+          BigInt(obj.incentiveRatio || 0),
+          BigInt(obj.fee || 0),
+          BigInt(obj.discount || 0),
+          BigInt(obj.peggedMinted || 0),
+          BigInt(obj.price || 0),
+          BigInt(obj.rate || 0),
+        ];
+      }
+    }
+    
+    if (!dryRunResult || dryRunResult.length < 1) {
+    if (process.env.NODE_ENV === "development") {
+        console.warn("[Fee Calculation] Invalid dry run result structure:", dryRunData);
+    }
+      return undefined;
+    }
+
+    // Use incentiveRatio (index 0) from dry run to get the fee percentage
+    // This is the correct way as it returns the exact fee percentage for the current CR band
+    // Format: incentiveRatio is in 1e18 units, where 0.25% = 0.0025 * 1e18 = 2500000000000000
+    const incentiveRatio = dryRunResult[0];
+    if (incentiveRatio === undefined || incentiveRatio === null) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[Fee Calculation] incentiveRatio is missing from dry run result");
+      }
+      return undefined;
+    }
+    
+    const incentiveRatioBN = BigInt(incentiveRatio);
+    
+    // Check if minting is disallowed (incentiveRatio === 1e18)
+    const isDisallowed = incentiveRatioBN === 1000000000000000000n; // 1e18
+    if (isDisallowed) {
+      return undefined; // Don't show fee if minting is disallowed
+    }
+
+    // Convert incentiveRatio to percentage: divide by 1e16 to get percentage
+    // Positive values = fee, negative values = discount
+    let feePercent = 0;
+    if (incentiveRatioBN > 0n) {
+      feePercent = Number(incentiveRatioBN) / 1e16; // convert to percent
+    } else if (incentiveRatioBN < 0n) {
+      // Negative means discount, but we still show it as 0% fee
+      feePercent = 0;
+    }
+    
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Fee Calculation Debug] Using incentiveRatio from dry run:", {
+        dryRunData: Array.isArray(dryRunData) ? dryRunData.map(v => typeof v === "bigint" ? v.toString() : String(v)) : dryRunData,
+        dryRunResult: dryRunResult.map(v => v.toString()),
+        incentiveRatio: incentiveRatio.toString(),
+        incentiveRatioBN: incentiveRatioBN.toString(),
+        feePercent,
+        parsedAmount: parsedAmount.toString(),
+        selectedDepositAsset,
+        activeCollateralSymbol,
+        isWstETH: activeCollateralSymbol?.toLowerCase() === "wsteth",
+        isFxSAVE: activeCollateralSymbol?.toLowerCase() === "fxsave",
+      });
+    }
+    
+    return feePercent;
+  }, [anyTokenDeposit.needsSwap, swapDryRunOutput, swappedAmountForDryRun, dryRunData, dryRunError, parsedAmount, isDirectPeggedDeposit, activeMarketForFees, market, selectedDepositAsset, activeCollateralSymbol, btcPrice, ethPrice]);
+
+  // Auto-adjust amount when minter refuses full deposit
+  const [depositLimitWarning, setDepositLimitWarning] = useState<string | null>(null);
+  const [tempMaxWarning, setTempMaxWarning] = useState<string | null>(null);
+  const tempWarningTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastAdjustedAmountRef = useRef<string | null>(null);
+
+  /** Simple-mode deposit: clear amount, tx/progress, pool/reward picks; keep selected deposit token. */
+  const resetSimpleDepositFlowKeepToken = () => {
+    setAmount("");
+    anyTokenDeposit.setAmount("");
+    setStep("input");
+    setError(null);
+    setTxHash(null);
+    setTxHashes({});
+    setFlowPage(1);
+    setSelectedRewardToken(null);
+    setSelectedStabilityPool(null);
+    setDepositInStabilityPool(false);
+    setDepositLimitWarning(null);
+    lastAdjustedAmountRef.current = null;
+    progress.reset();
+    setProgressConfig({ ...defaultProgressConfig });
+    setTempMaxWarning((prev) => {
+      if (prev && tempWarningTimerRef.current) {
+        clearTimeout(tempWarningTimerRef.current);
+        tempWarningTimerRef.current = null;
+      }
+      return null;
+    });
+  };
+
+  const handleBuyFlowModeChange = useCallback(
+    (mode: "deposit" | "mintOnly") => {
+      const nextMintOnly = mode === "mintOnly";
+      setMintOnly(nextMintOnly);
+      setDepositInStabilityPool(!nextMintOnly);
+      if (nextMintOnly || flowPage > 1) {
+        setFlowPage(1);
+      }
+      setError(null);
+      setStep("input");
+    },
+    [flowPage],
+  );
+
+  const handleWithdrawFlowModeChange = useCallback(
+    (mode: "withdrawOnly" | "withdrawAndSell") => {
+      const nextWithdrawOnly = mode === "withdrawOnly";
+      setWithdrawOnly(nextWithdrawOnly);
+      if (flowPage > 1) {
+        setFlowPage(1);
+      }
+      setError(null);
+      setStep("input");
+    },
+    [flowPage],
+  );
+
+  /** From deposit page back to buy/mint: keep amount & deposit asset. */
+  const leaveRewardTokenStepToAmount = () => {
+    setStep("input");
+    setError(null);
+    setTxHash(null);
+    setTxHashes({});
+    setSelectedRewardToken(null);
+    setSelectedStabilityPool(null);
+    setDepositInStabilityPool(false);
+    progress.reset();
+    setProgressConfig({ ...defaultProgressConfig });
+    setFlowPage(1);
+    setActiveTab("deposit");
+  };
+
+  const goToFlowPage = useCallback((page: FlowPage) => {
+    setFlowPage(page);
+    setStep("input");
+    setError(null);
+    setTxHash(null);
+  }, []);
+
+  const handleDepositFlowStepClick = useCallback(
+    (index: number) => {
+      const targetPage = (index + 1) as FlowPage;
+      if (targetPage >= flowPage) return;
+      leaveRewardTokenStepToAmount();
+    },
+    [flowPage],
+  );
+
+  const handleWithdrawFlowStepClick = useCallback(
+    (index: number) => {
+      const targetPage = (index + 1) as FlowPage;
+      if (targetPage >= flowPage) return;
+      goToFlowPage(1);
+    },
+    [flowPage, goToFlowPage],
+  );
+
+  const handleDepositFlowBack = useCallback(() => {
+    if (flowPage <= 1) return;
+    leaveRewardTokenStepToAmount();
+  }, [flowPage]);
+
+  const handleWithdrawFlowBack = useCallback(() => {
+    if (flowPage <= 1) return;
+    goToFlowPage(1);
+  }, [flowPage, goToFlowPage]);
+
+  /** Withdraw: clear pool checkboxes, amounts, and method toggles (e.g. when switching fxSAVE / wstETH rail). */
+  const clearWithdrawPoolSelectionAndInputs = useCallback(() => {
+    setSelectedPositions((prev) => ({
+      ...prev,
+      collateralPool: false,
+      sailPool: false,
+      collateralPoolMarketId: null,
+      sailPoolMarketId: null,
+    }));
+    setWithdrawFromCollateralPool(false);
+    setWithdrawFromSailPool(false);
+    setPositionAmounts((prev) => ({
+      ...prev,
+      collateralPool: "",
+      sailPool: "",
+    }));
+    setWithdrawalMethods((prev) => ({
+      ...prev,
+      collateralPool: "request",
+      sailPool: "request",
+    }));
+    setEarlyWithdraw1PctEnabled(false);
+    setWithdrawOverviewExpanded(false);
+  }, []);
+
+  const selectWithdrawPoolRow = useCallback(
+    (
+      p: { marketId: string; poolType: "collateral" | "sail" },
+      switchingMarket: boolean,
+    ) => {
+      withdrawPoolUserSelectedMarketRef.current = true;
+      setSelectedMarketId(p.marketId);
+      if (p.poolType === "collateral") {
+        setSelectedPositions((prev) => ({
+          ...prev,
+          collateralPool: true,
+          collateralPoolMarketId: p.marketId,
+          sailPool: false,
+          sailPoolMarketId: null,
+        }));
+        setWithdrawFromCollateralPool(true);
+        setWithdrawFromSailPool(false);
+        setPositionAmounts((prev) => ({
+          ...prev,
+          sailPool: "",
+        }));
+      } else {
+        setSelectedPositions((prev) => ({
+          ...prev,
+          sailPool: true,
+          sailPoolMarketId: p.marketId,
+          collateralPool: false,
+          collateralPoolMarketId: null,
+        }));
+        setWithdrawFromSailPool(true);
+        setWithdrawFromCollateralPool(false);
+        setPositionAmounts((prev) => ({
+          ...prev,
+          collateralPool: "",
+        }));
+      }
+      if (switchingMarket) {
+        setWithdrawalMethods((prev) => ({
+          ...prev,
+          collateralPool: "request",
+          sailPool: "request",
+        }));
+        setEarlyWithdraw1PctEnabled(false);
+        setWithdrawOverviewExpanded(false);
+      }
+    },
+    [],
+  );
+
+  // Helper function to calculate max acceptable amount for swap deposits
+  const calculateMaxSwapAmount = useMemo(() => {
+    // Skip for direct deposits (wstETH, fxSAVE) that don't need swaps
+    const isWrappedCollateralDeposit = selectedDepositAsset?.toLowerCase() === "wsteth" || 
+                                        selectedDepositAsset?.toLowerCase() === "fxsave";
+    if (!anyTokenDeposit.needsSwap || !swapDryRunOutput || !swappedAmountForDryRun || !anyTokenDeposit.swapQuote || isWrappedCollateralDeposit) {
+      return null;
+    }
+
+    const dryRunResult = swapDryRunOutput as [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
+    if (!dryRunResult || dryRunResult.length < 3) return null;
+
+    const wrappedCollateralTaken = dryRunResult[2];
+    const takenRatio = Number(wrappedCollateralTaken) / Number(swappedAmountForDryRun);
+
+    // If minter is taking less than 99.5% of swap output, there's a limit
+    if (takenRatio >= 0.995 || wrappedCollateralTaken === 0n) {
+      return null;
+    }
+
+    // Work backwards: wrappedCollateral → intermediate token (USDC/ETH) → input token
+    const isFxSAVEMarket = activeWrappedCollateralSymbol === "fxSAVE";
+    const isWstETHMarket = activeWrappedCollateralSymbol === "wstETH";
+    let maxIntermediateAmount: bigint;
+    const isSwappingToUSDC = anyTokenDeposit.swapTargetToken !== "ETH";
+    
+    if (isSwappingToUSDC && isFxSAVEMarket) {
+      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
+      const fxUsdAmount = (wrappedCollateralTaken * wrappedRate) / 10n**18n;
+      maxIntermediateAmount = fxUsdAmount / 10n**12n;
+    } else if (!isSwappingToUSDC && isWstETHMarket) {
+      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
+      const stEthAmount = (wrappedCollateralTaken * wrappedRate) / 10n**18n;
+      maxIntermediateAmount = stEthAmount;
+    } else {
+      return null;
+    }
+    
+    const swapFromAmount = BigInt(anyTokenDeposit.swapQuote.fromAmount);
+    const swapToAmount = BigInt(anyTokenDeposit.swapQuote.toAmount);
+    const maxInputAmount = (swapFromAmount * maxIntermediateAmount) / swapToAmount;
+    const formattedMax = (Number(maxInputAmount) / (10 ** anyTokenDeposit.tokenDecimals)).toString();
+    
+    return formattedMax;
+  }, [
+    anyTokenDeposit.needsSwap,
+    anyTokenDeposit.swapQuote,
+    anyTokenDeposit.swapTargetToken,
+    anyTokenDeposit.tokenDecimals,
+    swapDryRunOutput,
+    swappedAmountForDryRun,
+    activeWrappedCollateralSymbol,
+    marketForDepositAsset,
+    selectedMarket,
+    selectedDepositAsset,
+  ]);
+
+  // Check swap dry run for max acceptable amount and auto-adjust
+  // Skip this entirely for direct deposits (wstETH, fxSAVE) that don't need swaps
+  useEffect(() => {
+    // Skip if not a swap deposit, or if it's a wrapped collateral (direct deposit, no swap needed)
+    const isWrappedCollateralDeposit = selectedDepositAsset?.toLowerCase() === "wsteth" || 
+                                        selectedDepositAsset?.toLowerCase() === "fxsave";
+    if (!anyTokenDeposit.needsSwap || activeTab !== "deposit" || isWrappedCollateralDeposit) {
+      setDepositLimitWarning(null);
+      lastAdjustedAmountRef.current = null; // Reset tracking when not applicable
+      return;
+    }
+
+    // If calculateMaxSwapAmount is not available yet, preserve existing warning
+    // This prevents the warning from disappearing during recalculation
+    if (!calculateMaxSwapAmount) {
+      // Only clear warning if amount is 0 or empty - otherwise preserve it during recalculation
+      if (!amount || parseFloat(amount) === 0) {
+        setDepositLimitWarning(null);
+        return;
+      }
+      // If we have an amount but no calculateMaxSwapAmount yet, preserve the warning
+      // and wait for calculateMaxSwapAmount to become available
+      // This ensures the warning doesn't disappear during recalculation
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Swap Dry Run] calculateMaxSwapAmount not available yet, preserving warning for amount:", amount);
+      }
+      return;
+    }
+
+    const currentInputAmount = parseFloat(amount || "0");
+    const maxInputAmountFloat = parseFloat(calculateMaxSwapAmount);
+    const difference = currentInputAmount - maxInputAmountFloat;
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Swap Dry Run Check]", {
+        currentAmount: amount,
+        maxAmount: calculateMaxSwapAmount,
+        currentInputAmount,
+        maxInputAmountFloat,
+        difference,
+        exceedsMax: currentInputAmount > maxInputAmountFloat,
+        willAutoAdjust: currentInputAmount > maxInputAmountFloat,
+      });
+    }
+
+    // Tolerance for comparing amounts (accounts for floating point precision)
+    // Use a small tolerance only for "at max" detection, but adjust immediately if above max
+    const tolerance = 0.0001; // Small tolerance for "at max" detection
+    // Consider "at max" if within tolerance (either slightly above or at the max)
+    // This ensures the warning persists even if calculateMaxSwapAmount is recalculated
+    const isAtMax = Math.abs(difference) <= tolerance || currentInputAmount <= maxInputAmountFloat + tolerance;
+    // If amount is greater than max (even slightly), always adjust it down
+    // Use a very small threshold to account for floating point precision, but be aggressive about adjusting
+    const exceedsMax = difference > 0.00001; // Adjust if more than 0.00001 above max
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Swap Dry Run Check] Comparison:", {
+        currentInputAmount,
+        maxInputAmountFloat,
+        difference,
+        isAtMax,
+        exceedsMax,
+        willAdjust: exceedsMax,
+      });
+    }
+
+    // If amount exceeds the max, always adjust it down
+    // But only if we haven't already adjusted to this value (prevent infinite loops)
+    if (exceedsMax) {
+      const adjustedAmount = calculateMaxSwapAmount;
+      
+      // Prevent infinite loop: don't adjust if we've already adjusted to this value
+      if (lastAdjustedAmountRef.current === adjustedAmount) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Swap Dry Run] Skipping adjustment - already adjusted to this value:", adjustedAmount);
+        }
+        return;
+      }
+      
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Swap Dry Run] Adjusting amount from", currentInputAmount, "to", calculateMaxSwapAmount, "difference:", difference);
+      }
+      // Always adjust - use the calculated max
+      setAmount(adjustedAmount);
+      anyTokenDeposit.setAmount(adjustedAmount); // Sync with hook
+      lastAdjustedAmountRef.current = adjustedAmount; // Track the adjusted amount
+      
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Swap Dry Run] Amount adjusted successfully to:", adjustedAmount);
+      }
+      
+      // Show warning message
+      const warningMessage = `Maximum deposit limited to ${calculateMaxSwapAmount} ${selectedDepositAsset || ""} (after swap) to maintain collateral ratio.`;
+      setDepositLimitWarning(warningMessage);
+
+      // Set temporary warning near Max button
+      const warningText = `Max: ${parseFloat(calculateMaxSwapAmount).toFixed(4)} ${selectedDepositAsset || ""}`;
+      setTempMaxWarning(warningText);
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Swap Dry Run] Setting warning:", {
+          warningMessage,
+          warningText,
+        });
+      }
+
+      // Clear any existing timer
+      if (tempWarningTimerRef.current) {
+        clearTimeout(tempWarningTimerRef.current);
+      }
+
+      // Set new timer to clear temp warning after 5 seconds (keep depositLimitWarning visible)
+      tempWarningTimerRef.current = setTimeout(() => {
+        setTempMaxWarning(null);
+        tempWarningTimerRef.current = null;
+      }, 5000);
+    } else if (isAtMax) {
+      // Amount is at the max - show warning but don't adjust
+
+      // Show warning message
+      const warningMessage = `Maximum deposit limited to ${calculateMaxSwapAmount} ${selectedDepositAsset || ""} (after swap) to maintain collateral ratio.`;
+      setDepositLimitWarning(warningMessage);
+
+      // Set temporary warning near Max button
+      const warningText = `Max: ${parseFloat(calculateMaxSwapAmount).toFixed(4)} ${selectedDepositAsset || ""}`;
+      setTempMaxWarning(warningText);
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Swap Dry Run] Setting warning:", {
+          warningMessage,
+          warningText,
+          isAtMax,
+          exceedsMax,
+        });
+      }
+
+      // Clear any existing timer
+      if (tempWarningTimerRef.current) {
+        clearTimeout(tempWarningTimerRef.current);
+      }
+
+      // Set new timer to clear temp warning after 5 seconds (keep depositLimitWarning visible)
+      tempWarningTimerRef.current = setTimeout(() => {
+        setTempMaxWarning(null);
+        tempWarningTimerRef.current = null;
+      }, 5000);
+    } else {
+      // Input is below the max, clear warnings and reset adjustment tracking
+      // Only clear if the amount is significantly below the max (not just slightly)
+      // Use a larger threshold (1% of max) to ensure warnings persist when near the max
+      // This prevents the warning from disappearing when calculateMaxSwapAmount is recalculated
+      const clearThreshold = Math.max(0.001, maxInputAmountFloat * 0.01); // At least 0.001 or 1% of max
+      const significantDifference = currentInputAmount < maxInputAmountFloat - clearThreshold;
+      if (significantDifference) {
+        // Reset adjustment tracking when amount is significantly below max
+        // This allows re-adjustment if user increases amount again
+        lastAdjustedAmountRef.current = null;
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Swap Dry Run] Clearing warning - amount significantly below max:", {
+            currentInputAmount,
+            maxInputAmountFloat,
+            difference: currentInputAmount - maxInputAmountFloat,
+            clearThreshold,
+          });
+        }
+        setDepositLimitWarning(null);
+        if (tempWarningTimerRef.current) {
+          clearTimeout(tempWarningTimerRef.current);
+          tempWarningTimerRef.current = null;
+        }
+        setTempMaxWarning(null);
+      } else {
+        // Amount is very close to max but not quite at it - keep warning visible
+        // This ensures the warning doesn't flicker when the amount is near the max
+        // or when calculateMaxSwapAmount is recalculated
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Swap Dry Run] Keeping warning - amount very close to max:", {
+            currentInputAmount,
+            maxInputAmountFloat,
+            difference: currentInputAmount - maxInputAmountFloat,
+            clearThreshold,
+          });
+        }
+        // Always set the warning if we're near the max - don't check if it already exists
+        // This ensures it persists even if calculateMaxSwapAmount changes slightly
+        const warningMessage = `Maximum deposit limited to ${calculateMaxSwapAmount} ${selectedDepositAsset || ""} (after swap) to maintain collateral ratio.`;
+        setDepositLimitWarning(warningMessage);
+        
+        // Also set temporary warning if not already set
+        if (!tempMaxWarning) {
+          const warningText = `Max: ${parseFloat(calculateMaxSwapAmount).toFixed(4)} ${selectedDepositAsset || ""}`;
+          setTempMaxWarning(warningText);
+          
+          // Clear any existing timer
+          if (tempWarningTimerRef.current) {
+            clearTimeout(tempWarningTimerRef.current);
+          }
+          
+          // Set new timer to clear temp warning after 5 seconds (keep depositLimitWarning visible)
+          tempWarningTimerRef.current = setTimeout(() => {
+            setTempMaxWarning(null);
+            tempWarningTimerRef.current = null;
+          }, 5000);
+        }
+      }
+    }
+  }, [
+    anyTokenDeposit.needsSwap,
+    calculateMaxSwapAmount,
+    amount,
+    selectedDepositAsset,
+    activeTab,
+    anyTokenDeposit.setAmount,
+  ]);
+
+  // Reset adjustment tracking when deposit asset changes
+  useEffect(() => {
+    lastAdjustedAmountRef.current = null;
+  }, [selectedDepositAsset]);
+
+  // Check direct deposit dry run for max acceptable amount
+  useEffect(() => {
+    // For swap deposits, this useEffect should not run - handled by swap dry run useEffect
+    if (anyTokenDeposit.needsSwap) {
+      return; // Don't clear warning - it's managed by the swap dry run useEffect
+    }
+    
+    // Skip auto-adjustment for wrapped collateral deposits (wstETH, fxSAVE) - they should go directly to minter
+    // The dry run might show limits, but we shouldn't auto-adjust for these direct deposits
+    const isWrappedCollateralDeposit = selectedDepositAsset?.toLowerCase() === "wsteth" || 
+                                        selectedDepositAsset?.toLowerCase() === "fxsave";
+    if (isWrappedCollateralDeposit) {
+      setDepositLimitWarning(null);
+      if (tempWarningTimerRef.current) {
+        clearTimeout(tempWarningTimerRef.current);
+        tempWarningTimerRef.current = null;
+      }
+      setTempMaxWarning(null);
+      lastAdjustedAmountRef.current = null;
+      return;
+    }
+    
+    if (isDirectPeggedDeposit || !dryRunData || !parsedAmount || activeTab !== "deposit") {
+      setDepositLimitWarning(null);
+      // Clear any pending timer
+      if (tempWarningTimerRef.current) {
+        clearTimeout(tempWarningTimerRef.current);
+        tempWarningTimerRef.current = null;
+      }
+      setTempMaxWarning(null);
+      return;
+    }
+
+    const dryRunResult = dryRunData as
+      | [bigint, bigint, bigint, bigint, bigint, bigint]
+      | undefined;
+    
+    if (!dryRunResult || dryRunResult.length < 3) {
+      setDepositLimitWarning(null);
+      // Clear any pending timer
+      if (tempWarningTimerRef.current) {
+        clearTimeout(tempWarningTimerRef.current);
+        tempWarningTimerRef.current = null;
+      }
+      setTempMaxWarning(null);
+      return;
+    }
+
+    // result[2] = wrappedCollateralTaken (actual amount minter will accept in fxSAVE)
+    const wrappedCollateralTaken = dryRunResult[2];
+    const takenRatio = Number(wrappedCollateralTaken) / Number(parsedAmount);
+
+    // If minter is taking less than 99.5% of input, there's a limit
+    if (takenRatio < 0.995 && wrappedCollateralTaken > 0n) {
+      // Convert back to user's selected asset for display
+      const wrappedCollateralSymbol = marketForDepositAsset?.collateral?.symbol || "";
+      const underlyingCollateralSymbol = marketForDepositAsset?.collateral?.underlyingSymbol || "";
+      const wrappedRate = marketForDepositAsset?.wrappedRate;
+      
+      let maxAcceptableInUserAsset: number;
+      
+      if (selectedDepositAsset?.toLowerCase() === wrappedCollateralSymbol.toLowerCase()) {
+        // User selected fxSAVE - use amount directly
+        maxAcceptableInUserAsset = Number(formatEther(wrappedCollateralTaken));
+      } else if (selectedDepositAsset?.toLowerCase() === underlyingCollateralSymbol.toLowerCase()) {
+        // User selected fxUSD - convert fxSAVE back to fxUSD
+        // fxUSD = fxSAVE * rate
+        if (wrappedRate && wrappedRate > 0n) {
+          const amountInUnderlying = (wrappedCollateralTaken * wrappedRate) / BigInt(1e18);
+          maxAcceptableInUserAsset = Number(formatEther(amountInUnderlying));
+        } else {
+          // Fallback: 1:1
+          maxAcceptableInUserAsset = Number(formatEther(wrappedCollateralTaken));
+        }
+      } else {
+        // For ETH/stETH deposits: convert wstETH back to ETH/stETH using wrapped rate
+        // wrappedCollateralTaken is in wstETH, we need to convert back to ETH/stETH
+        const isWstETHMarket = activeWrappedCollateralSymbol === "wstETH";
+        if (isWstETHMarket && (selectedDepositAsset === "ETH" || selectedDepositAsset === collateralSymbol || selectedDepositAsset === "stETH")) {
+          // wstETH → stETH → ETH (stETH and ETH are 1:1)
+          // stETH = wstETH * wrappedRate / 1e18
+          if (wrappedRate && wrappedRate > 0n) {
+            const stEthAmount = (wrappedCollateralTaken * wrappedRate) / 10n**18n;
+            maxAcceptableInUserAsset = Number(formatEther(stEthAmount));
+          } else {
+            // Fallback: assume 1:1 (shouldn't happen, but safe fallback)
+        maxAcceptableInUserAsset = Number(formatEther(wrappedCollateralTaken));
+          }
+        } else {
+          // For USDC, fxUSD, etc. - use wrapped amount directly
+          maxAcceptableInUserAsset = Number(formatEther(wrappedCollateralTaken));
+        }
+      }
+      
+      const formattedMax = maxAcceptableInUserAsset.toFixed(4);
+      const currentInputAmount = parseFloat(amount || "0");
+      const maxInputAmountFloat = parseFloat(formattedMax);
+      
+      // Only auto-adjust if user's input EXCEEDS the max
+      // But prevent infinite loops by checking if we've already adjusted to this value
+      if (currentInputAmount > maxInputAmountFloat) {
+        // Prevent infinite loop: don't adjust if we've already adjusted to this value
+        if (lastAdjustedAmountRef.current === formattedMax) {
+          if (process.env.NODE_ENV === "development") {
+            console.log("[Direct Deposit Dry Run] Skipping adjustment - already adjusted to this value:", formattedMax);
+          }
+          return;
+        }
+        
+        setAmount(formattedMax);
+        lastAdjustedAmountRef.current = formattedMax; // Track the adjusted amount
+        setDepositLimitWarning(
+          `Maximum deposit limited to ${formattedMax} ${selectedDepositAsset || activeCollateralSymbol} to maintain collateral ratio.`
+        );
+        
+        // Set temporary warning near Max button
+        const warningText = `Max: ${formattedMax} ${selectedDepositAsset || activeCollateralSymbol}`;
+        setTempMaxWarning(warningText);
+        
+        // Clear any existing timer
+        if (tempWarningTimerRef.current) {
+          clearTimeout(tempWarningTimerRef.current);
+        }
+        
+        // Set new timer to clear warning after 3 seconds
+        tempWarningTimerRef.current = setTimeout(() => {
+          setTempMaxWarning(null);
+          tempWarningTimerRef.current = null;
+        }, 3000);
+      } else {
+        // Input is within limits, just clear any previous warning
+        // Reset adjustment tracking when amount is within limits
+        lastAdjustedAmountRef.current = null;
+        setDepositLimitWarning(null);
+      }
+    } else {
+      // No limit detected, clear warnings if no temp warning is active
+      if (!tempMaxWarning) {
+        setDepositLimitWarning(null);
+      }
+    }
+  }, [
+    dryRunData,
+    parsedAmount,
+    isDirectPeggedDeposit,
+    activeTab,
+    selectedDepositAsset,
+    activeCollateralSymbol,
+    marketForDepositAsset,
+    tempMaxWarning,
+  ]);
+
+
+  // Contract write hooks
+  const { writeContractAsync: originalWriteContractAsync } = useWriteContract();
+  const { sendTransactionAsync: originalSendTransactionAsync } = useSendTransaction();
+  
+  // Wrapper functions that check network before executing transactions
+  const writeContractAsync = async (
+    ...args: Parameters<typeof originalWriteContractAsync>
+  ) => {
+    if (!(await ensureCorrectNetwork())) {
+      throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
+    }
+    return originalWriteContractAsync(...args);
+  };
+
+  const sendTransactionAsync = async (
+    ...args: Parameters<typeof originalSendTransactionAsync>
+  ) => {
+    if (!(await ensureCorrectNetwork())) {
+      throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
+    }
+    return originalSendTransactionAsync(...args);
+  };
+
+  const collateralBalance = collateralBalanceData || 0n;
+
+  // Get ha token balance from subgraph (preferred) or contract read
+  const peggedTokenAddressLower = peggedTokenAddress?.toLowerCase();
+  const subgraphHaBalance = haBalances?.find(
+    (b) => b.tokenAddress.toLowerCase() === peggedTokenAddressLower
+  );
+  const peggedBalanceFromSubgraph = subgraphHaBalance
+    ? parseEther(subgraphHaBalance.balance)
+    : 0n;
+
+  const peggedBalanceContract = peggedBalanceData || 0n;
+  const peggedBalance =
+    peggedBalanceFromSubgraph > 0n
+      ? peggedBalanceFromSubgraph
+      : peggedBalanceContract;
+  const canSellFromWallet = peggedBalance > 0n;
+  const directPeggedBalance = directPeggedBalanceData || 0n;
+
+  // Get balance for selected deposit asset in simple mode
+  const selectedAssetBalance = useMemo(() => {
+    if (!simpleMode || !selectedDepositAsset || activeTab !== "deposit")
+      return null;
+
+    if (isSelectedAssetNativeETH) {
+      return nativeBalanceData?.value || 0n;
+    }
+
+    // For swap assets (user tokens), prefer anyTokenDeposit.balance which is already fetched
+    if (anyTokenDeposit.needsSwap && anyTokenDeposit.balance !== undefined) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AnchorDepositModal] Swap asset balance from anyTokenDeposit:", {
+          asset: selectedDepositAsset,
+          address: anyTokenDeposit.selectedAssetAddress,
+          balance: anyTokenDeposit.balance.toString(),
+        });
+      }
+      return anyTokenDeposit.balance;
+    }
+
+    // For ha token, prefer the balance from Genesis contract's pegged token
+    if (isDirectPeggedDeposit) {
+      // Use directPeggedBalanceData if available (from Genesis contract address or market config)
+      if (directPeggedBalanceData !== undefined) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[AnchorDepositModal] Ha token balance:", {
+            address: peggedTokenAddressForBalance,
+            balance: directPeggedBalanceData?.toString() || "0",
+            genesisPeggedTokenAddress,
+            marketPeggedTokenAddress:
+              marketForDepositAsset?.addresses?.peggedToken,
+            isDirectPeggedDeposit,
+            marketName: marketForDepositAsset?.name,
+          });
+        }
+        return (directPeggedBalanceData as bigint) || 0n;
+      }
+      // If directPeggedBalanceData is not available, try selectedAssetBalanceData
+      if (selectedAssetBalanceData !== undefined) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[AnchorDepositModal] Ha token balance (fallback):", {
+            address: selectedAssetAddress,
+            balance: selectedAssetBalanceData?.toString() || "0",
+          });
+        }
+        return (selectedAssetBalanceData as bigint) || 0n;
+      }
+      // Return 0n if no balance data available (will show 0 balance)
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[AnchorDepositModal] No balance data for ha token:", {
+          peggedTokenAddressForBalance,
+          selectedAssetAddress,
+          marketForDepositAsset: marketForDepositAsset?.name,
+        });
+      }
+      return 0n;
+    }
+
+    // For other assets, prefer contract read balance (selectedAssetBalanceData) as it's always for the correct address
+    // Only use anyTokenDeposit.balance if it matches the selected asset address
+    if (selectedAssetBalanceData !== undefined) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AnchorDepositModal] Selected asset balance from contract read:", {
+          asset: selectedDepositAsset,
+          address: selectedAssetAddress,
+          balance: selectedAssetBalanceData?.toString() || "0",
+        });
+      }
+      return (selectedAssetBalanceData as bigint) || 0n;
+    }
+
+    // Fallback to anyTokenDeposit.balance only if the selected asset matches
+    const anyTokenAssetMatches = anyTokenDeposit.selectedAssetAddress && 
+      selectedAssetAddress && 
+      anyTokenDeposit.selectedAssetAddress.toLowerCase() === selectedAssetAddress.toLowerCase();
+    
+    if (anyTokenAssetMatches && anyTokenDeposit.balance !== undefined && anyTokenDeposit.balance > 0n) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AnchorDepositModal] Asset balance from anyTokenDeposit (fallback):", {
+          asset: selectedDepositAsset,
+          address: anyTokenDeposit.selectedAssetAddress,
+          balance: anyTokenDeposit.balance.toString(),
+        });
+      }
+      return anyTokenDeposit.balance;
+    }
+
+    return null;
+  }, [
+    simpleMode,
+    selectedDepositAsset,
+    activeTab,
+    isSelectedAssetNativeETH,
+    nativeBalanceData,
+    selectedAssetBalanceData,
+    isDirectPeggedDeposit,
+    directPeggedBalanceData,
+    peggedTokenAddressForBalance,
+    genesisPeggedTokenAddress,
+    marketForDepositAsset,
+    selectedAssetAddress,
+    anyTokenDeposit.needsSwap,
+    anyTokenDeposit.balance,
+    anyTokenDeposit.selectedAssetAddress,
+  ]);
+
+  // Get symbol for selected deposit asset
+  const selectedAssetSymbol = useMemo(() => {
+    if (!selectedDepositAsset) return "";
+    return selectedDepositAsset;
+  }, [selectedDepositAsset]);
+  // Get balances from contract reads (fallback)
+  const collateralPoolBalanceContract = collateralPoolBalanceData || 0n;
+  const sailPoolBalanceContract = sailPoolBalanceData || 0n;
+
+  // Get balances from subgraph (preferred, same as expanded view)
+  const collateralPoolAddressLower = collateralPoolAddress?.toLowerCase();
+  const sailPoolAddressLower = sailPoolAddress?.toLowerCase();
+
+  const subgraphCollateralDeposit = poolDeposits?.find(
+    (d) =>
+      d.poolAddress.toLowerCase() === collateralPoolAddressLower &&
+      d.poolType === "collateral"
+  );
+  const subgraphSailDeposit = poolDeposits?.find(
+    (d) =>
+      d.poolAddress.toLowerCase() === sailPoolAddressLower &&
+      d.poolType === "sail"
+  );
+
+  // Use subgraph balances if available, otherwise fallback to contract reads
+  const collateralPoolBalance = subgraphCollateralDeposit
+    ? parseEther(subgraphCollateralDeposit.balance)
+    : collateralPoolBalanceContract;
+  const sailPoolBalance = subgraphSailDeposit
+    ? parseEther(subgraphSailDeposit.balance)
+    : sailPoolBalanceContract;
+
+  const withdrawPoolRowsForActiveRail = useMemo(() => {
+    const allRows =
+      groupedPoolPositions.length > 0
+        ? groupedPoolPositions
+        : [
+            ...(selectedMarket?.addresses?.stabilityPoolCollateral
+              ? [
+                  {
+                    key: `${selectedMarketId}-collateral`,
+                    marketId: selectedMarketId,
+                    market: selectedMarket,
+                    poolType: "collateral" as const,
+                    balance: collateralPoolBalance,
+                  },
+                ]
+              : []),
+            ...(selectedMarket?.addresses?.stabilityPoolLeveraged
+              ? [
+                  {
+                    key: `${selectedMarketId}-sail`,
+                    marketId: selectedMarketId,
+                    market: selectedMarket,
+                    poolType: "sail" as const,
+                    balance: sailPoolBalance,
+                  },
+                ]
+              : []),
+          ];
+
+    const collateralTypes = new Set(
+      allRows
+        .map((r) =>
+          (
+            r.market?.collateral?.symbol ||
+            r.market?.wrappedCollateralToken?.symbol ||
+            ""
+          ).trim(),
+        )
+        .filter(Boolean),
+    );
+    const hasMultipleCollateralTypes =
+      collateralTypes.has("fxSAVE") && collateralTypes.has("wstETH");
+    const activePoolCollateral = hasMultipleCollateralTypes
+      ? withdrawPoolCollateralTab
+      : Array.from(collateralTypes)[0] || "fxSAVE";
+
+    if (hasMultipleCollateralTypes) {
+      return allRows.filter((r) => {
+        const sym =
+          r.market?.collateral?.symbol ||
+          r.market?.wrappedCollateralToken?.symbol ||
+          "";
+        return sym === activePoolCollateral;
+      });
+    }
+    return allRows;
+  }, [
+    groupedPoolPositions,
+    selectedMarket,
+    selectedMarketId,
+    collateralPoolBalance,
+    sailPoolBalance,
+    withdrawPoolCollateralTab,
+  ]);
+
+  const activeWithdrawPoolRow = useMemo(
+    () =>
+      withdrawPoolRowsForActiveRail.find(
+        (r) => r.poolType === withdrawPoolTypeTab,
+      ),
+    [withdrawPoolRowsForActiveRail, withdrawPoolTypeTab],
+  );
+
+  // Default Collateral/Sail tab to the pool with the larger balance (until user picks).
+  useEffect(() => {
+    if (!isActive || activeTab !== "withdraw") return;
+    if (withdrawPoolTypeTabUserSelectedRef.current) return;
+
+    let collateralBal = 0n;
+    let sailBal = 0n;
+    for (const p of withdrawPoolRowsForActiveRail) {
+      if (p.poolType === "collateral") collateralBal += p.balance;
+      else sailBal += p.balance;
+    }
+    if (sailBal > collateralBal && sailBal > 0n) {
+      setWithdrawPoolTypeTab("sail");
+    } else {
+      setWithdrawPoolTypeTab("collateral");
+    }
+  }, [isActive, activeTab, withdrawPoolRowsForActiveRail]);
+
+  // Keep pool selection aligned with the active Collateral/Sail tab.
+  useEffect(() => {
+    if (!isActive || activeTab !== "withdraw") return;
+    const row = activeWithdrawPoolRow;
+    if (!row) return;
+
+    const isSelected =
+      row.poolType === "collateral"
+        ? selectedPositions.collateralPool &&
+          selectedPositions.collateralPoolMarketId === row.marketId
+        : selectedPositions.sailPool &&
+          selectedPositions.sailPoolMarketId === row.marketId;
+
+    if (!isSelected) {
+      selectWithdrawPoolRow(row, row.marketId !== selectedMarketId);
+    }
+  }, [
+    isActive,
+    activeTab,
+    activeWithdrawPoolRow,
+    selectedPositions,
+    selectedMarketId,
+    selectWithdrawPoolRow,
+  ]);
+
+  const collateralPoolImmediateCap = useMemo(() => {
+    if (
+      collateralPoolBalance === 0n ||
+      collateralPoolTotalSupply === undefined ||
+      collateralPoolMinTotalSupply === undefined
+    ) {
+      return collateralPoolBalance;
+    }
+    const total = collateralPoolTotalSupply as bigint;
+    const minTotal = collateralPoolMinTotalSupply as bigint;
+    const poolRoom = total > minTotal ? total - minTotal : 0n;
+    return collateralPoolBalance < poolRoom ? collateralPoolBalance : poolRoom;
+  }, [collateralPoolBalance, collateralPoolTotalSupply, collateralPoolMinTotalSupply]);
+
+  const sailPoolImmediateCap = useMemo(() => {
+    if (
+      sailPoolBalance === 0n ||
+      sailPoolTotalSupply === undefined ||
+      sailPoolMinTotalSupply === undefined
+    ) {
+      return sailPoolBalance;
+    }
+    const total = sailPoolTotalSupply as bigint;
+    const minTotal = sailPoolMinTotalSupply as bigint;
+    const poolRoom = total > minTotal ? total - minTotal : 0n;
+    return sailPoolBalance < poolRoom ? sailPoolBalance : poolRoom;
+  }, [sailPoolBalance, sailPoolTotalSupply, sailPoolMinTotalSupply]);
+
+  const totalStabilityPoolBalance = collateralPoolBalance + sailPoolBalance;
+  const allowance = allowanceData || 0n;
+  const peggedTokenAllowance = peggedTokenAllowanceData || 0n;
+  // Parse amount with correct decimals: USDC uses 6 decimals, others use 18 decimals
+  const isUSDC = selectedDepositAsset?.toLowerCase() === "usdc";
+  const isFxUSD = selectedDepositAsset?.toLowerCase() === "fxusd";
+  const isNativeETH = selectedDepositAsset?.toLowerCase() === "eth";
+  const isStETH = selectedDepositAsset?.toLowerCase() === "steth";
+  const isFxSAVE = selectedDepositAsset?.toLowerCase() === "fxsave";
+  const isWstETH = selectedDepositAsset?.toLowerCase() === "wsteth";
+  
+  // Determine if we should use zap contracts
+  // Get market info for the selected deposit asset
+  const depositAssetMarket = marketForDepositAsset;
+  const depositAssetCollateralSymbol = depositAssetMarket?.collateral?.symbol?.toLowerCase() || "";
+  const depositAssetWrappedCollateralSymbol = depositAssetMarket?.collateral?.underlyingSymbol?.toLowerCase() || "";
+  const isWstETHMarket = depositAssetCollateralSymbol === "wsteth";
+  const isFxUSDMarket = depositAssetCollateralSymbol === "fxusd" || depositAssetCollateralSymbol === "fxsave";
+  
+  // Check if selected asset is wrapped collateral (fxSAVE, wstETH) - these don't need zaps
+  // Note: fxUSD is NOT wrapped collateral (it's the underlying collateral that needs zap)
+  // Only fxSAVE (the wrapped version) should skip zaps
+  // We check against wrappedCollateralSymbol (underlyingSymbol) not collateralSymbol
+  const isWrappedCollateral = isFxSAVE || isWstETH || 
+    (depositAssetMarket && depositAssetWrappedCollateralSymbol && selectedDepositAsset?.toLowerCase() === depositAssetWrappedCollateralSymbol);
+  
+  // Get zap contract address - use peggedTokenZap for minting pegged tokens
+  const zapAddress = anchorAddressByName(
+    depositAssetMarket as DefinedMarket | undefined
+  )?.peggedTokenZap as `0x${string}` | undefined;
+  const useZapV1 = marketUsesZapV1(depositAssetMarket);
+  const ethZapAbi = useZapV1 ? MINTER_ETH_ZAP_V1_ABI : MINTER_ETH_ZAP_V3_ABI;
+  const zapSpAllowlistPending = isZapStabilityPoolAllowlistPending(depositAssetMarket);
+  
+  // Determine which zap to use
+  const useZap = !!zapAddress && !isDirectPeggedDeposit && !isWrappedCollateral && activeTab === "deposit";
+  const useETHZap = useZap && isWstETHMarket && (isNativeETH || isStETH);
+  const useUSDCZap = useZap && isFxUSDMarket && (isUSDC || isFxUSD);
+
+  const showDepositPermitToggle =
+    activeTab === "deposit" &&
+    (isFxSAVE || isWstETH || isStETH || isUSDC || isFxUSD);
+  const showRedeemPermitToggle =
+    activeTab === "sell" ||
+    (activeTab === "withdraw" && !withdrawOnly);
+  const showPermitToggle = showDepositPermitToggle || showRedeemPermitToggle;
+  
+  // Get fxSAVE rate for USDC zap calculations
+  const priceOracleAddress = anchorAddressByName(
+    depositAssetMarket as DefinedMarket | undefined
+  )?.collateralPrice as `0x${string}` | undefined;
+  const { maxRate: fxSAVERate } = useCollateralPrice(
+    priceOracleAddress,
+    { enabled: useUSDCZap && !!priceOracleAddress }
+  );
+  
+  const amountBigInt = amount 
+    ? (isUSDC ? parseUnits(amount, 6) : parseEther(amount))
+    : 0n;
+  const needsApproval =
+    activeTab === "deposit" && amountBigInt > 0 && amountBigInt > allowance;
+  const needsPeggedTokenApproval =
+    (activeTab === "deposit" &&
+      depositInStabilityPool &&
+      expectedMintOutput &&
+      expectedMintOutput > peggedTokenAllowance) ||
+    (activeTab === "deposit" &&
+      amountBigInt > 0 &&
+      amountBigInt > peggedTokenAllowance);
+  const currentDeposit = currentDepositData || 0n;
+
+  // Reset positions only when modal opens or tab changes, NOT on balance updates
+  useEffect(() => {
+    if (activeTab === "withdraw" && isActive) {
+      // Only initialize once per withdraw session
+      if (!hasInitializedWithdraw.current) {
+        if (process.env.NODE_ENV === "development") {
+          console.log(
+            "[AnchorDepositWithdrawModal] Withdraw tab - initializing (first time):",
+            {
+              peggedBalance: peggedBalance?.toString() || "0",
+              collateralPoolBalance: collateralPoolBalance?.toString() || "0",
+              sailPoolBalance: sailPoolBalance?.toString() || "0",
+            }
+          );
+        }
+        // Start with all positions unchecked by default
+        setSelectedPositions({
+          wallet: false,
+          collateralPool: false,
+          sailPool: false,
+          collateralPoolMarketId: null,
+          sailPoolMarketId: null,
+        });
+        setWithdrawFromCollateralPool(false);
+        setWithdrawFromSailPool(false);
+        hasInitializedWithdraw.current = true;
+      }
+    } else if (activeTab !== "withdraw" && activeTab !== "sell") {
+      // Reset when switching away from withdraw / sell tabs
+      setSelectedPositions({
+        wallet: false,
+        collateralPool: false,
+        sailPool: false,
+        collateralPoolMarketId: null,
+        sailPoolMarketId: null,
+      });
+      setWithdrawFromCollateralPool(false);
+      setWithdrawFromSailPool(false);
+      setPositionAmounts({
+        wallet: "",
+        collateralPool: "",
+        sailPool: "",
+      });
+      hasInitializedWithdraw.current = false;
+      withdrawPoolUserSelectedMarketRef.current = false;
+    }
+  }, [activeTab, isActive]);
+
+  // Reset the refs when modal closes
+  useEffect(() => {
+    if (!isActive) {
+      hasInitializedWithdraw.current = false;
+      withdrawPoolUserSelectedMarketRef.current = false;
+    }
+  }, [isActive]);
+
+  // Get available balance based on active tab
+  const getAvailableBalance = (): bigint => {
+    if (activeTab === "deposit") {
+      // For deposit tab, return collateral balance for minting or pegged balance for direct deposit
+      return isDirectPeggedDeposit ? peggedBalance : collateralBalance;
+    } else if (activeTab === "withdraw") {
+      // For withdraw, sum up balances from selected positions
+      let total = 0n;
+      if (selectedPositions.wallet) total += peggedBalance;
+      if (selectedPositions.collateralPool) total += collateralPoolBalance;
+      if (selectedPositions.sailPool) total += sailPoolBalance;
+      return total;
+    } else {
+      // For redeem, use pegged token balance
+      return peggedBalance;
+    }
+  };
+
+  // Calculate current deposit USD value and ledger marks per day
+  const peggedTokenPriceUsdWei =
+    peggedTokenPrice !== undefined && (peggedTokenPrice as bigint) > 0n && pegTargetUsdWei > 0n
+      ? ((peggedTokenPrice as bigint) * pegTargetUsdWei) / 10n ** 18n
+      : 0n;
+
+  const withdrawRedeemPriceInputs = useMemo(
+    () => ({
+      ethPrice: ethPrice ?? 0,
+      wstETHPrice: wstETHPrice ?? 0,
+      fxSAVEPrice: fxSAVEPrice ?? 1.08,
+      btcPrice: btcPrice ?? 0,
+      eurPrice: eurPrice ?? 0,
+      peggedPriceUSD:
+        peggedTokenPriceUsdWei > 0n
+          ? Number(formatUnits(peggedTokenPriceUsdWei, 18))
+          : 0,
+    }),
+    [
+      ethPrice,
+      wstETHPrice,
+      fxSAVEPrice,
+      btcPrice,
+      eurPrice,
+      peggedTokenPriceUsdWei,
+    ]
+  );
+
+  const currentDepositUSD =
+    peggedTokenPriceUsdWei > 0n && currentDeposit
+      ? parseFloat(formatUnits((currentDeposit * peggedTokenPriceUsdWei) / 10n ** 18n, 18))
+      : 0;
+  const currentLedgerMarksPerDay = currentDepositUSD;
+
+  // Calculate expected ledger marks per day after deposit
+  const expectedDepositUSD =
+    expectedMintOutput && peggedTokenPriceUsdWei > 0n
+      ? parseFloat(
+          formatUnits((expectedMintOutput * peggedTokenPriceUsdWei) / 10n ** 18n, 18)
+        )
+      : 0;
+  
+  // Calculate USD value for direct pegged token deposits (e.g., haBTC)
+  const directPeggedDepositUSD = useMemo(() => {
+    if (!isDirectPeggedDeposit || !amount || parseFloat(amount) <= 0 || peggedTokenPriceUsdWei <= 0n) {
+      return 0;
+    }
+    const amountBigInt = parseEther(amount);
+    return parseFloat(
+      formatUnits((amountBigInt * peggedTokenPriceUsdWei) / 10n ** 18n, 18)
+    );
+  }, [isDirectPeggedDeposit, amount, peggedTokenPriceUsdWei]);
+  
+  const newTotalDepositUSD = currentDepositUSD + expectedDepositUSD;
+  const newLedgerMarksPerDay = newTotalDepositUSD;
+
+  // Initialize modal state on open.
+  // IMPORTANT: Do NOT depend on derived values like `collateralSymbol` here.
+  // In grouped markets (e.g. haBTC shared across multiple markets), we may auto-select a different market
+  // after the user clicks "Withdraw". That can change `selectedMarket`/`collateralSymbol` and would
+  // otherwise re-run this effect, resetting the user's tab choice back to the initial tab.
+  const hasInitializedOnOpen = useRef(false);
+
+  // Embedded panel: force re-init when the selected market changes.
+  useEffect(() => {
+    if (!embedded) return;
+    hasInitializedOnOpen.current = false;
+  }, [embedded, marketId]);
+
+  // Embedded panel: follow parent Deposit/Withdraw tab.
+  useEffect(() => {
+    if (!embedded || !isActive) return;
+    const tab =
+      initialTab === "mint" ||
+      initialTab === "deposit" ||
+      initialTab === "deposit-mint"
+        ? "deposit"
+        : initialTab === "withdraw" ||
+            initialTab === "redeem" ||
+            initialTab === "withdraw-redeem"
+          ? "withdraw"
+          : "deposit";
+    setActiveTab(tab);
+  }, [embedded, isActive, initialTab]);
+
+  useEffect(() => {
+    if (!isActive) {
+      hasInitializedOnOpen.current = false;
+      withdrawPoolTabUserSelectedRef.current = false;
+      withdrawPoolTypeTabUserSelectedRef.current = false;
+      setEarlyWithdraw1PctEnabled(false);
+      return;
+    }
+    if (hasInitializedOnOpen.current) return;
+    hasInitializedOnOpen.current = true;
+
+    // Resolve initial market + collateral symbol based on the market the modal was opened for.
+    const initialMarket =
+      marketsForToken.find((m) => m.marketId === marketId)?.market || market;
+    const initialCollateralSymbol = initialMarket?.collateral?.symbol || "ETH";
+
+    {
+      const tab = getInitialTab();
+      setActiveTab(tab);
+      setAmount("");
+      setStep("input");
+      setError(null);
+      setTxHash(null);
+      // Ensure selectedMarketId is always initialized when opening the modal.
+      // Withdraw flows (and several reads) depend on `selectedMarket` which is derived from `selectedMarketId`.
+      setSelectedMarketId(marketId);
+      if (tab === "deposit") {
+        // In simple mode, use step-by-step flow
+        if (simpleMode) {
+          setFlowPage(1);
+          // Prefer an explicit initial deposit asset (e.g. ha token when opened from
+          // "not earning yield" section). Otherwise default to the market's collateral.
+          setSelectedDepositAsset(initialDepositAsset || initialCollateralSymbol);
+          // Don't pre-select pools in step-by-step mode - let user choose
+          setSelectedStabilityPool(null);
+          setDepositInStabilityPool(false);
+          setSelectedRewardToken(null);
+        } else {
+          setDepositInStabilityPool(true);
+          setStabilityPoolType("collateral");
+        }
+      } else if (tab === "withdraw") {
+        if (simpleMode) {
+          setFlowPage(1);
+        }
+        setRedeemMarketSelectionMode("auto");
+        setWithdrawOverviewExpanded(false);
+        withdrawPoolTabUserSelectedRef.current = false;
+        withdrawPoolTypeTabUserSelectedRef.current = false;
+        withdrawPoolUserSelectedMarketRef.current = false;
+        if (
+          initialCollateralSymbol === "wstETH" ||
+          initialCollateralSymbol === "fxSAVE"
+        ) {
+          setWithdrawPoolCollateralTab(initialCollateralSymbol);
+        } else {
+          setWithdrawPoolCollateralTab("fxSAVE");
+        }
+        setSelectedRedeemMarketId(marketId);
+        setSelectedRedeemAsset(initialCollateralSymbol);
+      }
+    }
+  }, [
+    isActive,
+    initialTab,
+    simpleMode,
+    bestPoolType,
+    marketId,
+    marketsForToken,
+    market,
+  ]);
+
+  // Auto-select collateral pool when entering Step 3 (only if not mint only)
+  useEffect(() => {
+    if (
+      !mintOnly &&
+      flowPage === 2 &&
+      selectedRewardToken &&
+      filteredPools.length > 0 &&
+      !selectedStabilityPool
+    ) {
+      // Find the first collateral pool
+      const collateralPool = filteredPools.find(
+        (pool) => pool.poolType === "collateral"
+      );
+      // If no collateral pool, select the first pool
+      const poolToSelect = collateralPool || filteredPools[0];
+      if (poolToSelect) {
+        setSelectedStabilityPool({
+          marketId: poolToSelect.marketId,
+          poolType: poolToSelect.poolType,
+        });
+        setDepositInStabilityPool(true);
+        setStabilityPoolType(poolToSelect.poolType);
+        // Don't change selectedMarketId here - it should remain tied to the deposit asset from Step 1
+        // selectedMarketId is for minting, selectedStabilityPool.marketId is for the pool destination
+      }
+    }
+  }, [
+    flowPage,
+    selectedRewardToken,
+    filteredPools,
+    selectedStabilityPool,
+    mintOnly,
+  ]);
+
+  const handleClose = () => {
+    // Always allow closing, even during processing
+    // Reset state when closing
+    setAmount("");
+    setStep("input");
+    setError(null);
+    setTxHash(null);
+    setPositionAmounts({
+      wallet: "",
+      collateralPool: "",
+      sailPool: "",
+    });
+    if (activeTab === "deposit") {
+      setDepositInStabilityPool(!mintOnly);
+      setStabilityPoolType("collateral");
+    }
+    // Reset simple mode state
+    if (simpleMode) {
+      setFlowPage(1);
+      setSelectedDepositAsset("");
+      setSelectedRewardToken(null);
+      setSelectedStabilityPool(null);
+      // Reset back to the market this modal was opened for (prevents withdraw showing no positions on reopen)
+      setSelectedMarketId(marketId);
+    }
+    if (embedded) return;
+    onClose();
+  };
+
+  const handleCancel = () => {
+    // Reset processing state
+    setStep("input");
+    setError(null);
+    setTxHash(null);
+  };
+
+  const handleBackToWithdrawInput = () => {
+    setStep("input");
+    setError(null);
+    setTxHash(null);
+  };
+
+  const handleTabChange = (tab: TabType) => {
+    if (
+      step === "approving" ||
+      step === "minting" ||
+      step === "depositing" ||
+      step === "withdrawing"
+    )
+      return;
+    setActiveTab(tab);
+    setAmount("");
+    setStep("input");
+    setError(null);
+    setTxHash(null);
+    if (simpleMode) {
+      if (tab === "sell") {
+        configureSellFromWalletTab();
+      } else {
+        setFlowPage(1);
+      }
+    }
+    // Clear temp warning when switching tabs
+    if (tempMaxWarning) {
+      setTempMaxWarning(null);
+      if (tempWarningTimerRef.current) {
+        clearTimeout(tempWarningTimerRef.current);
+        tempWarningTimerRef.current = null;
+      }
+    }
+    if (tab === "deposit") {
+      setDepositInStabilityPool(true);
+      setStabilityPoolType("collateral");
+    }
+  };
+
+  const handleMaxClick = () => {
+    if (activeTab === "deposit") {
+      if (simpleMode && selectedAssetBalance !== null) {
+        // Use correct decimals for the selected asset
+        const decimals = anyTokenDeposit.tokenDecimals || 18;
+        const balanceAmount = formatUnits(selectedAssetBalance, decimals);
+        
+        // Simply set the amount to balance
+        // The useEffect will adjust it to the calculated max once the dry run completes with this amount
+        setAmount(balanceAmount);
+        anyTokenDeposit.setAmount(balanceAmount); // Sync with hook
+        
+        if (process.env.NODE_ENV === "development") {
+          console.log("[handleMaxClick] Set amount to balance:", balanceAmount, "useEffect will adjust if needed");
+        }
+        setAmount(isUSDC ? formatUnits(selectedAssetBalance, 6) : formatEther(selectedAssetBalance));
+      } else if (isDirectPeggedDeposit && directPeggedBalance) {
+        setAmount(formatEther(directPeggedBalance));
+      } else if (collateralBalance) {
+        setAmount(formatEther(collateralBalance));
+      }
+    } else if (activeTab === "deposit" && peggedBalance) {
+      setAmount(formatEther(peggedBalance));
+    } else if (activeTab === "withdraw") {
+      const total = getAvailableBalance();
+      if (total > 0n) {
+        setAmount(formatEther(total));
+      }
+    } else if (activeTab === "sell" && peggedBalance > 0n) {
+      setPositionAmounts((prev) => ({
+        ...prev,
+        wallet: formatEther(peggedBalance),
+      }));
+    }
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    
+    // Clear temp warning immediately when user manually changes input
+    if (tempMaxWarning) {
+      setTempMaxWarning(null);
+      if (tempWarningTimerRef.current) {
+        clearTimeout(tempWarningTimerRef.current);
+        tempWarningTimerRef.current = null;
+      }
+    }
+    
+    if (value === "" || /^\d*\.?\d*$/.test(value)) {
+      // Cap at balance if value exceeds it (for deposit tab)
+      // Prefer selectedAssetBalance when available (for USDC, fxUSD, etc. in simple mode)
+      // Otherwise fall back to balance (collateral balance for advanced mode)
+      const balanceToCheck = (simpleMode && selectedAssetBalance !== null && selectedAssetBalance !== undefined)
+        ? selectedAssetBalance 
+        : balance;
+      
+      if (value && activeTab === "deposit" && balanceToCheck && balanceToCheck > 0n) {
+        try {
+          // Use correct decimals: USDC uses 6, others use 18
+          const decimals = isUSDC ? 6 : 18;
+          const parsed = decimals === 6 ? parseUnits(value, 6) : parseEther(value);
+          
+          if (parsed > balanceToCheck) {
+            // Format with correct decimals
+            const cappedAmount = decimals === 6 
+              ? formatUnits(balanceToCheck, 6)
+              : formatEther(balanceToCheck);
+            setAmount(cappedAmount);
+            anyTokenDeposit.setAmount(cappedAmount); // Sync with hook
+            setError(null);
+            return;
+          }
+        } catch {
+          // Allow partial input (e.g., trailing decimal)
+        }
+      }
+      setAmount(value);
+      anyTokenDeposit.setAmount(value); // Sync with hook
+      setError(null);
+    }
+  };
+
+  // Helper to validate and cap position amounts at their respective balances
+  const handlePositionAmountChange = (
+    field: "wallet" | "collateralPool" | "sailPool",
+    value: string,
+    maxBalance: bigint
+  ) => {
+    // Only allow valid number format
+    if (value !== "" && !/^\d*\.?\d*$/.test(value)) {
+      return;
+    }
+
+    // If empty, just set it
+    if (value === "") {
+      setPositionAmounts((prev) => ({ ...prev, [field]: value }));
+      return;
+    }
+
+    // Try to parse the value
+    try {
+      const parsedValue = parseEther(value);
+      // If exceeds balance, cap at balance
+      if (parsedValue > maxBalance) {
+        setPositionAmounts((prev) => ({
+          ...prev,
+          [field]: formatEther(maxBalance),
+        }));
+      } else {
+        setPositionAmounts((prev) => ({ ...prev, [field]: value }));
+      }
+    } catch {
+      // If parsing fails (e.g., trailing decimal), allow the input
+      setPositionAmounts((prev) => ({ ...prev, [field]: value }));
+    }
+  };
+
+  // Check if any position amount exceeds its balance
+  const positionExceedsBalance = useMemo(() => {
+    const result = {
+      wallet: false,
+      collateralPool: false,
+      sailPool: false,
+    };
+
+    try {
+      if (positionAmounts.wallet && peggedBalance) {
+        const amount = parseEther(positionAmounts.wallet);
+        result.wallet = amount > peggedBalance;
+      }
+      if (positionAmounts.collateralPool && collateralPoolBalance) {
+        const amount = parseEther(positionAmounts.collateralPool);
+        const max =
+          withdrawalMethods.collateralPool === "immediate"
+            ? collateralPoolImmediateCap
+            : collateralPoolBalance;
+        result.collateralPool = amount > max;
+      }
+      if (positionAmounts.sailPool && sailPoolBalance) {
+        const amount = parseEther(positionAmounts.sailPool);
+        const max =
+          withdrawalMethods.sailPool === "immediate"
+            ? sailPoolImmediateCap
+            : sailPoolBalance;
+        result.sailPool = amount > max;
+      }
+    } catch {
+      // Ignore parsing errors
+    }
+
+    return result;
+  }, [
+    positionAmounts,
+    peggedBalance,
+    collateralPoolBalance,
+    sailPoolBalance,
+    withdrawalMethods.collateralPool,
+    withdrawalMethods.sailPool,
+    collateralPoolImmediateCap,
+    sailPoolImmediateCap,
+  ]);
+
+  const validateAmount = (): boolean => {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[validateAmount] Starting validation", {
+        amount,
+        amountBigInt: amountBigInt.toString(),
+        activeTab,
+        simpleMode,
+        isDirectPeggedDeposit,
+        selectedAssetBalance: selectedAssetBalance?.toString(),
+        directPeggedBalance: directPeggedBalance?.toString(),
+        directPeggedBalanceLoading,
+        collateralBalance: collateralBalance?.toString(),
+        peggedBalance: peggedBalance?.toString(),
+      });
+    }
+
+    if (!amount || parseFloat(amount) <= 0) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[validateAmount] Invalid amount:", {
+          amount,
+          parsed: parseFloat(amount),
+        });
+      }
+      setError("Please enter a valid amount");
+      return false;
+    }
+    if (activeTab === "deposit") {
+      if (simpleMode && selectedAssetBalance !== null) {
+        if (amountBigInt > selectedAssetBalance) {
+          if (process.env.NODE_ENV === "development") {
+            console.log("[validateAmount] Insufficient balance (simple mode)", {
+              amountBigInt: amountBigInt.toString(),
+              selectedAssetBalance: selectedAssetBalance.toString(),
+            });
+          }
+          setError("Insufficient balance");
+          return false;
+        }
+      } else if (isDirectPeggedDeposit) {
+        // For direct pegged deposits, only check balance if it's loaded
+        if (!directPeggedBalanceLoading && amountBigInt > directPeggedBalance) {
+          if (process.env.NODE_ENV === "development") {
+            console.log(
+              "[validateAmount] Insufficient balance (direct pegged)",
+              {
+                amountBigInt: amountBigInt.toString(),
+                directPeggedBalance: directPeggedBalance.toString(),
+                isLoading: directPeggedBalanceLoading,
+              }
+            );
+          }
+          setError("Insufficient balance");
+          return false;
+        }
+        // If still loading, skip balance check (will be validated on-chain)
+        if (directPeggedBalanceLoading) {
+          if (process.env.NODE_ENV === "development") {
+            console.log(
+              "[validateAmount] Balance still loading, skipping check"
+            );
+          }
+        }
+      } else if (!isDirectPeggedDeposit && amountBigInt > collateralBalance) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[validateAmount] Insufficient balance (collateral)", {
+            amountBigInt: amountBigInt.toString(),
+            collateralBalance: collateralBalance.toString(),
+          });
+        }
+        setError("Insufficient balance");
+        return false;
+      }
+    }
+    // Note: For collateral deposits (!isDirectPeggedDeposit), we don't check pegged balance
+    // because the user is depositing collateral to MINT pegged tokens, not depositing existing pegged tokens.
+    // The pegged balance check only applies to direct pegged deposits, which is handled above.
+    if (activeTab === "withdraw") {
+      const sourceBalance = getAvailableBalance();
+      if (amountBigInt > sourceBalance) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[validateAmount] Insufficient balance (withdraw)", {
+            amountBigInt: amountBigInt.toString(),
+            sourceBalance: sourceBalance.toString(),
+          });
+        }
+        setError("Insufficient balance");
+        return false;
+      }
+    }
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[validateAmount] Validation passed");
+    }
+    return true;
+  };
+
+  const handleMint = async () => {
+    if (depositsBlocked) {
+      handleTxError(
+        marketArchived
+          ? "This market is archived. New deposits and mints are not accepted."
+          : "Deposits are unavailable while this market is in maintenance."
+      );
+      return;
+    }
+    // Ensure correct network before starting transaction (auto-attempt switch)
+    if (!(await ensureCorrectNetwork())) return;
+    // Clear any stale hashes from previous runs so the progress UI starts fresh
+    setTxHashes({});
+
+    debugTx("handleMint/start", {
+      activeTab,
+      simpleMode,
+      flowPage,
+      selectedDepositAsset,
+      amount,
+      amountBigInt: amountBigInt?.toString(),
+      isDirectPeggedDeposit,
+      mintOnly,
+      depositInStabilityPool,
+      stabilityPoolType,
+      selectedStabilityPool,
+      selectedMarketId,
+      effectiveChainId,
+      isCorrectNetwork,
+      shouldShowNetworkSwitch,
+    });
+    
+    if (process.env.NODE_ENV === "development") {
+      console.log("[handleMint] Starting deposit flow", {
+        isDirectPeggedDeposit,
+        simpleMode,
+        selectedStabilityPool,
+        amount,
+        address,
+        validateAmountResult: validateAmount(),
+        writeContractAsync: !!writeContractAsync,
+      });
+    }
+
+    if (!validateAmount() || !address) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[handleMint] Validation failed or no address");
+      }
+      return;
+    }
+
+    // Check if wallet is connected
+    if (!isConnected) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("[handleMint] Wallet is not connected");
+      }
+      handleTxError("Please connect your wallet to continue.");
+      return;
+    }
+
+    // Check if writeContractAsync is available
+    if (!writeContractAsync) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("[handleMint] writeContractAsync is not available");
+      }
+      handleTxError(
+        "Wallet connection error. Please ensure your wallet is connected and try again."
+      );
+      return;
+    }
+
+    // For direct ha token deposits, we need a stability pool
+    if (isDirectPeggedDeposit) {
+      if (simpleMode) {
+        if (
+          !selectedStabilityPool ||
+          selectedStabilityPool.poolType === "none"
+        ) {
+          setError("Please select a stability pool for anchor token deposit");
+          if (process.env.NODE_ENV === "development") {
+            console.log("[handleMint] No stability pool selected");
+          }
+          return;
+        }
+      } else {
+        if (!stabilityPoolAddress) {
+          setError("Please select a stability pool for anchor token deposit");
+          if (process.env.NODE_ENV === "development") {
+            console.log(
+              "[handleMint] No stability pool address in advanced mode"
+            );
+          }
+          return;
+        }
+      }
+    } else {
+      // For collateral deposits, we need a minter
+      if (!minterAddress) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[handleMint] No minter address");
+        }
+        return;
+      }
+    }
+
+    try {
+      const userAddress = address as `0x${string}`;
+
+      const applyPoolProgressFallback = () => {
+        setProgressConfig((prev) => ({ ...prev, ...separatePoolProgressPatch() }));
+      };
+
+      const finishCombinedPoolZapSuccess = async (hash: `0x${string}`) => {
+        setTxHashes((prev) => ({ ...prev, mint: hash }));
+        await publicClient?.waitForTransactionReceipt({ hash });
+        setStep("success");
+        if (onSuccess) onSuccess();
+      };
+
+      const tryCombinedPoolZap = async (
+        logLabel: string,
+        execute: () => Promise<`0x${string}`>,
+      ): Promise<boolean> => {
+        const result = await attemptCombinedPoolZap({
+          logLabel,
+          onFallback: applyPoolProgressFallback,
+          execute,
+        });
+        if (result) {
+          await finishCombinedPoolZapSuccess(result);
+          return true;
+        }
+        return false;
+      };
+
+      const depositMintedToPool = async (balanceBeforeMint?: bigint) => {
+        if (!stabilityPoolAddress || !peggedTokenAddress) {
+          throw new Error(
+            "Stability pool or pegged token address not found. Cannot deposit to stability pool.",
+          );
+        }
+        await depositMintedPeggedToStabilityPool({
+          publicClient: publicClient ?? undefined,
+          writeContractAsync,
+          peggedTokenAddress: peggedTokenAddress as `0x${string}`,
+          stabilityPoolAddress: stabilityPoolAddress as `0x${string}`,
+          userAddress,
+          balanceBeforeMint,
+          erc20Abi: ERC20_ABI,
+          stabilityPoolAbi: STABILITY_POOL_ABI,
+          onApprovingPegged: () => setStep("approvingPegged"),
+          onDepositing: () => setStep("depositing"),
+          onApproveTx: (hash) =>
+            setTxHashes((prev) => ({ ...prev, approvePegged: hash })),
+          onDepositTx: (hash) =>
+            setTxHashes((prev) => ({ ...prev, deposit: hash })),
+        });
+      };
+
+      if (isDirectPeggedDeposit) {
+        // Direct ha token deposit to stability pool - skip minting
+        let targetPoolAddress: `0x${string}` | undefined;
+        let targetPeggedTokenAddress: `0x${string}` | undefined;
+        let targetMarket: any;
+
+        if (simpleMode && selectedStabilityPool) {
+          // Find the market for the selected stability pool
+          targetMarket = marketsForToken.find(
+            (m) => m.marketId === selectedStabilityPool.marketId
+          )?.market;
+
+          if (!targetMarket) {
+            setError("Market not found for selected stability pool");
+            return;
+          }
+
+          targetPoolAddress =
+            selectedStabilityPool.poolType === "collateral"
+              ? (targetMarket?.addresses?.stabilityPoolCollateral as
+                  | `0x${string}`
+                  | undefined)
+              : (targetMarket?.addresses?.stabilityPoolLeveraged as
+                  | `0x${string}`
+                  | undefined);
+
+          targetPeggedTokenAddress = targetMarket?.addresses?.peggedToken as
+            | `0x${string}`
+            | undefined;
+        } else {
+          // Advanced mode - use stabilityPoolAddress
+          targetPoolAddress = stabilityPoolAddress;
+          targetPeggedTokenAddress = marketForDepositAsset?.addresses
+            ?.peggedToken as `0x${string}` | undefined;
+        }
+
+        if (!targetPoolAddress) {
+          setError("Stability pool address not found");
+          return;
+        }
+
+        if (!targetPeggedTokenAddress) {
+          setError("Pegged token address not found");
+          return;
+        }
+
+        debugTx("directHa/targets", {
+          targetMarketId: selectedStabilityPool?.marketId,
+          targetPoolAddress,
+          targetPeggedTokenAddress,
+          amountBigInt: amountBigInt.toString(),
+        });
+
+        // Use Anvil client for local development, regular publicClient for production
+        const directDepositClient = false ? publicClient : publicClient;
+
+        // Extra debug: read pool asset + user balance (helps diagnose "estimated to fail")
+        try {
+          const poolAssetToken = (await directDepositClient?.readContract({
+            address: targetPoolAddress,
+            abi: STABILITY_POOL_ABI,
+            functionName: "ASSET_TOKEN",
+          })) as `0x${string}` | undefined;
+
+          const userHaBalance = (await directDepositClient?.readContract({
+            address: targetPeggedTokenAddress,
+            abi: ERC20_ABI,
+            functionName: "balanceOf",
+            args: [address as `0x${string}`],
+          })) as bigint | undefined;
+
+          debugTx("directHa/preflight", {
+            pool: targetPoolAddress,
+            poolAssetToken,
+            expectedHa: targetPeggedTokenAddress,
+            amount: amountBigInt.toString(),
+            userHaBalance: userHaBalance?.toString(),
+          });
+        } catch (e: any) {
+          debugTx("directHa/preflight/error", {
+            message: e?.message,
+          });
+        }
+
+        // Check allowance for pegged token to stability pool
+        if (process.env.NODE_ENV === "development") {
+          console.log("[handleMint] Checking allowance", {
+            tokenAddress: targetPeggedTokenAddress,
+            poolAddress: targetPoolAddress,
+            userAddress: address,
+            shouldUseAnvil: false,
+          });
+        }
+
+        let directPeggedAllowance = 0n;
+        try {
+          const client = directDepositClient;
+
+          if (!client) {
+            if (process.env.NODE_ENV === "development") {
+              console.warn(
+                "[handleMint] No client available for allowance check"
+              );
+            }
+            directPeggedAllowance = 0n;
+          } else {
+            directPeggedAllowance =
+              (await client.readContract({
+                address: targetPeggedTokenAddress,
+                abi: ERC20_ABI,
+                functionName: "allowance",
+                args: [address as `0x${string}`, targetPoolAddress],
+              })) || 0n;
+          }
+        } catch (allowanceError) {
+          // If reading allowance fails, assume 0 (will need approval)
+          if (process.env.NODE_ENV === "development") {
+            console.warn(
+              "[handleMint] Failed to read allowance, assuming 0:",
+              allowanceError
+            );
+          }
+          directPeggedAllowance = 0n;
+        }
+
+        if (process.env.NODE_ENV === "development") {
+          console.log("[handleMint] Allowance check result", {
+            allowance: directPeggedAllowance.toString(),
+            amount: amountBigInt.toString(),
+            needsApproval: amountBigInt > directPeggedAllowance,
+          });
+        }
+
+        const needsDirectApproval = amountBigInt > directPeggedAllowance;
+        debugTx("directHa/allowance", {
+          allowance: directPeggedAllowance.toString(),
+          amount: amountBigInt.toString(),
+          needsDirectApproval,
+        });
+        setProgressConfig({
+          mode: "direct",
+          includeApproveCollateral: false,
+          includeMint: false,
+          includeApprovePegged: false,
+          includeDeposit: false,
+          includeDirectApprove: needsDirectApproval,
+          includeDirectDeposit: true,
+          title: "Deposit anchor token to pool",
+        });
+        // Show progress modal for transaction feedback
+        progress.show();
+        flushSync(() => {}); // Force React to paint before first action
+
+        // Step 1: Approve pegged token for stability pool (if needed)
+        if (needsDirectApproval) {
+          setStep("approving");
+          setError(null);
+          setTxHash(null);
+
+          if (process.env.NODE_ENV === "development") {
+            console.log("[handleMint] Approving token", {
+              tokenAddress: targetPeggedTokenAddress,
+              spender: targetPoolAddress,
+              amount: amountBigInt.toString(),
+              address,
+              publicClient: !!publicClient,
+            });
+          }
+
+          try {
+            debugTx("directHa/approve", {
+              token: targetPeggedTokenAddress,
+              spender: targetPoolAddress,
+              amount: amountBigInt.toString(),
+            });
+            
+            const approveHash = await writeContractAsync({
+              address: targetPeggedTokenAddress,
+              abi: ERC20_ABI,
+              functionName: "approve",
+              args: [targetPoolAddress, amountBigInt],
+            });
+
+            if (process.env.NODE_ENV === "development") {
+              console.log(
+                "[handleMint] Approval transaction hash:",
+                approveHash
+              );
+            }
+
+            setTxHash(approveHash);
+            setTxHashes((prev) => ({ ...prev, directApprove: approveHash }));
+            await directDepositClient?.waitForTransactionReceipt({
+              hash: approveHash,
+            });
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          } catch (approveErr) {
+            if (process.env.NODE_ENV === "development") {
+              console.error("[handleMint] Approval error:", approveErr);
+            }
+            throw approveErr; // Re-throw to be caught by outer catch
+          }
+        }
+
+        // Step 2: Deposit pegged token directly to stability pool
+        setStep("depositing");
+        setError(null);
+        setTxHash(null);
+
+        // Log deposit parameters for debugging
+        if (process.env.NODE_ENV === "development") {
+          console.log("[handleMint] Depositing to stability pool:", {
+            poolAddress: targetPoolAddress,
+            amount: amountBigInt.toString(),
+            receiver: address,
+            peggedTokenAddress: targetPeggedTokenAddress,
+            address,
+            publicClient: !!publicClient,
+            writeContractAsync: !!writeContractAsync,
+          });
+        }
+
+        try {
+          debugTx("directHa/deposit", {
+            pool: targetPoolAddress,
+            args: [amountBigInt.toString(), address, "0"],
+          });
+
+          // Simulate first to capture revert data/selector
+          try {
+            debugTx("directHa/simulateDeposit", {
+              pool: targetPoolAddress,
+              args: [amountBigInt.toString(), address, "0"],
+            });
+            await directDepositClient?.simulateContract({
+              address: targetPoolAddress,
+              abi: STABILITY_POOL_ABI,
+              functionName: "deposit",
+              args: [amountBigInt, address as `0x${string}`, 0n],
+              account: address as `0x${string}`,
+            });
+            debugTx("directHa/simulateDeposit/success");
+          } catch (simErr: any) {
+            debugTx("directHa/simulateDeposit/error", {
+              message: simErr?.message,
+              shortMessage: simErr?.shortMessage,
+              cause: simErr?.cause?.message,
+              data: simErr?.data,
+              causeData: simErr?.cause?.data,
+            });
+            try {
+              const revert = getRevertReason(simErr);
+              if (revert?.errorName === "DepositAmountLessThanMinimum" && revert?.args?.length === 2) {
+                const minimum = revert.args[1] as bigint;
+                throw new Error(
+                  `Deposit amount too small. Minimum deposit is ${formatEther(minimum)} ${peggedTokenSymbol}.`
+                );
+              }
+            } catch (decodedErr) {
+              throw decodedErr;
+            }
+
+            let msg =
+              simErr?.cause?.message ||
+              simErr?.shortMessage ||
+              simErr?.message ||
+              "Unknown error";
+            if (
+              typeof msg === "string" &&
+              msg.toLowerCase().includes("unable to decode signature")
+            ) {
+              const match = msg.match(/\"(0x[0-9a-fA-F]{8})\"/);
+              const selector = match?.[1] || "unknown";
+              msg = `Deposit reverted with custom error ${selector}.`;
+            }
+            throw new Error(`Deposit would fail (simulate): ${msg}`);
+          }
+          
+          if (process.env.NODE_ENV === "development") {
+            console.log("[handleMint] About to call writeContractAsync with:", {
+              address: targetPoolAddress,
+              functionName: "deposit",
+              args: [amountBigInt.toString(), address, "0"],
+              amountBigInt: amountBigInt.toString(),
+            });
+          }
+
+          const poolDepositHash = await writeContractAsync({
+            address: targetPoolAddress,
+            abi: STABILITY_POOL_ABI,
+            functionName: "deposit",
+            args: [amountBigInt, address as `0x${string}`, 0n],
+          });
+
+          if (!poolDepositHash) {
+            throw new Error(
+              "Transaction was not sent to wallet. No transaction hash returned."
+            );
+          }
+
+          if (process.env.NODE_ENV === "development") {
+            console.log(
+              "[handleMint] Deposit transaction hash:",
+              poolDepositHash
+            );
+          }
+
+          setTxHash(poolDepositHash);
+          setTxHashes((prev) => ({ ...prev, directDeposit: poolDepositHash }));
+          await directDepositClient?.waitForTransactionReceipt({
+            hash: poolDepositHash,
+          });
+        } catch (depositErr: any) {
+          if (process.env.NODE_ENV === "development") {
+            console.error("[handleMint] Deposit error:", depositErr);
+            console.error("[handleMint] Error details:", {
+              message: depositErr?.message,
+              name: depositErr?.name,
+              cause: depositErr?.cause,
+              stack: depositErr?.stack,
+            });
+          }
+
+          // Check if it's a user rejection
+          if (
+            depositErr?.name === "UserRejectedRequestError" ||
+            depositErr?.message?.includes("User rejected") ||
+            depositErr?.message?.includes("user rejected")
+          ) {
+            throw new Error("Transaction was rejected by user");
+          }
+
+          // Check if it's a connection/wallet issue
+          if (
+            depositErr?.message?.includes("not connected") ||
+            depositErr?.message?.includes("No wallet") ||
+            !depositErr?.message
+          ) {
+            throw new Error(
+              "Wallet connection error. Please ensure your wallet is connected and try again."
+            );
+          }
+
+          throw depositErr; // Re-throw to be caught by outer catch
+        }
+      } else {
+        // Collateral deposit flow: mint then optionally deposit to stability pool
+        
+        // Check if we need to swap the selected token first
+        let swappedAmount = amountBigInt;
+        let swappedTokenIsETH = anyTokenDeposit.isNativeETH;
+        
+        if (anyTokenDeposit.needsSwap && anyTokenDeposit.swapQuote) {
+          // Step 0: Swap token to intermediate token (ETH or USDC)
+          setStep("approving");
+          setError(null);
+          setTxHash(null);
+          
+          // Approve token for ParaSwap (if not ETH)
+          if (!anyTokenDeposit.isNativeETH && anyTokenDeposit.needsSwapApproval) {
+            // Check network before sending transaction
+            if (!(await ensureCorrectNetwork())) {
+              throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
+            }
+            
+            const swapApproveHash = await writeContractAsync({
+              address: anyTokenDeposit.selectedAssetAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "approve",
+              args: [
+                "0x216b4b4ba9f3e719726886d34a177484278bfcae" as `0x${string}`, // ParaSwap TokenTransferProxy
+                anyTokenDeposit.amountBigInt,
+              ],
+            });
+            await publicClient?.waitForTransactionReceipt({ hash: swapApproveHash });
+            await anyTokenDeposit.refetchSwapAllowance();
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
+          
+          // Execute swap
+          setStep("minting"); // Reusing "minting" step for swap
+          const fromTokenForSwap = anyTokenDeposit.isNativeETH ? "ETH" : (anyTokenDeposit.selectedAssetAddress as `0x${string}`);
+          const toTokenForSwap = anyTokenDeposit.swapTargetToken as any;
+          const swapTxData = await getDefiLlamaSwapTx(
+            fromTokenForSwap,
+            toTokenForSwap,
+            anyTokenDeposit.amountBigInt,
+            address as `0x${string}`,
+            slippageTolerance,
+            anyTokenDeposit.tokenDecimals,
+            anyTokenDeposit.swapTargetToken === "ETH" ? 18 : 6
+          );
+          
+          if (!swapTxData) {
+            throw new Error("Failed to get swap transaction data");
+          }
+          
+          // Check network before sending transaction
+          if (!(await ensureCorrectNetwork())) {
+            throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
+          }
+          
+          const swapHash = await sendTransactionAsync({
+            to: swapTxData.to,
+            data: swapTxData.data,
+            value: swapTxData.value,
+            gas: swapTxData.gas,
+          });
+          
+          await publicClient?.waitForTransactionReceipt({ hash: swapHash });
+          
+          // Update swapped amount (ParaSwap returns in smallest units already)
+          const isSwappedToUSDC = anyTokenDeposit.swapTargetToken !== "ETH";
+          swappedAmount = BigInt(anyTokenDeposit.swapQuote.toAmount);
+          swappedTokenIsETH = !isSwappedToUSDC;
+        }
+        
+        // Check if we should use zap contracts (for ETH/USDC deposits)
+        const useZap = anyTokenDeposit.useETHZap || anyTokenDeposit.useUSDCZap;
+        const zapAddress = anyTokenDeposit.zapAddress;
+        
+        if (useZap && zapAddress) {
+          // Use zap contract for efficient ETH → collateral or USDC → collateral conversion
+          // Determine if approval is needed
+          const needsZapApproval = (anyTokenDeposit.useETHZap && !anyTokenDeposit.isNativeETH && !anyTokenDeposit.needsSwap) || // stETH direct
+            (anyTokenDeposit.useUSDCZap && !anyTokenDeposit.isNativeETH); // USDC/fxUSD (always needs approval)
+          
+          // If user selected a stability pool, we should complete the full flow (mint + deposit)
+          // and show it in the progress modal.
+          const wantsDepositToPool = simpleMode
+            ? selectedStabilityPool &&
+              selectedStabilityPool.poolType !== "none" &&
+              !!stabilityPoolAddress
+            : depositInStabilityPool && !mintOnly;
+          const shouldDepositToPool =
+            wantsDepositToPool && !(useZap && zapSpAllowlistPending);
+          const useCombinedPoolZap = shouldDepositToPool;
+
+          // Set up progress modal before zap transaction
+          // Determine the actual asset being zapped (after swap if applicable)
+          let zapAssetName: string;
+          if (anyTokenDeposit.useETHZap) {
+            zapAssetName = swappedTokenIsETH ? "ETH" : "stETH";
+          } else if (anyTokenDeposit.useUSDCZap) {
+            // After swap, we always have USDC; otherwise check selected asset
+            zapAssetName = anyTokenDeposit.needsSwap ? "USDC" : (anyTokenDeposit.selectedAsset?.toUpperCase() || "USDC");
+          } else {
+            zapAssetName = anyTokenDeposit.selectedAsset?.toUpperCase() || "TOKEN";
+          }
+          
+          const isActuallyETH = anyTokenDeposit.useETHZap && (anyTokenDeposit.isNativeETH || swappedTokenIsETH);
+          const isActuallyStETH = anyTokenDeposit.useETHZap && !(anyTokenDeposit.isNativeETH || swappedTokenIsETH) && !anyTokenDeposit.needsSwap;
+          const isUsdcOrFxUsdOrFxSave =
+            selectedDepositAsset?.toLowerCase() === "usdc" ||
+            selectedDepositAsset?.toLowerCase() === "fxusd" ||
+            selectedDepositAsset?.toLowerCase() === "fxsave";
+          const permitEligible =
+            permitEnabled &&
+            ((mintOnly &&
+              ((anyTokenDeposit.useETHZap &&
+                !anyTokenDeposit.needsSwap &&
+                !anyTokenDeposit.isNativeETH) ||
+                (anyTokenDeposit.useUSDCZap && isUsdcOrFxUsdOrFxSave))) ||
+              (!mintOnly &&
+                shouldDepositToPool &&
+                ((anyTokenDeposit.useETHZap && isActuallyStETH) ||
+                  (anyTokenDeposit.useUSDCZap && isUsdcOrFxUsdOrFxSave))));
+          const anyTokenPoolProgress = buildCollateralMintProgressFields({
+            shouldDepositToPool,
+            permitEligible,
+            needsZapApproval,
+            needsDirectApproval: false,
+            useZap: true,
+            zapAssetName,
+            wrappedZapAssetName: null,
+            useCombinedPoolZap,
+          });
+          setProgressConfig({
+            mode: "collateral",
+            ...anyTokenPoolProgress,
+            includeDirectApprove: false,
+            includeDirectDeposit: false,
+          });
+          progress.show();
+          setStep(permitEligible || needsZapApproval ? "approving" : "minting");
+          flushSync(() => {}); // Force React to paint before first action
+          setError(null);
+          setTxHash(null);
+          
+          if (anyTokenDeposit.useETHZap) {
+            // ETH/stETH Zap: ETH → stETH → wstETH → Minter OR stETH → wstETH → Minter (via peggedTokenZap)
+            // Determine which asset we're actually zapping (ETH or stETH)
+            const isActuallyETH = anyTokenDeposit.isNativeETH || swappedTokenIsETH;
+            const isActuallyStETH = !isActuallyETH && !anyTokenDeposit.needsSwap;
+            
+            // Calculate minPeggedOut for minter zap
+            // Use swapDryRunOutput or expectedMintOutput from swap dry run if available (accounts for actual conversion and fees)
+            // Otherwise fall back to estimation
+            let minPeggedOut: bigint;
+            let actualExpectedOutput: bigint | undefined;
+            
+            // For direct ETH deposits, try to get dry run output
+            // First check if we have a dry run for the direct deposit amount
+            if (isActuallyETH && !anyTokenDeposit.needsSwap) {
+              // Try to find the market - use marketForDepositAsset, selectedMarket, or find by zap address
+              let marketForDryRun = marketForDepositAsset;
+              if (!marketForDryRun) {
+                const selectedMarket = marketsForToken.find((x) => x.marketId === selectedMarketId)?.market;
+                marketForDryRun = selectedMarket;
+              }
+              if (!marketForDryRun && zapAddress) {
+                marketForDryRun = marketsForToken.find(
+                  ({ market: m }) => 
+                    m?.addresses?.peggedTokenZap?.toLowerCase() === zapAddress.toLowerCase() ||
+                    m?.addresses?.leveragedTokenZap?.toLowerCase() === zapAddress.toLowerCase()
+                )?.market;
+            }
+            
+              if (marketForDryRun?.addresses?.minter && publicClient) {
+                try {
+                  // Convert ETH to wstETH for dry run
+                  // Contract flow: ETH → stETH (1:1) → wstETH (via wstETH.wrap())
+                  // So we need: ETH amount → stETH amount (1:1) → wstETH amount (via wstETH contract)
+                  const wstETHAddress = marketForDryRun.addresses.wrappedCollateralToken as `0x${string}` | undefined;
+                  
+                  if (wstETHAddress) {
+                    // ETH → stETH is 1:1, so stETH amount = ETH amount
+                    const stEthAmount = swappedAmount;
+                    
+                    // Query wstETH contract for actual conversion rate
+                    const wstEthAmount = await publicClient.readContract({
+              address: wstETHAddress,
+              abi: WSTETH_ABI,
+              functionName: "getWstETHByStETH",
+                      args: [stEthAmount],
+                    });
+                    
+                    // Read dry run synchronously with actual wstETH amount
+                    const dryRunResult = await publicClient.readContract({
+                      address: marketForDryRun.addresses.minter as `0x${string}`,
+                      abi: MINTER_PEGGED_ABI,
+                      functionName: "mintPeggedTokenDryRun",
+                      args: [wstEthAmount as bigint],
+            });
+                    if (dryRunResult && Array.isArray(dryRunResult) && dryRunResult.length >= 4) {
+                      actualExpectedOutput = dryRunResult[3] as bigint;
+                      if (process.env.NODE_ENV === "development") {
+                        console.log("[ETH Zap] Direct deposit dry run result:", {
+                          ethAmount: swappedAmount.toString(),
+                          stEthAmount: stEthAmount.toString(),
+                          wstEthAmount: (wstEthAmount as bigint).toString(),
+                          peggedMinted: actualExpectedOutput.toString(),
+                          minter: marketForDryRun.addresses.minter,
+                        });
+                      }
+                    }
+                  } else {
+                    // Fallback to wrappedRate if wstETH address not available
+                    const wrappedRate = marketForDryRun?.wrappedRate || selectedMarket?.wrappedRate;
+                    if (wrappedRate && wrappedRate > 0n) {
+                      const wstEthAmount = (swappedAmount * 10n ** 18n) / wrappedRate;
+                      const dryRunResult = await publicClient.readContract({
+                        address: marketForDryRun.addresses.minter as `0x${string}`,
+                        abi: MINTER_PEGGED_ABI,
+                        functionName: "mintPeggedTokenDryRun",
+                        args: [wstEthAmount],
+                      });
+                      if (dryRunResult && Array.isArray(dryRunResult) && dryRunResult.length >= 4) {
+                        actualExpectedOutput = dryRunResult[3] as bigint;
+                      }
+                    }
+                  }
+                } catch (err) {
+                  // Dry run failed, will use fallback
+                  if (process.env.NODE_ENV === "development") {
+                    console.warn("[ETH Zap] Direct deposit dry run failed, using fallback:", err);
+                  }
+                }
+              } else {
+                if (process.env.NODE_ENV === "development") {
+                  console.warn("[ETH Zap] No market found for dry run, will use fallback estimation");
+                }
+              }
+            }
+            
+            // Prefer swapDryRunOutput directly (most reliable for swap deposits)
+            if (swapDryRunOutput && Array.isArray(swapDryRunOutput) && swapDryRunOutput.length >= 4) {
+              actualExpectedOutput = swapDryRunOutput[3] as bigint; // peggedMinted from dry run
+            } else if (expectedMintOutput && expectedMintOutput > 0n) {
+              actualExpectedOutput = expectedMintOutput;
+            }
+            
+            if (actualExpectedOutput && actualExpectedOutput > 0n) {
+              // Validate that actualExpectedOutput is reasonable
+              // For ETH → haBTC, the output should be roughly similar to input (accounting for price differences)
+              // But we need to be more lenient since BTC price is much higher than ETH
+              // Check if output is more than 10x input (which would be unreasonable even for BTC)
+              const maxReasonableOutput = swappedAmount * 10n; // Allow up to 10x for BTC markets
+              const minReasonableOutput = swappedAmount / 1000n; // At least 0.1% of input
+              
+              // Also check if the ratio is suspicious (e.g., output is much higher than input for BTC markets)
+              // For ETH → haBTC, the ratio should be roughly 1:1 (accounting for BTC price being ~20-30x ETH)
+              // If the ratio is way off, the dry run might be wrong
+              const outputRatio = Number(actualExpectedOutput) / Number(swappedAmount);
+              const suspiciousRatio = outputRatio > 50 || outputRatio < 0.01; // BTC is ~20-30x ETH, so ratio should be reasonable
+              
+              if (actualExpectedOutput > maxReasonableOutput || actualExpectedOutput < minReasonableOutput || suspiciousRatio) {
+                if (process.env.NODE_ENV === "development") {
+                  console.warn("[ETH Zap] Dry run output seems unreasonable, using fallback:", {
+                    actualExpectedOutput: actualExpectedOutput.toString(),
+                    swappedAmount: swappedAmount.toString(),
+                    ratio: outputRatio,
+                    maxReasonable: maxReasonableOutput.toString(),
+                    minReasonable: minReasonableOutput.toString(),
+                    suspiciousRatio,
+                  });
+                }
+                actualExpectedOutput = undefined; // Force fallback
+              } else {
+                // When mint fee is 1%, use at least 2% slippage (same as USDC/fxUSD). Else use 2% default.
+                const slippagePercent = (feePercentage !== undefined && feePercentage >= 1)
+                  ? 2.0
+                  : Math.max(slippageTolerance || 1, 2.0);
+                minPeggedOut = (actualExpectedOutput * BigInt(Math.floor((100 - slippagePercent) * 100))) / 10000n;
+                
+                if (process.env.NODE_ENV === "development") {
+                  console.log("[ETH Zap] Using dry run output with slippage:", {
+                    actualExpectedOutput: actualExpectedOutput.toString(),
+                    minPeggedOut: minPeggedOut.toString(),
+                    slippagePercent,
+                    ratio: Number(actualExpectedOutput) / Number(swappedAmount),
+                  });
+                }
+              }
+            }
+            
+            // If we don't have a valid actualExpectedOutput, use fallback estimation
+            if (!actualExpectedOutput || actualExpectedOutput === 0n) {
+              // Fallback: estimate from ETH/stETH amount (less accurate)
+              // For direct ETH deposits, we need to account for ETH → stETH → wstETH conversion
+              // The wrapped rate converts ETH to wstETH, so we should use that for estimation
+              let estimatedPeggedOut: bigint;
+              
+              // Try to get wrapped rate for better estimation
+              // Try multiple sources for wrapped rate
+              let wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate;
+              if (!wrappedRate && zapAddress) {
+                const marketByZap = marketsForToken.find(
+                  ({ market: m }) => 
+                    m?.addresses?.peggedTokenZap?.toLowerCase() === zapAddress.toLowerCase() ||
+                    m?.addresses?.leveragedTokenZap?.toLowerCase() === zapAddress.toLowerCase()
+                )?.market;
+                wrappedRate = marketByZap?.wrappedRate;
+              }
+              
+              const feeBps = (feePercentage !== undefined && feePercentage >= 1) ? 100 : 25; // 1% or ~0.25%
+              if (wrappedRate && wrappedRate > 0n) {
+                const wstEthAmount = (swappedAmount * 10n ** 18n) / wrappedRate;
+                estimatedPeggedOut = (wstEthAmount * BigInt(10000 - feeBps)) / 10000n;
+              } else {
+                estimatedPeggedOut = (swappedAmount * BigInt(10000 - feeBps)) / 10000n;
+              }
+              
+              // When mint fee is 1%, use at least 2% slippage (same as USDC/fxUSD)
+              const slippagePercent = (feePercentage !== undefined && feePercentage >= 1)
+                ? 2.0
+                : Math.max(slippageTolerance || 1, 2.0);
+              minPeggedOut = (estimatedPeggedOut * BigInt(Math.floor((100 - slippagePercent) * 100))) / 10000n;
+              
+              if (process.env.NODE_ENV === "development") {
+                console.log("[ETH Zap] Using fallback estimation:", {
+                  swappedAmount: swappedAmount.toString(),
+                  wrappedRate: wrappedRate?.toString() || "none",
+                  estimatedPeggedOut: estimatedPeggedOut.toString(),
+                  minPeggedOut: minPeggedOut.toString(),
+                  slippagePercent,
+                });
+              }
+            }
+            
+            // Validate minPeggedOut is reasonable (at least 0.1% of input amount, or at least 1 wei)
+            const minPeggedOutThreshold = swappedAmount > 1000n ? swappedAmount / 1000n : 1n; // 0.1% of input, or 1 wei minimum
+            if (minPeggedOut < minPeggedOutThreshold) {
+              const errorMsg = `Calculated minPeggedOut (${formatEther(minPeggedOut)} ETH) is too small relative to input amount (${formatEther(swappedAmount)} ETH). ` +
+                `This usually indicates a calculation error. Please try again.`;
+              if (process.env.NODE_ENV === "development") {
+                console.error("[ETH Zap] minPeggedOut validation failed:", {
+                  swappedAmount: swappedAmount.toString(),
+                  minPeggedOut: minPeggedOut.toString(),
+                  minPeggedOutThreshold: minPeggedOutThreshold.toString(),
+                  actualExpectedOutput: actualExpectedOutput?.toString(),
+                });
+              }
+              throw new Error(errorMsg);
+            }
+            
+            if (process.env.NODE_ENV === "development") {
+              console.log("[ETH Zap] Final values:", {
+                swappedAmount: swappedAmount.toString(),
+                minPeggedOut: minPeggedOut.toString(),
+                minPeggedOutETH: formatEther(minPeggedOut),
+                isActuallyETH,
+                isActuallyStETH,
+              });
+            }
+
+            let zapWrapRateForMinW =
+              marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate;
+            if (!zapWrapRateForMinW && zapAddress) {
+              const marketByZap = marketsForToken.find(
+                ({ market: m }) =>
+                  m?.addresses?.peggedTokenZap?.toLowerCase() ===
+                    zapAddress.toLowerCase() ||
+                  m?.addresses?.leveragedTokenZap?.toLowerCase() ===
+                    zapAddress.toLowerCase()
+              )?.market;
+              zapWrapRateForMinW = marketByZap?.wrappedRate;
+            }
+            
+            // Check network before sending transaction
+            if (!(await ensureCorrectNetwork())) {
+              throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
+            }
+            
+            // Track pegged token balance before zap so we can compute minted amount for deposit.
+            const balanceBeforeZap = peggedTokenAddress
+              ? ((await publicClient?.readContract({
+                  address: peggedTokenAddress as `0x${string}`,
+                  abi: ERC20_ABI,
+                  functionName: "balanceOf",
+                  args: [address as `0x${string}`],
+                })) as bigint | undefined)
+              : undefined;
+
+            // Call the correct zap function based on asset type
+            let zapHash: `0x${string}`;
+            if (isActuallyETH) {
+              const minWEth = await minWrappedCollateralForEthBaseZap(
+                publicClient ?? undefined,
+                zapAddress as `0x${string}`,
+                swappedAmount,
+                zapWrapRateForMinW,
+                DEFAULT_WRAP_LEG_SLIPPAGE_BPS
+              );
+              if (shouldDepositToPool && stabilityPoolAddress) {
+                const minStabilityPoolOut = (minPeggedOut * (feePercentage !== undefined && feePercentage >= 1 ? 98n : 99n)) / 100n;
+                if (
+                  await tryCombinedPoolZap(
+                    "ETH zap to stability pool (any-token path)",
+                    () =>
+                      writeContractAsync({
+                        address: zapAddress,
+                        abi: ethZapAbi,
+                        functionName: minterEthNativeZapFunctionName(
+                          "ToStabilityPool",
+                          useZapV1,
+                        ),
+                        args: [
+                          minWEth,
+                          userAddress,
+                          minPeggedOut,
+                          stabilityPoolAddress as `0x${string}`,
+                          minStabilityPoolOut,
+                        ],
+                        value: swappedAmount,
+                      }),
+                  )
+                ) {
+                  return;
+                }
+              }
+              debugTx("zap/baseAssetToPegged", {
+                zapAddress,
+                function: "zapBaseAssetToPegged",
+                args: [address, minPeggedOut.toString()],
+                value: swappedAmount.toString(),
+              });
+              zapHash = await writeContractAsync({
+              address: zapAddress,
+                abi: ethZapAbi,
+                functionName: minterEthNativeZapFunctionName("ToPegged", useZapV1),
+                args: [
+                  minWEth,
+                  address as `0x${string}`,
+                  minPeggedOut,
+                ],
+              value: swappedAmount,
+            });
+            } else if (isActuallyStETH) {
+              // Need approval for stETH first
+              // Use underlyingCollateralToken (stETH), not wrappedCollateralToken (wstETH)
+              // Try marketForDepositAsset first, then selectedMarket, then find market by zap address
+              let stETHAddress = marketForDepositAsset?.addresses?.underlyingCollateralToken as `0x${string}` | undefined;
+              
+              // Fallback: try selectedMarket
+              if (!stETHAddress) {
+                const selectedMarket = marketsForToken.find((x) => x.marketId === selectedMarketId)?.market;
+                stETHAddress = selectedMarket?.addresses?.underlyingCollateralToken as `0x${string}` | undefined;
+              }
+              
+              // Fallback: find market by zap address
+              if (!stETHAddress && zapAddress) {
+                const marketByZap = marketsForToken.find(
+                  ({ market: m }) => 
+                    m?.addresses?.peggedTokenZap?.toLowerCase() === zapAddress.toLowerCase() ||
+                    m?.addresses?.leveragedTokenZap?.toLowerCase() === zapAddress.toLowerCase()
+                )?.market;
+                stETHAddress = marketByZap?.addresses?.underlyingCollateralToken as `0x${string}` | undefined;
+              }
+              
+              // Final fallback: use hardcoded stETH address (constant across all markets)
+              if (!stETHAddress) {
+                stETHAddress = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84" as `0x${string}`;
+              }
+              
+              if (!stETHAddress) throw new Error("stETH address not found. Please ensure you're depositing to a wstETH market.");
+
+              const minWSteth = minWrappedCollateralAfterUnderlyingToWrapped(
+                swappedAmount,
+                zapWrapRateForMinW,
+                DEFAULT_WRAP_LEG_SLIPPAGE_BPS
+              );
+
+              if (permitEnabled && (mintOnly || shouldDepositToPool)) {
+                try {
+                  const permitResult = await handlePermitOrApproval(
+                    stETHAddress,
+                    zapAddress,
+                    swappedAmount
+                  );
+                  const usePermit =
+                    !!permitResult?.usePermit &&
+                    !!permitResult.permitSig &&
+                    !!permitResult.deadline;
+
+                  if (
+                    usePermit &&
+                    permitResult?.permitSig &&
+                    permitResult?.deadline
+                  ) {
+                    if (shouldDepositToPool && stabilityPoolAddress) {
+                      setProgressConfig((prev) => ({
+                        ...prev,
+                        includeApproveCollateral: false,
+                        includePermitCollateral: true,
+                      }));
+                      setStep("minting");
+                      const minStabilityPoolOutStEth =
+                        (minPeggedOut *
+                          (feePercentage !== undefined && feePercentage >= 1
+                            ? 98n
+                            : 99n)) /
+                        100n;
+                      const deadline =
+                        permitResult.deadline || calculateDeadline(3600);
+                      if (
+                        await tryCombinedPoolZap(
+                          "stETH permit zap to stability pool (any-token path)",
+                          () =>
+                            writeContractAsync({
+                              address: zapAddress,
+                              abi: ethZapAbi,
+                              functionName:
+                                "zapCollateralToStabilityPoolWithPermit",
+                              args: [
+                                swappedAmount,
+                                minWSteth,
+                                userAddress,
+                                minPeggedOut,
+                                stabilityPoolAddress as `0x${string}`,
+                                minStabilityPoolOutStEth,
+                                deadline,
+                                permitResult.permitSig.v,
+                                permitResult.permitSig.r,
+                                permitResult.permitSig.s,
+                              ],
+                            }),
+                        )
+                      ) {
+                        return;
+                      }
+                      // Combined permit zap failed — fall through to approve + separate mint/deposit.
+                    } else {
+                      setProgressConfig((prev) => ({
+                        ...prev,
+                        includeApproveCollateral: false,
+                        includePermitCollateral: true,
+                      }));
+                      setStep("minting");
+                      const permitHash = await writeContractAsync({
+                        address: zapAddress,
+                        abi: ethZapAbi,
+                        functionName: "zapCollateralToPeggedWithPermit",
+                        args: [
+                          swappedAmount,
+                          minWSteth,
+                          userAddress,
+                          minPeggedOut,
+                          permitResult.deadline,
+                          permitResult.permitSig.v,
+                          permitResult.permitSig.r,
+                          permitResult.permitSig.s,
+                        ],
+                      });
+                      setTxHashes((prev) => ({ ...prev, mint: permitHash }));
+                      await publicClient?.waitForTransactionReceipt({
+                        hash: permitHash,
+                      });
+                      setStep("success");
+                      if (onSuccess) onSuccess();
+                      return;
+                    }
+                  }
+                } catch (permitError) {
+                  if (process.env.NODE_ENV === "development") {
+                    console.warn(
+                      "[handleMint] Permit rejected, fallback to approve:",
+                      permitError
+                    );
+                  }
+                }
+                setProgressConfig((prev) => ({
+                  ...prev,
+                  ...permitToApproveCombinedPoolPatch({
+                    needsApproval: needsZapApproval,
+                    combinedPoolZap: shouldDepositToPool,
+                  }),
+                }));
+              }
+
+              // Check and approve stETH if needed
+              const stETHAllowance = await publicClient?.readContract({
+                address: stETHAddress,
+                abi: ERC20_ABI,
+                functionName: "allowance",
+                args: [address as `0x${string}`, zapAddress],
+              });
+
+              const allowanceBigInt = (stETHAllowance as bigint) || 0n;
+              if (allowanceBigInt < swappedAmount) {
+                setStep("approving");
+                const approveHash = await writeContractAsync({
+                  address: stETHAddress,
+                  abi: ERC20_ABI,
+                  functionName: "approve",
+                  args: [zapAddress, swappedAmount],
+                });
+                setTxHashes((prev) => ({ ...prev, approveCollateral: approveHash }));
+                await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+                setStep("minting");
+              }
+
+              if (shouldDepositToPool && stabilityPoolAddress) {
+                const minStabilityPoolOutStEth =
+                  (minPeggedOut *
+                    (feePercentage !== undefined && feePercentage >= 1
+                      ? 98n
+                      : 99n)) /
+                  100n;
+                if (
+                  await tryCombinedPoolZap(
+                    "stETH zap to stability pool (any-token path)",
+                    () =>
+                      writeContractAsync({
+                        address: zapAddress,
+                        abi: ethZapAbi,
+                        functionName: "zapCollateralToStabilityPool",
+                        args: [
+                          swappedAmount,
+                          minWSteth,
+                          userAddress,
+                          minPeggedOut,
+                          stabilityPoolAddress as `0x${string}`,
+                          minStabilityPoolOutStEth,
+                        ],
+                      }),
+                  )
+                ) {
+                  return;
+                }
+              }
+              
+              debugTx("zap/collateralToPegged", {
+                zapAddress,
+                function: "zapCollateralToPegged",
+                args: [swappedAmount.toString(), address, minPeggedOut.toString()],
+              });
+              zapHash = await writeContractAsync({
+                address: zapAddress,
+                abi: ethZapAbi,
+                functionName: "zapCollateralToPegged",
+                args: [
+                  swappedAmount,
+                  minWSteth,
+                  address as `0x${string}`,
+                  minPeggedOut,
+                ],
+              });
+            } else {
+              throw new Error("Invalid asset for ETH/stETH zap");
+            }
+            
+            await publicClient?.waitForTransactionReceipt({ hash: zapHash });
+            setTxHashes((prev) => ({ ...prev, mint: zapHash }));
+            
+            // If a pool was selected, continue by depositing the freshly minted pegged tokens.
+            if (shouldDepositToPool) {
+              await depositMintedToPool(balanceBeforeZap);
+            }
+
+            setStep("success");
+            if (onSuccess) onSuccess();
+            return;
+          } else if (anyTokenDeposit.useUSDCZap) {
+            // USDC/fxUSD Zap: USDC → fxUSD → fxSAVE → Minter OR fxUSD → fxSAVE → Minter (via peggedTokenZap)
+            // Determine which asset we're actually zapping (USDC or fxUSD)
+            const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
+            const isActuallyUSDC = anyTokenDeposit.needsSwap 
+              ? true // After swap, we always have USDC
+              : (anyTokenDeposit.selectedAssetAddress?.toLowerCase() === USDC_ADDRESS.toLowerCase());
+            const isActuallyFxUSD = !isActuallyUSDC && !anyTokenDeposit.needsSwap;
+            // minFxSaveOut must match zap conversion: fxSAVE = amount / wrappedRate (Genesis formula).
+            // Using % of input assumed 1:1 and caused SlippageExceeded for fxUSD (e.g. 5 fxUSD → ~4.65 fxSAVE, we required 4.8).
+            const wr = marketForDepositAsset?.wrappedRate ?? selectedMarket?.wrappedRate;
+            const minFxSaveSlipPct = (feePercentage !== undefined && feePercentage >= 1)
+              ? (isActuallyFxUSD ? 4 : 3)
+              : 1;
+            let minFxSaveOut: bigint;
+            if (wr && wr > 0n) {
+              const expectedFxSave =
+                isActuallyFxUSD
+                  ? (swappedAmount * 10n ** 18n) / wr
+                  : ((swappedAmount * 10n ** 12n) * 10n ** 18n) / wr;
+              minFxSaveOut = (expectedFxSave * BigInt(100 - minFxSaveSlipPct)) / 100n;
+            } else {
+              // Fallback when rate unavailable: use % of input (loose for fxUSD to avoid revert)
+              minFxSaveOut = (swappedAmount * BigInt(100 - (isActuallyFxUSD ? 15 : minFxSaveSlipPct)) * 100n) / 10000n;
+            }
+            
+            // Get the asset address for approval
+            const assetAddressForApproval = anyTokenDeposit.needsSwap 
+              ? USDC_ADDRESS 
+              : (anyTokenDeposit.selectedAssetAddress as `0x${string}`);
+            
+            if (!assetAddressForApproval) {
+              throw new Error("Asset address not found for approval");
+            }
+            
+              // Check network before sending transaction
+              if (!(await ensureCorrectNetwork())) {
+                throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
+              }
+              
+            // Calculate minPeggedOut for minter zap
+            // Use swapDryRunOutput or expectedMintOutput from swap dry run if available (accounts for actual conversion and fees)
+            // Otherwise fall back to estimation
+            let minPeggedOut: bigint;
+            let actualExpectedOutput: bigint | undefined;
+            
+            // Prefer swapDryRunOutput directly (most reliable for swap deposits)
+            if (swapDryRunOutput && Array.isArray(swapDryRunOutput) && swapDryRunOutput.length >= 4) {
+              actualExpectedOutput = swapDryRunOutput[3] as bigint; // peggedMinted from dry run
+            } else if (expectedMintOutput && expectedMintOutput > 0n) {
+              actualExpectedOutput = expectedMintOutput;
+            }
+            
+            if (actualExpectedOutput && actualExpectedOutput > 0n) {
+              // When mint fee 1%, use 4% slippage for fxUSD zap (revert is after permit/transferFrom = minPegged/minFxSave), else 3%/2%
+              const slippageBps = (feePercentage !== undefined && feePercentage >= 1)
+                ? (isActuallyFxUSD ? Math.max(slippageTolerance || 4, 4.0) : Math.max(slippageTolerance || 3, 3.0))
+                : Math.max(slippageTolerance || 1, 2.0);
+              minPeggedOut = (actualExpectedOutput * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n;
+            } else {
+              const feeBps = (feePercentage !== undefined && feePercentage >= 1) ? 100 : 25;
+              if (isActuallyUSDC) {
+                const usdcAmountIn18Decimals = swappedAmount * 10n ** 12n;
+                const estimatedPeggedOut = (usdcAmountIn18Decimals * BigInt(10000 - feeBps)) / 10000n;
+                const slippageBps = (feePercentage !== undefined && feePercentage >= 1) ? 3.0 : Math.max(slippageTolerance || 1, 2.0);
+                minPeggedOut = (estimatedPeggedOut * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n;
+              } else {
+                // fxUSD: 4% slippage when mint fee 1% so minPeggedOut is achievable after permit/transferFrom
+                const estimatedPeggedOut = (swappedAmount * BigInt(10000 - feeBps)) / 10000n;
+                const slippageBps = (feePercentage !== undefined && feePercentage >= 1) ? 4.0 : Math.max(slippageTolerance || 1, 2.0);
+                minPeggedOut = (estimatedPeggedOut * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n;
+              }
+            }
+            
+            // Check network before sending transaction
+            if (!(await ensureCorrectNetwork())) {
+              throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
+            }
+
+            // Same permit flow as Genesis: handlePermitOrApproval(token, zapAddress, amount) then call zap…WithPermit.
+            // Genesis uses this for fxUSD successfully; we use it for both USDC and fxUSD with the Anchor zap.
+            if (
+              permitEnabled &&
+              (mintOnly || shouldDepositToPool) &&
+              (isActuallyUSDC || isActuallyFxUSD)
+            ) {
+              try {
+                const permitResult = await handlePermitOrApproval(
+                  assetAddressForApproval,
+                  zapAddress,
+                  swappedAmount
+                );
+                const usePermit =
+                  !!permitResult?.usePermit &&
+                  !!permitResult.permitSig &&
+                  !!permitResult?.deadline;
+
+                if (usePermit && permitResult?.permitSig && permitResult?.deadline) {
+                  setProgressConfig((prev) => ({
+                    ...prev,
+                    includeApproveCollateral: false,
+                    includePermitCollateral: true,
+                  }));
+                  setStep("minting");
+                  const deadline = permitResult.deadline;
+
+                  if (
+                    shouldDepositToPool &&
+                    stabilityPoolAddress &&
+                    (isActuallyUSDC || isActuallyFxUSD)
+                  ) {
+                    const minStabilityPoolOut =
+                      (minPeggedOut *
+                        (feePercentage !== undefined && feePercentage >= 1
+                          ? 98n
+                          : 99n)) /
+                      100n;
+                    const poolFunctionName = isActuallyUSDC
+                      ? "zapBaseAssetToStabilityPoolWithPermit"
+                      : "zapCollateralToStabilityPoolWithPermit";
+                    if (
+                      await tryCombinedPoolZap(
+                        "USDC/fxUSD permit zap to stability pool (any-token path)",
+                        () =>
+                          writeContractAsync({
+                            address: zapAddress,
+                            abi: MINTER_USDC_ZAP_V3_ABI,
+                            functionName: poolFunctionName,
+                            args: [
+                              swappedAmount,
+                              minFxSaveOut,
+                              userAddress,
+                              minPeggedOut,
+                              stabilityPoolAddress as `0x${string}`,
+                              minStabilityPoolOut,
+                              deadline,
+                              permitResult.permitSig.v,
+                              permitResult.permitSig.r,
+                              permitResult.permitSig.s,
+                            ],
+                          }),
+                      )
+                    ) {
+                      return;
+                    }
+                    // Combined permit zap failed — fall through to approve + separate mint/deposit.
+                  } else {
+                    const functionName = isActuallyUSDC
+                      ? "zapBaseAssetToPeggedWithPermit"
+                      : "zapCollateralToPeggedWithPermit";
+                    const permitHash = await writeContractAsync({
+                      address: zapAddress,
+                      abi: MINTER_USDC_ZAP_V3_ABI,
+                      functionName,
+                      args: [
+                        swappedAmount,
+                        minFxSaveOut,
+                        userAddress,
+                        minPeggedOut,
+                        deadline,
+                        permitResult.permitSig.v,
+                        permitResult.permitSig.r,
+                        permitResult.permitSig.s,
+                      ],
+                    });
+                    setTxHashes((prev) => ({ ...prev, mint: permitHash }));
+                    await publicClient?.waitForTransactionReceipt({
+                      hash: permitHash,
+                    });
+                    setStep("success");
+                    if (onSuccess) onSuccess();
+                    return;
+                  }
+                }
+              } catch (permitError) {
+                if (process.env.NODE_ENV === "development") {
+                  console.warn(
+                    "[handleMint] Permit rejected, fallback to approve:",
+                    permitError
+                  );
+                }
+              }
+              setProgressConfig((prev) => ({
+                ...prev,
+                ...permitToApproveCombinedPoolPatch({
+                  needsApproval: needsZapApproval,
+                  combinedPoolZap: shouldDepositToPool,
+                }),
+              }));
+            }
+
+            // Read current allowance for the asset to zap contract
+            const currentAllowance = await publicClient?.readContract({
+              address: assetAddressForApproval,
+              abi: ERC20_ABI,
+              functionName: "allowance",
+              args: [address as `0x${string}`, zapAddress],
+            });
+
+            const allowanceBigInt = (currentAllowance as bigint) || 0n;
+            if (allowanceBigInt < swappedAmount) {
+              setStep("approving");
+              const zapApproveHash = await writeContractAsync({
+                address: assetAddressForApproval,
+                abi: ERC20_ABI,
+                functionName: "approve",
+                args: [zapAddress, swappedAmount],
+              });
+              setTxHashes((prev) => ({ ...prev, approveCollateral: zapApproveHash }));
+              await publicClient?.waitForTransactionReceipt({ hash: zapApproveHash });
+              setStep("minting");
+            }
+            
+            // Track pegged token balance before zap so we can compute minted amount for deposit.
+            const balanceBeforeZap = peggedTokenAddress
+              ? ((await publicClient?.readContract({
+                  address: peggedTokenAddress as `0x${string}`,
+                  abi: ERC20_ABI,
+                  functionName: "balanceOf",
+                  args: [address as `0x${string}`],
+                })) as bigint | undefined)
+              : undefined;
+
+            // Call the correct zap function based on asset type
+            let zapHash: `0x${string}`;
+            if (
+              shouldDepositToPool &&
+              stabilityPoolAddress &&
+              (isActuallyUSDC || isActuallyFxUSD)
+            ) {
+              const minStabilityPoolOut =
+                (minPeggedOut *
+                  (feePercentage !== undefined && feePercentage >= 1 ? 98n : 99n)) /
+                100n;
+              if (
+                await tryCombinedPoolZap(
+                  isActuallyUSDC
+                    ? "USDC zap to stability pool (any-token path)"
+                    : "fxUSD zap to stability pool (any-token path)",
+                  () =>
+                    writeContractAsync({
+                      address: zapAddress,
+                      abi: MINTER_USDC_ZAP_V3_ABI,
+                      functionName: isActuallyUSDC
+                        ? "zapBaseAssetToStabilityPool"
+                        : "zapCollateralToStabilityPool",
+                      args: [
+                        swappedAmount,
+                        minFxSaveOut,
+                        userAddress,
+                        minPeggedOut,
+                        stabilityPoolAddress as `0x${string}`,
+                        minStabilityPoolOut,
+                      ],
+                    }),
+                )
+              ) {
+                return;
+              }
+            }
+            if (isActuallyUSDC) {
+              debugTx("zap/baseAssetToPegged", {
+                zapAddress,
+                function: "zapBaseAssetToPegged",
+                args: [
+                  swappedAmount.toString(),
+                  minFxSaveOut.toString(),
+                  address,
+                  minPeggedOut.toString(),
+                ],
+              });
+              zapHash = await writeContractAsync({
+              address: zapAddress,
+                abi: MINTER_USDC_ZAP_V3_ABI,
+                functionName: "zapBaseAssetToPegged",
+                args: [
+                  swappedAmount,
+                  minFxSaveOut,
+                  address as `0x${string}`,
+                  minPeggedOut,
+                ],
+              });
+            } else if (isActuallyFxUSD) {
+              debugTx("zap/collateralToPegged", {
+                zapAddress,
+                function: "zapCollateralToPegged",
+                args: [
+                  swappedAmount.toString(),
+                  minFxSaveOut.toString(),
+                  address,
+                  minPeggedOut.toString(),
+                ],
+              });
+              zapHash = await writeContractAsync({
+                address: zapAddress,
+                abi: MINTER_USDC_ZAP_V3_ABI,
+                functionName: "zapCollateralToPegged",
+                args: [
+                  swappedAmount,
+                  minFxSaveOut,
+                  address as `0x${string}`,
+                  minPeggedOut,
+                ],
+              });
+            } else {
+              throw new Error("Invalid asset for USDC/fxUSD zap");
+            }
+            
+            await publicClient?.waitForTransactionReceipt({ hash: zapHash });
+            setTxHashes((prev) => ({ ...prev, mint: zapHash }));
+            
+            // If a pool was selected, continue by depositing the freshly minted pegged tokens.
+            if (shouldDepositToPool) {
+              await depositMintedToPool(balanceBeforeZap);
+            }
+
+            setStep("success");
+            if (onSuccess) onSuccess();
+            return;
+          }
+        }
+        
+        // In simple mode, check if a stability pool is selected; in advanced mode, use depositInStabilityPool
+        const wantsDepositToPool = simpleMode
+          ? selectedStabilityPool &&
+            selectedStabilityPool.poolType !== "none" &&
+            !!stabilityPoolAddress
+          : depositInStabilityPool && !mintOnly;
+        const shouldDepositToPool =
+          wantsDepositToPool && !(useZap && zapSpAllowlistPending);
+        // Determine if we need approval (for zap or direct minting)
+        const needsZapApproval =
+          useZap &&
+          zapAddress &&
+          ((useETHZap && isStETH) || (useUSDCZap && (isUSDC || isFxUSD)));
+        const needsDirectApproval = !useZap && needsApproval;
+        // Permit: zap assets (stETH/USDC/fxUSD) and direct mint (wstETH/fxSAVE), mint-only or mint+deposit
+        const permitEligible =
+          permitEnabled &&
+          ((useZap && ((useETHZap && isStETH) || (useUSDCZap && (isUSDC || isFxUSD)))) ||
+            (!useZap && (isFxSAVE || isWstETH)));
+        
+        // Determine zap asset name for labels
+        let zapAssetName: string | null = null;
+        if (useZap) {
+          if (isNativeETH) zapAssetName = "ETH";
+          else if (isStETH) zapAssetName = "stETH";
+          else if (isUSDC) zapAssetName = "USDC";
+          else if (isFxUSD) zapAssetName = "fxUSD";
+        }
+        
+        const useZapWrappedToPool =
+          !useZap &&
+          (isWstETH || isFxSAVE) &&
+          shouldDepositToPool &&
+          !!zapAddress &&
+          !!stabilityPoolAddress;
+        const useCombinedPoolZap =
+          shouldDepositToPool && (!!useZap || !!useZapWrappedToPool);
+        const includeApprovePegged =
+          shouldDepositToPool && needsPeggedTokenApproval && !useCombinedPoolZap;
+        const includeDeposit = shouldDepositToPool && !useCombinedPoolZap;
+        const wrappedZapAssetName =
+          useZapWrappedToPool && isWstETH
+            ? "wstETH"
+            : useZapWrappedToPool && isFxSAVE
+              ? "fxSAVE"
+              : null;
+        const mainPoolProgress = buildCollateralMintProgressFields({
+          shouldDepositToPool,
+          permitEligible,
+          needsZapApproval,
+          needsDirectApproval,
+          useZap: !!useZap,
+          zapAssetName,
+          wrappedZapAssetName,
+          useZapWrappedToPoolAndDeposit: !!useZapWrappedToPool,
+          useCombinedPoolZap,
+        });
+        setProgressConfig({
+          mode: "collateral",
+          ...mainPoolProgress,
+          includeDirectApprove: false,
+          includeDirectDeposit: false,
+        });
+        // Show progress modal for transaction feedback
+        progress.show();
+        // Set step so progress modal shows (requires step !== "input") before permit/approve
+        setStep(permitEligible ? "approving" : needsZapApproval || needsDirectApproval ? "approving" : "minting");
+        flushSync(() => {}); // Force React to paint before first action
+        // Use Anvil client for local development, regular publicClient for production
+        const txClient = false ? publicClient : publicClient;
+
+        debugTx("mintFlow/addresses", {
+          selectedMarketId,
+          minterAddress,
+          collateralAddress,
+          peggedTokenAddress,
+          leveragedTokenAddress,
+          stabilityPoolAddress,
+          depositAssetMarket: depositAssetMarket?.id || depositAssetMarket?.name,
+          depositAssetCollateralSymbol,
+          depositAssetWrappedCollateralSymbol,
+          isWrappedCollateral,
+          zapAddress,
+          useZap,
+          useETHZap,
+          useUSDCZap,
+          fxSAVERate: fxSAVERate?.toString(),
+        });
+
+        debugTx("mintFlow/allowances", {
+          collateralAllowance: allowance?.toString(),
+          needsApproval,
+          peggedAllowance: peggedTokenAllowance?.toString(),
+          needsPeggedTokenApproval,
+        });
+
+        let zapPermit: any = null;
+        let directPermit: any = null;
+        let wrapZapPermit: any = null;
+        let usePermitZap = false;
+        let usePermitDirect = false;
+        let usePermitWrappedZap = false;
+
+        const resolveStETHAddress = (): `0x${string}` | undefined => {
+          let stETHAddress =
+            depositAssetMarket?.addresses?.underlyingCollateralToken as
+              | `0x${string}`
+              | undefined;
+
+          if (!stETHAddress) {
+            const selectedMarketById = marketsForToken.find(
+              (x) => x.marketId === selectedMarketId
+            )?.market;
+            stETHAddress =
+              selectedMarketById?.addresses?.underlyingCollateralToken as
+                | `0x${string}`
+                | undefined;
+          }
+
+          if (!stETHAddress && zapAddress) {
+            const marketByZap = marketsForToken.find(
+              ({ market: m }) =>
+                m?.addresses?.peggedTokenZap?.toLowerCase() ===
+                  zapAddress.toLowerCase() ||
+                m?.addresses?.leveragedTokenZap?.toLowerCase() ===
+                  zapAddress.toLowerCase()
+            )?.market;
+            stETHAddress =
+              marketByZap?.addresses?.underlyingCollateralToken as
+                | `0x${string}`
+                | undefined;
+          }
+
+          return stETHAddress;
+        };
+
+        if (permitEligible && useZap && zapAddress) {
+          if (useETHZap && isStETH) {
+            const stETHAddress = resolveStETHAddress();
+            if (stETHAddress) {
+              zapPermit = await handlePermitOrApproval(
+                stETHAddress,
+                zapAddress,
+                amountBigInt
+              );
+              usePermitZap =
+                !!zapPermit?.usePermit &&
+                !!zapPermit?.permitSig &&
+                !!zapPermit?.deadline;
+            }
+          } else if (useUSDCZap && (isUSDC || isFxUSD)) {
+            // Same permit flow as Genesis: token + zap as spender + amount; require deadline for zap…WithPermit.
+            const assetAddress = isUSDC
+              ? ("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`)
+              : (depositAssetMarket?.addresses?.collateralToken as
+                  | `0x${string}`
+                  | undefined);
+            if (assetAddress) {
+              zapPermit = await handlePermitOrApproval(
+                assetAddress,
+                zapAddress,
+                amountBigInt
+              );
+              usePermitZap =
+                !!zapPermit?.usePermit &&
+                !!zapPermit?.permitSig &&
+                !!zapPermit?.deadline;
+            }
+          }
+
+          if (usePermitZap) {
+            setProgressConfig((prev) => ({
+              ...prev,
+              includePermitCollateral: true,
+              includeApproveCollateral: false,
+            }));
+            setStep("approving");
+          } else {
+            setProgressConfig((prev) => ({
+              ...prev,
+              ...permitToApproveCombinedPoolPatch({
+                needsApproval: needsZapApproval || needsDirectApproval,
+                combinedPoolZap: !!(prev.zapAndDeposit || prev.wrappedZapAndDeposit),
+              }),
+            }));
+          }
+        }
+
+        if (
+          permitEligible &&
+          useZapWrappedToPool &&
+          zapAddress &&
+          collateralAddress
+        ) {
+          wrapZapPermit = await handlePermitOrApproval(
+            collateralAddress as `0x${string}`,
+            zapAddress,
+            amountBigInt
+          );
+          usePermitWrappedZap =
+            !!wrapZapPermit?.usePermit &&
+            !!wrapZapPermit?.permitSig &&
+            !!wrapZapPermit?.deadline;
+          if (usePermitWrappedZap) {
+            setProgressConfig((prev) => ({
+              ...prev,
+              includePermitCollateral: true,
+              includeApproveCollateral: false,
+            }));
+            setStep("approving");
+          } else {
+            setProgressConfig((prev) => ({
+              ...prev,
+              ...permitToApproveCombinedPoolPatch({
+                needsApproval: true,
+                combinedPoolZap: false,
+              }),
+            }));
+          }
+        } else if (
+          permitEligible &&
+          !useZap &&
+          !useZapWrappedToPool &&
+          collateralAddress &&
+          minterAddress
+        ) {
+          directPermit = await handlePermitOrApproval(
+            collateralAddress,
+            minterAddress as `0x${string}`,
+            amountBigInt
+          );
+          usePermitDirect =
+            !!directPermit?.usePermit &&
+            !!directPermit?.permitSig &&
+            !!directPermit?.deadline;
+          if (usePermitDirect) {
+            setProgressConfig((prev) => ({
+              ...prev,
+              includePermitCollateral: true,
+              includeApproveCollateral: false,
+            }));
+            setStep("approving");
+          } else {
+            setProgressConfig((prev) => ({
+              ...prev,
+              includePermitCollateral: false,
+              includeApproveCollateral: needsZapApproval || needsDirectApproval,
+            }));
+          }
+        }
+
+        // wstETH/fxSAVE + stability pool: use one-tx zap only when permit works or permit is off.
+        // If permit was eligible but failed, fall back to mint + separate pool deposit.
+        const effectiveUseZapWrappedToPool =
+          useZapWrappedToPool &&
+          (usePermitWrappedZap || !permitEligible);
+
+        // Step 1: Handle approvals - for zap contracts or direct minting
+        if (useZap && zapAddress) {
+          // Handle approvals for zap contracts
+          if (useETHZap && isStETH) {
+            const stETHAddress = resolveStETHAddress();
+            if (!stETHAddress) {
+              throw new Error(
+                "stETH address not found. Please ensure you're depositing to a wstETH market."
+              );
+            }
+
+            if (!usePermitZap) {
+              // Read allowance for zap contract
+              const allowance = await publicClient?.readContract({
+                address: stETHAddress,
+                abi: ERC20_ABI,
+                functionName: "allowance",
+                args: [address as `0x${string}`, zapAddress],
+              });
+
+              const currentAllowance = (allowance as bigint) || 0n;
+              if (currentAllowance < amountBigInt) {
+                setStep("approving");
+                setError(null);
+                setTxHash(null);
+
+                debugTx("zap/steth/approve", {
+                  token: stETHAddress,
+                  spender: zapAddress,
+                  amount: amountBigInt.toString(),
+                  currentAllowance: currentAllowance.toString(),
+                });
+
+                const approveHash = await writeContractAsync({
+                  address: stETHAddress,
+                  abi: ERC20_ABI,
+                  functionName: "approve",
+                  args: [zapAddress, amountBigInt],
+                });
+                setTxHash(approveHash);
+                setTxHashes((prev) => ({
+                  ...prev,
+                  approveCollateral: approveHash,
+                }));
+                await txClient?.waitForTransactionReceipt({ hash: approveHash });
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+              } else {
+                // Already approved - mark step as completed
+                setTxHashes((prev) => ({
+                  ...prev,
+                  approveCollateral: undefined,
+                }));
+              }
+            }
+          } else if (useUSDCZap && (isUSDC || isFxUSD)) {
+            // Approve USDC or fxUSD to zap contract
+            const assetAddress = isUSDC 
+              ? "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`
+              : (depositAssetMarket?.addresses?.collateralToken as `0x${string}` | undefined);
+            
+            if (!assetAddress) throw new Error("Asset address not found");
+            
+            if (!usePermitZap) {
+              // Read allowance for zap contract
+              const allowance = await publicClient?.readContract({
+                address: assetAddress,
+                abi: ERC20_ABI,
+                functionName: "allowance",
+                args: [address as `0x${string}`, zapAddress],
+              });
+
+              const currentAllowance = (allowance as bigint) || 0n;
+              if (currentAllowance < amountBigInt) {
+                setStep("approving");
+                setError(null);
+                setTxHash(null);
+
+                debugTx("zap/usdcOrFxUsd/approve", {
+                  token: assetAddress,
+                  spender: zapAddress,
+                  amount: amountBigInt.toString(),
+                  currentAllowance: currentAllowance.toString(),
+                });
+
+                const approveHash = await writeContractAsync({
+                  address: assetAddress,
+                  abi: ERC20_ABI,
+                  functionName: "approve",
+                  args: [zapAddress, amountBigInt],
+                });
+                setTxHash(approveHash);
+                setTxHashes((prev) => ({
+                  ...prev,
+                  approveCollateral: approveHash,
+                }));
+                await txClient?.waitForTransactionReceipt({ hash: approveHash });
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+              } else {
+                // Already approved - mark step as completed
+                setTxHashes((prev) => ({
+                  ...prev,
+                  approveCollateral: undefined,
+                }));
+              }
+            }
+          }
+          // ETH doesn't need approval (native token) - if approval step is shown, it will be auto-completed
+        } else if (
+          effectiveUseZapWrappedToPool &&
+          zapAddress &&
+          collateralAddress &&
+          !usePermitWrappedZap
+        ) {
+          // wstETH/fxSAVE → mint + stability pool in one zap tx (non-permit path)
+          const zapAllowance = await publicClient?.readContract({
+            address: collateralAddress as `0x${string}`,
+            abi: ERC20_ABI,
+            functionName: "allowance",
+            args: [address as `0x${string}`, zapAddress],
+          });
+          const currentZapAllowance = (zapAllowance as bigint) || 0n;
+          if (currentZapAllowance < amountBigInt) {
+            setStep("approving");
+            setError(null);
+            setTxHash(null);
+
+            debugTx("zap/wrappedCollateral/approve", {
+              token: collateralAddress,
+              spender: zapAddress,
+              amount: amountBigInt.toString(),
+              currentAllowance: currentZapAllowance.toString(),
+            });
+
+            const approveHash = await writeContractAsync({
+              address: collateralAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "approve",
+              args: [zapAddress, amountBigInt],
+            });
+            setTxHash(approveHash);
+            setTxHashes((prev) => ({
+              ...prev,
+              approveCollateral: approveHash,
+            }));
+            await txClient?.waitForTransactionReceipt({ hash: approveHash });
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          } else {
+            setTxHashes((prev) => ({
+              ...prev,
+              approveCollateral: undefined,
+            }));
+          }
+        } else if (
+          needsApproval &&
+          !(useZapWrappedToPool && usePermitWrappedZap) &&
+          !effectiveUseZapWrappedToPool
+        ) {
+          // Direct minting - approve wrapped collateral to minter (skip when using wrapped zap permit)
+          setStep("approving");
+          setError(null);
+          setTxHash(null);
+
+          if (usePermitDirect && directPermit?.permitSig && directPermit?.deadline) {
+            debugTx("directMint/permitCollateral", {
+              token: collateralAddress,
+              spender: minterAddress,
+              amount: amountBigInt.toString(),
+            });
+
+            const permitHash = await writeContractAsync({
+              address: collateralAddress as `0x${string}`,
+              abi: ERC20_PERMIT_ABI,
+              functionName: "permit",
+              args: [
+                address as `0x${string}`,
+                minterAddress as `0x${string}`,
+                amountBigInt,
+                directPermit.deadline,
+                directPermit.permitSig.v,
+                directPermit.permitSig.r,
+                directPermit.permitSig.s,
+              ],
+            });
+            setTxHash(permitHash);
+            setTxHashes((prev) => ({
+              ...prev,
+              approveCollateral: permitHash,
+            }));
+            await txClient?.waitForTransactionReceipt({ hash: permitHash });
+            await refetchAllowance();
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            await refetchAllowance();
+          } else {
+            debugTx("directMint/approveCollateral", {
+              token: collateralAddress,
+              spender: minterAddress,
+              amount: amountBigInt.toString(),
+              currentAllowance: allowance?.toString(),
+            });
+
+            const approveHash = await writeContractAsync({
+              address: collateralAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "approve",
+              args: [minterAddress as `0x${string}`, amountBigInt],
+            });
+            setTxHash(approveHash);
+            setTxHashes((prev) => ({
+              ...prev,
+              approveCollateral: approveHash,
+            }));
+            await txClient?.waitForTransactionReceipt({ hash: approveHash });
+            await refetchAllowance();
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            await refetchAllowance();
+          }
+        }
+
+        // Step 2: Mint pegged token (via zap or direct)
+        setStep("minting");
+        setError(null);
+        setTxHash(null);
+
+        // For zap transactions, capture balance before minting to calculate actual minted amount
+        let balanceBeforeZap: bigint | undefined;
+        if (useZap && zapAddress && peggedTokenAddress) {
+          try {
+            balanceBeforeZap = await publicClient?.readContract({
+              address: peggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "balanceOf",
+              args: [address as `0x${string}`],
+            }) as bigint | undefined;
+            if (process.env.NODE_ENV === "development") {
+              console.log("[handleMint] Balance before zap:", balanceBeforeZap?.toString());
+            }
+          } catch (err) {
+            if (process.env.NODE_ENV === "development") {
+              console.warn("[handleMint] Failed to read balance before zap:", err);
+            }
+          }
+        }
+
+        // Calculate minimum output based on zap type or direct minting
+        let minPeggedOut: bigint;
+        
+        if (useUSDCZap) {
+          // When mint fee 1%, use 4% slippage for fxUSD (revert after permit/transferFrom = minPegged), else 3%
+          const usdcFxSlippageBps = (feePercentage !== undefined && feePercentage >= 1)
+            ? (isFxUSD ? 4.0 : 3.0)
+            : Math.max(slippageTolerance || 1, 2.0);
+          if (expectedMintOutput && expectedMintOutput > 0n) {
+            minPeggedOut = (expectedMintOutput * BigInt(Math.floor((100 - usdcFxSlippageBps) * 100))) / 10000n;
+          } else if (fxSAVERate && fxSAVERate > 0n) {
+          let amountIn18Decimals: bigint;
+          if (isUSDC) {
+            amountIn18Decimals = amountBigInt * 10n ** 12n;
+          } else {
+            amountIn18Decimals = amountBigInt;
+          }
+            const fxSaveAmount = (amountIn18Decimals * 10n ** 18n) / fxSAVERate;
+            const feeBps = (feePercentage !== undefined && feePercentage >= 1) ? 100 : 35;
+            const estimatedPeggedOut = (fxSaveAmount * BigInt(10000 - feeBps)) / 10000n;
+            minPeggedOut = (estimatedPeggedOut * BigInt(Math.floor((100 - usdcFxSlippageBps) * 100))) / 10000n;
+        } else {
+            throw new Error("Cannot calculate minPeggedOut: expectedMintOutput and fxSAVERate both unavailable");
+          }
+        } else {
+          // For direct minting, ETH/stETH zap, or wstETH/fxSAVE: use expectedMintOutput with slippage.
+          // When mint fee is 1%, use at least 2% (same as USDC/fxUSD) for ETH/stETH/wstETH/fxSAVE.
+          const slippageBps = (feePercentage !== undefined && feePercentage >= 1)
+            ? Math.max(slippageTolerance || 2, 2.0)
+            : Math.max(slippageTolerance || 1, 2.0);
+          minPeggedOut = expectedMintOutput
+            ? (expectedMintOutput * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n
+            : 0n;
+        }
+
+        let mintHash: `0x${string}`;
+
+        if (useZap && zapAddress) {
+          // minFxSaveOut: use wrappedRate like Genesis (expectedFxSave = amount / rate), not % of input
+          const minFxSaveSlipPct = (useUSDCZap && feePercentage !== undefined && feePercentage >= 1)
+            ? (isFxUSD ? 4 : 3)
+            : 1;
+          let minFxSaveOut: bigint;
+          if (useUSDCZap) {
+            const wr = marketForDepositAsset?.wrappedRate ?? selectedMarket?.wrappedRate;
+            if (wr && wr > 0n) {
+              const expectedFxSave = isFxUSD
+                ? (amountBigInt * 10n ** 18n) / wr
+                : ((amountBigInt * 10n ** 12n) * 10n ** 18n) / wr;
+              minFxSaveOut = (expectedFxSave * BigInt(100 - minFxSaveSlipPct)) / 100n;
+            } else {
+              minFxSaveOut = (amountBigInt * BigInt(100 - (isFxUSD ? 15 : minFxSaveSlipPct)) * 100n) / 10000n;
+            }
+          } else {
+            minFxSaveOut = 0n; // unused for non–USDC/fxUSD zap
+          }
+          // When mint fee is 1%, use 2% headroom on stability pool deposit minOut (ETH/stETH/wstETH/USDC/fxUSD/fxSAVE)
+          const stabilityPoolSlip = (feePercentage !== undefined && feePercentage >= 1) ? 98n : 99n;
+          // Use zap contract to mint
+          if (useETHZap) {
+            // ETH/stETH zap for wstETH markets
+            const ethStEthWrapRate =
+              marketForDepositAsset?.wrappedRate ??
+              selectedMarket?.wrappedRate;
+            if (isNativeETH) {
+              const useZapEthToPool =
+                shouldDepositToPool &&
+                !!stabilityPoolAddress;
+              const minStabilityPoolOut = (minPeggedOut * stabilityPoolSlip) / 100n;
+
+              const minWEth2 = await minWrappedCollateralForEthBaseZap(
+                txClient ?? publicClient ?? undefined,
+                zapAddress,
+                amountBigInt,
+                ethStEthWrapRate,
+                DEFAULT_WRAP_LEG_SLIPPAGE_BPS
+              );
+
+              if (useZapEthToPool) {
+                debugTx("zap/baseAssetToStabilityPool", {
+                  zapAddress,
+                  function: "zapBaseAssetToStabilityPool",
+                  args: [
+                    address,
+                    minPeggedOut.toString(),
+                    stabilityPoolAddress,
+                    minStabilityPoolOut.toString(),
+                  ],
+                  value: amountBigInt.toString(),
+                });
+                if (
+                  await tryCombinedPoolZap("ETH zap to stability pool", () =>
+                    writeContractAsync({
+                      address: zapAddress,
+                      abi: ethZapAbi,
+                      functionName: minterEthNativeZapFunctionName(
+                        "ToStabilityPool",
+                        useZapV1,
+                      ),
+                      args: [
+                        minWEth2,
+                        userAddress,
+                        minPeggedOut,
+                        stabilityPoolAddress as `0x${string}`,
+                        minStabilityPoolOut,
+                      ],
+                      value: amountBigInt,
+                    }),
+                  )
+                ) {
+                  return;
+                }
+              }
+
+              debugTx("zap/baseAssetToPegged", {
+                zapAddress,
+                function: "zapBaseAssetToPegged",
+                args: [address, minPeggedOut.toString()],
+                value: amountBigInt.toString(),
+              });
+              mintHash = await writeContractAsync({
+                address: zapAddress,
+                abi: ethZapAbi,
+                functionName: minterEthNativeZapFunctionName("ToPegged", useZapV1),
+                args: [
+                  minWEth2,
+                  address as `0x${string}`,
+                  minPeggedOut,
+                ],
+                value: amountBigInt,
+              });
+            } else if (isStETH) {
+              const useZapStEthToPool =
+                shouldDepositToPool &&
+                !!stabilityPoolAddress;
+              const minStabilityPoolOutStEth = (minPeggedOut * stabilityPoolSlip) / 100n;
+
+              const minWSteth2 = minWrappedCollateralAfterUnderlyingToWrapped(
+                amountBigInt,
+                ethStEthWrapRate,
+                DEFAULT_WRAP_LEG_SLIPPAGE_BPS
+              );
+
+              if (
+                useZapStEthToPool &&
+                usePermitZap &&
+                zapPermit?.permitSig &&
+                zapPermit?.deadline
+              ) {
+                const deadline = zapPermit.deadline || calculateDeadline(3600);
+                debugTx("zap/collateralToStabilityPoolWithPermit", {
+                  zapAddress,
+                  args: [
+                    amountBigInt.toString(),
+                    address,
+                    minPeggedOut.toString(),
+                    stabilityPoolAddress,
+                    minStabilityPoolOutStEth.toString(),
+                    deadline.toString(),
+                  ],
+                });
+                if (
+                  await tryCombinedPoolZap(
+                    "stETH permit zap to stability pool",
+                    () =>
+                      writeContractAsync({
+                        address: zapAddress,
+                        abi: ethZapAbi,
+                        functionName: "zapCollateralToStabilityPoolWithPermit",
+                        args: [
+                          amountBigInt,
+                          minWSteth2,
+                          userAddress,
+                          minPeggedOut,
+                          stabilityPoolAddress as `0x${string}`,
+                          minStabilityPoolOutStEth,
+                          deadline,
+                          zapPermit.permitSig.v,
+                          zapPermit.permitSig.r,
+                          zapPermit.permitSig.s,
+                        ],
+                      }),
+                  )
+                ) {
+                  return;
+                }
+              }
+
+              if (useZapStEthToPool && stabilityPoolAddress) {
+                debugTx("zap/collateralToStabilityPool", {
+                  zapAddress,
+                  args: [
+                    amountBigInt.toString(),
+                    minWSteth2.toString(),
+                    address,
+                    minPeggedOut.toString(),
+                    stabilityPoolAddress,
+                    minStabilityPoolOutStEth.toString(),
+                  ],
+                });
+                if (
+                  await tryCombinedPoolZap("stETH zap to stability pool", () =>
+                    writeContractAsync({
+                      address: zapAddress,
+                      abi: ethZapAbi,
+                      functionName: "zapCollateralToStabilityPool",
+                      args: [
+                        amountBigInt,
+                        minWSteth2,
+                        userAddress,
+                        minPeggedOut,
+                        stabilityPoolAddress as `0x${string}`,
+                        minStabilityPoolOutStEth,
+                      ],
+                    }),
+                  )
+                ) {
+                  return;
+                }
+              }
+
+              debugTx("zap/collateralToPegged", {
+                zapAddress,
+                function: "zapCollateralToPegged",
+                args: [
+                  amountBigInt.toString(),
+                  address,
+                  minPeggedOut.toString(),
+                ],
+              });
+              if (
+                usePermitZap &&
+                zapPermit?.permitSig &&
+                zapPermit?.deadline
+              ) {
+                mintHash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: ethZapAbi,
+                  functionName: "zapCollateralToPeggedWithPermit",
+                  args: [
+                    amountBigInt,
+                    minWSteth2,
+                    address as `0x${string}`,
+                    minPeggedOut,
+                    zapPermit.deadline,
+                    zapPermit.permitSig.v,
+                    zapPermit.permitSig.r,
+                    zapPermit.permitSig.s,
+                  ],
+                });
+              } else {
+                mintHash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: ethZapAbi,
+                  functionName: "zapCollateralToPegged",
+                  args: [
+                    amountBigInt,
+                    minWSteth2,
+                    address as `0x${string}`,
+                    minPeggedOut,
+                  ],
+                });
+              }
+            } else {
+              throw new Error("Invalid asset for ETH zap");
+            }
+          } else if (useUSDCZap) {
+            // USDC/fxUSD zap for fxSAVE markets
+            if (!fxSAVERate || fxSAVERate === 0n) {
+              throw new Error("fxSAVE rate not available");
+            }
+
+            const useZapToPoolWithPermit =
+              usePermitZap &&
+              !!zapPermit?.permitSig &&
+              shouldDepositToPool &&
+              !!stabilityPoolAddress &&
+              (isFxUSD || isUSDC);
+            const minStabilityPoolOut = (minPeggedOut * stabilityPoolSlip) / 100n;
+
+            if (useZapToPoolWithPermit) {
+              const deadline = zapPermit!.deadline || calculateDeadline(3600);
+              if (
+                await tryCombinedPoolZap(
+                  isFxUSD
+                    ? "fxUSD permit zap to stability pool"
+                    : "USDC permit zap to stability pool",
+                  () =>
+                    writeContractAsync({
+                      address: zapAddress,
+                      abi: MINTER_USDC_ZAP_V3_ABI,
+                      functionName: isFxUSD
+                        ? "zapCollateralToStabilityPoolWithPermit"
+                        : "zapBaseAssetToStabilityPoolWithPermit",
+                      args: [
+                        amountBigInt,
+                        minFxSaveOut,
+                        userAddress,
+                        minPeggedOut,
+                        stabilityPoolAddress as `0x${string}`,
+                        minStabilityPoolOut,
+                        deadline,
+                        zapPermit!.permitSig.v,
+                        zapPermit!.permitSig.r,
+                        zapPermit!.permitSig.s,
+                      ],
+                    }),
+                )
+              ) {
+                return;
+              }
+            }
+
+            if (shouldDepositToPool && stabilityPoolAddress) {
+              if (isUSDC) {
+                debugTx("zap/baseAssetToStabilityPool", {
+                  zapAddress,
+                  args: [
+                    amountBigInt.toString(),
+                    minFxSaveOut.toString(),
+                    address,
+                    minPeggedOut.toString(),
+                    stabilityPoolAddress,
+                    minStabilityPoolOut.toString(),
+                  ],
+                });
+                if (
+                  await tryCombinedPoolZap("USDC zap to stability pool", () =>
+                    writeContractAsync({
+                      address: zapAddress,
+                      abi: MINTER_USDC_ZAP_V3_ABI,
+                      functionName: "zapBaseAssetToStabilityPool",
+                      args: [
+                        amountBigInt,
+                        minFxSaveOut,
+                        userAddress,
+                        minPeggedOut,
+                        stabilityPoolAddress as `0x${string}`,
+                        minStabilityPoolOut,
+                      ],
+                    }),
+                  )
+                ) {
+                  return;
+                }
+              } else if (isFxUSD) {
+                debugTx("zap/collateralToStabilityPool", {
+                  zapAddress,
+                  args: [
+                    amountBigInt.toString(),
+                    minFxSaveOut.toString(),
+                    address,
+                    minPeggedOut.toString(),
+                    stabilityPoolAddress,
+                    minStabilityPoolOut.toString(),
+                  ],
+                });
+                if (
+                  await tryCombinedPoolZap("fxUSD zap to stability pool", () =>
+                    writeContractAsync({
+                      address: zapAddress,
+                      abi: MINTER_USDC_ZAP_V3_ABI,
+                      functionName: "zapCollateralToStabilityPool",
+                      args: [
+                        amountBigInt,
+                        minFxSaveOut,
+                        userAddress,
+                        minPeggedOut,
+                        stabilityPoolAddress as `0x${string}`,
+                        minStabilityPoolOut,
+                      ],
+                    }),
+                  )
+                ) {
+                  return;
+                }
+              }
+            }
+
+            if (isUSDC) {
+              debugTx("zap/baseAssetToPegged", {
+                zapAddress,
+                function: "zapBaseAssetToPegged",
+                args: [
+                  amountBigInt.toString(),
+                  minFxSaveOut.toString(),
+                  address,
+                  minPeggedOut.toString(),
+                ],
+              });
+              if (usePermitZap && zapPermit?.permitSig) {
+                const deadline = zapPermit.deadline || calculateDeadline(3600);
+                mintHash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: MINTER_USDC_ZAP_V3_ABI,
+                  functionName: "zapBaseAssetToPeggedWithPermit",
+                  args: [
+                    amountBigInt,
+                    minFxSaveOut,
+                    address as `0x${string}`,
+                    minPeggedOut,
+                    deadline,
+                    zapPermit.permitSig.v,
+                    zapPermit.permitSig.r,
+                    zapPermit.permitSig.s,
+                  ],
+                });
+              } else {
+                mintHash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: MINTER_USDC_ZAP_V3_ABI,
+                  functionName: "zapBaseAssetToPegged",
+                  args: [
+                    amountBigInt,
+                    minFxSaveOut,
+                    address as `0x${string}`,
+                    minPeggedOut,
+                  ],
+                });
+              }
+            } else if (isFxUSD) {
+              debugTx("zap/collateralToPegged", {
+                zapAddress,
+                function: "zapCollateralToPegged",
+                args: [
+                  amountBigInt.toString(),
+                  minFxSaveOut.toString(),
+                  address,
+                  minPeggedOut.toString(),
+                ],
+              });
+              if (usePermitZap && zapPermit?.permitSig) {
+                const deadline = zapPermit.deadline || calculateDeadline(3600);
+                mintHash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: MINTER_USDC_ZAP_V3_ABI,
+                  functionName: "zapCollateralToPeggedWithPermit",
+                  args: [
+                    amountBigInt,
+                    minFxSaveOut,
+                    address as `0x${string}`,
+                    minPeggedOut,
+                    deadline,
+                    zapPermit.permitSig.v,
+                    zapPermit.permitSig.r,
+                    zapPermit.permitSig.s,
+                  ],
+                });
+              } else {
+                mintHash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: MINTER_USDC_ZAP_V3_ABI,
+                  functionName: "zapCollateralToPegged",
+                  args: [
+                    amountBigInt,
+                    minFxSaveOut,
+                    address as `0x${string}`,
+                    minPeggedOut,
+                  ],
+                });
+              }
+            } else {
+              throw new Error("Invalid asset for USDC zap");
+            }
+          } else {
+            throw new Error("Invalid zap configuration");
+          }
+        } else if (
+          useZapWrappedToPool &&
+          shouldDepositToPool &&
+          stabilityPoolAddress &&
+          zapAddress
+        ) {
+          const slip =
+            feePercentage !== undefined && feePercentage >= 1 ? 98n : 99n;
+          const minStabilityPoolOutWrapped = (minPeggedOut * slip) / 100n;
+          let wrappedPoolZapSucceeded = false;
+
+          if (
+            effectiveUseZapWrappedToPool &&
+            usePermitWrappedZap &&
+            wrapZapPermit?.permitSig &&
+            wrapZapPermit?.deadline
+          ) {
+            const deadlineWrapped =
+              wrapZapPermit.deadline || calculateDeadline(3600);
+            wrappedPoolZapSucceeded = await tryCombinedPoolZap(
+              isWstETH
+                ? "wstETH permit zap to stability pool"
+                : "fxSAVE permit zap to stability pool",
+              () =>
+                writeContractAsync({
+                  address: zapAddress,
+                  abi: isWstETH ? ethZapAbi : MINTER_USDC_ZAP_V3_ABI,
+                  functionName: "zapWrappedCollateralToStabilityPoolWithPermit",
+                  args: [
+                    amountBigInt,
+                    userAddress,
+                    minPeggedOut,
+                    stabilityPoolAddress as `0x${string}`,
+                    minStabilityPoolOutWrapped,
+                    deadlineWrapped,
+                    wrapZapPermit.permitSig.v,
+                    wrapZapPermit.permitSig.r,
+                    wrapZapPermit.permitSig.s,
+                  ],
+                }),
+            );
+            if (wrappedPoolZapSucceeded) return;
+          }
+
+          if (effectiveUseZapWrappedToPool) {
+            wrappedPoolZapSucceeded = await tryCombinedPoolZap(
+              isWstETH
+                ? "wstETH zap to stability pool"
+                : "fxSAVE zap to stability pool",
+              () =>
+                writeContractAsync({
+                  address: zapAddress,
+                  abi: isWstETH ? ethZapAbi : MINTER_USDC_ZAP_V3_ABI,
+                  functionName: "zapWrappedCollateralToStabilityPool",
+                  args: [
+                    amountBigInt,
+                    userAddress,
+                    minPeggedOut,
+                    stabilityPoolAddress as `0x${string}`,
+                    minStabilityPoolOutWrapped,
+                  ],
+                }),
+            );
+            if (wrappedPoolZapSucceeded) return;
+          }
+
+          // Combined wrapped zap failed — mint directly, then deposit in step 3.
+          debugTx("directMint/mintPeggedToken", {
+            minterAddress,
+            function: "mintPeggedToken",
+            args: [amountBigInt.toString(), address, minPeggedOut.toString()],
+          });
+          mintHash = await writeContractAsync({
+            address: minterAddress as `0x${string}`,
+            abi: MINTER_PEGGED_ABI,
+            functionName: "mintPeggedToken",
+            args: [amountBigInt, userAddress, minPeggedOut],
+          });
+        } else {
+          debugTx("directMint/mintPeggedToken", {
+            minterAddress,
+            function: "mintPeggedToken",
+            args: [amountBigInt.toString(), address, minPeggedOut.toString()],
+          });
+          // Direct minting (no zap)
+          if (process.env.NODE_ENV === "development") {
+            console.log("[handleMint] About to mint pegged token:", {
+              minterAddress,
+              amountBigInt: amountBigInt.toString(),
+              receiver: address,
+              minPeggedOut: minPeggedOut.toString(),
+              expectedMintOutput: expectedMintOutput?.toString(),
+            });
+          }
+
+          mintHash = await writeContractAsync({
+            address: minterAddress as `0x${string}`,
+            abi: MINTER_PEGGED_ABI,
+            functionName: "mintPeggedToken",
+            args: [amountBigInt, address as `0x${string}`, minPeggedOut],
+          });
+        }
+
+        if (process.env.NODE_ENV === "development") {
+          console.log("[handleMint] Mint transaction hash:", mintHash, {
+            useZap,
+            zapAddress,
+            useETHZap,
+            useUSDCZap,
+          });
+        }
+
+        setTxHash(mintHash);
+        setTxHashes((prev) => ({ ...prev, mint: mintHash }));
+        await txClient?.waitForTransactionReceipt({ hash: mintHash });
+
+        // Refetch to get updated pegged token balance
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        
+        // For zap transactions, calculate the actual minted amount from balance change
+        let actualMintedAmount: bigint | undefined;
+        if (useZap && zapAddress && peggedTokenAddress && balanceBeforeZap !== undefined) {
+          try {
+            // Wait a bit for state to update after transaction
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            const balanceAfter = await publicClient?.readContract({
+              address: peggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "balanceOf",
+              args: [address as `0x${string}`],
+            }) as bigint | undefined;
+            if (balanceAfter !== undefined) {
+              actualMintedAmount = balanceAfter - balanceBeforeZap;
+              if (process.env.NODE_ENV === "development") {
+                console.log("[handleMint] Actual minted amount from zap:", {
+                  balanceBefore: balanceBeforeZap.toString(),
+                  balanceAfter: balanceAfter.toString(),
+                  actualMintedAmount: actualMintedAmount.toString(),
+                });
+              }
+            }
+          } catch (err) {
+            if (process.env.NODE_ENV === "development") {
+              console.warn("[handleMint] Failed to read actual minted amount:", err);
+            }
+          }
+        }
+
+        // Step 3: If depositing to stability pool (and not mint only), approve and deposit
+        if (process.env.NODE_ENV === "development") {
+          console.log(
+            "[handleMint] Checking if should deposit to stability pool:",
+            {
+              depositInStabilityPool,
+              mintOnly,
+              stabilityPoolAddress,
+              simpleMode,
+              selectedStabilityPool,
+              shouldDepositToPool,
+            }
+          );
+        }
+
+        if (shouldDepositToPool) {
+          if (!stabilityPoolAddress) {
+            throw new Error(
+              "Stability pool address not found. Cannot deposit to stability pool."
+            );
+          }
+
+          // Use Anvil client for local development, regular publicClient for production
+          const readClient = false ? publicClient : publicClient;
+
+          // Read actual pegged token balance after minting
+          let actualPeggedBalance: bigint | undefined;
+          try {
+            actualPeggedBalance = await readClient?.readContract({
+              address: peggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "balanceOf",
+              args: [address as `0x${string}`],
+            });
+          } catch (readErr) {
+            if (process.env.NODE_ENV === "development") {
+              console.warn(
+                "[handleMint] Failed to read pegged balance, using expected output:",
+                readErr
+              );
+            }
+          }
+
+          // Determine deposit amount based on whether we used zap or direct minting
+          let depositAmount: bigint | undefined;
+          
+          if (useZap && zapAddress) {
+            // For zap transactions, use the actual minted amount we calculated from balance change
+            // This is more accurate than expectedMintOutput which assumes wrapped collateral input
+            depositAmount = actualMintedAmount;
+            
+            // Fallback: if we couldn't calculate actualMintedAmount, use the actual balance
+            if (!depositAmount || depositAmount === 0n) {
+              if (actualPeggedBalance && actualPeggedBalance > 0n) {
+                if (process.env.NODE_ENV === "development") {
+                  console.log(
+                    "[handleMint] Using actualPeggedBalance for zap deposit (actualMintedAmount unavailable)"
+                  );
+                }
+                depositAmount = actualPeggedBalance;
+              }
+            }
+          } else {
+            // For direct minting, use expectedMintOutput (from dry run)
+            depositAmount = expectedMintOutput;
+
+            // Fallback 1: If expectedMintOutput is undefined, try using amountBigInt
+            if (!depositAmount || depositAmount === 0n) {
+              if (process.env.NODE_ENV === "development") {
+                console.log(
+                  "[handleMint] expectedMintOutput unavailable, using amountBigInt as fallback"
+                );
+              }
+              depositAmount = amountBigInt;
+            }
+
+            // Fallback 2: If we still don't have a valid amount, try the actual balance
+            if (!depositAmount || depositAmount === 0n) {
+              if (actualPeggedBalance && actualPeggedBalance > 0n) {
+                if (process.env.NODE_ENV === "development") {
+                  console.log(
+                    "[handleMint] Using actualPeggedBalance as last resort fallback"
+                  );
+                }
+                depositAmount = actualPeggedBalance;
+              }
+            }
+          }
+
+          if (process.env.NODE_ENV === "development") {
+            console.log("[handleMint] Deposit amount calculation:", {
+              actualPeggedBalance: actualPeggedBalance?.toString(),
+              expectedMintOutput: expectedMintOutput?.toString(),
+              amountBigInt: amountBigInt.toString(),
+              depositAmount: depositAmount?.toString(),
+              note: "Using expectedMintOutput or fallback to amountBigInt/actualPeggedBalance",
+            });
+          }
+
+          if (!depositAmount || depositAmount === 0n) {
+            throw new Error(
+              `Failed to determine deposit amount. Expected mint output: ${expectedMintOutput?.toString()}`
+            );
+          }
+
+          // Verify user has enough balance
+          if (
+            actualPeggedBalance !== undefined &&
+            actualPeggedBalance < depositAmount
+          ) {
+            throw new Error(
+              `Insufficient balance for deposit. Have: ${actualPeggedBalance?.toString()}, Need: ${depositAmount.toString()}`
+            );
+          }
+
+          // Check if we need to approve pegged token for stability pool
+          let currentAllowance: bigint | undefined;
+          try {
+            currentAllowance = await readClient?.readContract({
+              address: peggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "allowance",
+              args: [address as `0x${string}`, stabilityPoolAddress],
+            });
+          } catch (allowanceErr) {
+            if (process.env.NODE_ENV === "development") {
+              console.warn(
+                "[handleMint] Failed to read allowance, will request approval:",
+                allowanceErr
+              );
+            }
+            currentAllowance = 0n;
+          }
+
+          // Always check fresh allowance - if includeApprovePegged was set in progress config, we should do approval
+          // This ensures the progress modal steps match what actually happens
+          const needsPeggedApproval =
+            includeApprovePegged || depositAmount > (currentAllowance || 0n);
+          if (process.env.NODE_ENV === "development") {
+            console.log("[handleMint] Pegged token allowance check:", {
+              currentAllowance: currentAllowance?.toString(),
+              depositAmount: depositAmount.toString(),
+              needsPeggedApproval,
+              includeApprovePegged,
+              peggedTokenAddress,
+              stabilityPoolAddress,
+            });
+          }
+
+          if (needsPeggedApproval) {
+            setStep("approvingPegged");
+            setError(null);
+            setTxHash(null);
+            if (process.env.NODE_ENV === "development") {
+              console.log(
+                "[handleMint] Approving pegged token for stability pool:",
+                {
+                  peggedTokenAddress,
+                  stabilityPoolAddress,
+                  depositAmount: depositAmount.toString(),
+                }
+              );
+            }
+            const approvePeggedHash = await writeContractAsync({
+              address: peggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "approve",
+              args: [stabilityPoolAddress, depositAmount],
+            });
+            setTxHash(approvePeggedHash);
+            setTxHashes((prev) => ({
+              ...prev,
+              approvePegged: approvePeggedHash,
+            }));
+            await readClient?.waitForTransactionReceipt({
+              hash: approvePeggedHash,
+            });
+
+            // Wait for approval to propagate and verify it's sufficient
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            // Verify allowance is now sufficient before proceeding
+            let verifiedAllowance = 0n;
+            let retries = 0;
+            const maxRetries = 5;
+            while (retries < maxRetries) {
+              try {
+                verifiedAllowance =
+                  (await readClient?.readContract({
+                    address: peggedTokenAddress as `0x${string}`,
+                    abi: ERC20_ABI,
+                    functionName: "allowance",
+                    args: [address as `0x${string}`, stabilityPoolAddress],
+                  })) || 0n;
+
+                if (process.env.NODE_ENV === "development") {
+                  console.log(
+                    `[handleMint] Allowance verification attempt ${
+                      retries + 1
+                    }:`,
+                    {
+                      verifiedAllowance: verifiedAllowance.toString(),
+                      depositAmount: depositAmount.toString(),
+                      sufficient: verifiedAllowance >= depositAmount,
+                    }
+                  );
+                }
+
+                if (verifiedAllowance >= depositAmount) {
+                  break;
+                }
+              } catch (verifyErr) {
+                if (process.env.NODE_ENV === "development") {
+                  console.warn(
+                    `[handleMint] Allowance verification attempt ${
+                      retries + 1
+                    } failed:`,
+                    verifyErr
+                  );
+                }
+              }
+
+              retries++;
+              if (retries < maxRetries) {
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+              }
+            }
+
+            if (verifiedAllowance < depositAmount) {
+              throw new Error(
+                `Approval not confirmed. Expected allowance >= ${depositAmount.toString()}, got ${verifiedAllowance.toString()}. Please try again.`
+              );
+            }
+
+            await refetchPeggedTokenAllowance();
+          }
+
+          // Deposit pegged token to stability pool
+          setStep("depositing");
+          setError(null);
+          setTxHash(null);
+
+          // Verify user has sufficient balance
+          let userPeggedBalance: bigint | undefined;
+          try {
+            userPeggedBalance = await readClient?.readContract({
+              address: peggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "balanceOf",
+              args: [address as `0x${string}`],
+            });
+          } catch (balanceErr) {
+            if (process.env.NODE_ENV === "development") {
+              console.warn(
+                "[handleMint] Could not read user balance:",
+                balanceErr
+              );
+            }
+          }
+
+          // Final allowance check
+          let finalAllowance: bigint | undefined;
+          try {
+            finalAllowance = await readClient?.readContract({
+              address: peggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "allowance",
+              args: [address as `0x${string}`, stabilityPoolAddress],
+            });
+          } catch (allowanceErr) {
+            if (process.env.NODE_ENV === "development") {
+              console.warn(
+                "[handleMint] Could not read final allowance:",
+                allowanceErr
+              );
+            }
+          }
+
+          if (process.env.NODE_ENV === "development") {
+            console.log("[handleMint] About to deposit to stability pool:", {
+              stabilityPoolAddress,
+              peggedTokenAddress,
+              depositAmount: depositAmount.toString(),
+              userPeggedBalance: userPeggedBalance?.toString(),
+              finalAllowance: finalAllowance?.toString(),
+              receiver: address,
+              hasEnoughBalance: userPeggedBalance
+                ? userPeggedBalance >= depositAmount
+                : "unknown",
+              hasEnoughAllowance: finalAllowance
+                ? finalAllowance >= depositAmount
+                : "unknown",
+            });
+          }
+
+          // Check balance
+          if (
+            userPeggedBalance !== undefined &&
+            userPeggedBalance < depositAmount
+          ) {
+            throw new Error(
+              `Insufficient balance. Have ${userPeggedBalance.toString()} but need ${depositAmount.toString()}`
+            );
+          }
+
+          // Check allowance one more time
+          if (finalAllowance !== undefined && finalAllowance < depositAmount) {
+            throw new Error(
+              `Insufficient allowance. Approved ${finalAllowance.toString()} but need ${depositAmount.toString()}`
+            );
+          }
+
+          // Check if user has enough balance
+          if (
+            userPeggedBalance !== undefined &&
+            userPeggedBalance < depositAmount
+          ) {
+            throw new Error(
+              `Insufficient pegged token balance. Have ${userPeggedBalance.toString()} but need ${depositAmount.toString()}`
+            );
+          }
+
+          // Try to simulate the deposit first to get a better error message
+          try {
+            // Sanity-check the pool's asset token.
+            // Both Collateral + Sail pools should accept the pegged (ha) token as the deposit asset.
+            try {
+              const poolAssetToken = (await readClient?.readContract({
+                address: stabilityPoolAddress,
+                abi: STABILITY_POOL_ABI,
+                functionName: "ASSET_TOKEN",
+              })) as `0x${string}` | undefined;
+
+              debugTx("pool/assetToken", {
+                stabilityPoolAddress,
+                poolAssetToken,
+                expectedPeggedToken: peggedTokenAddress,
+              });
+
+              if (
+                poolAssetToken &&
+                peggedTokenAddress &&
+                poolAssetToken.toLowerCase() !== peggedTokenAddress.toLowerCase()
+              ) {
+                let poolAssetSymbol: string | null = null;
+                try {
+                  poolAssetSymbol = (await readClient?.readContract({
+                    address: poolAssetToken,
+                    abi: ERC20_ABI,
+                    functionName: "symbol",
+                  })) as string;
+                } catch {}
+
+                throw new Error(
+                  `Pool configuration mismatch: selected pool ASSET_TOKEN is ${
+                    poolAssetSymbol ? `${poolAssetSymbol} (${poolAssetToken})` : poolAssetToken
+                  }, but expected ${peggedTokenSymbol} (${peggedTokenAddress}).`
+                );
+              }
+            } catch (assetCheckErr) {
+              throw assetCheckErr;
+            }
+
+            debugTx("pool/simulateDeposit", {
+              stabilityPoolAddress,
+              args: [depositAmount.toString(), address, "0"],
+            });
+            await readClient?.simulateContract({
+              address: stabilityPoolAddress,
+              abi: STABILITY_POOL_ABI,
+              functionName: "deposit",
+              args: [depositAmount, address as `0x${string}`, 0n],
+              account: address as `0x${string}`,
+            });
+            if (process.env.NODE_ENV === "development") {
+              console.log("[handleMint] Deposit simulation succeeded");
+            }
+          } catch (simErr: any) {
+            debugTx("pool/simulateDeposit/error", {
+              message: simErr?.message,
+              shortMessage: simErr?.shortMessage,
+              cause: simErr?.cause?.message,
+              data: simErr?.data,
+            });
+            if (process.env.NODE_ENV === "development") {
+              console.error("[handleMint] Deposit simulation failed:", simErr);
+              console.error("[handleMint] Simulation error details:", {
+                message: simErr?.message,
+                cause: simErr?.cause?.message,
+                shortMessage: simErr?.shortMessage,
+              });
+            }
+
+            try {
+              const revert = getRevertReason(simErr);
+              if (revert?.errorName === "DepositAmountLessThanMinimum" && revert?.args?.length === 2) {
+                const minimum = revert.args[1] as bigint;
+                throw new Error(
+                  `Deposit amount too small. Minimum deposit is ${formatEther(minimum)} ${peggedTokenSymbol}.`
+                );
+              }
+            } catch (decodedErr) {
+              throw decodedErr;
+            }
+
+            // Try to extract a meaningful error message
+            let errorMsg =
+              simErr?.cause?.message ||
+              simErr?.shortMessage ||
+              simErr?.message ||
+              "Unknown error";
+
+            // If viem can't decode a custom error selector, show a concise message.
+            // Example: Unable to decode signature "0x14960154"...
+            if (
+              typeof errorMsg === "string" &&
+              errorMsg.toLowerCase().includes("unable to decode signature")
+            ) {
+              const match = errorMsg.match(/\"(0x[0-9a-fA-F]{8})\"/);
+              const selector = match?.[1] || "unknown";
+              errorMsg = `Deposit reverted with custom error ${selector}. This pool may currently restrict deposits (e.g. paused / genesis mode).`;
+            }
+            throw new Error(
+              `Deposit would fail: ${errorMsg}. The stability pool may be in genesis mode or have other restrictions.`
+            );
+          }
+
+          const poolDepositHash = await writeContractAsync({
+            address: stabilityPoolAddress,
+            abi: STABILITY_POOL_ABI,
+            functionName: "deposit",
+            args: [depositAmount, address as `0x${string}`, 0n],
+            account: address as `0x${string}`,
+            gas: 500000n, // Add explicit gas limit for Anvil
+          });
+
+          if (!poolDepositHash) {
+            throw new Error(
+              "Transaction was not sent to wallet. No transaction hash returned."
+            );
+          }
+
+          if (process.env.NODE_ENV === "development") {
+            console.log(
+              "[handleMint] Deposit transaction hash:",
+              poolDepositHash
+            );
+          }
+
+          setTxHash(poolDepositHash);
+          setTxHashes((prev) => ({ ...prev, deposit: poolDepositHash }));
+          await readClient?.waitForTransactionReceipt({
+            hash: poolDepositHash,
+          });
+        }
+      }
+
+      setStep("success");
+      if (onSuccess) {
+        await onSuccess();
+      }
+    } catch (err) {
+      console.error("[handleMint] Error:", err);
+      let errorMessage = "Transaction failed";
+
+      const errAny = err as { message?: string; code?: number; name?: string };
+      const errMsg = (errAny?.message ?? "").toLowerCase();
+      const errCode = errAny?.code;
+      const errName = (errAny?.name ?? "").toLowerCase();
+      const isUserRejection =
+        errMsg.includes("user rejected") ||
+        errMsg.includes("user denied") ||
+        errMsg.includes("rejected the request") ||
+        errMsg.includes("rejected") ||
+        errName.includes("userrejected") ||
+        errCode === 4001 ||
+        errCode === 4900;
+
+      if (isUserRejection) {
+        errorMessage = "Transaction was rejected. Please try again.";
+      } else if (err instanceof BaseError) {
+        const revertError = err.walk(
+          (err) => err instanceof ContractFunctionRevertedError
+        );
+        if (revertError instanceof ContractFunctionRevertedError) {
+          const errorName = revertError.data?.errorName || "";
+          
+          // Check for collateral ratio errors
+          if (
+            errorName.includes("InvalidRatio") ||
+            errorName.includes("InsufficientCollateral") ||
+            errorName === "ActionPaused"
+          ) {
+            if (errorName === "ActionPaused") {
+              errorMessage = "Buying is currently paused. Please try again later.";
+            } else {
+              errorMessage = "This deposit would bring the collateral ratio below the minimum allowed. Please deposit a smaller amount or try again later when market conditions improve.";
+            }
+          } else if (errorName === "MintInsufficientAmount") {
+            errorMessage = "The minted amount would be too small. Please deposit a larger amount.";
+          } else if (errorName === "MintZeroAmount") {
+            errorMessage = "Invalid deposit amount. Please check your input.";
+          } else if (errorName === "InvalidOraclePrice" || errorName === "ZeroOraclePrice") {
+            errorMessage = "Oracle price unavailable. Please try again in a few moments.";
+          } else {
+            errorMessage = `Contract error: ${errorName || "Unknown error"}`;
+          }
+        } else {
+          errorMessage = err.shortMessage || err.message;
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+
+      if (process.env.NODE_ENV === "development") {
+        console.error("[handleMint] Full error details:", {
+          error: err,
+          errorMessage,
+          stack: err instanceof Error ? err.stack : undefined,
+        });
+      }
+
+      progress.close();
+      setProgressConfig(defaultProgressConfig);
+      setTxHashes({});
+      handleTxError(errorMessage);
+    }
+  };
+
+  const handleDeposit = async () => {
+    if (depositsBlocked) {
+      handleTxError(
+        marketArchived
+          ? "This market is archived. New pool deposits are not accepted."
+          : "Deposits are unavailable while this market is in maintenance."
+      );
+      return;
+    }
+    if (!validateAmount() || !address || !stabilityPoolAddress) return;
+
+    // Check if wallet is connected
+    if (!isConnected) {
+      handleTxError("Please connect your wallet to continue.");
+      return;
+    }
+
+    if (!writeContractAsync) {
+      handleTxError(
+        "Wallet connection error. Please ensure your wallet is connected and try again."
+      );
+      return;
+    }
+
+    try {
+      // Step 1: Approve pegged token for stability pool (if needed)
+      if (needsPeggedTokenApproval) {
+        setStep("approving");
+        setError(null);
+        setTxHash(null);
+        const approveHash = await writeContractAsync({
+          address: peggedTokenAddress as `0x${string}`,
+          abi: ERC20_ABI,
+          functionName: "approve",
+          args: [stabilityPoolAddress, amountBigInt],
+        });
+        setTxHash(approveHash);
+        await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+        await refetchPeggedTokenAllowance();
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await refetchPeggedTokenAllowance();
+      }
+
+      // Step 2: Deposit pegged token to stability pool
+      setStep("depositing");
+      setError(null);
+      setTxHash(null);
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[handleDeposit] About to deposit to stability pool:", {
+          address: stabilityPoolAddress,
+          amount: amountBigInt.toString(),
+          receiver: address,
+        });
+      }
+
+      const depositHash = await writeContractAsync({
+        address: stabilityPoolAddress,
+        abi: STABILITY_POOL_ABI,
+        functionName: "deposit",
+        args: [amountBigInt, address as `0x${string}`, 0n],
+        account: address as `0x${string}`,
+      });
+
+      if (!depositHash) {
+        throw new Error(
+          "Transaction was not sent to wallet. No transaction hash returned."
+        );
+      }
+
+      setTxHash(depositHash);
+      await publicClient?.waitForTransactionReceipt({ hash: depositHash });
+
+      setStep("success");
+      if (onSuccess) {
+        await onSuccess();
+      }
+    } catch (err: any) {
+      console.error("Deposit error:", err);
+      let errorMessage = "Transaction failed";
+
+      // Check for user rejection first (most common case)
+      const errMessage = err instanceof Error ? err.message : String(err);
+      const errShortMessage = err instanceof BaseError ? err.shortMessage : "";
+      const lowerMessage = (errMessage + " " + errShortMessage).toLowerCase();
+      
+      if (lowerMessage.includes("user rejected") || lowerMessage.includes("user denied") || lowerMessage.includes("rejected the request") || err?.name === "UserRejectedRequestError") {
+        errorMessage = "Transaction cancelled";
+      } else if (err instanceof BaseError) {
+        const revertError = err.walk(
+          (err) => err instanceof ContractFunctionRevertedError
+        );
+        if (revertError instanceof ContractFunctionRevertedError) {
+          errorMessage = revertError.reason || revertError.data?.errorName || "Transaction failed";
+        } else {
+          // Extract concise error message
+          const msg = err.message || err.shortMessage || "Transaction failed";
+          errorMessage = msg.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
+      }
+
+      // Check if it's a connection/wallet issue
+      if (
+        err?.message?.includes("not connected") ||
+        err?.message?.includes("No wallet") ||
+        !errorMessage ||
+        errorMessage === "Transaction failed"
+      ) {
+        errorMessage =
+          "Wallet connection error. Please ensure your wallet is connected and try again.";
+      }
+
+      handleTxError(errorMessage);
+    }
+  };
+
+  const handleWithdrawMethodSelection = () => {
+    // Withdrawal method is now selected inline in the position cards
+    // Go directly to execution
+    handleWithdrawExecution();
+  };
+
+  const handleWithdrawExecution = async () => {
+    // Ensure correct network before starting transaction (auto-attempt switch)
+    if (!(await ensureCorrectNetwork())) return;
+    // Clear any stale hashes from previous runs so the progress UI starts fresh
+    setTxHashes({});
+    
+    console.log("[handleWithdrawExecution] Starting withdrawal execution", {
+      address,
+      minterAddress,
+      selectedPositions,
+      positionAmounts,
+      withdrawalMethods,
+      withdrawOnly,
+      writeContractAsync: !!writeContractAsync,
+    });
+
+    if (!address) {
+      console.error(
+        "[handleWithdrawExecution] Missing wallet address",
+        {
+          address,
+        }
+      );
+      setError("Wallet not connected");
+      return;
+    }
+
+    // Check if writeContractAsync is available
+    if (!writeContractAsync) {
+      console.error(
+        "[handleWithdrawExecution] writeContractAsync is not available"
+      );
+      handleTxError(
+        "Wallet connection error. Please ensure your wallet is connected and try again."
+      );
+      return;
+    }
+
+    try {
+      // Validate individual amounts
+      let totalPeggedTokens = 0n;
+      let walletBalBeforeForDelta = 0n;
+      const walletAmount =
+        selectedPositions.wallet && positionAmounts.wallet
+          ? parseEther(positionAmounts.wallet)
+          : 0n;
+      const collateralAmount =
+        selectedPositions.collateralPool &&
+        withdrawalMethods.collateralPool !== "request" &&
+        positionAmounts.collateralPool
+          ? parseEther(positionAmounts.collateralPool)
+          : 0n;
+      const sailAmount =
+        selectedPositions.sailPool &&
+        withdrawalMethods.sailPool !== "request" &&
+        positionAmounts.sailPool
+          ? parseEther(positionAmounts.sailPool)
+          : 0n;
+      const collateralIsImmediate =
+        collateralAmount > 0n &&
+        selectedPositions.collateralPool &&
+        withdrawalMethods.collateralPool !== "request";
+      const sailIsImmediate =
+        sailAmount > 0n &&
+        selectedPositions.sailPool &&
+        withdrawalMethods.sailPool !== "request";
+
+      const redeemableTotal =
+        walletAmount +
+        (collateralIsImmediate ? collateralAmount : 0n) +
+        (sailIsImmediate ? sailAmount : 0n);
+
+      const shouldAutoRedeem =
+        !withdrawOnly &&
+        (walletAmount > 0n || collateralIsImmediate || sailIsImmediate);
+      const targetRedeemMinterAddress = redeemMinterAddress || minterAddress;
+      const targetRedeemPeggedTokenAddress =
+        selectedRedeemMarket?.market?.addresses?.peggedToken || peggedTokenAddress;
+
+      if (
+        shouldAutoRedeem &&
+        (!targetRedeemMinterAddress || !targetRedeemPeggedTokenAddress)
+      ) {
+        throw new Error(
+          "Sell market is not configured. Please choose a different sell asset."
+        );
+      }
+
+      const estimatedNeedsRedeemApproval =
+        shouldAutoRedeem &&
+        redeemableTotal > 0n &&
+        (peggedTokenMinterAllowanceData !== undefined
+          ? redeemableTotal > peggedTokenMinterAllowanceData
+          : true);
+
+      // Only show steps for pools the user actually selected
+      const hasCollateralRequest =
+        selectedPositions.collateralPool &&
+        !!collateralPoolAddress &&
+        withdrawalMethods.collateralPool === "request";
+      const hasCollateralImmediate =
+        selectedPositions.collateralPool &&
+        collateralAmount > 0n &&
+        !!collateralPoolAddress;
+      const hasSailRequest =
+        selectedPositions.sailPool &&
+        !!sailPoolAddress &&
+        withdrawalMethods.sailPool === "request";
+      const hasSailImmediate =
+        selectedPositions.sailPool && sailAmount > 0n && !!sailPoolAddress;
+
+      const isRequestOnly =
+        (hasCollateralRequest || hasSailRequest) &&
+        !hasCollateralImmediate &&
+        !hasSailImmediate;
+
+      const collateralWindowOpen = isWindowOpen(collateralPoolRequest);
+      const sailWindowOpen = isWindowOpen(sailPoolRequest);
+      const hasFee =
+        (collateralIsImmediate && !collateralWindowOpen) ||
+        (sailIsImmediate && !sailWindowOpen);
+
+      // Title: Request Withdrawal | Withdraw (1% Fee) | Withdraw | Sell | Withdraw (1% Fee) & Sell
+      const progressTitle = (() => {
+        if (isRequestOnly) return "Request Withdrawal";
+        if (withdrawOnly) return hasFee ? "Withdraw (1% Fee)" : "Withdraw";
+        return hasFee ? "Withdraw (1% Fee) & Sell" : "Sell";
+      })();
+
+      setProgressConfig((prev) => ({
+        ...prev,
+        mode: "withdraw",
+        includeApproveCollateral: false,
+        includePermitCollateral: false,
+        includeMint: false,
+        includeApprovePegged: false,
+        includeDeposit: false,
+        includeDirectApprove: false,
+        includeDirectDeposit: false,
+        includeWithdrawCollateral: hasCollateralRequest || hasCollateralImmediate,
+        includeWithdrawSail: hasSailRequest || hasSailImmediate,
+        useZap: false,
+        zapAsset: null,
+        zapAndDeposit: false,
+        wrappedZapAndDeposit: false,
+        wrappedZapAsset: null,
+        includePermitRedeem:
+          shouldAutoRedeem &&
+          redeemableTotal > 0n &&
+          estimatedNeedsRedeemApproval &&
+          permitEnabled &&
+          isPermitCapable,
+        includeApproveRedeem:
+          shouldAutoRedeem &&
+          redeemableTotal > 0n &&
+          estimatedNeedsRedeemApproval &&
+          !(permitEnabled && isPermitCapable),
+        includeRedeem: shouldAutoRedeem && redeemableTotal > 0n,
+        withdrawCollateralLabel:
+          withdrawalMethods.collateralPool === "request"
+            ? "Request withdrawal (collateral pool)"
+            : "Withdraw from collateral pool",
+        withdrawSailLabel:
+          withdrawalMethods.sailPool === "request"
+            ? "Request withdrawal (sail pool)"
+            : "Withdraw from sail pool",
+        title: progressTitle,
+      }));
+      // Show progress modal for transaction feedback
+      progress.show();
+      setStep("withdrawing"); // Required: progress modal needs step !== "input"
+      flushSync(() => {}); // Force React to paint before first action
+
+      // Validate wallet amount
+      if (walletAmount > 0n) {
+        console.log("[handleWithdrawExecution] Validating wallet amount:", {
+          walletAmount: walletAmount.toString(),
+          peggedBalance: peggedBalance.toString(),
+        });
+        if (walletAmount > peggedBalance) {
+          throw new Error("Insufficient balance in wallet");
+        }
+        totalPeggedTokens += walletAmount;
+      }
+
+      // Validate collateral pool amount
+      if (collateralAmount > 0n) {
+        console.log(
+          "[handleWithdrawExecution] Validating collateral pool amount:",
+          {
+            collateralAmount: collateralAmount.toString(),
+            collateralPoolBalance: collateralPoolBalance.toString(),
+            collateralPoolImmediateCap: collateralPoolImmediateCap.toString(),
+            collateralPoolAddress,
+          }
+        );
+        if (collateralAmount > collateralPoolBalance) {
+          throw new Error(
+            `Insufficient balance in collateral pool. Have: ${formatEther(
+              collateralPoolBalance
+            )}, Want: ${formatEther(collateralAmount)}`
+          );
+        }
+        // Guard against StabilityPool MIN_TOTAL_ASSET_SUPPLY floor causing 0-withdraw "success" txs
+        if (withdrawalMethods.collateralPool === "immediate") {
+          if (collateralPoolImmediateCap === 0n) {
+            throw new Error(
+              "Early withdraw is temporarily unavailable: the pool is at its minimum total supply. Use Request (free) or wait for TVL to increase."
+            );
+          }
+          if (collateralAmount > collateralPoolImmediateCap) {
+            throw new Error(
+              `Early withdraw capped by pool minimum supply. Max withdrawable now: ${formatEther(
+                collateralPoolImmediateCap
+              )} ${peggedTokenSymbol}`
+            );
+          }
+        }
+        totalPeggedTokens += collateralAmount;
+      }
+
+      // Validate request-withdraw selections (requestWithdrawal has no amount, but user must have a deposit)
+      if (
+        selectedPositions.collateralPool &&
+        withdrawalMethods.collateralPool === "request"
+      ) {
+        if (!collateralPoolAddress) {
+          throw new Error("Collateral pool not configured for this market");
+        }
+        if (collateralPoolBalance === 0n) {
+          throw new Error("No collateral pool deposit found to request withdrawal");
+        }
+      }
+      if (selectedPositions.sailPool && withdrawalMethods.sailPool === "request") {
+        if (!sailPoolAddress) {
+          throw new Error("Sail pool not configured for this market");
+        }
+        if (sailPoolBalance === 0n) {
+          throw new Error("No sail pool deposit found to request withdrawal");
+        }
+      }
+
+      // Validate sail pool amount
+      if (sailAmount > 0n) {
+        console.log("[handleWithdrawExecution] Validating sail pool amount:", {
+          sailAmount: sailAmount.toString(),
+          sailPoolBalance: sailPoolBalance.toString(),
+          sailPoolImmediateCap: sailPoolImmediateCap.toString(),
+          sailPoolAddress,
+        });
+        if (sailAmount > sailPoolBalance) {
+          throw new Error(
+            `Insufficient balance in sail pool. Have: ${formatEther(
+              sailPoolBalance
+            )}, Want: ${formatEther(sailAmount)}`
+          );
+        }
+        // Guard against StabilityPool MIN_TOTAL_ASSET_SUPPLY floor causing 0-withdraw "success" txs
+        if (withdrawalMethods.sailPool === "immediate") {
+          if (sailPoolImmediateCap === 0n) {
+            throw new Error(
+              "Early withdraw is temporarily unavailable: the pool is at its minimum total supply. Use Request (free) or wait for TVL to increase."
+            );
+          }
+          if (sailAmount > sailPoolImmediateCap) {
+            throw new Error(
+              `Early withdraw capped by pool minimum supply. Max withdrawable now: ${formatEther(
+                sailPoolImmediateCap
+              )} ${peggedTokenSymbol}`
+            );
+          }
+        }
+        totalPeggedTokens += sailAmount;
+      }
+
+      if (
+        totalPeggedTokens === 0n &&
+        withdrawalMethods.collateralPool !== "request" &&
+        withdrawalMethods.sailPool !== "request" &&
+        !(selectedPositions.wallet && walletAmount > 0n)
+      ) {
+        throw new Error(
+          "Please select at least one position and enter an amount"
+        );
+      }
+
+      const txClient = false ? publicClient : publicClient;
+      // If we plan to redeem, snapshot wallet balance BEFORE any pool withdrawals so we can compute
+      // what actually arrived from pools (fees/rounding can reduce received amount).
+      if (shouldAutoRedeem && txClient) {
+        try {
+          walletBalBeforeForDelta =
+            ((await txClient.readContract({
+              address: peggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "balanceOf",
+              args: [address as `0x${string}`],
+            })) as bigint) || 0n;
+        } catch {
+          walletBalBeforeForDelta = 0n;
+        }
+      }
+
+      setStep("withdrawing");
+      setError(null);
+      setTxHash(null);
+
+      let peggedTokensReceived = 0n;
+
+      // Withdraw from wallet (ha tokens) if selected
+      // Note: Wallet tokens are already in wallet, so we don't need to withdraw them
+      // We just need to account for them in the total
+      if (selectedPositions.wallet && positionAmounts.wallet) {
+        const walletAmount = parseEther(positionAmounts.wallet);
+        peggedTokensReceived += walletAmount;
+      }
+
+      // Withdraw from collateral pool if selected
+      if (
+        selectedPositions.collateralPool &&
+        collateralPoolAddress &&
+        (withdrawalMethods.collateralPool === "request" ||
+          positionAmounts.collateralPool)
+      ) {
+        const method = withdrawalMethods.collateralPool;
+        const withdrawFromCollateral = collateralAmount;
+
+          console.log("[handleWithdrawExecution] Collateral pool withdrawal:", {
+            method,
+          amount:
+            method === "request"
+              ? "(requestWithdrawal)"
+              : withdrawFromCollateral.toString(),
+            poolAddress: collateralPoolAddress,
+            userAddress: address,
+          });
+
+          if (method === "request") {
+          // Request withdrawal - starts the fee-free window (no amount parameters)
+            setStep("requestingCollateral");
+            console.log(
+              "[handleWithdrawExecution] Calling requestWithdrawal on collateral pool:",
+              {
+                address: collateralPoolAddress,
+              }
+            );
+            const requestHash = await writeContractAsync({
+              address: collateralPoolAddress as `0x${string}`,
+              abi: STABILITY_POOL_ABI,
+              functionName: "requestWithdrawal",
+              args: [],
+            });
+            setTxHash(requestHash);
+            setTxHashes((prev) => ({
+              ...prev,
+              requestCollateral: requestHash,
+            }));
+            await txClient?.waitForTransactionReceipt({
+              hash: requestHash,
+            });
+            // Don't add to peggedTokensReceived - tokens stay in pool until user calls withdraw during window
+        } else if (withdrawFromCollateral > 0n) {
+            // Immediate withdrawal - use direct withdraw function
+            setStep("withdrawingCollateral");
+
+            const collateralWithdrawHash = await writeContractAsync({
+              address: collateralPoolAddress as `0x${string}`,
+              abi: STABILITY_POOL_ABI,
+              functionName: "withdraw",
+              args: [withdrawFromCollateral, address as `0x${string}`, 0n], // assetAmount, receiver, minAmount
+            });
+            setTxHash(collateralWithdrawHash);
+            setTxHashes((prev) => ({
+              ...prev,
+              withdrawCollateral: collateralWithdrawHash,
+            }));
+            await txClient?.waitForTransactionReceipt({
+              hash: collateralWithdrawHash,
+            });
+            peggedTokensReceived += withdrawFromCollateral;
+        }
+      }
+
+      // Withdraw from sail pool if selected
+      if (
+        selectedPositions.sailPool &&
+        sailPoolAddress &&
+        (withdrawalMethods.sailPool === "request" || positionAmounts.sailPool)
+      ) {
+        const sailMethod = withdrawalMethods.sailPool;
+        const withdrawFromSail = sailAmount;
+
+          console.log("[handleWithdrawExecution] Sail pool withdrawal:", {
+            method: sailMethod,
+          amount:
+            sailMethod === "request"
+              ? "(requestWithdrawal)"
+              : withdrawFromSail.toString(),
+            poolAddress: sailPoolAddress,
+            userAddress: address,
+          });
+
+          if (sailMethod === "request") {
+          // Request withdrawal - starts the fee-free window (no amount parameters)
+            setStep("requestingSail");
+            console.log(
+              "[handleWithdrawExecution] Calling requestWithdrawal on sail pool:",
+              {
+                address: sailPoolAddress,
+              }
+            );
+            const requestHash = await writeContractAsync({
+              address: sailPoolAddress as `0x${string}`,
+              abi: STABILITY_POOL_ABI,
+              functionName: "requestWithdrawal",
+              args: [],
+            });
+            setTxHash(requestHash);
+            setTxHashes((prev) => ({ ...prev, requestSail: requestHash }));
+            await txClient?.waitForTransactionReceipt({
+              hash: requestHash,
+            });
+            // Don't add to peggedTokensReceived - tokens stay in pool until user calls withdraw during window
+        } else if (withdrawFromSail > 0n) {
+            // Immediate withdrawal - use direct withdraw function
+            setStep("withdrawingSail");
+
+            const sailWithdrawHash = await writeContractAsync({
+              address: sailPoolAddress as `0x${string}`,
+              abi: STABILITY_POOL_ABI,
+              functionName: "withdraw",
+              args: [withdrawFromSail, address as `0x${string}`, 0n], // assetAmount, receiver, minAmount
+            });
+            setTxHash(sailWithdrawHash);
+            setTxHashes((prev) => ({
+              ...prev,
+              withdrawSail: sailWithdrawHash,
+            }));
+            await txClient?.waitForTransactionReceipt({
+              hash: sailWithdrawHash,
+            });
+            peggedTokensReceived += withdrawFromSail;
+          }
+      }
+
+      // Redeem pegged tokens for collateral (default behavior unless "Withdraw only" is checked).
+      // IMPORTANT: We must redeem an amount that is actually in-wallet *after* pool withdrawals
+      // to avoid wallet simulation failures due to temporarily insufficient balance/allowance.
+      if (shouldAutoRedeem) {
+        const client = false ? publicClient : publicClient;
+        if (!client) throw new Error("No client available for contract reads");
+
+        // NOTE: wallet tokens are already in-wallet. Pool withdrawals should increase wallet balance.
+        // We already computed walletAmount above as the amount the user selected to redeem from wallet.
+        // After withdrawals, compute the *delta* and redeem walletAmount + delta.
+        const walletBalAfter = ((await client.readContract({
+          address: peggedTokenAddress as `0x${string}`,
+          abi: ERC20_ABI,
+          functionName: "balanceOf",
+          args: [address as `0x${string}`],
+        })) as bigint) || 0n;
+
+        const deltaFromPools =
+          walletBalAfter > walletBalBeforeForDelta
+            ? walletBalAfter - walletBalBeforeForDelta
+            : 0n;
+        let redeemAmount = walletAmount + deltaFromPools;
+
+        // Clamp to current wallet balance to avoid any race/rounding/fee surprises.
+        if (redeemAmount > walletBalAfter) redeemAmount = walletBalAfter;
+
+        if (process.env.NODE_ENV === "development") {
+          console.log("[handleWithdrawExecution] Redeem amount computed (post-withdraw):", {
+            walletBalBefore: walletBalBeforeForDelta.toString(),
+            walletBalAfter: walletBalAfter.toString(),
+            walletAmount: walletAmount.toString(),
+            deltaFromPools: deltaFromPools.toString(),
+            redeemAmount: redeemAmount.toString(),
+          });
+        }
+
+        if (redeemAmount > 0n) {
+          // Step 1: Check/approve pegged token for minter (if needed)
+        let currentAllowance = 0n;
+        try {
+          currentAllowance =
+            ((await client.readContract({
+              address: targetRedeemPeggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "allowance",
+                args: [
+                  address as `0x${string}`,
+                  targetRedeemMinterAddress as `0x${string}`,
+                ],
+            })) as bigint) || 0n;
+        } catch (allowErr) {
+          console.warn(
+            "[handleWithdrawExecution] Allowance read failed, assuming 0",
+            allowErr
+          );
+          currentAllowance = 0n;
+        }
+
+          const needsApproval = redeemAmount > currentAllowance;
+          const canAttemptPermitRedeem =
+            needsApproval && permitEnabled && isPermitCapable;
+          let permitRedeemResult:
+            | {
+                usePermit: boolean;
+                permitSig?: { v: number; r: `0x${string}`; s: `0x${string}` };
+                deadline?: bigint;
+              }
+            | null = null;
+          let usePermitRedeem = false;
+        console.log("[handleWithdrawExecution] Redeem approval check:", {
+            redeemAmount: redeemAmount.toString(),
+          currentAllowance: currentAllowance.toString(),
+          needsApproval,
+          canAttemptPermitRedeem,
+        });
+
+        if (canAttemptPermitRedeem) {
+          try {
+            setStep("approving");
+            permitRedeemResult = await handlePermitOrApproval(
+              targetRedeemPeggedTokenAddress as `0x${string}`,
+              targetRedeemMinterAddress as `0x${string}`,
+              redeemAmount
+            );
+            usePermitRedeem =
+              !!permitRedeemResult?.usePermit &&
+              !!permitRedeemResult?.permitSig &&
+              !!permitRedeemResult?.deadline;
+            if (!usePermitRedeem) {
+              setProgressConfig((prev) => ({
+                ...prev,
+                includePermitRedeem: false,
+                includeApproveRedeem: true,
+              }));
+            }
+          } catch (permitErr) {
+            console.warn(
+              "[handleWithdrawExecution] Permit precheck failed, falling back to approve",
+              permitErr
+            );
+            usePermitRedeem = false;
+            setProgressConfig((prev) => ({
+              ...prev,
+              includePermitRedeem: false,
+              includeApproveRedeem: true,
+            }));
+          }
+        }
+
+        if (needsApproval) {
+          if (!usePermitRedeem) {
+            setStep("approving");
+            setError(null);
+            setTxHash(null);
+
+            const approveHash = await writeContractAsync({
+              address: targetRedeemPeggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "approve",
+                args: [targetRedeemMinterAddress as `0x${string}`, redeemAmount],
+            });
+            setTxHash(approveHash);
+            setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
+            await client.waitForTransactionReceipt({ hash: approveHash });
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
+        }
+
+        // Step 2: Redeem pegged tokens
+        setStep("redeeming");
+        setError(null);
+        setTxHash(null);
+
+          let minCollateralOut = 0n;
+        try {
+          const freshDryRunResult = (await client.readContract({
+            address: targetRedeemMinterAddress as `0x${string}`,
+            abi: MINTER_PEGGED_ABI,
+            functionName: "redeemPeggedTokenDryRun",
+              args: [redeemAmount],
+            })) as [bigint, bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
+
+            if (freshDryRunResult && Array.isArray(freshDryRunResult) && freshDryRunResult.length >= 5) {
+            const wrappedCollateralReturned = freshDryRunResult[4];
+            minCollateralOut = (wrappedCollateralReturned * 99n) / 100n;
+            }
+          } catch {}
+
+        let redeemHash: `0x${string}` | undefined;
+        if (
+          usePermitRedeem &&
+          permitRedeemResult?.permitSig &&
+          permitRedeemResult?.deadline
+        ) {
+          try {
+            redeemHash = await writeContractAsync({
+              address: targetRedeemMinterAddress as `0x${string}`,
+              abi: REDEEM_PEGGED_WITH_PERMIT_ABI,
+              functionName: "redeemPeggedTokenWithPermit",
+              args: [
+                redeemAmount,
+                address as `0x${string}`,
+                minCollateralOut,
+                permitRedeemResult.deadline,
+                permitRedeemResult.permitSig.v,
+                permitRedeemResult.permitSig.r,
+                permitRedeemResult.permitSig.s,
+              ],
+            });
+          } catch (permitRedeemErr) {
+            if (isTxUserRejection(permitRedeemErr)) throw permitRedeemErr;
+            console.warn(
+              "[handleWithdrawExecution] redeemPeggedTokenWithPermit failed, falling back to approve+redeem",
+              permitRedeemErr
+            );
+            setProgressConfig((prev) => ({
+              ...prev,
+              includePermitRedeem: false,
+              includeApproveRedeem: true,
+            }));
+            setStep("approving");
+            const approveHash = await writeContractAsync({
+              address: targetRedeemPeggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "approve",
+              args: [targetRedeemMinterAddress as `0x${string}`, redeemAmount],
+            });
+            setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
+            await client.waitForTransactionReceipt({ hash: approveHash });
+            redeemHash = await writeContractAsync({
+              address: targetRedeemMinterAddress as `0x${string}`,
+              abi: MINTER_PEGGED_ABI,
+              functionName: "redeemPeggedToken",
+              args: [redeemAmount, address as `0x${string}`, minCollateralOut],
+            });
+          }
+        } else {
+          try {
+            redeemHash = await writeContractAsync({
+              address: targetRedeemMinterAddress as `0x${string}`,
+              abi: MINTER_PEGGED_ABI,
+              functionName: "redeemPeggedToken",
+                args: [redeemAmount, address as `0x${string}`, minCollateralOut],
+            });
+          } catch (redeemErr: any) {
+            console.warn(
+              "[handleWithdrawExecution] redeemPeggedToken reverted with minCollateralOut, retrying with 0",
+              redeemErr
+            );
+            redeemHash = await writeContractAsync({
+              address: targetRedeemMinterAddress as `0x${string}`,
+              abi: MINTER_PEGGED_ABI,
+              functionName: "redeemPeggedToken",
+                args: [redeemAmount, address as `0x${string}`, 0n],
+            });
+          }
+        }
+
+        setTxHash(redeemHash);
+        setTxHashes((prev) => ({ ...prev, redeem: redeemHash }));
+        await client.waitForTransactionReceipt({ hash: redeemHash });
+        }
+      }
+
+      setStep("success");
+      if (onSuccess) {
+        await onSuccess();
+      }
+    } catch (err: any) {
+      console.error("Withdraw error:", err);
+      console.error("Withdraw error details:", {
+        message: err?.message,
+        shortMessage: err?.shortMessage,
+        cause: err?.cause,
+        details: err?.details,
+        name: err?.name,
+      });
+      let errorMessage = "Transaction failed";
+
+      const errMsg = (err?.message ?? "").toLowerCase();
+      const errCode = err?.code;
+      const errName = (err?.name ?? "").toLowerCase();
+      if (
+        errMsg.includes("user rejected") ||
+        errMsg.includes("rejected the request") ||
+        errName.includes("userrejected") ||
+        errCode === 4001 ||
+        errCode === 4900
+      ) {
+        errorMessage = "Transaction was rejected. Please try again.";
+      } else if (err instanceof BaseError) {
+        const revertError = err.walk(
+          (err) => err instanceof ContractFunctionRevertedError
+        );
+        if (revertError instanceof ContractFunctionRevertedError) {
+          errorMessage = `Contract error: ${
+            revertError.data?.errorName || "Unknown error"
+          }`;
+          console.error("Revert error data:", revertError.data);
+        } else {
+          errorMessage = err.shortMessage || err.message;
+        }
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+
+      progress.close();
+      setProgressConfig(defaultProgressConfig);
+      setTxHashes({});
+      setError(errorMessage);
+      setStep("error");
+    }
+  };
+
+  const handleRedeem = async () => {
+    // Ensure correct network before starting transaction (auto-attempt switch)
+    if (!(await ensureCorrectNetwork())) return;
+    // Clear any stale hashes from previous runs so the progress UI starts fresh
+    setTxHashes({});
+    if (!address) return;
+
+    // Use the minter address for the selected redeem asset
+    const targetMinterAddress = redeemMinterAddress || minterAddress;
+    if (!targetMinterAddress) return;
+
+    // Get the pegged token address for the selected redeem market
+    const targetPeggedTokenAddress =
+      selectedRedeemMarket?.market?.addresses?.peggedToken ||
+      peggedTokenAddress;
+    if (!targetPeggedTokenAddress) return;
+
+    // Redeem mode uses the withdraw-position input (wallet) rather than the shared `amount` field.
+    const redeemAmount = redeemInputAmount;
+    if (!redeemAmount || redeemAmount <= 0n) {
+      handleTxError("Please enter a valid amount to redeem");
+      return;
+    }
+    if (redeemAmount > peggedBalance) {
+      handleTxError("Insufficient anchor token balance in wallet");
+      return;
+    }
+
+    try {
+      // Check if we need to approve pegged token for minter (explicit RPC read, Anvil-aware)
+      let currentAllowance = peggedTokenMinterAllowanceData || 0n;
+      try {
+        const client = false ? publicClient : publicClient;
+        if (client) {
+          currentAllowance =
+            (await client.readContract({
+              address: targetPeggedTokenAddress,
+              abi: ERC20_ABI,
+              functionName: "allowance",
+              args: [address as `0x${string}`, targetMinterAddress],
+            })) || 0n;
+        }
+      } catch (allowErr) {
+        if (process.env.NODE_ENV === "development") {
+          console.warn(
+            "[handleRedeem] Allowance read failed, assuming 0",
+            allowErr
+          );
+        }
+        currentAllowance = 0n;
+      }
+
+      const needsApproval = redeemAmount > currentAllowance;
+      const canAttemptPermitRedeem =
+        needsApproval && permitEnabled && isPermitCapable;
+      let permitRedeemResult:
+        | {
+            usePermit: boolean;
+            permitSig?: { v: number; r: `0x${string}`; s: `0x${string}` };
+            deadline?: bigint;
+          }
+        | null = null;
+      let usePermitRedeem = false;
+
+      // Set up progress modal for redeem flow
+      setProgressConfig({
+        ...defaultProgressConfig,
+        mode: "withdraw",
+        includePermitRedeem:
+          needsApproval && permitEnabled && isPermitCapable,
+        includeApproveRedeem:
+          needsApproval && !(permitEnabled && isPermitCapable),
+        includeRedeem: true,
+        title: "Sell",
+      });
+      // Show progress modal for transaction feedback
+      progress.show();
+      setStep(needsApproval ? "approving" : "redeeming"); // Required: progress modal needs step !== "input"
+      flushSync(() => {}); // Force React to paint before first action
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[handleRedeem] Starting redeem flow:", {
+          targetMinterAddress,
+          targetPeggedTokenAddress,
+          amount: redeemAmount.toString(),
+          currentAllowance: currentAllowance.toString(),
+          needsApproval,
+          canAttemptPermitRedeem,
+        });
+      }
+
+      if (canAttemptPermitRedeem) {
+        try {
+          setStep("approving");
+          permitRedeemResult = await handlePermitOrApproval(
+            targetPeggedTokenAddress as `0x${string}`,
+            targetMinterAddress as `0x${string}`,
+            redeemAmount
+          );
+          usePermitRedeem =
+            !!permitRedeemResult?.usePermit &&
+            !!permitRedeemResult?.permitSig &&
+            !!permitRedeemResult?.deadline;
+          if (!usePermitRedeem) {
+            setProgressConfig((prev) => ({
+              ...prev,
+              includePermitRedeem: false,
+              includeApproveRedeem: true,
+            }));
+          }
+        } catch (permitErr) {
+          console.warn(
+            "[handleRedeem] Permit precheck failed, falling back to approval",
+            permitErr
+          );
+          usePermitRedeem = false;
+          setProgressConfig((prev) => ({
+            ...prev,
+            includePermitRedeem: false,
+            includeApproveRedeem: true,
+          }));
+        }
+      }
+
+      // Step 1: Approve pegged token for minter (if needed)
+      if (needsApproval && !usePermitRedeem) {
+        setStep("approving");
+        setError(null);
+        setTxHash(null);
+
+        if (process.env.NODE_ENV === "development") {
+          console.log("[handleRedeem] Approving pegged token for minter:", {
+            peggedTokenAddress: targetPeggedTokenAddress,
+            minterAddress: targetMinterAddress,
+            amount: redeemAmount.toString(),
+          });
+        }
+
+        const approveHash = await writeContractAsync({
+          address: targetPeggedTokenAddress as `0x${string}`,
+          abi: ERC20_ABI,
+          functionName: "approve",
+          args: [targetMinterAddress as `0x${string}`, redeemAmount],
+        });
+        setTxHash(approveHash);
+        setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
+        await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+        await refetchPeggedTokenMinterAllowance();
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await refetchPeggedTokenMinterAllowance();
+      }
+
+      // Step 2: Redeem pegged token
+      setStep("redeeming");
+      setError(null);
+      setTxHash(null);
+
+      const minCollateralOut = redeemDryRun?.wrappedCollateralReturned
+        ? (redeemDryRun.wrappedCollateralReturned * 99n) / 100n
+        : 0n;
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[handleRedeem] Calling redeemPeggedToken:", {
+          minterAddress: targetMinterAddress,
+          amount: redeemAmount.toString(),
+          minCollateralOut: minCollateralOut.toString(),
+        });
+      }
+
+      let redeemHash: `0x${string}` | undefined;
+      if (
+        usePermitRedeem &&
+        permitRedeemResult?.permitSig &&
+        permitRedeemResult?.deadline
+      ) {
+        try {
+          redeemHash = await writeContractAsync({
+            address: targetMinterAddress as `0x${string}`,
+            abi: REDEEM_PEGGED_WITH_PERMIT_ABI,
+            functionName: "redeemPeggedTokenWithPermit",
+            args: [
+              redeemAmount,
+              address as `0x${string}`,
+              minCollateralOut,
+              permitRedeemResult.deadline,
+              permitRedeemResult.permitSig.v,
+              permitRedeemResult.permitSig.r,
+              permitRedeemResult.permitSig.s,
+            ],
+          });
+        } catch (permitRedeemErr) {
+          if (isTxUserRejection(permitRedeemErr)) throw permitRedeemErr;
+          console.warn(
+            "[handleRedeem] redeemPeggedTokenWithPermit failed, falling back to approve+redeem",
+            permitRedeemErr
+          );
+          setProgressConfig((prev) => ({
+            ...prev,
+            includePermitRedeem: false,
+            includeApproveRedeem: true,
+          }));
+          setStep("approving");
+          const approveHash = await writeContractAsync({
+            address: targetPeggedTokenAddress as `0x${string}`,
+            abi: ERC20_ABI,
+            functionName: "approve",
+            args: [targetMinterAddress as `0x${string}`, redeemAmount],
+          });
+          setTxHash(approveHash);
+          setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
+          await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+          redeemHash = await writeContractAsync({
+            address: targetMinterAddress as `0x${string}`,
+            abi: MINTER_PEGGED_ABI,
+            functionName: "redeemPeggedToken",
+            args: [redeemAmount, address as `0x${string}`, minCollateralOut],
+          });
+        }
+      } else {
+        try {
+          redeemHash = await writeContractAsync({
+            address: targetMinterAddress as `0x${string}`,
+            abi: MINTER_PEGGED_ABI,
+            functionName: "redeemPeggedToken",
+            args: [redeemAmount, address as `0x${string}`, minCollateralOut],
+          });
+        } catch (callErr: any) {
+          // Retry once with minCollateralOut=0 to bypass slippage floor and surface real issues.
+          if (minCollateralOut > 0n) {
+            if (process.env.NODE_ENV === "development") {
+              console.warn(
+                "[handleRedeem] redeemPeggedToken reverted with minCollateralOut, retrying with 0",
+                callErr
+              );
+            }
+            redeemHash = await writeContractAsync({
+              address: targetMinterAddress as `0x${string}`,
+              abi: MINTER_PEGGED_ABI,
+              functionName: "redeemPeggedToken",
+              args: [redeemAmount, address as `0x${string}`, 0n],
+            });
+          } else {
+            throw callErr;
+          }
+        }
+      }
+      setTxHash(redeemHash);
+      setTxHashes((prev) => ({ ...prev, redeem: redeemHash }));
+      await publicClient?.waitForTransactionReceipt({ hash: redeemHash });
+
+      setStep("success");
+      if (onSuccess) {
+        await onSuccess();
+      }
+    } catch (err: any) {
+      console.error("Redeem error:", err);
+      let errorMessage = "Transaction failed";
+
+      // Check for user rejection first (most common case)
+      const errMessage = err instanceof Error ? err.message : String(err);
+      const errShortMessage = err instanceof BaseError ? err.shortMessage : "";
+      const lowerMessage = (errMessage + " " + errShortMessage).toLowerCase();
+      
+      if (lowerMessage.includes("user rejected") || lowerMessage.includes("user denied") || lowerMessage.includes("rejected the request") || err?.name === "UserRejectedRequestError") {
+        errorMessage = "Transaction was rejected. Please try again.";
+      } else if (err instanceof BaseError) {
+        const revertError = err.walk(
+          (err) => err instanceof ContractFunctionRevertedError
+        );
+        if (revertError instanceof ContractFunctionRevertedError) {
+          errorMessage = revertError.reason || revertError.data?.errorName || "Transaction failed";
+        } else {
+          // Extract concise error message
+          const msg = err.message || err.shortMessage || "Transaction failed";
+          errorMessage = msg.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
+      }
+
+      progress.close();
+      setProgressConfig(defaultProgressConfig);
+      setTxHashes({});
+      handleTxError(errorMessage);
+    }
+  };
+
+  const handleAction = () => {
+    // If in error state, reset and retry in one click
+    if (step === "error") {
+      setStep("input");
+      setError(null);
+      setTxHash(null);
+      if (activeTab === "deposit") {
+        handleMint();
+      } else if (activeTab === "sell") {
+        handleRedeem();
+      } else if (activeTab === "withdraw") {
+        handleWithdrawExecution();
+      }
+      return;
+    }
+
+    if (activeTab === "deposit") {
+      handleMint();
+    } else if (activeTab === "sell") {
+      handleRedeem();
+    } else if (activeTab === "withdraw") {
+      handleWithdrawExecution();
+    }
+  };
+
+  const handleContinueStep1 = useCallback(() => {
+    if (step === "error") {
+      handleAction();
+      return;
+    }
+    if (
+      !selectedDepositAsset ||
+      !amount ||
+      parseFloat(amount) <= 0 ||
+      error
+    ) {
+      return;
+    }
+    if (mintOnly) {
+      handleMint();
+      return;
+    }
+    if (rewardTokenOptions.length === 1) {
+      setSelectedRewardToken(rewardTokenOptions[0].token);
+    }
+    setFlowPage(2);
+    setDepositInStabilityPool(true);
+  }, [
+    step,
+    selectedDepositAsset,
+    amount,
+    error,
+    mintOnly,
+    rewardTokenOptions,
+    handleMint,
+    handleAction,
+  ]);
+
+  const step1PrimaryAction = useMemo(
+    () =>
+      resolveAnchorDepositStep1PrimaryAction({
+        isConnected,
+        amount,
+        parsedAmount: (() => {
+          if (!amount || parseFloat(amount) <= 0) return undefined;
+          try {
+            return isUSDC ? parseUnits(amount, 6) : parseEther(amount);
+          } catch {
+            return undefined;
+          }
+        })(),
+        currentBalance:
+          selectedAssetBalance != null
+            ? selectedAssetBalance
+            : collateralBalance,
+        selectedDepositAsset,
+        step,
+        mintOnly,
+        isDirectPeggedDeposit,
+        skipRewardStep,
+        rewardTokenOptionsCount: rewardTokenOptions.length,
+      }),
+    [
+      isConnected,
+      amount,
+      isUSDC,
+      selectedAssetBalance,
+      collateralBalance,
+      selectedDepositAsset,
+      step,
+      mintOnly,
+      isDirectPeggedDeposit,
+      skipRewardStep,
+      rewardTokenOptions.length,
+    ],
+  );
+
+  const handleContinueDepositPage = useCallback(() => {
+    if (step === "error") {
+      handleMint();
+      return;
+    }
+    setMintOnly(false);
+    setDepositInStabilityPool(true);
+    handleMint();
+  }, [step, handleMint]);
+
+  const hasValidWithdrawSelection = useMemo(
+    () =>
+      hasAnchorWithdrawValidSelection({
+        selectedPositions,
+        withdrawalMethods,
+        positionAmounts,
+      }),
+    [selectedPositions, withdrawalMethods, positionAmounts],
+  );
+
+  const handleContinueToSell = useCallback(() => {
+    if (!hasValidWithdrawSelection) return;
+    setWithdrawOnly(false);
+    setSellRedeemSource("pool");
+    setSelectedPositions((prev) => ({
+      ...prev,
+      wallet: false,
+    }));
+    setPositionAmounts((prev) => ({
+      ...prev,
+      wallet: "",
+    }));
+    setFlowPage(2);
+    setStep("input");
+    setError(null);
+  }, [hasValidWithdrawSelection]);
+
+  const handleSellRedeemSourceChange = useCallback(
+    (source: "pool" | "wallet") => {
+      setSellRedeemSource(source);
+      if (source === "pool") {
+        setSelectedPositions((prev) => ({ ...prev, wallet: false }));
+        setPositionAmounts((prev) => ({ ...prev, wallet: "" }));
+        return;
+      }
+      setSelectedPositions((prev) => ({ ...prev, wallet: true }));
+    },
+    [],
+  );
+
+  const handleSellMarketSelectChange = useCallback(
+    (value: string) => {
+      if (value === "auto") {
+        setRedeemMarketSelectionMode("auto");
+        return;
+      }
+      setRedeemMarketSelectionMode("manual");
+      setSelectedRedeemMarketId(value);
+      const market = marketsForToken.find((m) => m.marketId === value)?.market;
+      if (market?.collateral?.symbol) {
+        setSelectedRedeemAsset(market.collateral.symbol);
+      }
+    },
+    [marketsForToken],
+  );
+
+  const depositPagePrimaryAction = useMemo(
+    () =>
+      resolveAnchorDepositStep3PrimaryAction({
+        step,
+        selectedDepositAsset,
+        amount,
+        error,
+        selectedRewardToken,
+        selectedStabilityPool,
+        isDirectPeggedDeposit,
+      }),
+    [
+      step,
+      selectedDepositAsset,
+      amount,
+      error,
+      selectedRewardToken,
+      selectedStabilityPool,
+      isDirectPeggedDeposit,
+    ],
+  );
+
+  const withdrawPage1PrimaryAction = useMemo((): DepositPrimaryAction => {
+    if (withdrawOnly) {
+      return resolveAnchorWithdrawPrimaryAction({
+        step,
+        isConnected,
+        hasValidSelection: hasValidWithdrawSelection,
+      });
+    }
+    const canContinueToSell = hasValidWithdrawSelection;
+    const base = resolveAnchorWithdrawPrimaryAction({
+      step,
+      isConnected,
+      hasValidSelection: canContinueToSell,
+    });
+    if (base.kind === "submit") {
+      return {
+        ...base,
+        label: "Continue to Sell →",
+        variant: "navy",
+      };
+    }
+    return base;
+  }, [
+    step,
+    isConnected,
+    hasValidWithdrawSelection,
+    withdrawOnly,
+  ]);
+
+  const withdrawPrimaryAction = useMemo(
+    () =>
+      resolveAnchorWithdrawPrimaryAction({
+        step,
+        isConnected,
+        hasValidSelection: hasValidWithdrawSelection,
+      }),
+    [step, isConnected, hasValidWithdrawSelection],
+  );
+
+  const depositTokenPriceUSD = useMemo(() => {
+    const sym = (selectedDepositAsset || collateralSymbol).toLowerCase();
+    if (sym === "eth" || sym === "weth") return ethPrice || 0;
+    if (sym === "wsteth" || sym === "steth") return wstETHPrice || 0;
+    if (sym === "fxsave") return fxSAVEPrice || 0;
+    if (sym === "usdc" || sym === "fxusd") return 1.0;
+    if (sym.includes("ha") && peggedTokenPriceUsdWei > 0n) {
+      return Number(formatUnits(peggedTokenPriceUsdWei, 18));
+    }
+    return 0;
+  }, [
+    selectedDepositAsset,
+    collateralSymbol,
+    ethPrice,
+    wstETHPrice,
+    fxSAVEPrice,
+    peggedTokenPriceUsdWei,
+  ]);
+
+  const showDepositBuyOverview =
+    simpleMode &&
+    activeTab === "deposit" &&
+    (flowPage === 1 || (flowPage === 2 && !mintOnly));
+
+  const depositBuyOverview = useMemo(() => {
+    if (!showDepositBuyOverview) return null;
+
+    const depositSym = selectedDepositAsset || collateralSymbol;
+    const depositAmount =
+      amount && parseFloat(amount) > 0 ? parseFloat(amount) : 0;
+
+    if (isDirectPeggedDeposit) {
+      const receiveUsd = depositAmount * depositTokenPriceUSD;
+      return {
+        receiveAmount: depositAmount > 0 ? depositAmount.toFixed(4) : null,
+        receiveSymbol:
+          marketForDepositAsset?.peggedToken?.symbol || peggedTokenSymbol,
+        receiveUsd: receiveUsd > 0 ? receiveUsd : undefined,
+        sourceLine: undefined as string | undefined,
+        emptyMessage: "Enter an amount to see what you'll deposit.",
+      };
+    }
+
+    const peggedAmount =
+      expectedMintOutput && expectedMintOutput > 0n
+        ? Number(formatEther(expectedMintOutput))
+        : 0;
+    const peggedPriceUSD =
+      peggedTokenPriceUsdWei > 0n
+        ? Number(formatUnits(peggedTokenPriceUsdWei, 18))
+        : 0;
+    const receiveUsd =
+      expectedDepositUSD > 0
+        ? expectedDepositUSD
+        : peggedAmount * peggedPriceUSD;
+
+    let sourceLine: string | undefined;
+    if (depositAmount > 0) {
+      if (flowPage === 2 && selectedStabilityPool) {
+        const poolLabel =
+          selectedStabilityPool.poolType === "collateral"
+            ? `Collateral${selectedRewardToken ? ` (${selectedRewardToken})` : ""}`
+            : "Sail";
+        sourceLine = `To ${poolLabel} · ${depositAmount.toFixed(4)} ${depositSym}`;
+      } else {
+        sourceLine = `From ${depositSym} · ${depositAmount.toFixed(4)}`;
+      }
+    }
+
+    return {
+      receiveAmount: peggedAmount > 0 ? peggedAmount.toFixed(4) : null,
+      receiveSymbol: peggedTokenSymbol,
+      receiveUsd: receiveUsd > 0 ? receiveUsd : undefined,
+      sourceLine,
+      emptyMessage:
+        flowPage === 2 && !selectedStabilityPool
+          ? "Select a pool to see what you'll receive."
+          : "Enter an amount to see what you'll receive.",
+      fee:
+        depositAmount > 0 && feePercentage !== undefined
+          ? {
+              percentage: feePercentage,
+              usd: depositAmount * (feePercentage / 100) * depositTokenPriceUSD,
+            }
+          : undefined,
+    };
+  }, [
+    showDepositBuyOverview,
+    selectedDepositAsset,
+    collateralSymbol,
+    amount,
+    isDirectPeggedDeposit,
+    marketForDepositAsset,
+    peggedTokenSymbol,
+    expectedMintOutput,
+    peggedTokenPriceUsdWei,
+    expectedDepositUSD,
+    flowPage,
+    selectedStabilityPool,
+    selectedRewardToken,
+    feePercentage,
+    depositTokenPriceUSD,
+  ]);
+
+  const buyFeeFooter = useMemo(() => {
+    if (isDirectPeggedDeposit || !selectedDepositAsset) return null;
+
+    const displayFee =
+      amount && parseFloat(amount) > 0 && feePercentage !== undefined
+        ? feePercentage
+        : undefined;
+    const showRange =
+      feeRange && feeRange.hasRange && marketsForToken.length > 1;
+
+    let displayValue = "—";
+    if (showRange && !(amount && parseFloat(amount) > 0)) {
+      displayValue = `${feeRange.min.toFixed(2)}% – ${feeRange.max.toFixed(2)}%`;
+    } else if (displayFee !== undefined) {
+      displayValue = `${displayFee.toFixed(2)}%`;
+    } else if (feeRange) {
+      displayValue = `${feeRange.min.toFixed(2)}%`;
+    }
+
+    const heading =
+      amount && parseFloat(amount) > 0
+        ? "Buy fee"
+        : feeRange?.hasRange
+          ? "Fee range"
+          : "Buy fee";
+
+    const items: DepositTradeFeeItem[] = [
+      {
+        label: "Buy",
+        displayValue,
+        estimatePct: displayFee,
+        isMintSail: true,
+        tooltip: (
+          <div className="space-y-2">
+            <p className="font-semibold">Dynamic Buy Fees</p>
+            <p>
+              Buy fees adjust in real time based on market health and your
+              deposit size.
+            </p>
+          </div>
+        ),
+      },
+    ];
+
+    return <DepositTradeFeeFooter heading={heading} items={items} />;
+  }, [
+    isDirectPeggedDeposit,
+    selectedDepositAsset,
+    amount,
+    feeRange,
+    marketsForToken.length,
+    feePercentage,
+  ]);
+
+  const withdrawFeeFooter = useMemo(() => {
+    if ((activeTab !== "withdraw" && activeTab !== "sell") || !simpleMode) {
+      return null;
+    }
+
+    const showSellFee =
+      (flowPage === 2 || activeTab === "sell") &&
+      (activeTab === "sell" || !withdrawOnly);
+    const showEarlyFee = !!selectedPoolEarlyWithdrawFee;
+
+    if (!showSellFee && !showEarlyFee) return null;
+
+    const sellFeeLabel =
+      redeemInputAmount &&
+      redeemInputAmount > 0n &&
+      redeemFeePercentage !== undefined
+        ? "Sell fee"
+        : sellFeeRange?.hasRange && marketsForToken.length > 1
+          ? "Fee range"
+          : "Sell fee";
+
+    const sellFeeValue = (() => {
+      if (!showSellFee) return null;
+      if (
+        redeemInputAmount &&
+        redeemInputAmount > 0n &&
+        redeemFeePercentage !== undefined
+      ) {
+        return `${redeemFeePercentage.toFixed(2)}%`;
+      }
+      if (
+        sellFeeRange?.hasRange &&
+        marketsForToken.length > 1 &&
+        !(redeemInputAmount && redeemInputAmount > 0n)
+      ) {
+        return `${sellFeeRange.min.toFixed(2)}% – ${sellFeeRange.max.toFixed(2)}%`;
+      }
+      if (sellFeeRange) {
+        return `${sellFeeRange.min.toFixed(2)}%`;
+      }
+      if (redeemFeePercentage !== undefined) {
+        return `${redeemFeePercentage.toFixed(2)}%`;
+      }
+      return "—";
+    })();
+
+    const items: DepositTradeFeeItem[] = [];
+
+    if (showSellFee && sellFeeValue !== null) {
+      items.push({
+        label: "Sell",
+        displayValue: sellFeeValue,
+        estimatePct:
+          redeemInputAmount &&
+          redeemInputAmount > 0n &&
+          redeemFeePercentage !== undefined
+            ? redeemFeePercentage
+            : undefined,
+        isMintSail: false,
+        tooltip: (
+          <div className="space-y-2">
+            <p className="font-semibold">Dynamic Sell Fees</p>
+            <p>
+              Sell fees adjust in real time based on market health and your
+              withdraw size when redeeming to collateral.
+            </p>
+          </div>
+        ),
+      });
+    }
+
+    if (showEarlyFee) {
+      items.push({
+        label: "Early withdraw",
+        displayValue: selectedPoolEarlyWithdrawFee!.displayValue,
+        tooltip: (
+          <div className="space-y-2">
+            <p className="font-semibold">Early Withdrawal Fee</p>
+            <p>
+              0% during an open request window or when using Request Withdrawal.
+              1% when withdrawing immediately outside the window.
+            </p>
+          </div>
+        ),
+      });
+    }
+
+    const heading =
+      items.length > 1 ? "Fees" : showSellFee ? sellFeeLabel : "Early withdraw fee";
+
+    return <DepositTradeFeeFooter heading={heading} items={items} />;
+  }, [
+    activeTab,
+    simpleMode,
+    flowPage,
+    withdrawOnly,
+    selectedPoolEarlyWithdrawFee,
+    redeemInputAmount,
+    redeemFeePercentage,
+    sellFeeRange,
+    marketsForToken.length,
+  ]);
+
+  const withdrawTransactionOverview =
+    useMemo((): AnchorTransactionOverviewProps | null => {
+      if ((activeTab !== "withdraw" && activeTab !== "sell") || !simpleMode) {
+        return null;
+      }
+      const effectiveFlowPage = activeTab === "sell" ? 2 : flowPage;
+      if (effectiveFlowPage !== 1 && effectiveFlowPage !== 2) return null;
+      if (step !== "input" && step !== "error") return null;
+
+      const hasCollateralPool = selectedPositions.collateralPool;
+      const hasSailPool = selectedPositions.sailPool;
+      const hasWalletSell =
+        selectedPositions.wallet &&
+        positionAmounts.wallet &&
+        parseFloat(positionAmounts.wallet) > 0;
+      const hasPoolSell = hasCollateralPool || hasSailPool;
+      const poolType = hasCollateralPool ? "collateral" : "sail";
+      const currentMarket = marketsForToken.find(
+        (m) => m.marketId === selectedMarketId,
+      )?.market;
+      const rewardToken = currentMarket?.rewardTokens?.default?.[0] || "";
+      const poolLabelShort = hasPoolSell
+        ? poolType === "collateral"
+          ? `Collateral${rewardToken ? ` (${rewardToken})` : ""}`
+          : "Sail"
+        : "Wallet";
+      const isImmediateWithdrawal =
+        hasPoolSell &&
+        ((poolType === "collateral" &&
+          withdrawalMethods.collateralPool === "immediate") ||
+          (poolType === "sail" && withdrawalMethods.sailPool === "immediate"));
+      const earlyFee =
+        hasPoolSell && isImmediateWithdrawal
+          ? earlyWithdrawalFees.find((f) => f.poolType === poolType)
+          : undefined;
+
+      const buildPoolWithdrawPreview = (
+        receiveLabel: string,
+        nextStepLine?: string,
+      ): AnchorTransactionOverviewProps => {
+        const amountStr =
+          poolType === "collateral"
+            ? positionAmounts.collateralPool
+            : positionAmounts.sailPool;
+        const parsedAmount =
+          amountStr && parseFloat(amountStr) > 0 ? parseFloat(amountStr) : 0;
+
+        if (parsedAmount <= 0) {
+          return {
+            receiveAmount: null,
+            receiveSymbol: peggedTokenSymbol,
+            emptyMessage: "Enter an amount to see what you'll receive.",
+          };
+        }
+
+        let netWei = parseEther(amountStr);
+        if (earlyFee) {
+          netWei = netWei > earlyFee.amount ? netWei - earlyFee.amount : netWei;
+        }
+        const netAmount = Number(formatEther(netWei));
+        const peggedPriceUSD =
+          withdrawRedeemPriceInputs.peggedPriceUSD > 0
+            ? withdrawRedeemPriceInputs.peggedPriceUSD
+            : 0;
+        const receiveUsd = netAmount * peggedPriceUSD;
+        const earlyFeeUsd =
+          earlyFee && peggedPriceUSD > 0
+            ? (Number(earlyFee.amount) / 1e18) * peggedPriceUSD
+            : 0;
+
+        return {
+          receiveAmount: netAmount.toFixed(4),
+          receiveSymbol: peggedTokenSymbol,
+          receiveUsd: receiveUsd > 0 ? receiveUsd : undefined,
+          receiveLabel,
+          sourceLine:
+            nextStepLine ??
+            `From ${poolLabelShort} · ${parsedAmount.toFixed(4)} ${peggedTokenSymbol}`,
+          fees: earlyFee
+            ? [
+                {
+                  label: "Early withdraw fee",
+                  percentage: earlyFee.feePercent,
+                  usd: earlyFeeUsd > 0 ? earlyFeeUsd : undefined,
+                },
+              ]
+            : undefined,
+        };
+      };
+
+      if (effectiveFlowPage === 1) {
+        if (!hasPoolSell) {
+          return {
+            receiveAmount: null,
+            receiveSymbol: peggedTokenSymbol,
+            emptyMessage: "Select a pool and enter an amount.",
+          };
+        }
+
+        if (withdrawOnly) {
+          return buildPoolWithdrawPreview("You will receive");
+        }
+
+        return buildPoolWithdrawPreview(
+          "You will withdraw",
+          `From ${poolLabelShort} · then sell for ${redeemCollateralSymbol || "collateral"}`,
+        );
+      }
+
+      // Page 2 — sell / redeem
+      if (!hasPoolSell && !hasWalletSell) {
+        return {
+          receiveAmount: null,
+          receiveSymbol: redeemCollateralSymbol || peggedTokenSymbol,
+          emptyMessage: "Enter an amount to see what you'll receive.",
+        };
+      }
+
+      const collateralSym = redeemCollateralSymbol;
+      const hasRedeemAmount = redeemInputAmount && redeemInputAmount > 0n;
+
+      if (!hasRedeemAmount) {
+        return {
+          receiveAmount: null,
+          receiveSymbol: collateralSym || peggedTokenSymbol,
+          emptyMessage: hasPoolSell
+            ? "Confirm pool withdraw amount to see what you'll receive."
+            : "Enter a wallet amount to see what you'll receive.",
+        };
+      }
+
+      if (redeemDryRunLoading) {
+        return {
+          receiveAmount: null,
+          receiveSymbol: collateralSym || peggedTokenSymbol,
+          statusMessage: "Calculating fee...",
+        };
+      }
+
+      if (redeemDryRunError) {
+        return {
+          receiveAmount: null,
+          receiveSymbol: collateralSym || peggedTokenSymbol,
+          statusMessage: "Fee unavailable (dry-run error)",
+          statusVariant: "error",
+        };
+      }
+
+      if (!redeemDryRun) {
+        return {
+          receiveAmount: null,
+          receiveSymbol: collateralSym || peggedTokenSymbol,
+          statusMessage: "Fee unavailable",
+        };
+      }
+
+      const receiveWei = redeemDryRun.netCollateralReturned || 0n;
+      const usdValue = amountToUSD(
+        Number(receiveWei) / 1e18,
+        collateralSym,
+        withdrawRedeemPriceInputs,
+      );
+      const peggedPriceUSD =
+        withdrawRedeemPriceInputs.peggedPriceUSD > 0
+          ? withdrawRedeemPriceInputs.peggedPriceUSD
+          : 0;
+      const earlyFeeUsd =
+        earlyFee && peggedPriceUSD > 0
+          ? (Number(earlyFee.amount) / 1e18) * peggedPriceUSD
+          : 0;
+
+      const overviewFees: Array<{
+        label: string;
+        percentage: number;
+        usd?: number;
+      }> = [];
+
+      if (redeemDryRun.feePercentage !== undefined) {
+        const sellFeeAmount = Number(formatEther(redeemDryRun.fee));
+        const sellFeeUsd = amountToUSD(
+          sellFeeAmount,
+          collateralSym,
+          withdrawRedeemPriceInputs,
+        );
+        overviewFees.push({
+          label: "Sell fee",
+          percentage: redeemDryRun.feePercentage,
+          usd: sellFeeUsd > 0 ? sellFeeUsd : undefined,
+        });
+      }
+
+      if (earlyFee) {
+        overviewFees.push({
+          label: "Early withdraw fee",
+          percentage: earlyFee.feePercent,
+          usd: earlyFeeUsd > 0 ? earlyFeeUsd : undefined,
+        });
+      }
+
+      const totalFeeUsd = overviewFees.reduce(
+        (sum, fee) => sum + (fee.usd ?? 0),
+        0,
+      );
+
+      return {
+        receiveAmount: Number(formatEther(receiveWei)).toFixed(4),
+        receiveSymbol: collateralSym,
+        receiveUsd: usdValue > 0 ? usdValue : undefined,
+        receiveLabel: redeemPreview?.isCapped
+          ? "You will receive (partial)"
+          : "You will receive",
+        sourceLine:
+          sellRedeemSource === "wallet" || !hasPoolSell
+            ? `From wallet · ${Number(formatEther(redeemInputAmount ?? 0n)).toFixed(4)} ${peggedTokenSymbol}`
+            : `From ${poolLabelShort} · ${Number(formatEther(redeemInputAmount ?? 0n)).toFixed(4)} ${peggedTokenSymbol}`,
+        fees: overviewFees.length > 0 ? overviewFees : undefined,
+        totalFeeUsd: overviewFees.length > 1 ? totalFeeUsd : undefined,
+        bonus:
+          redeemDryRun.discountPercentage > 0
+            ? { percentage: redeemDryRun.discountPercentage }
+            : undefined,
+        bannerMessage: redeemDryRun.isDisallowed
+          ? "Redemption currently disallowed (100% fee). Please try again later."
+          : undefined,
+      };
+    }, [
+      activeTab,
+      simpleMode,
+      flowPage,
+      step,
+      withdrawOnly,
+      sellRedeemSource,
+      selectedPositions.collateralPool,
+      selectedPositions.sailPool,
+      selectedPositions.wallet,
+      selectedMarketId,
+      marketsForToken,
+      withdrawalMethods.collateralPool,
+      withdrawalMethods.sailPool,
+      earlyWithdrawalFees,
+      positionAmounts.collateralPool,
+      positionAmounts.sailPool,
+      positionAmounts.wallet,
+      peggedTokenSymbol,
+      redeemCollateralSymbol,
+      redeemInputAmount,
+      redeemDryRunLoading,
+      redeemDryRunError,
+      redeemDryRun,
+      redeemPreview?.isCapped,
+      withdrawRedeemPriceInputs,
+    ]);
+
+  const getButtonText = () => {
+    if (activeTab === "deposit") {
+      switch (step) {
+        case "approving":
+          return "Approving...";
+        case "minting":
+          return "Buying...";
+        case "depositing":
+          return "Depositing...";
+        case "success":
+          return mintOnly ? "Buy" : "Buy & Deposit";
+        case "error":
+          return "Try Again";
+        default:
+          if (mintOnly) {
+            return needsApproval ? "Approve & Buy" : "Buy";
+          } else {
+            return needsApproval || needsPeggedTokenApproval
+              ? "Approve & Buy & Deposit"
+              : "Buy & Deposit";
+          }
+      }
+    } else if (activeTab === "withdraw") {
+      const baseLabel = "Proceed";
+
+      if (withdrawOnly) {
+        switch (step) {
+          case "withdrawing":
+            return "Withdrawing...";
+          case "success":
+            return baseLabel;
+          case "error":
+            return "Try Again";
+          default:
+            return baseLabel;
+        }
+      } else {
+        switch (step) {
+          case "approving":
+            return "Approving...";
+          case "withdrawing":
+            return "Withdrawing...";
+          case "redeeming":
+            return "Selling...";
+          case "success":
+            return baseLabel;
+          case "error":
+            return "Try Again";
+          default:
+            return baseLabel;
+        }
+      }
+    } else if (activeTab === "sell") {
+      switch (step) {
+        case "approving":
+          return "Approving...";
+        case "redeeming":
+          return "Selling...";
+        case "success":
+          return "Sell";
+        case "error":
+          return "Try Again";
+        default:
+          return "Sell";
+      }
+    }
+    return "Submit";
+  };
+
+  const isButtonDisabled = () => {
+    if (step === "success") return false;
+    if (step === "error") return false; // Allow retry when in error state
+    if (activeTab === "deposit") {
+      // Check if fee is excessively high (>50% means you'd lose more than half your deposit)
+      const hasExcessiveFee = feePercentage !== undefined && feePercentage > 50;
+      
+      return (
+        step === "approving" ||
+        step === "minting" ||
+        step === "depositing" ||
+        !amount ||
+        parseFloat(amount) <= 0 ||
+        hasExcessiveFee
+      );
+    } else if (activeTab === "withdraw") {
+      // Check if at least one position is selected with a valid amount
+      const hasRequestSelected =
+        (selectedPositions.collateralPool &&
+          withdrawalMethods.collateralPool === "request") ||
+        (selectedPositions.sailPool &&
+          withdrawalMethods.sailPool === "request");
+
+      const hasValidAmount =
+        (selectedPositions.wallet &&
+          positionAmounts.wallet &&
+          parseFloat(positionAmounts.wallet) > 0) ||
+        (selectedPositions.collateralPool &&
+          withdrawalMethods.collateralPool !== "request" &&
+          positionAmounts.collateralPool &&
+          parseFloat(positionAmounts.collateralPool) > 0) ||
+        (selectedPositions.sailPool &&
+          withdrawalMethods.sailPool !== "request" &&
+          positionAmounts.sailPool &&
+          parseFloat(positionAmounts.sailPool) > 0) ||
+        hasRequestSelected;
+
+      return (
+        step === "approving" ||
+        step === "withdrawing" ||
+        step === "redeeming" ||
+        !hasValidAmount
+      );
+    } else if (activeTab === "sell") {
+      const walletAmount = positionAmounts.wallet;
+      const hasWalletSell =
+        selectedPositions.wallet &&
+        walletAmount &&
+        parseFloat(walletAmount) > 0;
+
+      return (
+        step === "approving" ||
+        step === "redeeming" ||
+        !hasWalletSell
+      );
+    } else {
+      return true;
+    }
+  };
+
+  const isProcessing =
+    step === "approving" ||
+    step === "minting" ||
+    step === "depositing" ||
+    step === "withdrawing" ||
+    step === "redeeming";
+  // For mint tab: use ha token balance if ha token is selected, otherwise use collateral balance
+  const balance =
+    activeTab === "deposit"
+      ? isDirectPeggedDeposit
+        ? directPeggedBalance
+        : collateralBalance
+      : activeTab === "deposit"
+      ? peggedBalance
+      : activeTab === "withdraw"
+      ? getAvailableBalance()
+      : activeTab === "sell"
+      ? peggedBalance
+      : peggedBalance;
+  const balanceSymbol =
+    activeTab === "deposit"
+      ? isDirectPeggedDeposit
+        ? marketForDepositAsset?.peggedToken?.symbol || peggedTokenSymbol
+        : collateralSymbol
+      : peggedTokenSymbol;
+
+  // Calculate expected output based on tab
+  const expectedOutput =
+    activeTab === "deposit"
+      ? expectedMintOutput
+      : (activeTab === "withdraw" && !withdrawOnly) || activeTab === "sell"
+      ? expectedRedeemOutput
+      : undefined;
+  const outputSymbol =
+    activeTab === "deposit"
+      ? peggedTokenSymbol // Always use selected market's pegged token
+      : (activeTab === "withdraw" && !withdrawOnly) || activeTab === "sell"
+      ? redeemCollateralSymbol
+      : undefined;
+
+
+  // Check if any request withdrawals were made
+  const hasRequestWithdrawals =
+    (selectedPositions.collateralPool &&
+      withdrawalMethods.collateralPool === "request") ||
+    (selectedPositions.sailPool && withdrawalMethods.sailPool === "request");
+  return {
+    shouldRender: isOpen || embedded,
+    isActive,
+    address,
+    isConnected,
+    connector,
+    chainId,
+    switchChain,
+    isSwitchingChain,
+    walletChainId,
+    setWalletChainId,
+    effectiveChainId,
+    depositMode,
+    isCollateralOnlyChain,
+    nativeTokenLabel,
+    isMegaEth,
+    marketChainId,
+    depositsBlocked,
+    marketArchived,
+    isCorrectNetwork,
+    shouldShowNetworkSwitch,
+    handleTxError,
+    handleSwitchNetwork,
+    ensureCorrectNetwork,
+    getInitialTab,
+    activeTab,
+    setActiveTab,
+    poolDeposits,
+    haBalances,
+    marksError,
+    defaultProgressConfig,
+    amount,
+    setAmount,
+    step,
+    setStep,
+    error,
+    setError,
+    txHash,
+    setTxHash,
+    txHashes,
+    setTxHashes,
+    progressConfig,
+    setProgressConfig,
+    progress,
+    lastNonErrorStepRef,
+    slippageTolerance,
+    setSlippageTolerance,
+    showSlippageInput,
+    setShowSlippageInput,
+    slippageInputValue,
+    setSlippageInputValue,
+    debouncedAmount,
+    setDebouncedAmount,
+    mintOnly,
+    setMintOnly,
+    showNotifications,
+    setShowNotifications,
+    withdrawOverviewExpanded,
+    setWithdrawOverviewExpanded,
+    depositInStabilityPool,
+    setDepositInStabilityPool,
+    stabilityPoolType,
+    setStabilityPoolType,
+    withdrawOnly,
+    setWithdrawOnly,
+    sellRedeemSource,
+    setSellRedeemSource,
+    withdrawFromCollateralPool,
+    setWithdrawFromCollateralPool,
+    withdrawFromSailPool,
+    setWithdrawFromSailPool,
+    withdrawalMethods,
+    setWithdrawalMethods,
+    earlyWithdraw1PctEnabled,
+    setEarlyWithdraw1PctEnabled,
+    transactionSteps,
+    setTransactionSteps,
+    selectedPositions,
+    setSelectedPositions,
+    hasInitializedWithdraw,
+    withdrawPoolUserSelectedMarketRef,
+    positionAmounts,
+    setPositionAmounts,
+    withdrawPoolCollateralTab,
+    setWithdrawPoolCollateralTab,
+    withdrawPoolTypeTab,
+    setWithdrawPoolTypeTab,
+    withdrawPoolTabUserSelectedRef,
+    withdrawPoolTypeTabUserSelectedRef,
+    selectedDepositAsset,
+    setSelectedDepositAsset,
+    isPermitCapable,
+    disableReason,
+    handlePermitOrApproval,
+    permitEnabled,
+    setPermitEnabled,
+    selectedStabilityPool,
+    setSelectedStabilityPool,
+    selectedMarketId,
+    setSelectedMarketId,
+    selectedRewardToken,
+    setSelectedRewardToken,
+    flowPage,
+    setFlowPage,
+    configureSellFromWalletTab,
+    progressSteps,
+    currentProgressIndex,
+    handleProgressClose,
+    showProgressModal,
+    handleProgressRetry,
+    selectedRedeemAsset,
+    setSelectedRedeemAsset,
+    selectedRedeemMarketId,
+    setSelectedRedeemMarketId,
+    redeemMarketSelectionMode,
+    setRedeemMarketSelectionMode,
+    publicClient,
+    marketsForToken,
+    groupedPoolPositions,
+    selectedMarketHasPoolDeposit,
+    marketIdWithAnyPoolDeposit,
+    groupBalanceContracts,
+    groupBalanceIndexMap,
+    groupOnchainBalances,
+    marketIdWithAnyOnchainPoolDeposit,
+    selectedMarketHasOnchainPoolDeposit,
+    selectedMarket,
+    minterAddress,
+    collateralAddress,
+    peggedTokenAddress,
+    leveragedTokenAddress,
+    collateralSymbol,
+    peggedTokenSymbol,
+    acceptedDepositAssets,
+    anyTokenDeposit,
+    pegTargetPrices,
+    btcPrice,
+    ethPrice,
+    eurPrice,
+    fxSAVEPrice,
+    wstETHPrice,
+    stETHPrice,
+    marketForDepositAsset,
+    activeMarketForFees,
+    activeMinterAddress,
+    activeCollateralSymbol,
+    activeWrappedCollateralSymbol,
+    allDepositAssetsWithMarkets,
+    allDepositAssets,
+    depositAssetsForDropdown,
+    depositAssetChoiceCount,
+    useDepositCollateralSegment,
+    depositAssetSegmentOptions,
+    marketFeeContracts,
+    marketFeeData,
+    marketFeesMap,
+    feeRange,
+    redeemMarketFeeContracts,
+    redeemMarketFeeData,
+    redeemMarketFeesMap,
+    sellFeeRange,
+    allStabilityPools,
+    isValidMinterAddress,
+    stabilityPoolAddress,
+    isDirectPeggedDeposit,
+    genesisPeggedTokenAddress,
+    getSelectedAssetAddress,
+    isSelectedAssetNativeETH,
+    nativeBalanceData,
+    useAnvilForBalance,
+    selectedAssetAddress,
+    anvilSelectedAssetResult,
+    wagmiSelectedAssetResult,
+    wagmiSelectedAssetBalanceEnabled,
+    selectedAssetBalanceData,
+    selectedAssetBalanceError,
+    selectedAssetBalanceLoading,
+    collateralBalanceData,
+    peggedTokenAddressForBalance,
+    anvilBalanceResult,
+    wagmiBalanceResult,
+    directPeggedBalanceData,
+    directPeggedBalanceError,
+    directPeggedBalanceLoading,
+    useAnvilForPeggedBalance,
+    anvilPeggedBalanceResult,
+    wagmiPeggedBalanceResult,
+    peggedBalanceData,
+    collateralPoolAddress,
+    sailPoolAddress,
+    collateralPoolTotalSupply,
+    collateralPoolMinTotalSupply,
+    sailPoolTotalSupply,
+    sailPoolMinTotalSupply,
+    anvilCollateralPoolResult,
+    wagmiCollateralPoolResult,
+    collateralPoolBalanceData,
+    anvilSailPoolResult,
+    wagmiSailPoolResult,
+    sailPoolBalanceData,
+    anvilCollateralPoolFeeResult,
+    wagmiCollateralPoolFeeResult,
+    collateralPoolEarlyFee,
+    anvilSailPoolFeeResult,
+    wagmiSailPoolFeeResult,
+    sailPoolEarlyFee,
+    anvilCollateralWindowResult,
+    wagmiCollateralWindowResult,
+    collateralPoolWindow,
+    anvilSailWindowResult,
+    wagmiSailWindowResult,
+    sailPoolWindow,
+    anvilCollateralRequestResult,
+    wagmiCollateralRequestResult,
+    collateralPoolRequest,
+    anvilSailRequestResult,
+    wagmiSailRequestResult,
+    sailPoolRequest,
+    formatDuration,
+    getFeeFreeDisplay,
+    getRequestStatusText,
+    formatTime,
+    getWindowBannerInfo,
+    collateralPoolFeePercent,
+    sailPoolFeePercent,
+    isWindowOpen,
+    earlyWithdrawalFees,
+    showEarlyWithdrawalFees,
+    selectedPoolEarlyWithdrawFee,
+    currentDepositData,
+    minterAddressForPrice,
+    pegTargetForPrice,
+    pegTargetUsdWei,
+    isValidMinterAddressForPrice,
+    peggedTokenPrice,
+    poolContracts,
+    allPoolData,
+    isPoolDataLoading,
+    poolsWithData,
+    rewardTokenUsdPriceMap,
+    rewardDataMeta,
+    rewardDataReads,
+    isRewardDataLoading,
+    poolAprFallbackByAddress,
+    poolsWithAprFallback,
+    rewardTokenAddresses,
+    rewardTokenSymbols,
+    rewardTokenSymbolMap,
+    poolsWithSymbols,
+    rewardTokenOptions,
+    skipRewardStep,
+    filteredPools,
+    isValidStabilityPoolAddress,
+    wrappedForAdvancedApr,
+    advAprWrappedOk,
+    advancedStabilityPoolAprReadsEnabled,
+    advancedStabilityPoolAprReads,
+    formatAPR,
+    stabilityPoolAPR,
+    allowanceData,
+    refetchAllowance,
+    useAnvilForPeggedAllowance,
+    anvilPeggedTokenAllowanceData,
+    refetchAnvilPeggedTokenAllowance,
+    wagmiPeggedTokenAllowanceData,
+    refetchWagmiPeggedTokenAllowance,
+    peggedTokenAllowanceData,
+    refetchPeggedTokenAllowance,
+    shouldUseAnvilHook,
+    depositAmountInWrappedCollateral,
+    wstETHAddressForConversion,
+    ethOrStethAmount,
+    wstETHAmountFromContract,
+    accurateDepositAmountInWrappedCollateral,
+    anvilExpectedMintOutput,
+    regularExpectedMintOutput,
+    rawExpectedMintOutput,
+    swappedAmountForDryRun,
+    swapDryRunOutput,
+    selectedRedeemMarket,
+    redeemCollateralSymbol,
+    redeemMinterAddress,
+    isValidRedeemMinterAddress,
+    redeemAllowancePeggedTokenAddress,
+    redeemAllowanceMinterAddress,
+    peggedTokenMinterAllowanceData,
+    refetchPeggedTokenMinterAllowance,
+    redeemInputAmount,
+    redeemDryRunAddress,
+    redeemDryRunEnabled,
+    anvilRedeemDryRunData,
+    anvilRedeemDryRunError,
+    regularRedeemDryRunData,
+    regularRedeemDryRunError,
+    redeemDryRunData,
+    redeemDryRunError,
+    redeemDryRunLoading,
+    redeemDryRun,
+    redeemPreview,
+    redeemMarketPreviewContracts,
+    redeemMarketPreviewIndexMap,
+    redeemMarketPreviewReads,
+    redeemMarketPreviews,
+    recommendedRedeemMarketId,
+    isCrossMarketRedeem,
+    showWithdrawRedemptionCapNotice,
+    showWithdrawCrossMarketNotice,
+    withdrawNotificationCount,
+    depositNotificationCount,
+    anchorModalNotificationCount,
+    anchorModalNotificationSeverities,
+    anchorModalNotificationsBody,
+    depositFlowParts,
+    simpleDepositFlowParts,
+    simpleWithdrawFlowParts,
+    simpleSellFlowParts,
+    poolSellAmountWei,
+    hasPoolSellAmount,
+    withdrawOverviewSteps,
+    enableRedeemView,
+    expectedRedeemOutput,
+    redeemFeePercentage,
+    feeMinterAddress,
+    isValidFeeMinterAddress,
+    parsedAmount,
+    dryRunEnabled,
+    amountForFeeDryRun,
+    anvilDryRunData,
+    anvilDryRunError,
+    regularDryRunData,
+    regularDryRunError,
+    dryRunData,
+    dryRunError,
+    expectedMintOutput,
+    stabilityPoolMarket,
+    stabilityPoolMinterAddress,
+    isValidStabilityPoolMinter,
+    collateralRatioData,
+    minterConfigData,
+    minCollateralRatio,
+    formatCollateralRatio,
+    feePercentage,
+    depositLimitWarning,
+    setDepositLimitWarning,
+    tempMaxWarning,
+    setTempMaxWarning,
+    tempWarningTimerRef,
+    lastAdjustedAmountRef,
+    resetSimpleDepositFlowKeepToken,
+    handleBuyFlowModeChange,
+    handleWithdrawFlowModeChange,
+    leaveRewardTokenStepToAmount,
+    goToFlowPage,
+    handleDepositFlowStepClick,
+    handleWithdrawFlowStepClick,
+    handleDepositFlowBack,
+    handleWithdrawFlowBack,
+    clearWithdrawPoolSelectionAndInputs,
+    selectWithdrawPoolRow,
+    calculateMaxSwapAmount,
+    originalWriteContractAsync,
+    originalSendTransactionAsync,
+    writeContractAsync,
+    sendTransactionAsync,
+    collateralBalance,
+    peggedTokenAddressLower,
+    subgraphHaBalance,
+    peggedBalanceFromSubgraph,
+    peggedBalanceContract,
+    peggedBalance,
+    canSellFromWallet,
+    directPeggedBalance,
+    selectedAssetBalance,
+    selectedAssetSymbol,
+    collateralPoolBalanceContract,
+    sailPoolBalanceContract,
+    collateralPoolAddressLower,
+    sailPoolAddressLower,
+    subgraphCollateralDeposit,
+    subgraphSailDeposit,
+    collateralPoolBalance,
+    sailPoolBalance,
+    withdrawPoolRowsForActiveRail,
+    activeWithdrawPoolRow,
+    collateralPoolImmediateCap,
+    sailPoolImmediateCap,
+    totalStabilityPoolBalance,
+    allowance,
+    peggedTokenAllowance,
+    isUSDC,
+    isFxUSD,
+    isNativeETH,
+    isStETH,
+    isFxSAVE,
+    isWstETH,
+    depositAssetMarket,
+    depositAssetCollateralSymbol,
+    depositAssetWrappedCollateralSymbol,
+    isWstETHMarket,
+    isFxUSDMarket,
+    isWrappedCollateral,
+    zapAddress,
+    useZapV1,
+    ethZapAbi,
+    zapSpAllowlistPending,
+    useZap,
+    useETHZap,
+    useUSDCZap,
+    showDepositPermitToggle,
+    showRedeemPermitToggle,
+    showPermitToggle,
+    priceOracleAddress,
+    fxSAVERate,
+    amountBigInt,
+    needsApproval,
+    needsPeggedTokenApproval,
+    currentDeposit,
+    getAvailableBalance,
+    peggedTokenPriceUsdWei,
+    withdrawRedeemPriceInputs,
+    currentDepositUSD,
+    currentLedgerMarksPerDay,
+    expectedDepositUSD,
+    directPeggedDepositUSD,
+    newTotalDepositUSD,
+    newLedgerMarksPerDay,
+    hasInitializedOnOpen,
+    handleClose,
+    handleCancel,
+    handleBackToWithdrawInput,
+    handleTabChange,
+    handleMaxClick,
+    handleAmountChange,
+    handlePositionAmountChange,
+    positionExceedsBalance,
+    validateAmount,
+    handleMint,
+    handleDeposit,
+    handleWithdrawMethodSelection,
+    handleWithdrawExecution,
+    handleRedeem,
+    handleAction,
+    handleContinueStep1,
+    step1PrimaryAction,
+    handleContinueDepositPage,
+    hasValidWithdrawSelection,
+    handleContinueToSell,
+    handleSellRedeemSourceChange,
+    handleSellMarketSelectChange,
+    depositPagePrimaryAction,
+    withdrawPage1PrimaryAction,
+    withdrawPrimaryAction,
+    depositTokenPriceUSD,
+    showDepositBuyOverview,
+    depositBuyOverview,
+    buyFeeFooter,
+    withdrawFeeFooter,
+    withdrawTransactionOverview,
+    getButtonText,
+    isButtonDisabled,
+    isProcessing,
+    balance,
+    balanceSymbol,
+    expectedOutput,
+    outputSymbol,
+    hasRequestWithdrawals,
+    isOpen,
+    onClose,
+    embedded,
+    marketId,
+    market,
+    initialTab,
+    onSuccess,
+    simpleMode,
+    bestPoolType,
+    allMarkets,
+    initialDepositAsset,
+    positionsMap,
+  };
+}

@@ -25,6 +25,7 @@ import {
 import { partitionMarketsByArchived } from "@/utils/marketPartitions";
 import type { SailDropdownPositionTone } from "@/utils/sailMarketDropdownPosition";
 import { resolveSailDropdownPositionTone } from "@/utils/sailMarketDropdownPosition";
+import { buildSailMarketDropdownPositionDisplay } from "@/utils/sailMarketDropdownPositionDisplay";
 
 /**
  * Sail index route: filters, subgraph marks/PnL, aggregates, and derived `activeMarkets`.
@@ -334,9 +335,12 @@ export function useSailPageData() {
     sailPnLSummary,
   ]);
 
-  const marketDropdownPnLToneByMarketId = useMemo(() => {
-    const tones: Record<string, SailDropdownPositionTone> = {};
-    if (!isConnected) return tones;
+  const marketDropdownPositionByMarketId = useMemo(() => {
+    const map: Record<
+      string,
+      { label?: string; tone: SailDropdownPositionTone }
+    > = {};
+    if (!isConnected) return map;
 
     const positions = (positionsData?.userSailPositions ?? []) as Array<{
       tokenAddress: string;
@@ -358,34 +362,30 @@ export function useSailPageData() {
       const leveragedTokenAddress = market.addresses?.leveragedToken as
         | `0x${string}`
         | undefined;
-      if (!leveragedTokenAddress) {
-        tones[marketId] = "pending";
-        continue;
-      }
+      const position = leveragedTokenAddress
+        ? positionMap.get(leveragedTokenAddress.toLowerCase())
+        : undefined;
+      const costBasisUSD =
+        position != null ? Number(position.totalCostBasisUSD) : undefined;
 
-      if (positionsPnLLoading) {
-        tones[marketId] = "pending";
-        continue;
-      }
+      const display = buildSailMarketDropdownPositionDisplay({
+        market,
+        userDeposit,
+        leveragedPriceUSD:
+          tokenPricesByMarket[marketId]?.leveragedPriceUSD ?? undefined,
+        costBasisUSD,
+        pnlLoading: positionsPnLLoading,
+      });
 
-      const position = positionMap.get(leveragedTokenAddress.toLowerCase());
-      const currentPriceUSD =
-        tokenPricesByMarket[marketId]?.leveragedPriceUSD ?? 0;
-      if (!position || !currentPriceUSD || currentPriceUSD <= 0) {
-        tones[marketId] = "pending";
-        continue;
+      if (display.hasPosition) {
+        map[marketId] = {
+          label: display.label,
+          tone: display.tone ?? "pending",
+        };
       }
-
-      const currentValueUSD = (Number(userDeposit) / 1e18) * currentPriceUSD;
-      const costBasisUSD = Number(position.totalCostBasisUSD) || 0;
-      const unrealizedPnL = currentValueUSD - costBasisUSD;
-      tones[marketId] = resolveSailDropdownPositionTone(
-        unrealizedPnL,
-        false,
-      );
     }
 
-    return tones;
+    return map;
   }, [
     isConnected,
     sailMarkets,
@@ -395,6 +395,16 @@ export function useSailPageData() {
     positionsData,
     positionsPnLLoading,
   ]);
+
+  const marketDropdownPnLToneByMarketId = useMemo(() => {
+    const tones: Record<string, SailDropdownPositionTone> = {};
+    for (const [marketId, position] of Object.entries(
+      marketDropdownPositionByMarketId,
+    )) {
+      tones[marketId] = position.tone;
+    }
+    return tones;
+  }, [marketDropdownPositionByMarketId]);
 
   const activeMarkets = useMemo((): SailMarketTuple[] => {
     if (!reads) return [];
@@ -471,6 +481,7 @@ export function useSailPageData() {
     pnlFromMarkets,
     positionsPnLLoading,
     marketDropdownPnLToneByMarketId,
+    marketDropdownPositionByMarketId,
     activeSailBoostEndTimestamp,
     activeMarkets,
     tableMarkets,

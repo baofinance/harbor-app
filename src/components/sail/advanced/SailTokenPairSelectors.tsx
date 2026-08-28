@@ -7,16 +7,14 @@ import {
   buildSailTokenGroups,
   findSailTokenGroupForMarket,
   pickDefaultSailPairMarketId,
-  type SailPairOption,
   type SailTokenGroup,
 } from "@/utils/sailMarketSelectors";
-import { formatLeverage } from "@/utils/sailDisplayFormat";
-import {
-  sailDropdownPositionToneClass,
-  type SailDropdownPositionTone,
-} from "@/utils/sailMarketDropdownPosition";
 import type { SailMarketDropdownOption } from "./SailMarketDropdown";
 import { SAIL_ADVANCED_FROSTED_LIGHT_PANEL } from "./sailAdvancedStyles";
+import {
+  SailMarketDropdownOptionRowContent,
+  SailMarketDropdownTriggerContent,
+} from "./SailMarketDropdownOptionContent";
 
 const DROPDOWN_MENU_CLASS = `absolute left-0 top-[calc(100%+0.35rem)] z-[120] min-w-full w-max max-w-[min(100vw-2rem,22rem)] max-h-80 overflow-y-auto rounded-xl shadow-2xl ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL} p-1.5`;
 
@@ -27,33 +25,12 @@ const OPTION_HOVER = "hover:bg-[#1E4775]/[0.06]";
 const TITLE_CLASS = "truncate text-sm font-semibold text-[#1E4775]";
 const TRIGGER_TITLE_CLASS =
   "text-base font-semibold leading-tight text-[#1E4775]";
-const STATUS_CHIP_CLASS =
-  "shrink-0 rounded-full bg-[#1E4775]/8 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#64748b]";
 const SECTION_LABEL_CLASS =
   "px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/45";
 
 const SELECTOR_ICON_SIZE = 22;
 const TOKEN_FIELD_CLASS = "w-[9.25rem] shrink-0 sm:w-[10.25rem]";
 const PAIR_FIELD_CLASS = "w-[14.5rem] shrink-0 sm:w-[16rem]";
-const LEVERAGE_CLASS =
-  "font-mono font-semibold tabular-nums text-[#1E4775]/80";
-const LEVERAGE_INLINE_CLASS = `${LEVERAGE_CLASS} text-inherit sm:text-inherit`;
-const TITLE_SEPARATOR_CLASS = "font-medium text-[#1E4775]/55";
-const POSITION_CLASS = "text-xs font-medium tabular-nums";
-
-function formatPositionLabel(label: string): string {
-  return label.replace(/^Your position ·\s*/, "");
-}
-
-function pairIsMuted(option: SailPairOption): boolean {
-  return option.isComingSoon || Boolean(option.isDepositsPaused);
-}
-
-function pairStatusChip(option: SailPairOption): string | null {
-  if (option.isComingSoon) return "Coming soon";
-  if (option.isDepositsPaused) return "Deposits paused";
-  return null;
-}
 
 function useCloseOnOutsideClick(
   open: boolean,
@@ -152,22 +129,13 @@ function TokenOptionRow({
 function PairOptionRow({
   option,
   active,
-  leverageRatio,
-  hasPosition,
-  positionLabel,
-  positionTone,
   onSelect,
 }: {
-  option: SailPairOption;
+  option: SailMarketDropdownOption;
   active: boolean;
-  leverageRatio?: bigint;
-  hasPosition?: boolean;
-  positionLabel?: string;
-  positionTone?: SailDropdownPositionTone;
   onSelect: () => void;
 }) {
-  const muted = pairIsMuted(option);
-  const statusChip = pairStatusChip(option);
+  const muted = Boolean(option.isComingSoon || option.isDepositsPaused);
 
   return (
     <li>
@@ -180,32 +148,14 @@ function PairOptionRow({
           muted ? "opacity-90 saturate-[0.78]" : ""
         } ${active ? OPTION_ACTIVE : OPTION_HOVER}`}
       >
-        <div
-          className={`min-w-0 flex-1 truncate ${TITLE_CLASS} ${
-            muted ? "text-[#64748b]" : ""
-          }`}
-        >
-          {option.pairLabel}
-          {!muted ? (
-            <>
-              <span className={TITLE_SEPARATOR_CLASS}> · </span>
-              <span className={`text-xs ${LEVERAGE_INLINE_CLASS}`}>
-                {formatLeverage(leverageRatio)}
-              </span>
-            </>
-          ) : null}
-        </div>
-        {statusChip ? (
-          <span className={STATUS_CHIP_CLASS}>{statusChip}</span>
-        ) : hasPosition && positionLabel ? (
-          <div className="min-w-[4.5rem] shrink-0 text-right">
-            <div
-              className={`${POSITION_CLASS} ${sailDropdownPositionToneClass(positionTone)}`}
-            >
-              {formatPositionLabel(positionLabel)}
-            </div>
-          </div>
-        ) : null}
+        <SailMarketDropdownOptionRowContent
+          market={option.market}
+          leverageRatio={option.leverageRatio}
+          positionLabel={option.hasPosition ? option.positionLabel : undefined}
+          positionTone={option.positionTone}
+          isComingSoon={option.isComingSoon}
+          isDepositsPaused={option.isDepositsPaused}
+        />
       </button>
     </li>
   );
@@ -218,7 +168,7 @@ export type SailTokenPairSelectorsProps = {
   className?: string;
 };
 
-/** Sail token + pair selectors — mirrors Anchor peg/backing layout. */
+/** Sail token + pair selectors — pair rows match Sail market dropdown. */
 export function SailTokenPairSelectors({
   options,
   selectedMarketId,
@@ -228,6 +178,14 @@ export function SailTokenPairSelectors({
   const [tokenOpen, setTokenOpen] = useState(false);
   const [pairOpen, setPairOpen] = useState(false);
   const anyOpen = tokenOpen || pairOpen;
+
+  const optionByMarketId = useMemo(() => {
+    const map = new Map<string, SailMarketDropdownOption>();
+    for (const option of options) {
+      map.set(option.marketId, option);
+    }
+    return map;
+  }, [options]);
 
   const tokenGroups = useMemo(
     () =>
@@ -247,24 +205,12 @@ export function SailTokenPairSelectors({
     [tokenGroups, selectedMarketId],
   );
 
-  const selectedPair = useMemo(
-    () =>
-      selectedGroup?.pairOptions.find((o) => o.marketId === selectedMarketId),
-    [selectedGroup, selectedMarketId],
-  );
-
-  const optionByMarketId = useMemo(() => {
-    const map = new Map<string, SailMarketDropdownOption>();
-    for (const option of options) {
-      map.set(option.marketId, option);
-    }
-    return map;
-  }, [options]);
+  const selectedOption = selectedMarketId
+    ? optionByMarketId.get(selectedMarketId)
+    : undefined;
 
   const hasPosition = (marketId: string) =>
     Boolean(optionByMarketId.get(marketId)?.hasPosition);
-
-  const getOptionMeta = (marketId: string) => optionByMarketId.get(marketId);
 
   const handleSelectToken = (group: SailTokenGroup) => {
     if (group.tokenKey === selectedGroup?.tokenKey) {
@@ -282,15 +228,18 @@ export function SailTokenPairSelectors({
     setPairOpen(false);
   };
 
-  if (!selectedGroup || !selectedPair) return null;
+  if (!selectedGroup || !selectedOption) return null;
 
-  const livePairs = selectedGroup.pairOptions.filter((o) => !o.isComingSoon);
-  const comingSoonPairs = selectedGroup.pairOptions.filter((o) => o.isComingSoon);
-  const selectedOption = selectedMarketId
-    ? getOptionMeta(selectedMarketId)
-    : undefined;
-  const selectedMuted = pairIsMuted(selectedPair);
-  const selectedStatusChip = pairStatusChip(selectedPair);
+  const liveOptions = options.filter(
+    (option) =>
+      selectedGroup.pairOptions.some((pair) => pair.marketId === option.marketId) &&
+      !option.isComingSoon,
+  );
+  const comingSoonOptions = options.filter(
+    (option) =>
+      selectedGroup.pairOptions.some((pair) => pair.marketId === option.marketId) &&
+      option.isComingSoon,
+  );
 
   return (
     <div
@@ -334,70 +283,40 @@ export function SailTokenPairSelectors({
           if (next) setTokenOpen(false);
         }}
         trigger={
-          <>
-            <div
-              className={`min-w-0 flex-1 truncate ${TRIGGER_TITLE_CLASS} ${
-                selectedMuted ? "text-[#64748b]" : ""
-              }`}
-            >
-              {selectedPair.pairLabel}
-              {!selectedMuted ? (
-                <>
-                  <span className={TITLE_SEPARATOR_CLASS}> · </span>
-                  <span className={`text-sm ${LEVERAGE_INLINE_CLASS}`}>
-                    {formatLeverage(selectedOption?.leverageRatio)}
-                  </span>
-                </>
-              ) : null}
-            </div>
-            {selectedStatusChip ? (
-              <span className={STATUS_CHIP_CLASS}>{selectedStatusChip}</span>
-            ) : selectedOption?.hasPosition && selectedOption.positionLabel ? (
-              <div
-                className={`hidden shrink-0 truncate sm:block ${POSITION_CLASS} ${sailDropdownPositionToneClass(selectedOption.positionTone)}`}
-              >
-                {formatPositionLabel(selectedOption.positionLabel)}
-              </div>
-            ) : null}
-            <span className="min-w-0 flex-1" aria-hidden="true" />
-          </>
+          <SailMarketDropdownTriggerContent
+            market={selectedOption.market}
+            leverageRatio={selectedOption.leverageRatio}
+            positionLabel={
+              selectedOption.hasPosition ? selectedOption.positionLabel : undefined
+            }
+            positionTone={selectedOption.positionTone}
+            isComingSoon={selectedOption.isComingSoon}
+            isDepositsPaused={selectedOption.isDepositsPaused}
+            showChainIcon={false}
+          />
         }
       >
-        {livePairs.map((option) => {
-          const meta = getOptionMeta(option.marketId);
-          return (
-            <PairOptionRow
-              key={option.marketId}
-              option={option}
-              active={option.marketId === selectedMarketId}
-              leverageRatio={meta?.leverageRatio}
-              hasPosition={meta?.hasPosition}
-              positionLabel={meta?.positionLabel}
-              positionTone={meta?.positionTone}
-              onSelect={() => handleSelectPair(option.marketId)}
-            />
-          );
-        })}
-        {comingSoonPairs.length > 0 ? (
+        {liveOptions.map((option) => (
+          <PairOptionRow
+            key={option.marketId}
+            option={option}
+            active={option.marketId === selectedMarketId}
+            onSelect={() => handleSelectPair(option.marketId)}
+          />
+        ))}
+        {comingSoonOptions.length > 0 ? (
           <>
             <li className={SECTION_LABEL_CLASS} role="presentation">
               Coming soon
             </li>
-            {comingSoonPairs.map((option) => {
-              const meta = getOptionMeta(option.marketId);
-              return (
-                <PairOptionRow
-                  key={option.marketId}
-                  option={option}
-                  active={option.marketId === selectedMarketId}
-                  leverageRatio={meta?.leverageRatio}
-                  hasPosition={meta?.hasPosition}
-                  positionLabel={meta?.positionLabel}
-                  positionTone={meta?.positionTone}
-                  onSelect={() => handleSelectPair(option.marketId)}
-                />
-              );
-            })}
+            {comingSoonOptions.map((option) => (
+              <PairOptionRow
+                key={option.marketId}
+                option={option}
+                active={option.marketId === selectedMarketId}
+                onSelect={() => handleSelectPair(option.marketId)}
+              />
+            ))}
           </>
         ) : null}
       </FrostedDropdown>

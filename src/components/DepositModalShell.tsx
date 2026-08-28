@@ -72,7 +72,7 @@ export function DepositModalShell({
   if (variant === "inline") {
     return (
       <div className={cn("flex min-h-0 flex-col", panelClassName)}>
-        <div className="mb-3 shrink-0">{tabs}</div>
+        <div className="mb-2 shrink-0">{tabs}</div>
         <div className={cn("flex min-h-0 flex-1 flex-col", contentClassName)}>
           {children}
         </div>

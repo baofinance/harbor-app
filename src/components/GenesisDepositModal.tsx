@@ -38,6 +38,10 @@ import {
 import { formatTokenAmount, formatBalance, formatUSD } from "@/utils/formatters";
 import { formatRpcErrorMessage } from "@/utils/formatRpcErrorMessage";
 import { getDepositMode } from "@/utils/depositMode";
+import {
+  buildDepositTokenDropdownGroups,
+  filterUserSwapTokens,
+} from "@/utils/depositTokenDropdownOptions";
 import { amountToUSD } from "@/utils/tokenPriceToUSD";
 import { useWrappedCollateralPrice } from "@/hooks/useWrappedCollateralPrice";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
@@ -2031,19 +2035,13 @@ const successFmt = formatTokenAmount(
        setCustomTokenAddress("");
        resetGenesisDepositUiKeepAsset();
      },
-     options: [
-       ...(acceptedAssets.length > 0 ? [{
-         label: collateralOnly ? (isMegaEth ? "Collateral (MegaETH)" : "Collateral") : "Supported Assets",
-         tokens: acceptedAssets.map((a) => ({
-           symbol: a.symbol,
-           name: (isMegaEth && a.symbol.toUpperCase() === "ETH") ? "Mega ETH" : a.name,
-         })),
-       }] : []),
-       ...(!collateralOnly && userTokens.filter(t => !acceptedAssets.some(a => a.symbol.toUpperCase() === t.symbol.toUpperCase())).length > 0 ? [{
-         label: "Other Tokens (via Swap)",
-         tokens: userTokens.filter(t => !acceptedAssets.some(a => a.symbol.toUpperCase() === t.symbol.toUpperCase())).map((t) => ({ symbol: t.symbol, name: t.name, isUserToken: true })),
-       }] : []),
-     ],
+     options: buildDepositTokenDropdownGroups({
+       supportedAssets: acceptedAssets,
+       swapAssets: filterUserSwapTokens(userTokens, acceptedAssets),
+       collateralOnly,
+       isMegaEth,
+       nativeTokenLabel,
+     }),
      label: "Select Deposit Token",
      placeholder: "Select Deposit Asset",
      disabled: step === "approving" || step === "depositing" || depositsBlocked,

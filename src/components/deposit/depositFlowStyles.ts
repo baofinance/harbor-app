@@ -11,10 +11,15 @@ export const ANCHOR_MODAL_SECTION_GAP = "space-y-2";
 
 /** Shared pill segment track (Deposit/Mint, Collateral/Sail, fxSAVE/wstETH, etc.). */
 export const DEPOSIT_SEGMENT_TRACK_CLASS =
-  "flex w-full rounded-lg bg-[#e2e8f0] p-0.5";
+  "flex w-full rounded-lg bg-[#e2e8f0] p-px";
 
 /** Tight vertical gap between stacked segment toggle rows. */
-export const DEPOSIT_SEGMENT_STACK_CLASS = "space-y-1";
+export const DEPOSIT_SEGMENT_STACK_CLASS = "space-y-0.5";
+
+/** Compact flow breadcrumb under modal tabs (Buy / Mint › Deposit). */
+export const DEPOSIT_FLOW_OVERVIEW_CLASS =
+  "grid grid-cols-[1.75rem_1fr_1.75rem] items-center border-b border-[#e2e8f0] pt-1 pb-2";
+
 
 /** Scrollable body above pinned overview + footer. */
 export const ANCHOR_MODAL_SCROLL_CLASS =

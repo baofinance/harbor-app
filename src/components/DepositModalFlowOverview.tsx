@@ -2,6 +2,7 @@
 
 import React from "react";
 import { ChevronLeft } from "lucide-react";
+import { DEPOSIT_FLOW_OVERVIEW_CLASS } from "@/components/deposit/depositFlowStyles";
 
 type DepositModalFlowOverviewProps = {
   parts: string[];
@@ -40,23 +41,23 @@ export function DepositModalFlowOverview({
   };
 
   return (
-    <div className="grid grid-cols-[2rem_1fr_2rem] items-center border-b border-[#e2e8f0] pb-3">
+    <div className={DEPOSIT_FLOW_OVERVIEW_CLASS}>
       <div className="flex justify-start">
         {canGoBackOne ? (
           <button
             type="button"
             onClick={handleChevronBack}
-            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[#1E4775] transition hover:bg-[#1E4775]/8 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4775]/25"
+            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[#1E4775] transition hover:bg-[#1E4775]/8 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4775]/25"
             aria-label="Go back one step"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden />
           </button>
         ) : (
-          <span className="inline-block h-7 w-7 shrink-0" aria-hidden />
+          <span className="inline-block h-6 w-6 shrink-0" aria-hidden />
         )}
       </div>
 
-      <div className="flex min-w-0 flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-center text-sm">
+      <div className="flex min-w-0 flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-center text-sm">
         {parts.map((part, index) => {
           const isActive = index === resolvedActive;
           const isPast = index < resolvedActive;
@@ -96,7 +97,7 @@ export function DepositModalFlowOverview({
         })}
       </div>
 
-      <span className="inline-block h-7 w-7 shrink-0" aria-hidden />
+      <span className="inline-block h-6 w-6 shrink-0" aria-hidden />
     </div>
   );
 }

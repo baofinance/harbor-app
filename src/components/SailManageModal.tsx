@@ -61,6 +61,11 @@ import { DepositModalTitle } from "@/components/DepositModalTitle";
 import { TransactionSuccessMessage } from "@/components/TransactionSuccessMessage";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { getDepositMode } from "@/utils/depositMode";
+import {
+  buildDepositTokenDropdownGroups,
+  filterUserSwapTokens,
+} from "@/utils/depositTokenDropdownOptions";
+import { getAcceptedDepositAssets } from "@/utils/anchor";
 import type { DefinedMarket } from "@/config/markets";
 import { depositsBlockedForMarket, isMarketArchived } from "@/config/markets";
 import { isTxUserRejection } from "@/utils/anchorMintDepositFlow";
@@ -99,21 +104,6 @@ const SAIL_TRADE_TAB_LABEL = {
   mint: "Buy",
   redeem: "Sell",
 } as const;
-
-// Helper function to get accepted deposit assets from market config
-function getAcceptedDepositAssets(
- market: DefinedMarket
-): Array<{ symbol: string; name: string }> {
- // Use acceptedAssets from market config if available
- if (market?.acceptedAssets && Array.isArray(market.acceptedAssets)) {
-   return market.acceptedAssets;
- }
- // Fallback: return collateral token as the only accepted asset
- if (market?.collateral?.symbol) {
-   return [{ symbol: market.collateral.symbol, name: market.collateral.name || market.collateral.symbol }];
- }
- return [];
-}
 
 export const SailManageModal = ({
  isOpen,
@@ -379,11 +369,11 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
 
  // Merge accepted assets with user tokens for dropdown (avoid duplicates). Non-mainnet: collateral only.
  const allAvailableAssets = useMemo(() => {
-   if (isCollateralOnlyChain) return { filteredUserTokens: [] };
-   const acceptedUpper = new Set(acceptedAssets.map((a) => a.symbol.toUpperCase()));
-   const filteredUserTokens = userTokens.filter(
-     (t) => !acceptedUpper.has(t.symbol.toUpperCase()) && t.balance > 0n
-   );
+   if (isCollateralOnlyChain) return { filteredUserTokens: [] as typeof userTokens };
+   const filteredUserTokens = filterUserSwapTokens(
+     userTokens,
+     acceptedAssets,
+   ).filter((token) => token.balance > 0n);
    return { filteredUserTokens };
  }, [acceptedAssets, userTokens, isCollateralOnlyChain]);
 
@@ -2001,27 +1991,13 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
              }
              resetSailMintFormKeepToken();
            },
-           options: [
-             ...(acceptedAssets.length > 0
-               ? [{
-                   label: isCollateralOnlyChain ? (isMegaEth ? "Collateral (MegaETH)" : "Collateral") : "Supported Assets",
-                   tokens: acceptedAssets.map((a) => ({
-                     symbol: a.symbol,
-                     name: (isMegaEth && a.symbol?.toUpperCase() === "ETH") ? nativeTokenLabel : a.name,
-                   })),
-                 }]
-               : []),
-             ...(!isCollateralOnlyChain && allAvailableAssets.filteredUserTokens.length > 0
-               ? [{
-                   label: "Other Tokens (via Swap)",
-                   tokens: allAvailableAssets.filteredUserTokens.map((t) => ({
-                     symbol: t.symbol,
-                     name: t.name,
-                     isUserToken: true,
-                   })),
-                 }]
-               : []),
-           ],
+           options: buildDepositTokenDropdownGroups({
+             supportedAssets: acceptedAssets,
+             swapAssets: allAvailableAssets.filteredUserTokens,
+             collateralOnly: isCollateralOnlyChain,
+             isMegaEth,
+             nativeTokenLabel,
+           }),
            placeholder: "Select token",
            disabled: isProcessing,
            showCustomOption: !isCollateralOnlyChain,

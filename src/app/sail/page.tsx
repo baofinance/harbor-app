@@ -62,6 +62,7 @@ export default function SailPage() {
     sailUserStats,
     pnlFromMarkets,
     marketDropdownPnLToneByMarketId,
+    marketDropdownPositionByMarketId,
     activeSailBoostEndTimestamp,
     displayedArchivedSailMarkets,
     tableMarkets,

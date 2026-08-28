@@ -40,6 +40,10 @@ export type SailAdvancedLayoutProps = {
     { leveragedPriceUSD?: number } | undefined
   >;
   marketDropdownPnLToneByMarketId?: Record<string, SailDropdownPositionTone>;
+  marketDropdownPositionByMarketId?: Record<
+    string,
+    { label?: string; tone: SailDropdownPositionTone }
+  >;
   userDeposit?: bigint;
   currentValueUSD?: number;
   onManageSuccess?: () => void;
@@ -63,6 +67,7 @@ export function SailAdvancedLayout({
   userDepositMap,
   tokenPricesByMarket,
   marketDropdownPnLToneByMarketId = {},
+  marketDropdownPositionByMarketId = {},
   userDeposit,
   currentValueUSD,
   onManageSuccess,
@@ -112,6 +117,9 @@ export function SailAdvancedLayout({
           isConnected && globalIndex !== undefined
             ? userDepositMap.get(globalIndex)
             : undefined;
+        const positionDisplay = isConnected
+          ? marketDropdownPositionByMarketId[marketId]
+          : undefined;
         const position = isConnected
           ? buildSailUserPositionLabel(
               market,
@@ -126,9 +134,13 @@ export function SailAdvancedLayout({
           market,
           leverageRatio,
           hasPosition: position.hasPosition,
-          positionLabel: position.hasPosition ? position.label : undefined,
+          positionLabel: positionDisplay?.label ?? (
+            position.hasPosition ? position.label?.replace(/^Your position ·\s*/, "") : undefined
+          ),
           positionTone: position.hasPosition
-            ? marketDropdownPnLToneByMarketId[marketId] ?? "pending"
+            ? positionDisplay?.tone ??
+              marketDropdownPnLToneByMarketId[marketId] ??
+              "pending"
             : undefined,
           isComingSoon: comingSoon,
           isDepositsPaused:
@@ -144,6 +156,7 @@ export function SailAdvancedLayout({
       userDepositMap,
       tokenPricesByMarket,
       marketDropdownPnLToneByMarketId,
+      marketDropdownPositionByMarketId,
     ],
   );
 
