@@ -3,8 +3,18 @@ import { HARBOR_BTN_GLASS_OUTLINE_LIGHT } from "@/components/shared/harborButton
 /** Combined amount input card for deposit / trade flows. */
 export const DEPOSIT_AMOUNT_CARD_CLASS = `rounded-xl border border-[#1E4775]/12 bg-white/70 p-2.5 shadow-sm backdrop-blur-sm`;
 
+/** Transaction overview card — matches input card styling with stable min height. */
+export const DEPOSIT_OVERVIEW_CARD_CLASS = `${DEPOSIT_AMOUNT_CARD_CLASS} min-h-[4.75rem]`;
+
 /** Vertical gap between sections in Anchor simple-mode deposit / withdraw panels. */
 export const ANCHOR_MODAL_SECTION_GAP = "space-y-2";
+
+/** Shared pill segment track (Deposit/Mint, Collateral/Sail, fxSAVE/wstETH, etc.). */
+export const DEPOSIT_SEGMENT_TRACK_CLASS =
+  "flex w-full rounded-lg bg-[#e2e8f0] p-0.5";
+
+/** Tight vertical gap between stacked segment toggle rows. */
+export const DEPOSIT_SEGMENT_STACK_CLASS = "space-y-1";
 
 /** Scrollable body above pinned overview + footer. */
 export const ANCHOR_MODAL_SCROLL_CLASS =
@@ -33,6 +43,17 @@ export const ANCHOR_MODAL_FOOTER_WRAPPER = "shrink-0 mt-auto";
 /** Border + padding above fee row and primary button. */
 export const ANCHOR_MODAL_FOOTER_CHROME =
   "shrink-0 space-y-2.5 border-t border-[#1E4775]/8 pt-3";
+
+/** Embedded trade panel height — matches chart column on lg (`650px`). */
+export const DEPOSIT_EMBEDDED_PANEL_HEIGHT =
+  "flex min-h-[22rem] flex-col overflow-hidden sm:min-h-[26rem] lg:h-full lg:min-h-[650px] lg:max-h-[650px]";
+
+/** Shared chart + trade panel grid — middle width between Anchor (340–440) and Sail (300–380). */
+export const DEPOSIT_TRADE_PANEL_GRID_CLASS =
+  "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(330px,400px)] lg:items-start lg:min-h-[650px]";
+
+/** @deprecated Use DEPOSIT_EMBEDDED_PANEL_HEIGHT */
+export const ANCHOR_EMBEDDED_PANEL_HEIGHT = DEPOSIT_EMBEDDED_PANEL_HEIGHT;
 
 export const DEPOSIT_SECTION_LABEL_CLASS =
   "text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/50";

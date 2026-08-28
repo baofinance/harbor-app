@@ -41,6 +41,11 @@ export function anchorSimpleWithdrawFlowParts(withdrawOnly: boolean): string[] {
   return [DEPOSIT_MODAL_STEP.withdraw, DEPOSIT_MODAL_STEP.sellRedeem];
 }
 
+/** Simple-mode sell tab: wallet sell only. */
+export function anchorSimpleSellFlowParts(): string[] {
+  return [DEPOSIT_MODAL_STEP.sellRedeem];
+}
+
 export function anchorDepositFlowParts(options: {
   mintOnly: boolean;
   skipRewardStep: boolean;

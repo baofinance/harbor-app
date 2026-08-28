@@ -205,7 +205,7 @@ export function SailAdvancedLayout({
 
           <div
             id={SAIL_TRADE_PANEL_ID}
-            className="order-2 flex min-h-0 flex-col scroll-mt-20 lg:order-none lg:self-start"
+            className="order-2 flex min-h-0 flex-col scroll-mt-20 lg:order-none lg:h-full lg:self-stretch"
           >
             <SailMarketActionPanel
               marketId={selectedMarketId}

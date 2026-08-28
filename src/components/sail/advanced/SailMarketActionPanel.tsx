@@ -7,6 +7,7 @@ import {
   SAIL_ADVANCED_LIGHT_BODY,
   SAIL_ADVANCED_LIGHT_SECTION_TITLE,
   SAIL_EMBEDDED_FORM_PANEL,
+  SAIL_EMBEDDED_PANEL_HEIGHT,
 } from "./sailAdvancedStyles";
 
 export type SailMarketActionPanelProps = {
@@ -39,8 +40,10 @@ export function SailMarketActionPanel({
   depositsPaused = false,
 }: SailMarketActionPanelProps) {
   return (
-    <aside className="flex flex-col">
-      <div className={`${SAIL_EMBEDDED_FORM_PANEL} flex flex-col`}>
+    <aside className="flex flex-col lg:h-full">
+      <div
+        className={`${SAIL_EMBEDDED_FORM_PANEL} ${SAIL_EMBEDDED_PANEL_HEIGHT} flex w-full min-w-0 flex-col overflow-hidden`}
+      >
         {isComingSoon ? (
           <div className="flex min-h-[16rem] flex-1 flex-col items-center justify-center gap-2 px-4 py-8 text-center">
             <p className={SAIL_ADVANCED_LIGHT_SECTION_TITLE}>Coming soon</p>
@@ -50,7 +53,7 @@ export function SailMarketActionPanel({
             </p>
           </div>
         ) : (
-          <div className="flex min-h-0 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <SailManageModal
               embedded
               isOpen

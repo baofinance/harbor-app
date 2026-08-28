@@ -39,7 +39,7 @@ const SECTION_LABEL_CLASS =
   "px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/45";
 
 const SELECTOR_ICON_SIZE = 22;
-const PEG_FIELD_CLASS = "w-[9.25rem] shrink-0 sm:w-[10rem]";
+const PEG_FIELD_CLASS = "w-[9.25rem] shrink-0 sm:w-[10.25rem]";
 const BACKING_FIELD_CLASS = "w-[14.5rem] shrink-0 sm:w-[16rem]";
 
 function normalizeApyDisplay(apyLabel?: string): string | null {

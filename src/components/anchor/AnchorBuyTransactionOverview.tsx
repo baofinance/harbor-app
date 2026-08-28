@@ -1,12 +1,12 @@
 "use client";
 
 import {
-  AnchorTransactionOverview,
-  type AnchorTransactionOverviewProps,
-} from "@/components/anchor/AnchorTransactionOverview";
+  DepositTransactionOverview,
+  type DepositTransactionOverviewProps,
+} from "@/components/deposit/DepositTransactionOverview";
 
 export type AnchorBuyTransactionOverviewProps = Omit<
-  AnchorTransactionOverviewProps,
+  DepositTransactionOverviewProps,
   "fees" | "receiveLabel" | "statusMessage" | "statusVariant" | "bannerMessage" | "bonus"
 > & {
   fee?: {
@@ -22,7 +22,7 @@ export function AnchorBuyTransactionOverview({
   ...props
 }: AnchorBuyTransactionOverviewProps) {
   return (
-    <AnchorTransactionOverview
+    <DepositTransactionOverview
       {...props}
       fees={
         fee

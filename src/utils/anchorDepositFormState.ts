@@ -70,7 +70,7 @@ export function resolveAnchorDepositStep1PrimaryAction(
   return {
     kind: "submit",
     label: continueLabel(input),
-    variant: "navy",
+    variant: "mint",
   };
 }
 
@@ -107,14 +107,14 @@ export function resolveAnchorDepositStep2PrimaryAction(
     return {
       kind: "submit",
       label: "Continue to Stability Pool →",
-      variant: "navy",
+      variant: "mint",
     };
   }
 
   return {
     kind: "submit",
     label: "Buy (no stability pool deposit)",
-    variant: "navy",
+    variant: "mint",
   };
 }
 
@@ -164,14 +164,14 @@ export function resolveAnchorDepositStep3PrimaryAction(
   }
 
   if (isDirectPeggedDeposit && selectedStabilityPool) {
-    return { kind: "submit", label: "Deposit", variant: "navy" };
+    return { kind: "submit", label: "Deposit", variant: "mint" };
   }
 
   if (selectedStabilityPool) {
-    return { kind: "submit", label: "Buy & Deposit", variant: "navy" };
+    return { kind: "submit", label: "Buy & Deposit", variant: "mint" };
   }
 
-  return { kind: "submit", label: "Buy", variant: "navy" };
+  return { kind: "submit", label: "Buy", variant: "mint" };
 }
 
 export type ResolveAnchorWithdrawPrimaryActionInput = {

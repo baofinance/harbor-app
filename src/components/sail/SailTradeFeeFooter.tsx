@@ -1,13 +1,11 @@
-import Link from "next/link";
 import type { FeeBand } from "@/utils/sailFeeBands";
-import { SailFeeRatioCell } from "@/components/sail/SailFeeRatioCell";
+import {
+  DepositTradeFeeFooter,
+  depositTradeFeesFromMarket,
+  type DepositTradeMarketFees,
+} from "@/components/deposit/DepositTradeFeeFooter";
 
-export type SailTradeMarketFees = {
-  buyFeeRatio: bigint | undefined;
-  sellFeeRatio: bigint | undefined;
-  activeBuyBand: FeeBand | undefined;
-  activeSellBand: FeeBand | undefined;
-};
+export type SailTradeMarketFees = DepositTradeMarketFees;
 
 type SailTradeFeeFooterProps = {
   marketFees?: SailTradeMarketFees;
@@ -19,26 +17,7 @@ type SailTradeFeeFooterProps = {
   mode?: "both" | "activeTab";
 };
 
-function FeeEstimate({
-  pct,
-  warnHigh,
-}: {
-  pct: number;
-  warnHigh?: boolean;
-}) {
-  return (
-    <span
-      className={`font-mono text-[10px] tabular-nums ${
-        warnHigh ? "text-red-600" : "text-[#1E4775]/50"
-      }`}
-    >
-      est. {pct > 100 ? "~1.00" : pct.toFixed(2)}%
-      {warnHigh ? " ⚠️" : ""}
-    </span>
-  );
-}
-
-/** Buy / sell fees — compact row pinned to the bottom of the Sail trade panel. */
+/** Sail trade fee row — delegates to shared `DepositTradeFeeFooter`. */
 export function SailTradeFeeFooter({
   marketFees,
   activeTab,
@@ -49,67 +28,52 @@ export function SailTradeFeeFooter({
 }: SailTradeFeeFooterProps) {
   if (!marketFees) return null;
 
-  const showBuyEstimate =
-    showEstimates &&
-    activeTab === "mint" &&
-    buyFeeEstimatePct != null &&
-    buyFeeEstimatePct > 0;
-
-  const showSellEstimate =
-    showEstimates &&
-    activeTab === "redeem" &&
-    sellFeeEstimatePct != null &&
-    sellFeeEstimatePct > 0;
-
-  const showBuy = mode === "both" || activeTab === "mint";
-  const showSell = mode === "both" || activeTab === "redeem";
   const activeLabel = activeTab === "mint" ? "Buy" : "Sell";
 
+  if (mode === "both") {
+    return (
+      <DepositTradeFeeFooter
+        heading="Fees"
+        items={[
+          {
+            label: "Buy",
+            ratio: marketFees.buyFeeRatio,
+            isMintSail: true,
+            activeBand: marketFees.activeBuyBand,
+            estimatePct:
+              showEstimates && buyFeeEstimatePct != null && buyFeeEstimatePct > 0
+                ? buyFeeEstimatePct
+                : undefined,
+          },
+          {
+            label: "Sell",
+            ratio: marketFees.sellFeeRatio,
+            isMintSail: false,
+            activeBand: marketFees.activeSellBand,
+            estimatePct:
+              showEstimates &&
+              sellFeeEstimatePct != null &&
+              sellFeeEstimatePct > 0
+                ? sellFeeEstimatePct
+                : undefined,
+          },
+        ]}
+      />
+    );
+  }
+
   return (
-    <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-[10px] leading-snug text-[#1E4775]/55">
-      <span className="font-semibold uppercase tracking-wide">
-        {mode === "activeTab" ? `${activeLabel} fee` : "Fees"}
-      </span>
-      {showBuy ? (
-        <span className="inline-flex items-center gap-1.5">
-          {mode === "both" ? <span>Buy</span> : null}
-          <SailFeeRatioCell
-            ratio={marketFees.buyFeeRatio}
-            isMintSail
-            activeBand={marketFees.activeBuyBand}
-          />
-          {showBuyEstimate ? (
-            <FeeEstimate
-              pct={buyFeeEstimatePct!}
-              warnHigh={buyFeeEstimatePct! > 2 && buyFeeEstimatePct! <= 100}
-            />
-          ) : null}
-        </span>
-      ) : null}
-      {showBuy && showSell ? <span aria-hidden="true">·</span> : null}
-      {showSell ? (
-        <span className="inline-flex items-center gap-1.5">
-          {mode === "both" ? <span>Sell</span> : null}
-          <SailFeeRatioCell
-            ratio={marketFees.sellFeeRatio}
-            isMintSail={false}
-            activeBand={marketFees.activeSellBand}
-          />
-          {showSellEstimate ? (
-            <FeeEstimate
-              pct={sellFeeEstimatePct!}
-              warnHigh={sellFeeEstimatePct! > 2}
-            />
-          ) : null}
-        </span>
-      ) : null}
-      <span aria-hidden="true">·</span>
-      <Link
-        href="/transparency"
-        className="underline-offset-2 transition-colors hover:text-[#1E4775] hover:underline"
-      >
-        full fee structure
-      </Link>
-    </p>
+    <DepositTradeFeeFooter
+      heading={`${activeLabel} fee`}
+      items={depositTradeFeesFromMarket({
+        marketFees,
+        activeTab,
+        buyFeeEstimatePct,
+        sellFeeEstimatePct,
+        showEstimates,
+      })}
+    />
   );
 }
+
+export type { FeeBand };

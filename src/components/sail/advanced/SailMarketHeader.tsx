@@ -6,6 +6,7 @@ import {
   SailMarketDropdown,
   type SailMarketDropdownOption,
 } from "./SailMarketDropdown";
+import { SailTokenPairSelectors } from "./SailTokenPairSelectors";
 import { SailMarketEducationStrip } from "./SailMarketEducationStrip";
 import {
   SailMarketPositionBar,
@@ -15,11 +16,8 @@ import {
   SailWalletStatsStrip,
   type SailWalletStatsStripProps,
 } from "./SailWalletStatsStrip";
-import {
-  SAIL_ADVANCED_LABEL,
-} from "./sailAdvancedStyles";
+import { SAIL_ADVANCED_LABEL } from "./sailAdvancedStyles";
 
-/** Equal-width wallet / this-market row — stretch so both cards match height. */
 const SAIL_HEADER_STATS_GRID_CLASS =
   "grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch";
 
@@ -48,20 +46,29 @@ export function SailMarketHeader({
   if (!selectedMarket) return null;
 
   const isConnected = marketPosition.isConnected;
+  const usePairSelectors = dropdownOptions.length > 1;
 
   return (
-    <header className="relative z-10 flex flex-col gap-4">
-      <div className="min-w-0">
+    <header className="relative z-10 flex flex-col gap-4 overflow-visible">
+      <div className="min-w-0 overflow-visible">
         <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>Market</p>
-        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-          <div className="w-full min-w-0 max-w-xs shrink-0 sm:max-w-sm">
-            <SailMarketDropdown
-              selectedMarketId={selectedMarketId}
+        <div className="grid min-w-0 gap-4 overflow-visible lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center lg:gap-8">
+          {usePairSelectors ? (
+            <SailTokenPairSelectors
               options={dropdownOptions}
-              onSelect={onSelectMarket}
+              selectedMarketId={selectedMarketId}
+              onSelectMarket={onSelectMarket}
             />
-          </div>
-          <div className="flex min-w-0 flex-1 items-center justify-center text-center sm:pl-1">
+          ) : (
+            <div className="w-full min-w-0 max-w-xs shrink-0 sm:max-w-sm">
+              <SailMarketDropdown
+                selectedMarketId={selectedMarketId}
+                options={dropdownOptions}
+                onSelect={onSelectMarket}
+              />
+            </div>
+          )}
+          <div className="flex w-full min-w-0 items-center justify-center">
             <SailMarketEarnTagline market={selectedMarket} />
           </div>
         </div>

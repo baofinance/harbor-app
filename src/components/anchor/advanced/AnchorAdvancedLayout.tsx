@@ -12,9 +12,12 @@ import { AnchorMarketMetricsCollapsible } from "./AnchorMarketMetricsCollapsible
 import { AnchorMobileTradeBar } from "./AnchorMobileTradeBar";
 import type { AnchorWalletStatsStripProps } from "./AnchorWalletStatsStrip";
 
-/** Slightly wider trade column so claim bar + embedded form use the panel width. */
-const ANCHOR_EARN_MAIN_GRID_CLASS =
-  "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(340px,440px)] lg:items-start lg:min-h-[36rem]";
+import {
+  DEPOSIT_TRADE_PANEL_GRID_CLASS,
+} from "@/components/deposit/depositFlowStyles";
+
+/** @deprecated Use DEPOSIT_TRADE_PANEL_GRID_CLASS */
+const ANCHOR_EARN_MAIN_GRID_CLASS = DEPOSIT_TRADE_PANEL_GRID_CLASS;
 
 const ANCHOR_TRADE_PANEL_ID = "anchor-trade-panel";
 
@@ -140,7 +143,7 @@ export function AnchorAdvancedLayout({
 
           <div
             id={ANCHOR_TRADE_PANEL_ID}
-            className="order-2 flex min-h-0 w-full min-w-0 flex-col scroll-mt-20 lg:order-none lg:self-start"
+            className="order-2 flex min-h-0 w-full min-w-0 flex-col scroll-mt-20 lg:order-none lg:h-full lg:self-stretch"
           >
             <AnchorMarketActionPanel
               key={selectedMarketId}

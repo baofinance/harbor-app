@@ -32,7 +32,7 @@ export function DepositAmountCard({
   customToken,
   amount,
   showTokenSelector = true,
-  tokenRowLabel = "Pay with",
+  tokenRowLabel,
   betweenTokenAndAmount,
   afterAmount,
   disabled = false,
@@ -94,8 +94,10 @@ export function DepositAmountCard({
   return (
     <div className={DEPOSIT_AMOUNT_CARD_CLASS}>
       {showTokenRow ? (
-        <div className="mb-3 space-y-2">
-          <span className={DEPOSIT_SECTION_LABEL_CLASS}>{tokenRowLabel}</span>
+        <div className={`${tokenRowLabel ? "space-y-2" : ""} mb-3`}>
+          {tokenRowLabel ? (
+            <span className={DEPOSIT_SECTION_LABEL_CLASS}>{tokenRowLabel}</span>
+          ) : null}
           <TokenSelectorDropdown
             value={tokenSelector.value}
             onChange={tokenSelector.onChange}

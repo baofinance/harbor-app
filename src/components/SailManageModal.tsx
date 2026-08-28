@@ -45,8 +45,10 @@ import { useTransactionProgress } from "@/hooks/useTransactionProgress";
 import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useUserTokens, useTokenDecimals } from "@/hooks/useUserTokens";
 import { SailTradeAmountCard } from "@/components/sail/SailTradeAmountCard";
-import { SailTradeReceivePreview } from "@/components/sail/SailTradeReceivePreview";
+import { SailTradeTransactionOverview } from "@/components/sail/SailTradeTransactionOverview";
 import { SailTradeActionFooter } from "@/components/sail/SailTradeActionFooter";
+import { DepositModalLayout } from "@/components/deposit/DepositModalLayout";
+import { DepositPermitToggle } from "@/components/deposit/DepositPermitToggle";
 import { resolveSailTradePrimaryAction } from "@/utils/sailTradeFormState";
 import { DepositModalShell } from "@/components/DepositModalShell";
 import { DepositModalTabHeader } from "@/components/DepositModalTabHeader";
@@ -166,6 +168,7 @@ export const SailManageModal = ({
     setPermitEnabled,
   } = usePermitFlow({
     enabled: (isOpen || embedded) && !!address,
+    defaultEnabled: false,
     depositAssetSymbol:
       activeTab === "redeem"
         ? market?.leveragedToken?.symbol
@@ -1950,12 +1953,12 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
    closeDisabled={isProcessing}
   panelClassName={
     embedded
-      ? "flex flex-col"
+      ? "flex h-full min-h-0 flex-col overflow-hidden"
       : "max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col"
   }
   contentClassName={
     embedded
-      ? "flex flex-col"
+      ? "flex min-h-0 flex-1 flex-col overflow-hidden"
       : "flex min-h-0 flex-1 flex-col p-3 sm:p-4"
   }
  >
@@ -1969,22 +1972,19 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
    txHash={txHash}
  />
  ) : (
- <div className={embedded ? "flex flex-col space-y-3" : "flex min-h-0 flex-1 flex-col"}>
-   <div
-     className={
-       embedded
-         ? "space-y-3"
-         : "min-h-0 flex-1 space-y-3 overflow-y-auto"
-     }
-   >
-   {!embedded ? (
-     <DepositModalFlowOverview
-       parts={
-         activeTab === "mint" ? sailMintFlowParts() : sailRedeemFlowParts()
-       }
-     />
-   ) : null}
- <SailTradeAmountCard
+ <DepositModalLayout
+   flowOverview={
+     !embedded ? (
+       <DepositModalFlowOverview
+         parts={
+           activeTab === "mint" ? sailMintFlowParts() : sailRedeemFlowParts()
+         }
+       />
+     ) : null
+   }
+   scroll={
+     <>
+       <SailTradeAmountCard
    activeTab={activeTab}
    tokenSelector={
      activeTab === "mint"
@@ -2084,60 +2084,16 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
    }}
    afterAmount={
     activeTab === "mint" || activeTab === "redeem" ? (
-   <div className="flex items-center justify-between gap-2 text-xs text-[#1E4775]/70">
-     <span>Gasless approval</span>
-     {disableReason ? (
-       <SimpleTooltip label={disableReason}>
-         <span className="flex items-center cursor-not-allowed opacity-70">
-           <button
-             type="button"
-             disabled
-             className="relative inline-flex h-5 w-9 items-center rounded-full bg-[#1E4775]/30 cursor-not-allowed"
-             aria-label="Gasless approval disabled"
-           >
-             <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-1" />
-           </button>
-         </span>
-       </SimpleTooltip>
-     ) : (
-       <label className="flex items-center cursor-pointer">
-         <button
-           type="button"
-           onClick={() => setPermitEnabled((prev) => !prev)}
-           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-             permitEnabled ? "bg-[#1E4775]" : "bg-[#1E4775]/30"
-           }`}
-           aria-pressed={permitEnabled}
-           aria-label="Toggle gasless approval"
-           disabled={isProcessing}
-         >
-           <span
-             className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-               permitEnabled ? "translate-x-4" : "translate-x-1"
-             }`}
-           />
-         </button>
-       </label>
-     )}
-   </div>
- ) : null
+      <DepositPermitToggle
+        mode={activeTab === "mint" ? "deposit" : "redemption"}
+        enabled={permitEnabled}
+        onToggle={() => setPermitEnabled((prev) => !prev)}
+        disabled={isProcessing}
+        disableReason={disableReason}
+      />
+    ) : null
    }
    disabled={isProcessing}
- />
-
- <SailTradeReceivePreview
-   activeTab={activeTab}
-   parsedAmount={parsedAmount}
-   amount={amount}
-   expectedMintOutput={expectedMintOutput}
-   expectedRedeemOutput={expectedRedeemOutput}
-   leveragedTokenSymbol={leveragedTokenSymbol}
-   collateralSymbol={collateralSymbol}
-   selectedDepositAsset={selectedDepositAsset}
-   ethPrice={ethPrice}
-   wstETHPrice={wstETHPrice}
-   fxSAVEPrice={fxSAVEPrice}
-   leveragedTokenPriceUSD={leveragedTokenPriceUSD}
  />
 
  {error && (
@@ -2159,25 +2115,43 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
  </p>
  </div>
  )}
-
-   </div>
-
- {!isProcessing && (
- <SailTradeActionFooter
-   layout={embedded ? "embedded" : "modal"}
-   marketFees={marketFees}
-   activeTab={activeTab}
-   buyFeeEstimatePct={mintFeePercentage}
-   sellFeeEstimatePct={redeemFeePercentage}
-   showEstimates={Boolean(parsedAmount && parsedAmount > 0n)}
-   action={primaryAction}
-   onSubmit={activeTab === "mint" ? handleMint : handleRedeem}
-   onRetry={activeTab === "mint" ? handleMint : handleRedeem}
-   showCancel={!embedded && (step === "error" || step === "input")}
-   onCancel={step === "error" ? handleCancel : handleClose}
+     </>
+   }
+   overview={
+     <SailTradeTransactionOverview
+       activeTab={activeTab}
+       parsedAmount={parsedAmount}
+       amount={amount}
+       expectedMintOutput={expectedMintOutput}
+       expectedRedeemOutput={expectedRedeemOutput}
+       leveragedTokenSymbol={leveragedTokenSymbol}
+       collateralSymbol={collateralSymbol}
+       selectedDepositAsset={selectedDepositAsset}
+       ethPrice={ethPrice}
+       wstETHPrice={wstETHPrice}
+       fxSAVEPrice={fxSAVEPrice}
+       leveragedTokenPriceUSD={leveragedTokenPriceUSD}
+     />
+   }
+   footer={
+     !isProcessing ? (
+       <SailTradeActionFooter
+         layout={embedded ? "embedded" : "modal"}
+         marketFees={marketFees}
+         activeTab={activeTab}
+         buyFeeEstimatePct={mintFeePercentage}
+         sellFeeEstimatePct={redeemFeePercentage}
+         showEstimates={Boolean(parsedAmount && parsedAmount > 0n)}
+         action={primaryAction}
+         onSubmit={activeTab === "mint" ? handleMint : handleRedeem}
+         onRetry={activeTab === "mint" ? handleMint : handleRedeem}
+         showCancel={!embedded && (step === "error" || step === "input")}
+         onCancel={step === "error" ? handleCancel : handleClose}
+       />
+     ) : null
+   }
+   footerDisabled={isProcessing}
  />
- )}
- </div>
  )}
  </DepositModalShell>
  )}

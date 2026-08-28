@@ -12,6 +12,8 @@ import {
   HARBOR_FROSTED_LIGHT_CARD_ELEVATED,
 } from "@/components/shared/harborFrostedSurfaceStyles";
 import {
+  DEPOSIT_EMBEDDED_PANEL_HEIGHT,
+  DEPOSIT_TRADE_PANEL_GRID_CLASS,
   DEPOSIT_AMOUNT_CARD_CLASS,
   DEPOSIT_CANCEL_BUTTON_CLASS,
   DEPOSIT_PRIMARY_DISABLED_CLASS,
@@ -50,11 +52,9 @@ export const SAIL_ADVANCED_HEADER_DIVIDER =
   "h-px w-full bg-gradient-to-r from-transparent via-[#1E4775]/18 to-transparent";
 
 /** Two-column Sail UI+ layout — chart/main left, trade panel right (lg+). */
-export const SAIL_ADVANCED_MAIN_GRID_COLUMNS =
-  "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-start";
+export const SAIL_ADVANCED_MAIN_GRID_COLUMNS = DEPOSIT_TRADE_PANEL_GRID_CLASS;
 
-export const SAIL_ADVANCED_MAIN_GRID_CLASS =
-  `${SAIL_ADVANCED_MAIN_GRID_COLUMNS} lg:min-h-[36rem]`;
+export const SAIL_ADVANCED_MAIN_GRID_CLASS = DEPOSIT_TRADE_PANEL_GRID_CLASS;
 
 /** @deprecated Use SAIL_ADVANCED_MAIN_GRID_CLASS */
 export const SAIL_ADVANCED_GRID_CLASS = SAIL_ADVANCED_MAIN_GRID_CLASS;
@@ -104,6 +104,8 @@ export const SAIL_ADVANCED_HEADLINE = MV_HEADLINE;
 
 /** Embedded mint / redeem form — single white frosted shell. */
 export const SAIL_EMBEDDED_FORM_PANEL = `rounded-xl p-2.5 sm:p-3 text-[#1E4775] ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`;
+
+export { DEPOSIT_EMBEDDED_PANEL_HEIGHT as SAIL_EMBEDDED_PANEL_HEIGHT };
 
 /** Trade panel primary actions on frosted light shell. */
 export const SAIL_TRADE_BUY_BUTTON_CLASS = HARBOR_BTN_GLASS_CTA_FULL_MINT_CLASS;
