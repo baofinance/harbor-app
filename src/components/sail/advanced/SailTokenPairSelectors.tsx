@@ -16,7 +16,7 @@ import {
   SailMarketDropdownTriggerContent,
 } from "./SailMarketDropdownOptionContent";
 
-const DROPDOWN_MENU_CLASS = `absolute left-0 top-[calc(100%+0.35rem)] z-[120] min-w-full w-max max-w-[min(100vw-2rem,22rem)] max-h-80 overflow-y-auto rounded-xl shadow-2xl ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL} p-1.5`;
+const DROPDOWN_MENU_CLASS = `absolute left-0 top-[calc(100%+0.35rem)] z-[120] min-w-full w-max max-w-[min(100vw-2rem,24rem)] max-h-80 overflow-y-auto rounded-xl shadow-2xl ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL} p-1.5`;
 
 const DROPDOWN_TRIGGER_CLASS = `flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-2 text-left transition hover:brightness-[1.02] ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`;
 
@@ -30,7 +30,7 @@ const SECTION_LABEL_CLASS =
 
 const SELECTOR_ICON_SIZE = 22;
 const TOKEN_FIELD_CLASS = "w-[9.25rem] shrink-0 sm:w-[10.25rem]";
-const PAIR_FIELD_CLASS = "w-[14.5rem] shrink-0 sm:w-[16rem]";
+const PAIR_FIELD_CLASS = "w-[15rem] shrink-0 sm:w-[17rem]";
 
 function useCloseOnOutsideClick(
   open: boolean,

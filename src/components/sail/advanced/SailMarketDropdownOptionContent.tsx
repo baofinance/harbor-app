@@ -11,11 +11,11 @@ import {
 } from "@/utils/sailMarketDropdownPosition";
 
 export const SAIL_MARKET_DROPDOWN_TITLE_CLASS =
-  "truncate text-sm font-semibold text-[#1E4775]";
+  "text-sm font-semibold text-[#1E4775]";
 export const SAIL_MARKET_DROPDOWN_TRIGGER_TITLE_CLASS =
-  "truncate text-base font-semibold leading-tight text-[#1E4775]";
+  "text-base font-semibold leading-tight text-[#1E4775]";
 export const SAIL_MARKET_DROPDOWN_LEVERAGE_INLINE_CLASS =
-  "font-mono font-semibold tabular-nums text-[#1E4775]/80 text-inherit sm:text-inherit";
+  "font-mono text-[11px] font-semibold tabular-nums text-[#1E4775]/80 sm:text-xs";
 export const SAIL_MARKET_DROPDOWN_TITLE_SEPARATOR_CLASS =
   "font-medium text-[#1E4775]/55";
 export const SAIL_MARKET_DROPDOWN_POSITION_CLASS =
@@ -53,21 +53,32 @@ export function SailMarketDropdownTitle({
   leverageRatio,
   muted = false,
   titleClassName = SAIL_MARKET_DROPDOWN_TITLE_CLASS,
-  leverageClassName = `text-xs ${SAIL_MARKET_DROPDOWN_LEVERAGE_INLINE_CLASS}`,
+  leverageClassName = SAIL_MARKET_DROPDOWN_LEVERAGE_INLINE_CLASS,
 }: SailMarketDropdownTitleProps) {
   const title = formatSailMarketDropdownTitle(market);
 
   return (
     <div
-      className={`min-w-0 truncate ${titleClassName} ${
+      className={`flex min-w-0 flex-1 items-baseline gap-0 ${
         muted ? "text-[#64748b]" : ""
       }`}
     >
-      {title}
+      <span
+        className={`min-w-0 truncate ${titleClassName} ${
+          muted ? "text-[#64748b]" : ""
+        }`}
+      >
+        {title}
+      </span>
       {!muted ? (
         <>
-          <span className={SAIL_MARKET_DROPDOWN_TITLE_SEPARATOR_CLASS}> · </span>
-          <span className={leverageClassName}>
+          <span
+            className={`shrink-0 ${SAIL_MARKET_DROPDOWN_TITLE_SEPARATOR_CLASS}`}
+          >
+            {" "}
+            ·{" "}
+          </span>
+          <span className={`shrink-0 whitespace-nowrap ${leverageClassName}`}>
             {formatLeverage(leverageRatio)}
           </span>
         </>
