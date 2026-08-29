@@ -14,7 +14,7 @@ type DepositPermitToggleProps = {
 
 const LABEL_BY_MODE: Record<DepositPermitToggleMode, string> = {
   deposit: "Use permit (gasless approval) for this deposit",
-  redemption: "Use permit (gasless approval) for this redemption",
+  redemption: "Use permit (gasless approval) for this sell",
 };
 
 /** Shared gasless-approval toggle for Anchor, Sail, and Genesis trade modals. */

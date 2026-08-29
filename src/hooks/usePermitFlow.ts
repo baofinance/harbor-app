@@ -49,8 +49,12 @@ export function usePermitFlow(
   const [permitEnabled, setPermitEnabled] = useState(defaultEnabled);
 
   useEffect(() => {
-    if (!isPermitCapable) setPermitEnabled(false);
-  }, [isPermitCapable]);
+    if (!isPermitCapable) {
+      setPermitEnabled(false);
+    } else if (defaultEnabled) {
+      setPermitEnabled(true);
+    }
+  }, [isPermitCapable, defaultEnabled]);
 
   return {
     isPermitCapable,

@@ -12,7 +12,9 @@ import type {
 } from "@/components/TokenAmountSection";
 import {
   DEPOSIT_AMOUNT_CARD_CLASS,
+  DEPOSIT_AMOUNT_MAX_BUTTON_CLASS,
   DEPOSIT_SECTION_LABEL_CLASS,
+  depositAmountInputClass,
 } from "@/components/deposit/depositFlowStyles";
 import { DepositBalanceStrip } from "@/components/deposit/DepositBalanceStrip";
 
@@ -23,6 +25,8 @@ export type DepositAmountCardProps = {
   /** Show token selector row (default true when tokenSelector provided). */
   showTokenSelector?: boolean;
   tokenRowLabel?: string;
+  /** Label above the amount field (e.g. Sell amount). */
+  amountSectionLabel?: string;
   betweenTokenAndAmount?: ReactNode;
   afterAmount?: ReactNode;
   disabled?: boolean;
@@ -34,6 +38,7 @@ export function DepositAmountCard({
   amount,
   showTokenSelector = true,
   tokenRowLabel,
+  amountSectionLabel,
   betweenTokenAndAmount,
   afterAmount,
   disabled = false,
@@ -76,33 +81,19 @@ export function DepositAmountCard({
         }
       : baseHandleChange);
 
-  const balanceStrip =
-    balanceContentOverride == null && balanceSymbol ? (
-      <DepositBalanceStrip ariaLabel={`Balance ${balanceSymbol}`}>
-        {formatBalance(balance ?? 0n, balanceSymbol, balanceMaxDecimals, decimals)}
-      </DepositBalanceStrip>
-    ) : null;
-
-  const balanceContent =
-    balanceContentOverride ??
-    (balanceSymbol ? (
-      <span className="text-[11px] tabular-nums text-[#1E4775]/60">
-        Balance:{" "}
-        {formatBalance(balance ?? 0n, balanceSymbol, balanceMaxDecimals, decimals)}
-      </span>
-    ) : null);
+  const formattedBalance = balanceSymbol
+    ? formatBalance(balance ?? 0n, balanceSymbol, balanceMaxDecimals, decimals)
+    : null;
 
   const inputDisabled = disabled || amount.disabled;
   const showTokenRow = showTokenSelector && tokenSelector;
 
-  const defaultInputClass = `w-full rounded-lg border bg-white/90 px-3 pr-20 py-3 font-mono text-2xl text-[#1E4775] transition-all focus:border-[#1E4775] focus:outline-none focus:ring-2 focus:ring-[#1E4775]/20 ${
-    error || exceedsBalance ? "border-red-500" : "border-[#1E4775]/20"
-  }`;
+  const defaultInputClass = depositAmountInputClass(
+    !!(error || exceedsBalance),
+  );
 
   return (
-    <>
-      {balanceStrip}
-      <div className={DEPOSIT_AMOUNT_CARD_CLASS}>
+    <div className={DEPOSIT_AMOUNT_CARD_CLASS}>
       {showTokenRow ? (
         <div className={`${tokenRowLabel ? "space-y-2" : ""} mb-3`}>
           {tokenRowLabel ? (
@@ -130,11 +121,17 @@ export function DepositAmountCard({
       ) : null}
 
       {balanceContentOverride ? (
-        <div className="mb-2 flex items-center justify-end">{balanceContent}</div>
+        <div className="mb-2 flex items-center justify-end">{balanceContentOverride}</div>
       ) : null}
 
       {betweenTokenAndAmount ? (
         <div className="mb-2 text-xs text-[#1E4775]/70">{betweenTokenAndAmount}</div>
+      ) : null}
+
+      {amountSectionLabel ? (
+        <span className={`${DEPOSIT_SECTION_LABEL_CLASS} mb-1.5 block`}>
+          {amountSectionLabel}
+        </span>
       ) : null}
 
       <div className="relative">
@@ -151,18 +148,26 @@ export function DepositAmountCard({
           type="button"
           onClick={handleMax}
           disabled={inputDisabled}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md bg-harbor-coral px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#FF6B5A] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+          className={DEPOSIT_AMOUNT_MAX_BUTTON_CLASS}
         >
           MAX
         </button>
       </div>
+
+      {!balanceContentOverride && formattedBalance ? (
+        <DepositBalanceStrip
+          className="mt-1"
+          ariaLabel={`Balance ${balanceSymbol}`}
+        >
+          {formattedBalance}
+        </DepositBalanceStrip>
+      ) : null}
 
       {error ? <p className="mt-1.5 text-xs text-red-600">{error}</p> : null}
 
       {afterAmount ? (
         <div className="mt-3 space-y-2 border-t border-[#1E4775]/8 pt-3">{afterAmount}</div>
       ) : null}
-      </div>
-    </>
+    </div>
   );
 }

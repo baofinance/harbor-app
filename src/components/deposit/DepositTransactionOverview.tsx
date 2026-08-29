@@ -78,7 +78,7 @@ export function DepositTransactionOverview({
                   {receiveLabel}
                 </div>
                 {sourceLine ? (
-                  <div className="mt-0.5 text-[11px] text-[#1E4775]/50">
+                  <div className="mt-0.5 truncate text-[11px] leading-tight text-[#1E4775]/50">
                     {sourceLine}
                   </div>
                 ) : null}

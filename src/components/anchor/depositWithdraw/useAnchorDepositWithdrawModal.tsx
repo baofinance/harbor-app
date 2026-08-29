@@ -471,12 +471,13 @@ export function useAnchorDepositWithdrawModal({
     setPermitEnabled,
   } = usePermitFlow({
     enabled: isActive && !!address,
-    defaultEnabled: false,
+    defaultEnabled: true,
     depositAssetSymbol:
       activeTab === "deposit"
         ? selectedDepositAsset || null
         : market?.peggedToken?.symbol || null,
-    tokenCheckMode: activeTab === "withdraw" ? "optimistic" : "strict",
+    tokenCheckMode:
+      activeTab === "deposit" ? "strict" : "optimistic",
   });
 
   // Simple mode: stability pool selection - now includes marketId and pool type
@@ -11192,13 +11193,9 @@ export function useAnchorDepositWithdrawModal({
         parseFloat(positionAmounts.wallet) > 0;
       const hasPoolSell = hasCollateralPool || hasSailPool;
       const poolType = hasCollateralPool ? "collateral" : "sail";
-      const currentMarket = marketsForToken.find(
-        (m) => m.marketId === selectedMarketId,
-      )?.market;
-      const rewardToken = currentMarket?.rewardTokens?.default?.[0] || "";
-      const poolLabelShort = hasPoolSell
+      const poolLabelCompact = hasPoolSell
         ? poolType === "collateral"
-          ? `Collateral${rewardToken ? ` (${rewardToken})` : ""}`
+          ? "Collateral"
           : "Sail"
         : "Wallet";
       const isImmediateWithdrawal =
@@ -11252,7 +11249,7 @@ export function useAnchorDepositWithdrawModal({
           receiveLabel,
           sourceLine:
             nextStepLine ??
-            `From ${poolLabelShort} · ${parsedAmount.toFixed(4)} ${peggedTokenSymbol}`,
+            `${poolLabelCompact} · ${parsedAmount.toFixed(4)} ${peggedTokenSymbol}`,
           fees: earlyFee
             ? [
                 {
@@ -11280,7 +11277,7 @@ export function useAnchorDepositWithdrawModal({
 
         return buildPoolWithdrawPreview(
           "You will withdraw",
-          `From ${poolLabelShort} · then sell for ${redeemCollateralSymbol || "collateral"}`,
+          `${poolLabelCompact} → ${redeemCollateralSymbol || "collateral"}`,
         );
       }
 
@@ -11388,8 +11385,8 @@ export function useAnchorDepositWithdrawModal({
           : "You will receive",
         sourceLine:
           sellRedeemSource === "wallet" || !hasPoolSell
-            ? `From wallet · ${Number(formatEther(redeemInputAmount ?? 0n)).toFixed(4)} ${peggedTokenSymbol}`
-            : `From ${poolLabelShort} · ${Number(formatEther(redeemInputAmount ?? 0n)).toFixed(4)} ${peggedTokenSymbol}`,
+            ? `Wallet · ${Number(formatEther(redeemInputAmount ?? 0n)).toFixed(4)} ${peggedTokenSymbol}`
+            : `${poolLabelCompact} · ${Number(formatEther(redeemInputAmount ?? 0n)).toFixed(4)} ${peggedTokenSymbol}`,
         fees: overviewFees.length > 0 ? overviewFees : undefined,
         totalFeeUsd: overviewFees.length > 1 ? totalFeeUsd : undefined,
         bonus:
@@ -11410,8 +11407,6 @@ export function useAnchorDepositWithdrawModal({
       selectedPositions.collateralPool,
       selectedPositions.sailPool,
       selectedPositions.wallet,
-      selectedMarketId,
-      marketsForToken,
       withdrawalMethods.collateralPool,
       withdrawalMethods.sailPool,
       earlyWithdrawalFees,

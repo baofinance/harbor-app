@@ -87,12 +87,17 @@ export function usePermitCapability(
     ? tokenPermitOnSmartWallet(depositAssetSymbol)
     : false;
 
-  const computedPermitCapable = !isSmartContractWallet || tokenInAllowlist;
+  const computedPermitCapable =
+    tokenCheckMode === "optimistic"
+      ? true
+      : !isSmartContractWallet || tokenInAllowlist;
 
   const disableReason =
-    isSmartContractWallet && !tokenInAllowlist
-      ? "Permit is not supported with smart contract or delegated wallets for this token. Use approval instead."
-      : null;
+    tokenCheckMode === "optimistic"
+      ? null
+      : isSmartContractWallet && !tokenInAllowlist
+        ? "Permit is not supported with smart contract or delegated wallets for this token. Use approval instead."
+        : null;
 
   return {
     isPermitCapable: computedPermitCapable,

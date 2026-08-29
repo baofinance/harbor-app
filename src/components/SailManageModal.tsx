@@ -158,7 +158,7 @@ export const SailManageModal = ({
     setPermitEnabled,
   } = usePermitFlow({
     enabled: (isOpen || embedded) && !!address,
-    defaultEnabled: false,
+    defaultEnabled: true,
     depositAssetSymbol:
       activeTab === "redeem"
         ? market?.leveragedToken?.symbol

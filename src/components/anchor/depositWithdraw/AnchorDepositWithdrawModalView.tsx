@@ -45,6 +45,7 @@ import { DepositReceivePreview } from "@/components/deposit/DepositReceivePrevie
 import { DepositActionFooter } from "@/components/deposit/DepositActionFooter";
 import {
   DEPOSIT_AMOUNT_CARD_CLASS,
+  DEPOSIT_AMOUNT_MAX_BUTTON_CLASS,
   ANCHOR_MODAL_CARD_STACK,
   ANCHOR_MODAL_FOOTER_WRAPPER,
   ANCHOR_MODAL_SCROLL_CLASS,
@@ -52,6 +53,7 @@ import {
   DEPOSIT_SECTION_LABEL_CLASS,
   DEPOSIT_SEGMENT_STACK_CLASS,
   DEPOSIT_SEGMENT_TRACK_CLASS,
+  depositAmountInputClass,
 } from "@/components/deposit/depositFlowStyles";
 import { DepositStabilityPoolCard } from "@/components/deposit/DepositStabilityPoolCard";
 import { TokenLogo } from "@/components/shared";
@@ -678,9 +680,8 @@ export function AnchorDepositWithdrawModalView(
                       }
                       aria-hidden={activeTab !== "deposit" || flowPage !== 1}
                     >
-                    <div className={DEPOSIT_SEGMENT_STACK_CLASS}>
                     {!isDirectPeggedDeposit || useDepositCollateralSegment ? (
-                    <>
+                      <div className={DEPOSIT_SEGMENT_STACK_CLASS}>
                     {!isDirectPeggedDeposit ? (
                       <div
                         className={DEPOSIT_SEGMENT_TRACK_CLASS}
@@ -690,7 +691,7 @@ export function AnchorDepositWithdrawModalView(
                         {(
                           [
                             { id: "deposit" as const, label: "Deposit" },
-                            { id: "mintOnly" as const, label: "Mint Only" },
+                            { id: "mintOnly" as const, label: "Buy only" },
                           ] as const
                         ).map(({ id, label }) => {
                           const active = id === "mintOnly" ? mintOnly : !mintOnly;
@@ -751,7 +752,7 @@ export function AnchorDepositWithdrawModalView(
                         })}
                       </div>
                     ) : null}
-                    </>
+                      </div>
                     ) : null}
 
                     <DepositAmountCard
@@ -831,7 +832,6 @@ export function AnchorDepositWithdrawModalView(
                             )}
                           </div>
                         ),
-                        inputClassName: `w-full h-14 rounded-md px-4 pr-24 bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 ${error ? "border-red-500" : "border-[#1E4775]/30"} focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-xl font-mono`,
                         customHandleMax: handleMaxClick,
                         customHandleChange: handleAmountChange,
                       }}
@@ -849,7 +849,6 @@ export function AnchorDepositWithdrawModalView(
                         ) : null
                       }
                     />
-                    </div>
                     {/* Swap Preview - show when using any token deposit (always visible when swap asset is selected) */}
                       {anyTokenDeposit.needsSwap && (() => {
                         const targetToken = anyTokenDeposit.swapTargetToken === "ETH" ? "ETH" : "USDC";
@@ -1216,7 +1215,7 @@ export function AnchorDepositWithdrawModalView(
                                   : positionAmounts.sailPool;
 
                               return (
-                                    <div className="px-2 py-2.5">
+                                    <div className="space-y-1.5">
                               {/* Withdrawal Method: Request (default) or Early Withdraw (1% fee, gated by toggle unless window open) */}
                               {(() => {
                                 const poolWindowOpen = !!(request && request[0] > 0n && request[1] > 0n) && (() => {
@@ -1236,7 +1235,7 @@ export function AnchorDepositWithdrawModalView(
                                     : "Early Withdraw";
                                 return (
                                   <>
-                              <div className="flex items-center rounded-lg overflow-hidden bg-[#1E4775]/8 p-0.5 mb-2">
+                              <div className="flex items-center rounded-lg overflow-hidden bg-[#1E4775]/8 p-0.5 mb-1.5">
                                 {showEarlyWithdrawOption && (
                                 <button
                                   type="button"
@@ -1276,7 +1275,7 @@ export function AnchorDepositWithdrawModalView(
                                 </button>
                               </div>
                               {show1PctToggle && (
-                                <div className="flex items-center justify-between rounded-lg border border-[#1E4775]/12 bg-white/60 px-2.5 py-2 text-[10px] mb-2">
+                                <div className="flex items-center justify-between rounded-lg border border-[#1E4775]/12 bg-white/60 px-2.5 py-1.5 text-[10px] mb-1.5">
                                   <span className="text-[#1E4775]/80">
                                     Pay 1% fee to withdraw immediately (no waiting)
                                   </span>
@@ -1339,10 +1338,7 @@ export function AnchorDepositWithdrawModalView(
 
                               {/* Amount input - only show for immediate withdrawals */}
                                       {isImmediate && (
-                                <div className="mt-2 space-y-1">
-                                  <label className="text-sm font-semibold text-[#1E4775]">
-                                    Enter Amount
-                                  </label>
+                                <div className="mt-1.5">
                                   <div className="relative">
                                   <input
                                     type="text"
@@ -1355,14 +1351,11 @@ export function AnchorDepositWithdrawModalView(
                                       )
                                     }
                                     placeholder="0.0"
-                                    className={`w-full h-10 px-3 pr-16 rounded-lg bg-white/85 backdrop-blur-sm text-[#1E4775] border focus:ring-2 focus:outline-none text-sm font-mono ${
-                                              exceeds
-                                        ? "border-red-500 focus:border-red-500 focus:ring-red-200"
-                                        : "border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-[#1E4775]/20"
-                                    }`}
+                                    className={depositAmountInputClass(exceeds)}
                                     disabled={isProcessing}
                                   />
                                   <button
+                                    type="button"
                                     onClick={() => {
                                       setPositionAmounts((prev) => ({
                                         ...prev,
@@ -1371,7 +1364,7 @@ export function AnchorDepositWithdrawModalView(
                                         ),
                                       }));
                                     }}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs rounded-md bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500"
+                                    className={DEPOSIT_AMOUNT_MAX_BUTTON_CLASS}
                                             disabled={
                                               isProcessing || immediateCap === 0n
                                             }
@@ -1415,7 +1408,7 @@ export function AnchorDepositWithdrawModalView(
                       ).filter((sym) => collateralTypes.has(sym));
 
                       return (
-                        <div className="space-y-2">
+                        <div className="space-y-0.5">
                           <div className={DEPOSIT_SEGMENT_STACK_CLASS}>
                           {hasMultipleCollateralTypes &&
                             poolCollateralTabs.length > 1 && (
@@ -1519,21 +1512,25 @@ export function AnchorDepositWithdrawModalView(
                           </div>
                           </div>
                           {activeWithdrawPoolRow ? (
-                            <p className="text-center text-[11px] leading-snug text-[#1E4775]/65 font-mono">
-                              {activeWithdrawPoolRow.balance > 0n
-                                ? `${formatTokenAmount18(activeWithdrawPoolRow.balance, 6)} ${peggedTokenSymbol}`
-                                : "No position"}
-                            </p>
-                          ) : null}
-                          {activeWithdrawPoolRow &&
-                          activeWithdrawPoolRow.balance > 0n ? (
-                            <div className="rounded-xl border border-[#1E4775]/12 bg-white/70 shadow-sm backdrop-blur-sm overflow-hidden">
-                              {renderPoolControls(activeWithdrawPoolRow)}
+                            <div className={`${DEPOSIT_AMOUNT_CARD_CLASS} space-y-1.5`}>
+                              <DepositBalanceStrip
+                                ariaLabel={`Pool ${peggedTokenSymbol} balance`}
+                              >
+                                {formatBalance(
+                                  activeWithdrawPoolRow.balance,
+                                  peggedTokenSymbol,
+                                  6,
+                                  18,
+                                )}
+                              </DepositBalanceStrip>
+                              {activeWithdrawPoolRow.balance > 0n ? (
+                                renderPoolControls(activeWithdrawPoolRow)
+                              ) : (
+                                <p className="text-center text-xs text-[#1E4775]/45 py-1">
+                                  No position in this pool
+                                </p>
+                              )}
                             </div>
-                          ) : activeWithdrawPoolRow ? (
-                            <p className="text-center text-xs text-[#1E4775]/45 py-1">
-                              No position in this pool
-                            </p>
                           ) : null}
                         </div>
                       );
@@ -1636,24 +1633,16 @@ export function AnchorDepositWithdrawModalView(
                           sellRedeemSource === "wallet" ||
                           !hasPoolSellAmount ? (
                             <div className="mt-2 space-y-2">
-                              <DepositBalanceStrip ariaLabel={`Wallet ${peggedTokenSymbol} balance`}>
-                                {formatBalance(
-                                  peggedBalance,
-                                  peggedTokenSymbol,
-                                  6,
-                                  18,
-                                )}
-                              </DepositBalanceStrip>
-                              <label
-                                htmlFor="sell-wallet-amount"
-                                className={DEPOSIT_SECTION_LABEL_CLASS}
-                              >
-                                Wallet amount
-                              </label>
+                              {activeTab === "sell" ? (
+                                <div className={DEPOSIT_SECTION_LABEL_CLASS}>
+                                  Sell amount
+                                </div>
+                              ) : null}
                               <div className="relative">
                                 <input
                                   id="sell-wallet-amount"
                                   type="text"
+                                  aria-label="Wallet amount"
                                   value={positionAmounts.wallet}
                                   onChange={(e) =>
                                     handlePositionAmountChange(
@@ -1663,11 +1652,9 @@ export function AnchorDepositWithdrawModalView(
                                     )
                                   }
                                   placeholder="0.0"
-                                  className={`w-full h-10 px-3 pr-16 bg-white/85 backdrop-blur-sm text-[#1E4775] border focus:ring-2 focus:outline-none text-sm font-mono ${
-                                    positionExceedsBalance.wallet
-                                      ? "border-red-500 focus:border-red-500 focus:ring-red-200"
-                                      : "border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-[#1E4775]/20"
-                                  }`}
+                                  className={depositAmountInputClass(
+                                    positionExceedsBalance.wallet,
+                                  )}
                                   disabled={isProcessing || !canSellFromWallet}
                                 />
                                 <button
@@ -1678,12 +1665,22 @@ export function AnchorDepositWithdrawModalView(
                                       wallet: formatEther(peggedBalance),
                                     }));
                                   }}
-                                  className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs rounded-md bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500"
+                                  className={DEPOSIT_AMOUNT_MAX_BUTTON_CLASS}
                                   disabled={isProcessing || !canSellFromWallet}
                                 >
                                   MAX
                                 </button>
                               </div>
+                              <DepositBalanceStrip
+                                ariaLabel={`Wallet ${peggedTokenSymbol} balance`}
+                              >
+                                {formatBalance(
+                                  peggedBalance,
+                                  peggedTokenSymbol,
+                                  6,
+                                  18,
+                                )}
+                              </DepositBalanceStrip>
                             </div>
                           ) : null}
                         </div>

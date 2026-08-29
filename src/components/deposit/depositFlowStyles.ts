@@ -17,20 +17,24 @@ export const DEPOSIT_SEGMENT_TRACK_CLASS =
 export const DEPOSIT_SEGMENT_ACTIVE_CLASS =
   "bg-white/90 text-[#1E4775] shadow-sm backdrop-blur-sm";
 
-/** Full-width balance readout styled like a selected segment toggle. */
-export const DEPOSIT_BALANCE_STRIP_INNER_CLASS = `flex w-full items-center justify-center rounded-md px-3 py-1.5 text-xs font-semibold ${DEPOSIT_SEGMENT_ACTIVE_CLASS}`;
+/** Balance readout bar — white pill inside amount cards (matches card inner width). */
+export const DEPOSIT_BALANCE_STRIP_CLASS =
+  "flex h-5 min-w-0 max-w-full items-center justify-between gap-1.5 rounded-md bg-white/90 px-2 py-0 text-[10px] font-semibold leading-none backdrop-blur-sm";
+
+/** @deprecated Use DEPOSIT_BALANCE_STRIP_CLASS — inner only, no segment track. */
+export const DEPOSIT_BALANCE_STRIP_INNER_CLASS = DEPOSIT_BALANCE_STRIP_CLASS;
 
 /** Tight vertical gap between stacked segment toggle rows. */
 export const DEPOSIT_SEGMENT_STACK_CLASS = "space-y-0.5";
 
-/** Compact flow breadcrumb under modal tabs (Buy / Mint › Deposit). */
+/** Compact flow breadcrumb under modal tabs (Buy › Deposit). */
 export const DEPOSIT_FLOW_OVERVIEW_CLASS =
-  "grid min-h-[2.25rem] shrink-0 grid-cols-[1.75rem_1fr_1.75rem] items-center border-b border-[#e2e8f0] pt-1 pb-2";
+  "grid shrink-0 grid-cols-[1.5rem_1fr_1.5rem] items-center border-b border-[#e2e8f0] py-1";
 
 
 /** Scrollable body above pinned overview + footer. */
 export const ANCHOR_MODAL_SCROLL_CLASS =
-  "min-h-0 flex-1 space-y-2 overflow-y-auto";
+  "min-h-0 flex-1 space-y-1.5 overflow-y-auto";
 
 /** Stack of cards / toggles inside the scroll body. */
 export const ANCHOR_MODAL_CARD_STACK = "space-y-2";
@@ -69,6 +73,16 @@ export const ANCHOR_EMBEDDED_PANEL_HEIGHT = DEPOSIT_EMBEDDED_PANEL_HEIGHT;
 
 export const DEPOSIT_SECTION_LABEL_CLASS =
   "text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/50";
+
+/** Shared amount input — matches Sail / deposit card styling. */
+export function depositAmountInputClass(hasError = false): string {
+  return `w-full rounded-lg border bg-white/90 px-3 pr-20 py-3 font-mono text-2xl text-[#1E4775] transition-all focus:border-[#1E4775] focus:outline-none focus:ring-2 focus:ring-[#1E4775]/20 ${
+    hasError ? "border-red-500" : "border-[#1E4775]/20"
+  }`;
+}
+
+export const DEPOSIT_AMOUNT_MAX_BUTTON_CLASS =
+  "absolute right-2 top-1/2 -translate-y-1/2 rounded-md bg-harbor-coral px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#FF6B5A] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500";
 
 /** Compact native select for Anchor deposit / withdraw panels. */
 export const DEPOSIT_COMPACT_SELECT_CLASS =
