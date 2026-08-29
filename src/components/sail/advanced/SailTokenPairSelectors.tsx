@@ -10,13 +10,18 @@ import {
   type SailTokenGroup,
 } from "@/utils/sailMarketSelectors";
 import type { SailMarketDropdownOption } from "./SailMarketDropdown";
-import { SAIL_ADVANCED_FROSTED_LIGHT_PANEL } from "./sailAdvancedStyles";
+import {
+  SAIL_ADVANCED_FROSTED_LIGHT_PANEL,
+  MARKET_SELECTOR_PAIR_FIELD_CLASS,
+  MARKET_SELECTOR_ROW_CLASS,
+  MARKET_SELECTOR_TOKEN_FIELD_CLASS,
+} from "./sailAdvancedStyles";
 import {
   SailMarketDropdownOptionRowContent,
   SailMarketDropdownTriggerContent,
 } from "./SailMarketDropdownOptionContent";
 
-const DROPDOWN_MENU_CLASS = `absolute left-0 top-[calc(100%+0.35rem)] z-[120] min-w-full w-max max-w-[min(100vw-2rem,24rem)] max-h-80 overflow-y-auto rounded-xl shadow-2xl ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL} p-1.5`;
+const DROPDOWN_MENU_CLASS = `absolute left-0 top-[calc(100%+0.35rem)] z-[120] min-w-full w-max max-w-[min(100vw-2rem,26rem)] max-h-80 overflow-y-auto rounded-xl shadow-2xl ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL} p-1.5`;
 
 const DROPDOWN_TRIGGER_CLASS = `flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-2 text-left transition hover:brightness-[1.02] ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`;
 
@@ -29,8 +34,6 @@ const SECTION_LABEL_CLASS =
   "px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/45";
 
 const SELECTOR_ICON_SIZE = 22;
-const TOKEN_FIELD_CLASS = "w-[9.25rem] shrink-0 sm:w-[10.25rem]";
-const PAIR_FIELD_CLASS = "w-[15rem] shrink-0 sm:w-[17rem]";
 
 function useCloseOnOutsideClick(
   open: boolean,
@@ -243,13 +246,13 @@ export function SailTokenPairSelectors({
 
   return (
     <div
-      className={`relative flex w-auto shrink-0 flex-col gap-2.5 sm:flex-row sm:items-end sm:gap-2.5 ${
+      className={`${MARKET_SELECTOR_ROW_CLASS} ${
         anyOpen ? "z-[100]" : ""
       } ${className}`.trim()}
     >
       <FrostedDropdown
         label="Sail token"
-        className={TOKEN_FIELD_CLASS}
+        className={MARKET_SELECTOR_TOKEN_FIELD_CLASS}
         open={tokenOpen}
         onOpenChange={(next) => {
           setTokenOpen(next);
@@ -276,7 +279,7 @@ export function SailTokenPairSelectors({
 
       <FrostedDropdown
         label="Pair"
-        className={PAIR_FIELD_CLASS}
+        className={MARKET_SELECTOR_PAIR_FIELD_CLASS}
         open={pairOpen}
         onOpenChange={(next) => {
           setPairOpen(next);

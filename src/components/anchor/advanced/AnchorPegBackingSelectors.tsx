@@ -16,9 +16,14 @@ import {
   type AnchorBackingOption,
   type AnchorPegGroup,
 } from "@/utils/anchorMarketSelectors";
-import { ANCHOR_ADVANCED_FROSTED_LIGHT_PANEL } from "./anchorAdvancedStyles";
+import {
+  ANCHOR_ADVANCED_FROSTED_LIGHT_PANEL,
+  MARKET_SELECTOR_PAIR_FIELD_CLASS,
+  MARKET_SELECTOR_ROW_CLASS,
+  MARKET_SELECTOR_TOKEN_FIELD_CLASS,
+} from "./anchorAdvancedStyles";
 
-const DROPDOWN_MENU_CLASS = `absolute left-0 top-[calc(100%+0.35rem)] z-[120] min-w-full w-max max-w-[min(100vw-2rem,22rem)] max-h-80 overflow-y-auto rounded-xl shadow-2xl ${ANCHOR_ADVANCED_FROSTED_LIGHT_PANEL} p-1.5`;
+const DROPDOWN_MENU_CLASS = `absolute left-0 top-[calc(100%+0.35rem)] z-[120] min-w-full w-max max-w-[min(100vw-2rem,26rem)] max-h-80 overflow-y-auto rounded-xl shadow-2xl ${ANCHOR_ADVANCED_FROSTED_LIGHT_PANEL} p-1.5`;
 
 const DROPDOWN_TRIGGER_CLASS = `flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-2 text-left transition hover:brightness-[1.02] ${ANCHOR_ADVANCED_FROSTED_LIGHT_PANEL}`;
 
@@ -39,8 +44,6 @@ const SECTION_LABEL_CLASS =
   "px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/45";
 
 const SELECTOR_ICON_SIZE = 22;
-const PEG_FIELD_CLASS = "w-[9.25rem] shrink-0 sm:w-[10.25rem]";
-const BACKING_FIELD_CLASS = "w-[14.5rem] shrink-0 sm:w-[16rem]";
 
 function normalizeApyDisplay(apyLabel?: string): string | null {
   if (!apyLabel) return null;
@@ -119,15 +122,16 @@ function FrostedDropdown({
       <button
         type="button"
         onClick={() => onOpenChange(!open)}
-        className={DROPDOWN_TRIGGER_CLASS}
+        className={`${DROPDOWN_TRIGGER_CLASS} w-full`}
         aria-expanded={open}
         aria-haspopup="listbox"
       >
         {trigger}
         <ChevronDownIcon
-          className={`ml-auto h-5 w-5 shrink-0 text-[#1E4775]/55 transition ${
+          className={`ml-auto h-4 w-4 shrink-0 text-[#1E4775]/50 transition-transform ${
             open ? "rotate-180" : ""
           }`}
+          aria-hidden
         />
       </button>
       {open ? (
@@ -338,13 +342,13 @@ export function AnchorPegBackingSelectors({
 
   return (
     <div
-      className={`relative flex w-auto shrink-0 flex-col gap-2.5 sm:flex-row sm:items-end sm:gap-2.5 ${
+      className={`${MARKET_SELECTOR_ROW_CLASS} ${
         anyOpen ? "z-[100]" : ""
       } ${className}`.trim()}
     >
       <FrostedDropdown
         label="Anchor token"
-        className={PEG_FIELD_CLASS}
+        className={MARKET_SELECTOR_TOKEN_FIELD_CLASS}
         open={pegOpen}
         onOpenChange={(next) => {
           setPegOpen(next);
@@ -371,7 +375,7 @@ export function AnchorPegBackingSelectors({
 
       <FrostedDropdown
         label="Backing"
-        className={BACKING_FIELD_CLASS}
+        className={MARKET_SELECTOR_PAIR_FIELD_CLASS}
         open={backingOpen}
         onOpenChange={(next) => {
           setBackingOpen(next);

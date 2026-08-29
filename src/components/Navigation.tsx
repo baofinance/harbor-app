@@ -147,7 +147,7 @@ export default function Example() {
               </Suspense>
               <ConnectWallet />
               <NavNotificationBell />
-              <Popover className="relative" modal={false}>
+              <Popover className="relative">
                 <PopoverButton
                   className={HARBOR_NAV_ICON_BUTTON_CLASS}
                   aria-label="More navigation"

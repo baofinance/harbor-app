@@ -24,7 +24,7 @@ export type AnchorMarketPositionBarProps = {
 
 function StatCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex min-w-0 flex-col items-center justify-center px-3 py-2.5 text-center">
+    <div className="flex min-w-0 flex-col items-center justify-center px-2 py-2.5 text-center sm:px-4">
       <span className={ANCHOR_ADVANCED_HEADER_STRIP_LABEL}>{label}</span>
       <span className={ANCHOR_ADVANCED_HEADER_STRIP_VALUE} title={value}>
         {value}

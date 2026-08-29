@@ -5,6 +5,7 @@ import { flushSync } from "react-dom";
 import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
 import {
   formatTokenAmount18,
+  formatBalance,
 } from "@/utils/formatters";
 import { amountToUSD } from "@/utils/tokenPriceToUSD";
 import type {
@@ -39,6 +40,7 @@ import { DepositModalLayout } from "@/components/deposit/DepositModalLayout";
 import { AnchorBuyTransactionOverview } from "@/components/anchor/AnchorBuyTransactionOverview";
 import { AnchorTransactionOverview } from "@/components/anchor/AnchorTransactionOverview";
 import { DepositAmountCard } from "@/components/deposit/DepositAmountCard";
+import { DepositBalanceStrip } from "@/components/deposit/DepositBalanceStrip";
 import { DepositReceivePreview } from "@/components/deposit/DepositReceivePreview";
 import { DepositActionFooter } from "@/components/deposit/DepositActionFooter";
 import {
@@ -635,27 +637,50 @@ export function AnchorDepositWithdrawModalView(
               : "flex min-h-0 flex-1 flex-col p-3 sm:p-4"
           }
         >
-            {simpleMode && activeTab === "deposit" ? (
-              <div className="flex min-h-0 flex-1 flex-col">
-                <DepositModalFlowOverview
-                  parts={simpleDepositFlowParts}
-                  activeIndex={flowPage - 1}
-                  onStepClick={handleDepositFlowStepClick}
-                  onBack={handleDepositFlowBack}
-                />
-                <div
-                  className={
-                    flowPage === 1
-                      ? "flex min-h-0 flex-1 flex-col"
-                      : "hidden"
-                  }
-                  aria-hidden={flowPage !== 1}
-                >
-                  <DepositModalLayout
-                    scroll={
-                      <>
+            {simpleMode ? (
+              <DepositModalLayout
+                flowOverview={
+                  activeTab === "deposit" ? (
+                    <DepositModalFlowOverview
+                      parts={simpleDepositFlowParts}
+                      activeIndex={flowPage - 1}
+                      onStepClick={handleDepositFlowStepClick}
+                      onBack={handleDepositFlowBack}
+                    />
+                  ) : (
+                    <DepositModalFlowOverview
+                      parts={
+                        activeTab === "sell"
+                          ? simpleSellFlowParts
+                          : simpleWithdrawFlowParts
+                      }
+                      activeIndex={activeTab === "sell" ? 0 : flowPage - 1}
+                      onStepClick={
+                        activeTab === "sell"
+                          ? undefined
+                          : handleWithdrawFlowStepClick
+                      }
+                      onBack={
+                        activeTab === "sell"
+                          ? undefined
+                          : handleWithdrawFlowBack
+                      }
+                    />
+                  )
+                }
+                scroll={
+                  <>
+                    <div
+                      className={
+                        activeTab === "deposit" && flowPage === 1
+                          ? undefined
+                          : "hidden"
+                      }
+                      aria-hidden={activeTab !== "deposit" || flowPage !== 1}
+                    >
+                    <div className={DEPOSIT_SEGMENT_STACK_CLASS}>
                     {!isDirectPeggedDeposit || useDepositCollateralSegment ? (
-                      <div className={DEPOSIT_SEGMENT_STACK_CLASS}>
+                    <>
                     {!isDirectPeggedDeposit ? (
                       <div
                         className={DEPOSIT_SEGMENT_TRACK_CLASS}
@@ -726,7 +751,7 @@ export function AnchorDepositWithdrawModalView(
                         })}
                       </div>
                     ) : null}
-                      </div>
+                    </>
                     ) : null}
 
                     <DepositAmountCard
@@ -794,7 +819,7 @@ export function AnchorDepositWithdrawModalView(
                         capAtBalance: true,
                         onErrorClear: () => setError(null),
                         balanceSymbol: selectedDepositAsset || activeCollateralSymbol,
-                        balanceMaxDecimals: 4,
+                        balanceMaxDecimals: 6,
                         amountInputOverlay: (
                           <div className="absolute right-20 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
                             {tempMaxWarning ? (
@@ -824,6 +849,7 @@ export function AnchorDepositWithdrawModalView(
                         ) : null
                       }
                     />
+                    </div>
                     {/* Swap Preview - show when using any token deposit (always visible when swap asset is selected) */}
                       {anyTokenDeposit.needsSwap && (() => {
                         const targetToken = anyTokenDeposit.swapTargetToken === "ETH" ? "ETH" : "USDC";
@@ -908,46 +934,18 @@ export function AnchorDepositWithdrawModalView(
                       })()}
 
                       <ReservedErrorSlot message={error} />
-                      </>
-                    }
-                    overview={
-                      showDepositBuyOverview ? (
-                        <AnchorBuyTransactionOverview
-                          {...(depositBuyOverview ?? {
-                            receiveAmount: null,
-                            receiveSymbol: peggedTokenSymbol,
-                            emptyMessage:
-                              "Enter an amount to see what you'll receive.",
-                          })}
-                        />
-                      ) : null
-                    }
-                    footer={
-                      <DepositActionFooter
-                        layout={embedded ? "embedded" : "modal"}
-                        action={step1PrimaryAction}
-                        onSubmit={handleContinueStep1}
-                        onRetry={handleContinueStep1}
-                        feeFooter={buyFeeFooter}
-                      />
-                    }
-                    footerDisabled={isProcessing}
-                  />
-                </div>
+                    </div>
 
                 {/* Page 2: Deposit — reward token + stability pool */}
                 {!mintOnly ? (
                 <div
                   className={
-                    flowPage === 2
-                      ? "flex min-h-0 flex-1 flex-col"
+                    activeTab === "deposit" && flowPage === 2
+                      ? undefined
                       : "hidden"
                   }
-                  aria-hidden={flowPage !== 2}
+                  aria-hidden={activeTab !== "deposit" || flowPage !== 2}
                 >
-                  <DepositModalLayout
-                    scroll={
-                      <>
                       {!skipRewardStep && rewardTokenOptions.length > 1 ? (
                         <div className={ANCHOR_MODAL_CARD_STACK}>
                           <div
@@ -1104,151 +1102,23 @@ export function AnchorDepositWithdrawModalView(
                         <ReservedErrorSlot message={error} className="mt-2" />
                       </div>
                     )}
-                      </>
-                    }
-                    overview={
-                      showDepositBuyOverview ? (
-                        <AnchorBuyTransactionOverview
-                          {...(depositBuyOverview ?? {
-                            receiveAmount: null,
-                            receiveSymbol: peggedTokenSymbol,
-                            emptyMessage:
-                              "Enter an amount to see what you'll receive.",
-                          })}
-                        />
-                      ) : null
-                    }
-                    footer={
-                      <DepositActionFooter
-                        layout={embedded ? "embedded" : "modal"}
-                        action={depositPagePrimaryAction}
-                        onSubmit={handleContinueDepositPage}
-                        onRetry={handleContinueDepositPage}
-                        feeFooter={buyFeeFooter}
-                      />
-                    }
-                    footerDisabled={isProcessing}
-                  />
                 </div>
                 ) : null}
-              </div>
-            ) : !simpleMode ||
-              (simpleMode &&
-                (activeTab === "withdraw" || activeTab === "sell")) ? (
-              // Advanced Mode: Original Content
-              <>
-                {activeTab === "deposit" && (
-                  <DepositModalFlowOverview parts={depositFlowParts} />
-                )}
 
-                {/* Transaction Status List */}
-                {(step === "withdrawing" || step === "redeeming") &&
-                  transactionSteps.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="text-sm font-medium text-[#1E4775] mb-3">
-                        Transaction Status:
-                      </div>
-                      {transactionSteps.map((txStep) => (
-                        <div
-                          key={txStep.id}
-                          className="p-3 rounded-md bg-[#17395F]/5 border border-[#17395F]/20"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              {txStep.status === "pending" && (
-                                <div className="w-4 h-4 border-2 border-[#1E4775]/30 rounded-full" />
-                              )}
-                              {txStep.status === "processing" && (
-                                <div className="w-4 h-4 border-2 border-[#1E4775] border-t-transparent rounded-full animate-spin" />
-                              )}
-                              {txStep.status === "success" && (
-                                <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                                  <svg
-                                    className="w-3 h-3 text-white"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M5 13l4 4L19 7"
-                                    />
-                                  </svg>
-                                </div>
-                              )}
-                              {txStep.status === "error" && (
-                                <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                                  <svg
-                                    className="w-3 h-3 text-white"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M6 18L18 6M6 6l12 12"
-                                    />
-                                  </svg>
-                                </div>
-                              )}
-                              <span className="text-sm text-[#1E4775] font-medium">
-                                {txStep.label}
-                              </span>
-                            </div>
-                            {txStep.hash && (
-                              <a
-                                href={`https://etherscan.io/tx/${txStep.hash}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-[#1E4775]/70 hover:text-[#1E4775] underline"
-                              >
-                                View
-                              </a>
-                            )}
-                          </div>
-                          {txStep.error && (
-                            <div className="mt-2 text-xs text-red-600">
-                              {txStep.error}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                {/* Positions List for Withdraw Tab - show on input and on error so user can see/change selection after reject */}
-                {(activeTab === "withdraw" || activeTab === "sell") &&
-                  (step === "input" || step === "error") &&
-                  (simpleMode ? (
-                    <DepositModalLayout
-                      flowOverview={
-                        <DepositModalFlowOverview
-                          parts={
-                            activeTab === "sell"
-                              ? simpleSellFlowParts
-                              : simpleWithdrawFlowParts
-                          }
-                          activeIndex={
-                            activeTab === "sell" ? 0 : flowPage - 1
-                          }
-                          onStepClick={
-                            activeTab === "sell"
-                              ? undefined
-                              : handleWithdrawFlowStepClick
-                          }
-                          onBack={
-                            activeTab === "sell"
-                              ? undefined
-                              : handleWithdrawFlowBack
-                          }
-                        />
+                    <div
+                      className={
+                        (activeTab === "withdraw" || activeTab === "sell") &&
+                        (step === "input" || step === "error")
+                          ? undefined
+                          : "hidden"
                       }
-                      scroll={
-                        <>
+                      aria-hidden={
+                        !(
+                          (activeTab === "withdraw" || activeTab === "sell") &&
+                          (step === "input" || step === "error")
+                        )
+                      }
+                    >
                     {(simpleMode ? flowPage === 1 && activeTab === "withdraw" : true) ? (
                     <div className={DEPOSIT_SEGMENT_STACK_CLASS}>
                       <div
@@ -1259,12 +1129,12 @@ export function AnchorDepositWithdrawModalView(
                         {(
                           [
                             {
-                              id: "withdrawOnly" as const,
-                              label: "Withdraw only",
-                            },
-                            {
                               id: "withdrawAndSell" as const,
                               label: "Withdraw & Sell",
+                            },
+                            {
+                              id: "withdrawOnly" as const,
+                              label: "Withdraw only",
                             },
                           ] as const
                         ).map(({ id, label }) => {
@@ -1765,14 +1635,22 @@ export function AnchorDepositWithdrawModalView(
                           {activeTab === "sell" ||
                           sellRedeemSource === "wallet" ||
                           !hasPoolSellAmount ? (
-                            <div className="mt-2">
+                            <div className="mt-2 space-y-2">
+                              <DepositBalanceStrip ariaLabel={`Wallet ${peggedTokenSymbol} balance`}>
+                                {formatBalance(
+                                  peggedBalance,
+                                  peggedTokenSymbol,
+                                  6,
+                                  18,
+                                )}
+                              </DepositBalanceStrip>
                               <label
                                 htmlFor="sell-wallet-amount"
                                 className={DEPOSIT_SECTION_LABEL_CLASS}
                               >
                                 Wallet amount
                               </label>
-                              <div className="relative mt-1">
+                              <div className="relative">
                                 <input
                                   id="sell-wallet-amount"
                                   type="text"
@@ -1982,45 +1860,157 @@ export function AnchorDepositWithdrawModalView(
                     {simpleMode && error ? (
                       <ErrorBanner message={error} className="mt-2" />
                     ) : null}
-                        </>
-                      }
-                      overview={
-                        withdrawTransactionOverview ? (
-                          <AnchorTransactionOverview
-                            {...withdrawTransactionOverview}
-                          />
-                        ) : null
-                      }
-                      footer={
-                        !isProcessing && step !== "success" ? (
-                          <DepositActionFooter
-                            layout={embedded ? "embedded" : "modal"}
-                            action={
-                              activeTab === "sell" || flowPage === 2
-                                ? withdrawPrimaryAction
-                                : withdrawPage1PrimaryAction
-                            }
-                            onSubmit={
-                              activeTab === "sell" || flowPage === 2
-                                ? handleAction
-                                : withdrawOnly
-                                  ? handleAction
-                                  : handleContinueToSell
-                            }
-                            onRetry={
-                              activeTab === "sell" || flowPage === 2
-                                ? handleAction
-                                : withdrawOnly
-                                  ? handleAction
-                                  : handleContinueToSell
-                            }
-                            feeFooter={withdrawFeeFooter}
-                          />
-                        ) : null
-                      }
-                      footerDisabled={isProcessing}
+                    </div>
+                  </>
+                }
+                overview={
+                  activeTab === "deposit" ? (
+                    <AnchorBuyTransactionOverview
+                      {...(depositBuyOverview ?? {
+                        receiveAmount: null,
+                        receiveSymbol: peggedTokenSymbol,
+                        emptyMessage:
+                          "Enter an amount to see what you'll receive.",
+                      })}
                     />
-                  ) : null)}
+                  ) : (
+                    <AnchorTransactionOverview
+                      {...(withdrawTransactionOverview ?? {
+                        receiveAmount: null,
+                        receiveSymbol: peggedTokenSymbol,
+                        emptyMessage:
+                          "Enter an amount to see what you'll receive.",
+                      })}
+                    />
+                  )
+                }
+                footer={
+                  step === "success" ? null : (
+                    <DepositActionFooter
+                      layout={embedded ? "embedded" : "modal"}
+                      action={
+                        activeTab === "deposit"
+                          ? flowPage === 1
+                            ? step1PrimaryAction
+                            : depositPagePrimaryAction
+                          : activeTab === "sell" || flowPage === 2
+                            ? withdrawPrimaryAction
+                            : withdrawPage1PrimaryAction
+                      }
+                      onSubmit={
+                        activeTab === "deposit"
+                          ? flowPage === 1
+                            ? handleContinueStep1
+                            : handleContinueDepositPage
+                          : activeTab === "sell" || flowPage === 2
+                            ? handleAction
+                            : withdrawOnly
+                              ? handleAction
+                              : handleContinueToSell
+                      }
+                      onRetry={
+                        activeTab === "deposit"
+                          ? flowPage === 1
+                            ? handleContinueStep1
+                            : handleContinueDepositPage
+                          : activeTab === "sell" || flowPage === 2
+                            ? handleAction
+                            : withdrawOnly
+                              ? handleAction
+                              : handleContinueToSell
+                      }
+                      feeFooter={
+                        activeTab === "deposit" ? buyFeeFooter : withdrawFeeFooter
+                      }
+                    />
+                  )
+                }
+                footerDisabled={isProcessing}
+              />
+            ) : (
+              <>
+                {activeTab === "deposit" && (
+                  <DepositModalFlowOverview parts={depositFlowParts} />
+                )}
+
+                {/* Transaction Status List */}
+                {(step === "withdrawing" || step === "redeeming") &&
+                  transactionSteps.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="text-sm font-medium text-[#1E4775] mb-3">
+                        Transaction Status:
+                      </div>
+                      {transactionSteps.map((txStep) => (
+                        <div
+                          key={txStep.id}
+                          className="p-3 rounded-md bg-[#17395F]/5 border border-[#17395F]/20"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              {txStep.status === "pending" && (
+                                <div className="w-4 h-4 border-2 border-[#1E4775]/30 rounded-full" />
+                              )}
+                              {txStep.status === "processing" && (
+                                <div className="w-4 h-4 border-2 border-[#1E4775] border-t-transparent rounded-full animate-spin" />
+                              )}
+                              {txStep.status === "success" && (
+                                <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                  <svg
+                                    className="w-3 h-3 text-white"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M5 13l4 4L19 7"
+                                    />
+                                  </svg>
+                                </div>
+                              )}
+                              {txStep.status === "error" && (
+                                <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                                  <svg
+                                    className="w-3 h-3 text-white"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M6 18L18 6M6 6l12 12"
+                                    />
+                                  </svg>
+                                </div>
+                              )}
+                              <span className="text-sm text-[#1E4775] font-medium">
+                                {txStep.label}
+                              </span>
+                            </div>
+                            {txStep.hash && (
+                              <a
+                                href={`https://etherscan.io/tx/${txStep.hash}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-[#1E4775]/70 hover:text-[#1E4775] underline"
+                              >
+                                View
+                              </a>
+                            )}
+                          </div>
+                          {txStep.error && (
+                            <div className="mt-2 text-xs text-red-600">
+                              {txStep.error}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                     {/* Amount Input - Only for Deposit Tab */}
                 {activeTab === "deposit" && (
@@ -2920,7 +2910,7 @@ export function AnchorDepositWithdrawModalView(
                   </div>
                 )}
               </>
-            ) : null}
+            )}
 
           {step !== "success" && !simpleMode && (
             <div className="flex gap-3 p-4 border-t border-[#1E4775]/20">

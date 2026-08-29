@@ -209,11 +209,6 @@ export function useAnchorDepositWithdrawModal({
   const isCorrectNetwork = effectiveChainId === marketChainId;
   const shouldShowNetworkSwitch = !isCorrectNetwork && isConnected;
 
-  const handleTxError = useCallback((msg: string) => {
-    setError(msg);
-    setStep("error");
-  }, []);
-
   // Function to handle network switching (manual trigger from UI)
   const handleSwitchNetwork = async () => {
     try {
@@ -317,6 +312,8 @@ export function useAnchorDepositWithdrawModal({
   const [amount, setAmount] = useState("");
   const [step, setStep] = useState<ModalStep>("input");
   const [error, setError] = useState<string | null>(null);
+  const [transactionNotificationError, setTransactionNotificationError] =
+    useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [txHashes, setTxHashes] = useState<{
     approveCollateral?: string;
@@ -361,6 +358,26 @@ export function useAnchorDepositWithdrawModal({
   // Deposit/Mint tab options
   const [mintOnly, setMintOnly] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+
+  const handleTxError = useCallback((msg: string) => {
+    setError(null);
+    setTransactionNotificationError(msg);
+    setShowNotifications(true);
+    setStep("error");
+  }, []);
+
+  useEffect(() => {
+    if (
+      step === "approving" ||
+      step === "minting" ||
+      step === "depositing" ||
+      step === "withdrawing" ||
+      step === "redeeming"
+    ) {
+      setTransactionNotificationError(null);
+    }
+  }, [step]);
+
   const [withdrawOverviewExpanded, setWithdrawOverviewExpanded] =
     useState(false);
   const [depositInStabilityPool, setDepositInStabilityPool] = useState(true);
@@ -4137,19 +4154,31 @@ export function useAnchorDepositWithdrawModal({
     activeWrappedCollateralSymbol,
   ]);
 
-  const anchorModalNotificationCount =
-    activeTab === "withdraw" ? withdrawNotificationCount : depositNotificationCount;
+  const anchorModalNotificationCount = useMemo(() => {
+    const base =
+      activeTab === "withdraw"
+        ? withdrawNotificationCount
+        : depositNotificationCount;
+    return transactionNotificationError ? base + 1 : base;
+  }, [
+    activeTab,
+    withdrawNotificationCount,
+    depositNotificationCount,
+    transactionNotificationError,
+  ]);
 
   const anchorModalNotificationSeverities = useMemo((): Array<
     "navy" | "green" | "amber" | "coral"
   > => {
+    const severities: Array<"navy" | "green" | "amber" | "coral"> = [];
+    if (transactionNotificationError) severities.push("coral");
     if (activeTab === "withdraw") {
-      const severities: Array<"navy" | "green" | "amber" | "coral"> = ["navy"];
+      severities.push("navy");
       if (showWithdrawRedemptionCapNotice) severities.push("amber");
       if (showWithdrawCrossMarketNotice) severities.push("amber");
       return severities;
     }
-    const severities: Array<"navy" | "green" | "amber" | "coral"> = ["navy"];
+    severities.push("navy");
     if (mintOnly && !isDirectPeggedDeposit) severities.push("navy");
     if (!isCollateralOnlyChain && !anyTokenDeposit.needsSwap) {
       severities.push("green");
@@ -4166,6 +4195,7 @@ export function useAnchorDepositWithdrawModal({
     return severities;
   }, [
     activeTab,
+    transactionNotificationError,
     showWithdrawRedemptionCapNotice,
     showWithdrawCrossMarketNotice,
     isCollateralOnlyChain,
@@ -4177,9 +4207,14 @@ export function useAnchorDepositWithdrawModal({
   ]);
 
   const anchorModalNotificationsBody = useMemo(() => {
+    const transactionErrorCallout = transactionNotificationError ? (
+      <ErrorBanner message={transactionNotificationError} />
+    ) : null;
+
     if (activeTab === "withdraw") {
       return (
         <>
+          {transactionErrorCallout}
           <InfoCallout
             tone="info"
             title="Info:"
@@ -4227,6 +4262,7 @@ export function useAnchorDepositWithdrawModal({
 
     return (
       <>
+        {transactionErrorCallout}
         {mintOnly && !isDirectPeggedDeposit && (
           <InfoCallout
             tone="info"
@@ -4272,6 +4308,7 @@ export function useAnchorDepositWithdrawModal({
     );
   }, [
     activeTab,
+    transactionNotificationError,
     showWithdrawRedemptionCapNotice,
     redeemPreview,
     peggedTokenSymbol,
@@ -4787,6 +4824,7 @@ export function useAnchorDepositWithdrawModal({
     anyTokenDeposit.setAmount("");
     setStep("input");
     setError(null);
+    setTransactionNotificationError(null);
     setTxHash(null);
     setTxHashes({});
     setFlowPage(1);
@@ -4815,6 +4853,7 @@ export function useAnchorDepositWithdrawModal({
         setFlowPage(1);
       }
       setError(null);
+      setTransactionNotificationError(null);
       setStep("input");
     },
     [flowPage],
@@ -4828,6 +4867,7 @@ export function useAnchorDepositWithdrawModal({
         setFlowPage(1);
       }
       setError(null);
+      setTransactionNotificationError(null);
       setStep("input");
     },
     [flowPage],
@@ -6102,6 +6142,7 @@ export function useAnchorDepositWithdrawModal({
     setAmount("");
     setStep("input");
     setError(null);
+    setTransactionNotificationError(null);
     setTxHash(null);
     if (simpleMode) {
       if (tab === "sell") {
@@ -10358,8 +10399,7 @@ export function useAnchorDepositWithdrawModal({
       progress.close();
       setProgressConfig(defaultProgressConfig);
       setTxHashes({});
-      setError(errorMessage);
-      setStep("error");
+      handleTxError(errorMessage);
     }
   };
 

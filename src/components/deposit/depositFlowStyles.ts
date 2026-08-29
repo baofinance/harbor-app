@@ -13,12 +13,19 @@ export const ANCHOR_MODAL_SECTION_GAP = "space-y-2";
 export const DEPOSIT_SEGMENT_TRACK_CLASS =
   "flex w-full rounded-lg bg-[#e2e8f0] p-px";
 
+/** Active segment thumb — shared by toggles and read-only balance strip. */
+export const DEPOSIT_SEGMENT_ACTIVE_CLASS =
+  "bg-white/90 text-[#1E4775] shadow-sm backdrop-blur-sm";
+
+/** Full-width balance readout styled like a selected segment toggle. */
+export const DEPOSIT_BALANCE_STRIP_INNER_CLASS = `flex w-full items-center justify-center rounded-md px-3 py-1.5 text-xs font-semibold ${DEPOSIT_SEGMENT_ACTIVE_CLASS}`;
+
 /** Tight vertical gap between stacked segment toggle rows. */
 export const DEPOSIT_SEGMENT_STACK_CLASS = "space-y-0.5";
 
 /** Compact flow breadcrumb under modal tabs (Buy / Mint › Deposit). */
 export const DEPOSIT_FLOW_OVERVIEW_CLASS =
-  "grid grid-cols-[1.75rem_1fr_1.75rem] items-center border-b border-[#e2e8f0] pt-1 pb-2";
+  "grid min-h-[2.25rem] shrink-0 grid-cols-[1.75rem_1fr_1.75rem] items-center border-b border-[#e2e8f0] pt-1 pb-2";
 
 
 /** Scrollable body above pinned overview + footer. */
@@ -29,7 +36,7 @@ export const ANCHOR_MODAL_SCROLL_CLASS =
 export const ANCHOR_MODAL_CARD_STACK = "space-y-2";
 
 /** Pinned transaction overview above the action footer. */
-export const ANCHOR_TRANSACTION_OVERVIEW_WRAPPER = "shrink-0 pt-2";
+export const ANCHOR_TRANSACTION_OVERVIEW_WRAPPER = "shrink-0 pt-2 min-h-[6.5rem]";
 
 /** Section title above the overview card. */
 export const ANCHOR_TRANSACTION_OVERVIEW_LABEL =
@@ -47,7 +54,7 @@ export const ANCHOR_MODAL_FOOTER_WRAPPER = "shrink-0 mt-auto";
 
 /** Border + padding above fee row and primary button. */
 export const ANCHOR_MODAL_FOOTER_CHROME =
-  "shrink-0 space-y-2.5 border-t border-[#1E4775]/8 pt-3";
+  "shrink-0 min-h-[6.75rem] space-y-2.5 border-t border-[#1E4775]/8 pt-3";
 
 /** Embedded trade panel height — matches chart column on lg (`650px`). */
 export const DEPOSIT_EMBEDDED_PANEL_HEIGHT =

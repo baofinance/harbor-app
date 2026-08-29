@@ -33,7 +33,7 @@ import {
 } from "@/components/shared/harborButtonStyles";
 
 /** Standalone header metric cards on dark Sail chrome (wallet / this market). */
-export const SAIL_ADVANCED_HEADER_STRIP_SHELL = `rounded-xl overflow-hidden h-full ${HARBOR_FROSTED_LIGHT_CARD}`;
+export const SAIL_ADVANCED_HEADER_STRIP_SHELL = `rounded-xl overflow-hidden h-full min-h-[4.25rem] ${HARBOR_FROSTED_LIGHT_CARD}`;
 
 export const SAIL_ADVANCED_HEADER_STRIP_DIVIDE =
   "divide-x divide-y divide-[#1E4775]/10";
@@ -70,6 +70,16 @@ export const SAIL_ADVANCED_FROSTED_LIGHT_PANEL = HARBOR_FROSTED_LIGHT_CARD;
 
 export const SAIL_ADVANCED_SHELL = MV_CARD_SHELL;
 export const SAIL_ADVANCED_LABEL = MV_SECTION_LABEL;
+
+/** Shared token + pair/backing selector row (Earn + Leverage headers) — 275px total. */
+export const MARKET_SELECTOR_ROW_CLASS =
+  "relative flex w-[275px] max-w-full shrink-0 flex-col gap-2 sm:flex-row sm:items-end sm:gap-2";
+
+export const MARKET_SELECTOR_TOKEN_FIELD_CLASS =
+  "min-w-0 w-full shrink sm:flex-[2] sm:basis-0";
+
+export const MARKET_SELECTOR_PAIR_FIELD_CLASS =
+  "min-w-0 w-full shrink sm:flex-[3] sm:basis-0";
 /** Small zone label above header stat groups (Market, Your wallet, etc.). */
 export const SAIL_ADVANCED_SECTION_LABEL =
   "mb-1 text-[10px] font-semibold uppercase tracking-wider text-white/45";

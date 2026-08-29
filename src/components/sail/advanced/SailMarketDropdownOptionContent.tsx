@@ -45,6 +45,8 @@ type SailMarketDropdownTitleProps = {
   muted?: boolean;
   titleClassName?: string;
   leverageClassName?: string;
+  /** When false, show the full pair/leverage line in closed triggers. */
+  truncateTitle?: boolean;
 };
 
 /** Market title with optional inline leverage — matches dropdown option rows. */
@@ -54,19 +56,22 @@ export function SailMarketDropdownTitle({
   muted = false,
   titleClassName = SAIL_MARKET_DROPDOWN_TITLE_CLASS,
   leverageClassName = SAIL_MARKET_DROPDOWN_LEVERAGE_INLINE_CLASS,
+  truncateTitle = true,
 }: SailMarketDropdownTitleProps) {
   const title = formatSailMarketDropdownTitle(market);
 
   return (
     <div
-      className={`flex min-w-0 flex-1 items-baseline gap-0 ${
-        muted ? "text-[#64748b]" : ""
-      }`}
+      className={`flex items-baseline gap-0 ${
+        truncateTitle ? "min-w-0 flex-1" : "shrink-0"
+      } ${muted ? "text-[#64748b]" : ""}`}
     >
       <span
-        className={`min-w-0 truncate ${titleClassName} ${
-          muted ? "text-[#64748b]" : ""
-        }`}
+        className={`${
+          truncateTitle
+            ? "min-w-0 truncate"
+            : "shrink-0 whitespace-nowrap"
+        } ${titleClassName} ${muted ? "text-[#64748b]" : ""}`}
       >
         {title}
       </span>
@@ -149,6 +154,7 @@ export function SailMarketDropdownOptionRowContent({
         market={market}
         leverageRatio={leverageRatio}
         muted={muted}
+        truncateTitle={false}
       />
       {statusChip ? (
         <span className={SAIL_MARKET_DROPDOWN_STATUS_CHIP_CLASS}>
@@ -190,7 +196,7 @@ export function SailMarketDropdownTriggerContent({
   const statusChip = sailMarketOptionStatusChip({ isComingSoon, isDepositsPaused });
 
   return (
-    <>
+    <div className="flex min-w-0 flex-1 items-center gap-2">
       {showChainIcon ? (
         <NetworkIconCell
           chainName={harborMarketChainKey(market)}
@@ -202,6 +208,7 @@ export function SailMarketDropdownTriggerContent({
         market={market}
         leverageRatio={leverageRatio}
         muted={muted}
+        truncateTitle={false}
         titleClassName={SAIL_MARKET_DROPDOWN_TRIGGER_TITLE_CLASS}
         leverageClassName={`text-sm ${SAIL_MARKET_DROPDOWN_LEVERAGE_INLINE_CLASS}`}
       />
@@ -213,10 +220,9 @@ export function SailMarketDropdownTriggerContent({
         <SailMarketDropdownPosition
           label={positionLabel}
           tone={positionTone}
-          className="hidden shrink-0 truncate sm:block"
+          className="shrink-0 whitespace-nowrap"
         />
       ) : null}
-      <span className="min-w-0 flex-1" aria-hidden="true" />
-    </>
+    </div>
   );
 }

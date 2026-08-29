@@ -14,6 +14,7 @@ import {
   DEPOSIT_AMOUNT_CARD_CLASS,
   DEPOSIT_SECTION_LABEL_CLASS,
 } from "@/components/deposit/depositFlowStyles";
+import { DepositBalanceStrip } from "@/components/deposit/DepositBalanceStrip";
 
 export type DepositAmountCardProps = {
   tokenSelector?: TokenSelectorConfig;
@@ -75,6 +76,13 @@ export function DepositAmountCard({
         }
       : baseHandleChange);
 
+  const balanceStrip =
+    balanceContentOverride == null && balanceSymbol ? (
+      <DepositBalanceStrip ariaLabel={`Balance ${balanceSymbol}`}>
+        {formatBalance(balance ?? 0n, balanceSymbol, balanceMaxDecimals, decimals)}
+      </DepositBalanceStrip>
+    ) : null;
+
   const balanceContent =
     balanceContentOverride ??
     (balanceSymbol ? (
@@ -92,7 +100,9 @@ export function DepositAmountCard({
   }`;
 
   return (
-    <div className={DEPOSIT_AMOUNT_CARD_CLASS}>
+    <>
+      {balanceStrip}
+      <div className={DEPOSIT_AMOUNT_CARD_CLASS}>
       {showTokenRow ? (
         <div className={`${tokenRowLabel ? "space-y-2" : ""} mb-3`}>
           {tokenRowLabel ? (
@@ -119,7 +129,7 @@ export function DepositAmountCard({
         </div>
       ) : null}
 
-      {balanceContent ? (
+      {balanceContentOverride ? (
         <div className="mb-2 flex items-center justify-end">{balanceContent}</div>
       ) : null}
 
@@ -152,6 +162,7 @@ export function DepositAmountCard({
       {afterAmount ? (
         <div className="mt-3 space-y-2 border-t border-[#1E4775]/8 pt-3">{afterAmount}</div>
       ) : null}
-    </div>
+      </div>
+    </>
   );
 }

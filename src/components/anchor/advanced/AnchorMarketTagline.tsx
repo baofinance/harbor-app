@@ -6,7 +6,7 @@ const TAGLINE_CLASS =
   "text-center text-xl font-bold leading-snug text-white/90 sm:text-2xl lg:text-3xl lg:whitespace-nowrap";
 const ACCENT_CLASS = "font-extrabold text-[#6bc4a8]";
 const PERKS_CLASS =
-  "mb-1.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] font-medium tracking-wide text-white/70 sm:flex-nowrap sm:gap-x-0 sm:text-xs";
+  "mb-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[11px] font-medium tracking-wide text-white/70 sm:gap-x-0 sm:text-xs";
 const PERK_ITEM_CLASS = "inline-flex items-center gap-1.5 text-white/75";
 const PERK_RULE_CLASS =
   "mx-2.5 hidden h-3 w-px shrink-0 bg-white/20 sm:mx-3 sm:inline-block";
