@@ -12,7 +12,7 @@ import {
 const SAIL_DROPDOWN_MENU_CLASS =
   `absolute left-0 right-0 top-[calc(100%+0.35rem)] z-50 max-h-72 overflow-y-auto rounded-xl shadow-xl ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL} p-1`;
 
-const SAIL_DROPDOWN_TRIGGER_CLASS = `flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-2 text-left transition hover:brightness-[1.02] ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`;
+const SAIL_DROPDOWN_TRIGGER_CLASS = `flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-left transition hover:brightness-[1.02] ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`;
 
 const SAIL_DROPDOWN_OPTION_ACTIVE_CLASS = "bg-[#1E4775]/10";
 const SAIL_DROPDOWN_OPTION_HOVER_CLASS = "hover:bg-[#1E4775]/[0.06]";
@@ -135,7 +135,7 @@ export function SailMarketDropdown({
           isDepositsPaused={selected.isDepositsPaused}
         />
         <ChevronDownIcon
-          className={`h-5 w-5 shrink-0 text-[#1E4775]/55 transition ${open ? "rotate-180" : ""}`}
+          className={`ml-0.5 h-4 w-4 shrink-0 text-[#1E4775]/40 transition ${open ? "rotate-180" : ""}`}
         />
       </button>
 

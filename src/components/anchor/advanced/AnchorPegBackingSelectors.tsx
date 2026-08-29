@@ -18,6 +18,7 @@ import {
 } from "@/utils/anchorMarketSelectors";
 import {
   ANCHOR_ADVANCED_FROSTED_LIGHT_PANEL,
+  MARKET_SELECTOR_FIELD_LABEL_CLASS,
   MARKET_SELECTOR_PAIR_FIELD_CLASS,
   MARKET_SELECTOR_ROW_CLASS,
   MARKET_SELECTOR_TOKEN_FIELD_CLASS,
@@ -25,7 +26,7 @@ import {
 
 const DROPDOWN_MENU_CLASS = `absolute left-0 top-[calc(100%+0.35rem)] z-[120] min-w-full w-max max-w-[min(100vw-2rem,26rem)] max-h-80 overflow-y-auto rounded-xl shadow-2xl ${ANCHOR_ADVANCED_FROSTED_LIGHT_PANEL} p-1.5`;
 
-const DROPDOWN_TRIGGER_CLASS = `flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-2 text-left transition hover:brightness-[1.02] ${ANCHOR_ADVANCED_FROSTED_LIGHT_PANEL}`;
+const DROPDOWN_TRIGGER_CLASS = `flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-left transition hover:brightness-[1.02] ${ANCHOR_ADVANCED_FROSTED_LIGHT_PANEL}`;
 
 const OPTION_ACTIVE = "bg-[#1E4775]/10";
 const OPTION_HOVER = "hover:bg-[#1E4775]/[0.06]";
@@ -116,9 +117,7 @@ function FrostedDropdown({
       ref={rootRef}
       className={`relative min-w-0 ${open ? "z-[110]" : ""} ${className}`.trim()}
     >
-      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-white/55">
-        {label}
-      </p>
+      <p className={MARKET_SELECTOR_FIELD_LABEL_CLASS}>{label}</p>
       <button
         type="button"
         onClick={() => onOpenChange(!open)}

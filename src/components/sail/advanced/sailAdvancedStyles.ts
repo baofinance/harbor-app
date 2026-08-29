@@ -5,7 +5,6 @@ import {
   MV_GLASS_INSET_LIGHT,
   MV_HEADLINE,
   MV_META_TEXT,
-  MV_SECTION_LABEL,
 } from "@/components/genesis/maidenVoyageLayoutStyles";
 import {
   HARBOR_FROSTED_LIGHT_CARD,
@@ -69,22 +68,30 @@ export const SAIL_ADVANCED_GLASS_CARD = `rounded-xl ${MV_GLASS_INSET_LIGHT}`;
 export const SAIL_ADVANCED_FROSTED_LIGHT_PANEL = HARBOR_FROSTED_LIGHT_CARD;
 
 export const SAIL_ADVANCED_SHELL = MV_CARD_SHELL;
-export const SAIL_ADVANCED_LABEL = MV_SECTION_LABEL;
 
 /** Shared token + pair/backing selector row (Earn + Leverage headers). */
 export const MARKET_SELECTOR_ROW_CLASS =
-  "relative flex w-full max-w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-end sm:gap-2";
+  "relative grid w-full max-w-full shrink-0 grid-cols-1 gap-2 sm:w-auto sm:grid-cols-[10.25rem_275px] sm:gap-2";
 
 /** Compact token/peg field — icon + short symbol. */
 export const MARKET_SELECTOR_TOKEN_FIELD_CLASS =
-  "min-w-0 w-full shrink-0 sm:w-[10.25rem]";
+  "min-w-0 w-full shrink-0 self-start sm:w-[10.25rem]";
 
 /** Pair/backing field — 275px (was 336px / 21rem). */
 export const MARKET_SELECTOR_PAIR_FIELD_CLASS =
-  "min-w-0 w-full shrink-0 sm:w-[275px]";
-/** Small zone label above header stat groups (Market, Your wallet, etc.). */
-export const SAIL_ADVANCED_SECTION_LABEL =
-  "mb-1 text-[10px] font-semibold uppercase tracking-wider text-white/45";
+  "min-w-0 w-full shrink-0 self-start sm:w-[275px]";
+
+/** Zone label above a selector row or stat strip (Market, Your wallet, …). */
+export const MARKET_SELECTOR_ZONE_LABEL_CLASS =
+  "mb-1 block pl-0 text-[10px] font-semibold leading-none tracking-wide text-white/55";
+
+/** Field label above each selector column (Sail token, Pair, Backing, …). */
+export const MARKET_SELECTOR_FIELD_LABEL_CLASS = `${MARKET_SELECTOR_ZONE_LABEL_CLASS} uppercase`;
+
+/** Small zone label above header stat groups — alias for selector zone labels. */
+export const SAIL_ADVANCED_SECTION_LABEL = MARKET_SELECTOR_ZONE_LABEL_CLASS;
+
+export const SAIL_ADVANCED_LABEL = MARKET_SELECTOR_ZONE_LABEL_CLASS;
 
 /** Typography on white frosted cards. */
 export const SAIL_ADVANCED_LIGHT_LABEL =
