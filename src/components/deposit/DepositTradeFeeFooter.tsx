@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import Link from "next/link";
 import type { FeeBand } from "@/utils/sailFeeBands";
 import { SailFeeRatioCell } from "@/components/sail/SailFeeRatioCell";
 import { SailFeeBandBadge } from "@/components/sail/SailFeeBandBadge";
@@ -22,37 +21,23 @@ export type DepositTradeFeeItem = {
   activeBand?: FeeBand;
   /** Plain percentage or range when ratio bands are unavailable. */
   displayValue?: string;
-  estimatePct?: number;
   tooltip?: ReactNode;
 };
 
 type DepositTradeFeeFooterProps = {
   heading: string;
   items: DepositTradeFeeItem[];
-  showTransparencyLink?: boolean;
 };
 
-function pctToRatio(pct: number): bigint {
+export function pctToDepositFeeRatio(pct: number): bigint {
   return BigInt(Math.round(pct * 1e16));
 }
 
-function FeeEstimate({
-  pct,
-  warnHigh,
-}: {
-  pct: number;
-  warnHigh?: boolean;
-}) {
-  return (
-    <span
-      className={`font-mono text-[10px] tabular-nums ${
-        warnHigh ? "text-red-600" : "text-[#1E4775]/50"
-      }`}
-    >
-      est. {pct > 100 ? "~1.00" : pct.toFixed(2)}%
-      {warnHigh ? " ⚠️" : ""}
-    </span>
-  );
+function parseSingleFeePercent(displayValue: string): number | null {
+  const match = displayValue.trim().match(/^([\d.]+)%$/);
+  if (!match) return null;
+  const pct = parseFloat(match[1]!);
+  return Number.isFinite(pct) ? pct : null;
 }
 
 function FeeValueCell({
@@ -60,53 +45,36 @@ function FeeValueCell({
   isMintSail = false,
   activeBand,
   displayValue,
-  estimatePct,
 }: Pick<
   DepositTradeFeeItem,
-  "ratio" | "isMintSail" | "activeBand" | "displayValue" | "estimatePct"
+  "ratio" | "isMintSail" | "activeBand" | "displayValue"
 >) {
   if (ratio !== undefined) {
     return (
-      <>
-        <SailFeeRatioCell
-          ratio={ratio}
-          isMintSail={isMintSail}
-          activeBand={activeBand}
-        />
-        {estimatePct != null && estimatePct > 0 ? (
-          <FeeEstimate
-            pct={estimatePct}
-            warnHigh={estimatePct > 2 && estimatePct <= 100}
-          />
-        ) : null}
-      </>
+      <SailFeeRatioCell
+        ratio={ratio}
+        isMintSail={isMintSail}
+        activeBand={activeBand}
+      />
     );
   }
 
-  if (estimatePct != null && estimatePct > 0) {
-    return (
-      <>
+  if (displayValue) {
+    const singlePct = parseSingleFeePercent(displayValue);
+    if (singlePct != null) {
+      return (
         <SailFeeBandBadge
-          ratio={pctToRatio(estimatePct)}
+          ratio={pctToDepositFeeRatio(singlePct)}
           isMintSail={isMintSail}
           lowerBound={activeBand?.lowerBound ?? 0n}
           upperBound={activeBand?.upperBound}
           omitFeeSuffix
         />
-        <FeeEstimate pct={estimatePct} warnHigh={estimatePct > 2} />
-      </>
-    );
-  }
+      );
+    }
 
-  if (displayValue) {
-    const numeric = parseFloat(displayValue.replace(/[^0-9.]/g, ""));
-    const warnHigh = !Number.isNaN(numeric) && numeric > 2;
     return (
-      <span
-        className={`font-mono text-[10px] font-semibold tabular-nums ${
-          warnHigh ? "text-red-600" : "text-[#1E4775]/70"
-        }`}
-      >
+      <span className="font-mono text-[10px] font-semibold tabular-nums text-[#1E4775]/70">
         {displayValue}
       </span>
     );
@@ -119,11 +87,10 @@ function FeeValueCell({
   );
 }
 
-/** Shared buy/sell fee row — colored band pills, estimates, and transparency link. */
+/** Shared buy/sell fee row — colored band pills above modal primary actions. */
 export function DepositTradeFeeFooter({
   heading,
   items,
-  showTransparencyLink = true,
 }: DepositTradeFeeFooterProps) {
   if (items.length === 0) return null;
 
@@ -146,21 +113,9 @@ export function DepositTradeFeeFooter({
             isMintSail={item.isMintSail}
             activeBand={item.activeBand}
             displayValue={item.displayValue}
-            estimatePct={item.estimatePct}
           />
         </span>
       ))}
-      {showTransparencyLink ? (
-        <>
-          <span aria-hidden="true">·</span>
-          <Link
-            href="/transparency"
-            className="underline-offset-2 transition-colors hover:text-[#1E4775] hover:underline"
-          >
-            full fee structure
-          </Link>
-        </>
-      ) : null}
     </p>
   );
 }
@@ -169,41 +124,27 @@ export function DepositTradeFeeFooter({
 export function depositTradeFeesFromMarket({
   marketFees,
   activeTab,
-  buyFeeEstimatePct,
-  sellFeeEstimatePct,
-  showEstimates,
 }: {
   marketFees: DepositTradeMarketFees;
   activeTab: "mint" | "redeem";
-  buyFeeEstimatePct?: number;
-  sellFeeEstimatePct?: number;
-  showEstimates?: boolean;
 }): DepositTradeFeeItem[] {
-  const items: DepositTradeFeeItem[] = [];
-
   if (activeTab === "mint") {
-    items.push({
-      label: "Buy",
-      ratio: marketFees.buyFeeRatio,
-      isMintSail: true,
-      activeBand: marketFees.activeBuyBand,
-      estimatePct:
-        showEstimates && buyFeeEstimatePct != null && buyFeeEstimatePct > 0
-          ? buyFeeEstimatePct
-          : undefined,
-    });
-  } else {
-    items.push({
+    return [
+      {
+        label: "Buy",
+        ratio: marketFees.buyFeeRatio,
+        isMintSail: true,
+        activeBand: marketFees.activeBuyBand,
+      },
+    ];
+  }
+
+  return [
+    {
       label: "Sell",
       ratio: marketFees.sellFeeRatio,
       isMintSail: false,
       activeBand: marketFees.activeSellBand,
-      estimatePct:
-        showEstimates && sellFeeEstimatePct != null && sellFeeEstimatePct > 0
-          ? sellFeeEstimatePct
-          : undefined,
-    });
-  }
-
-  return items;
+    },
+  ];
 }

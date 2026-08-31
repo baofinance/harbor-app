@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import {
   ANCHOR_MODAL_FOOTER_WRAPPER,
   ANCHOR_MODAL_SCROLL_CLASS,
+  DEPOSIT_MODAL_LAYOUT_CLASS,
+  DEPOSIT_MODAL_PINNED_BOTTOM_CLASS,
 } from "@/components/deposit/depositFlowStyles";
 
 type DepositModalLayoutProps = {
@@ -26,18 +28,22 @@ export function DepositModalLayout({
   className,
 }: DepositModalLayoutProps) {
   return (
-    <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
+    <div className={cn(DEPOSIT_MODAL_LAYOUT_CLASS, className)}>
       {flowOverview}
       <div className={ANCHOR_MODAL_SCROLL_CLASS}>{scroll}</div>
-      {overview}
-      {footer ? (
-        <div
-          className={cn(
-            ANCHOR_MODAL_FOOTER_WRAPPER,
-            footerDisabled && "pointer-events-none opacity-60",
-          )}
-        >
-          {footer}
+      {overview || footer ? (
+        <div className={DEPOSIT_MODAL_PINNED_BOTTOM_CLASS}>
+          {overview}
+          {footer ? (
+            <div
+              className={cn(
+                ANCHOR_MODAL_FOOTER_WRAPPER,
+                footerDisabled && "pointer-events-none opacity-60",
+              )}
+            >
+              {footer}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

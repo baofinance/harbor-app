@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import type { DefinedMarket } from "@/config/markets";
-import { SAIL_ADVANCED_FROSTED_LIGHT_PANEL } from "./sailAdvancedStyles";
+import { SAIL_ADVANCED_FROSTED_LIGHT_PANEL, MARKET_SELECTOR_TRIGGER_CLASS } from "./sailAdvancedStyles";
 import {
   SailMarketDropdownOptionRowContent,
   SailMarketDropdownTriggerContent,
@@ -12,7 +12,7 @@ import {
 const SAIL_DROPDOWN_MENU_CLASS =
   `absolute left-0 right-0 top-[calc(100%+0.35rem)] z-50 max-h-72 overflow-y-auto rounded-xl shadow-xl ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL} p-1`;
 
-const SAIL_DROPDOWN_TRIGGER_CLASS = `flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-left transition hover:brightness-[1.02] ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`;
+const SAIL_DROPDOWN_TRIGGER_CLASS = MARKET_SELECTOR_TRIGGER_CLASS;
 
 const SAIL_DROPDOWN_OPTION_ACTIVE_CLASS = "bg-[#1E4775]/10";
 const SAIL_DROPDOWN_OPTION_HOVER_CLASS = "hover:bg-[#1E4775]/[0.06]";

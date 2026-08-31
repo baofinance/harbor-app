@@ -10,9 +10,6 @@ export type SailTradeMarketFees = DepositTradeMarketFees;
 type SailTradeFeeFooterProps = {
   marketFees?: SailTradeMarketFees;
   activeTab: "mint" | "redeem";
-  buyFeeEstimatePct?: number;
-  sellFeeEstimatePct?: number;
-  showEstimates?: boolean;
   /** Show both buy/sell fees or only the active tab's fee. */
   mode?: "both" | "activeTab";
 };
@@ -21,9 +18,6 @@ type SailTradeFeeFooterProps = {
 export function SailTradeFeeFooter({
   marketFees,
   activeTab,
-  buyFeeEstimatePct,
-  sellFeeEstimatePct,
-  showEstimates = false,
   mode = "activeTab",
 }: SailTradeFeeFooterProps) {
   if (!marketFees) return null;
@@ -40,22 +34,12 @@ export function SailTradeFeeFooter({
             ratio: marketFees.buyFeeRatio,
             isMintSail: true,
             activeBand: marketFees.activeBuyBand,
-            estimatePct:
-              showEstimates && buyFeeEstimatePct != null && buyFeeEstimatePct > 0
-                ? buyFeeEstimatePct
-                : undefined,
           },
           {
             label: "Sell",
             ratio: marketFees.sellFeeRatio,
             isMintSail: false,
             activeBand: marketFees.activeSellBand,
-            estimatePct:
-              showEstimates &&
-              sellFeeEstimatePct != null &&
-              sellFeeEstimatePct > 0
-                ? sellFeeEstimatePct
-                : undefined,
           },
         ]}
       />
@@ -68,9 +52,6 @@ export function SailTradeFeeFooter({
       items={depositTradeFeesFromMarket({
         marketFees,
         activeTab,
-        buyFeeEstimatePct,
-        sellFeeEstimatePct,
-        showEstimates,
       })}
     />
   );

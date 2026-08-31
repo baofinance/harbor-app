@@ -13,9 +13,13 @@ import type { SailMarketDropdownOption } from "./SailMarketDropdown";
 import {
   SAIL_ADVANCED_FROSTED_LIGHT_PANEL,
   MARKET_SELECTOR_FIELD_LABEL_CLASS,
+  MARKET_SELECTOR_ICON_SIZE,
   MARKET_SELECTOR_PAIR_FIELD_CLASS,
   MARKET_SELECTOR_ROW_CLASS,
   MARKET_SELECTOR_TOKEN_FIELD_CLASS,
+  MARKET_SELECTOR_TRIGGER_CLASS,
+  MARKET_SELECTOR_TRIGGER_INNER_CLASS,
+  MARKET_SELECTOR_TRIGGER_TITLE_CLASS,
 } from "./sailAdvancedStyles";
 import {
   SailMarketDropdownOptionRowContent,
@@ -24,17 +28,11 @@ import {
 
 const DROPDOWN_MENU_CLASS = `absolute left-0 top-[calc(100%+0.35rem)] z-[120] min-w-full w-max max-w-[min(100vw-2rem,26rem)] max-h-80 overflow-y-auto rounded-xl shadow-2xl ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL} p-1.5`;
 
-const DROPDOWN_TRIGGER_CLASS = `flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-left transition hover:brightness-[1.02] ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`;
-
 const OPTION_ACTIVE = "bg-[#1E4775]/10";
 const OPTION_HOVER = "hover:bg-[#1E4775]/[0.06]";
 const TITLE_CLASS = "truncate text-sm font-semibold text-[#1E4775]";
-const TRIGGER_TITLE_CLASS =
-  "text-base font-semibold leading-tight text-[#1E4775]";
 const SECTION_LABEL_CLASS =
   "px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/45";
-
-const SELECTOR_ICON_SIZE = 22;
 
 function useCloseOnOutsideClick(
   open: boolean,
@@ -78,7 +76,7 @@ function FrostedDropdown({
       <button
         type="button"
         onClick={() => onOpenChange(!open)}
-        className={`${DROPDOWN_TRIGGER_CLASS} w-full`}
+        className={`${MARKET_SELECTOR_TRIGGER_CLASS} w-full`}
         aria-expanded={open}
         aria-haspopup="listbox"
       >
@@ -119,7 +117,7 @@ function TokenOptionRow({
           active ? OPTION_ACTIVE : OPTION_HOVER
         }`}
       >
-        <TokenLogo symbol={group.tokenLabel} size={SELECTOR_ICON_SIZE} />
+        <TokenLogo symbol={group.tokenLabel} size={MARKET_SELECTOR_ICON_SIZE} />
         <span className={`min-w-0 flex-1 truncate ${TITLE_CLASS}`}>
           {group.tokenLabel}
         </span>
@@ -258,12 +256,15 @@ export function SailTokenPairSelectors({
           if (next) setPairOpen(false);
         }}
         trigger={
-          <>
-            <TokenLogo symbol={selectedGroup.tokenLabel} size={SELECTOR_ICON_SIZE} />
-            <span className={`min-w-0 flex-1 truncate ${TRIGGER_TITLE_CLASS}`}>
+          <div className={MARKET_SELECTOR_TRIGGER_INNER_CLASS}>
+            <TokenLogo
+              symbol={selectedGroup.tokenLabel}
+              size={MARKET_SELECTOR_ICON_SIZE}
+            />
+            <span className={`min-w-0 flex-1 ${MARKET_SELECTOR_TRIGGER_TITLE_CLASS}`}>
               {selectedGroup.tokenLabel}
             </span>
-          </>
+          </div>
         }
       >
         {tokenGroups.map((group) => (
@@ -295,6 +296,7 @@ export function SailTokenPairSelectors({
             isComingSoon={selectedOption.isComingSoon}
             isDepositsPaused={selectedOption.isDepositsPaused}
             showChainIcon={false}
+            iconSize={MARKET_SELECTOR_ICON_SIZE}
           />
         }
       >

@@ -15,14 +15,14 @@ export const SAIL_MARKET_DROPDOWN_TITLE_CLASS =
 export const SAIL_MARKET_DROPDOWN_TRIGGER_TITLE_CLASS =
   "text-sm font-semibold leading-none text-[#1E4775]";
 export const SAIL_MARKET_DROPDOWN_LEVERAGE_BADGE_CLASS =
-  "inline-flex shrink-0 items-center rounded-md bg-[#1E4775]/[0.07] px-1.5 py-0.5 font-mono text-[10px] font-semibold leading-none tabular-nums text-[#1E4775]/70";
+  "inline-flex h-5 shrink-0 items-center rounded-md bg-[#1E4775]/[0.07] px-1.5 font-mono text-[10px] font-semibold leading-none tabular-nums text-[#1E4775]/70";
 /** @deprecated Inline leverage — prefer SailMarketLeverageBadge. */
 export const SAIL_MARKET_DROPDOWN_LEVERAGE_INLINE_CLASS =
   "font-mono text-[11px] font-semibold tabular-nums text-[#1E4775]/80 sm:text-xs";
 export const SAIL_MARKET_DROPDOWN_TITLE_SEPARATOR_CLASS =
   "font-medium text-[#1E4775]/55";
 export const SAIL_MARKET_DROPDOWN_POSITION_CLASS =
-  "font-mono text-xs font-semibold tabular-nums leading-none sm:text-sm";
+  "font-mono text-sm font-semibold tabular-nums leading-none";
 export const SAIL_MARKET_DROPDOWN_STATUS_CHIP_CLASS =
   "shrink-0 rounded-full bg-[#1E4775]/8 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#64748b]";
 

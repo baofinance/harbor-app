@@ -48,6 +48,7 @@ import { SailTradeAmountCard } from "@/components/sail/SailTradeAmountCard";
 import { SailTradeTransactionOverview } from "@/components/sail/SailTradeTransactionOverview";
 import { SailTradeActionFooter } from "@/components/sail/SailTradeActionFooter";
 import { DepositModalLayout } from "@/components/deposit/DepositModalLayout";
+import { DEPOSIT_EMBEDDED_CONTENT_CLASS } from "@/components/deposit/depositFlowStyles";
 import { DepositPermitToggle } from "@/components/deposit/DepositPermitToggle";
 import { resolveSailTradePrimaryAction } from "@/utils/sailTradeFormState";
 import { DepositModalShell } from "@/components/DepositModalShell";
@@ -1944,12 +1945,10 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
   panelClassName={
     embedded
       ? "flex h-full min-h-0 flex-col overflow-hidden"
-      : "max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col"
+      : undefined
   }
   contentClassName={
-    embedded
-      ? "flex min-h-0 flex-1 flex-col overflow-hidden"
-      : "flex min-h-0 flex-1 flex-col p-3 sm:p-4"
+    embedded ? DEPOSIT_EMBEDDED_CONTENT_CLASS : undefined
   }
  >
  {step ==="success" ? (
@@ -2115,9 +2114,6 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
          layout={embedded ? "embedded" : "modal"}
          marketFees={marketFees}
          activeTab={activeTab}
-         buyFeeEstimatePct={mintFeePercentage}
-         sellFeeEstimatePct={redeemFeePercentage}
-         showEstimates={Boolean(parsedAmount && parsedAmount > 0n)}
          action={primaryAction}
          onSubmit={activeTab === "mint" ? handleMint : handleRedeem}
          onRetry={activeTab === "mint" ? handleMint : handleRedeem}

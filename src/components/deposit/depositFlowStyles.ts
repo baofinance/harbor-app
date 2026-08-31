@@ -3,8 +3,8 @@ import { HARBOR_BTN_GLASS_OUTLINE_LIGHT } from "@/components/shared/harborButton
 /** Combined amount input card for deposit / trade flows. */
 export const DEPOSIT_AMOUNT_CARD_CLASS = `rounded-xl border border-[#1E4775]/12 bg-white/70 p-2.5 shadow-sm backdrop-blur-sm`;
 
-/** Transaction overview card — matches input card styling with stable min height. */
-export const DEPOSIT_OVERVIEW_CARD_CLASS = `${DEPOSIT_AMOUNT_CARD_CLASS} min-h-[4.75rem]`;
+/** Transaction overview card — matches input card styling. */
+export const DEPOSIT_OVERVIEW_CARD_CLASS = DEPOSIT_AMOUNT_CARD_CLASS;
 
 /** Vertical gap between sections in Anchor simple-mode deposit / withdraw panels. */
 export const ANCHOR_MODAL_SECTION_GAP = "space-y-2";
@@ -29,18 +29,44 @@ export const DEPOSIT_SEGMENT_STACK_CLASS = "space-y-0.5";
 
 /** Compact flow breadcrumb under modal tabs (Buy › Deposit). */
 export const DEPOSIT_FLOW_OVERVIEW_CLASS =
-  "grid shrink-0 grid-cols-[1.5rem_1fr_1.5rem] items-center border-b border-[#e2e8f0] py-1";
+  "grid shrink-0 grid-cols-[1.5rem_1fr_1.5rem] items-center border-b border-[#e2e8f0] pb-2 pt-1.5";
 
+/** Floating deposit modal width — fixed 400px. */
+export const DEPOSIT_MODAL_MAX_WIDTH_CLASS = "w-full max-w-[400px]";
+
+/** Full-height modal panel — fills viewport so overview/footer pin to bottom. */
+export const DEPOSIT_MODAL_PANEL_HEIGHT_CLASS =
+  "flex h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] flex-col overflow-hidden sm:h-[90vh] sm:max-h-[90vh]";
+
+/** Modal body inset — horizontal + top; top matches bottom footer inset. */
+export const DEPOSIT_MODAL_CONTENT_CLASS =
+  "flex min-h-0 flex-1 flex-col overflow-hidden px-3 pt-3 sm:px-4 sm:pt-4";
+
+/** Embedded inline shell — panel shell owns horizontal padding (~359px inner at lg). */
+export const DEPOSIT_EMBEDDED_CONTENT_CLASS =
+  "flex min-h-0 flex-1 flex-col overflow-hidden";
+
+/** Gap above pinned overview (scroll content → transaction overview). */
+export const DEPOSIT_MODAL_PINNED_TOP_INSET = "pt-2";
+
+/** Bottom inset below Proceed. */
+export const DEPOSIT_MODAL_EDGE_INSET_BOTTOM = "pb-2";
+
+/** Pinned transaction overview + footer row — pushed to bottom via mt-auto. */
+export const DEPOSIT_MODAL_PINNED_BOTTOM_CLASS = `mt-auto flex shrink-0 flex-col gap-1.5 ${DEPOSIT_MODAL_PINNED_TOP_INSET} ${DEPOSIT_MODAL_EDGE_INSET_BOTTOM}`;
+
+/** Modal body: breadcrumb · scroll · pinned overview + footer. */
+export const DEPOSIT_MODAL_LAYOUT_CLASS = "flex min-h-0 flex-1 flex-col";
 
 /** Scrollable body above pinned overview + footer. */
 export const ANCHOR_MODAL_SCROLL_CLASS =
-  "min-h-0 flex-1 space-y-1.5 overflow-y-auto";
+  "min-h-0 flex-1 overflow-y-auto space-y-1.5";
 
 /** Stack of cards / toggles inside the scroll body. */
 export const ANCHOR_MODAL_CARD_STACK = "space-y-2";
 
 /** Pinned transaction overview above the action footer. */
-export const ANCHOR_TRANSACTION_OVERVIEW_WRAPPER = "shrink-0 pt-2 min-h-[6.5rem]";
+export const ANCHOR_TRANSACTION_OVERVIEW_WRAPPER = "shrink-0";
 
 /** Section title above the overview card. */
 export const ANCHOR_TRANSACTION_OVERVIEW_LABEL =
@@ -54,19 +80,26 @@ export const ANCHOR_TRANSACTION_OVERVIEW_FEE_DIVIDER =
   "pt-2 border-t border-[#1E4775]/15 space-y-1 text-xs";
 
 /** Footer region (fee row + primary action). */
-export const ANCHOR_MODAL_FOOTER_WRAPPER = "shrink-0 mt-auto";
+export const ANCHOR_MODAL_FOOTER_WRAPPER = "shrink-0";
 
-/** Border + padding above fee row and primary button. */
+/** Fee pills + primary action — divider separates from overview above. */
 export const ANCHOR_MODAL_FOOTER_CHROME =
-  "shrink-0 min-h-[6.75rem] space-y-2.5 border-t border-[#1E4775]/8 pt-3";
+  "shrink-0 space-y-2 border-t border-[#1E4775]/8 pt-2";
 
 /** Embedded trade panel height — matches chart column on lg (`650px`). */
 export const DEPOSIT_EMBEDDED_PANEL_HEIGHT =
   "flex min-h-[22rem] flex-col overflow-hidden sm:min-h-[26rem] lg:h-full lg:min-h-[650px] lg:max-h-[650px]";
 
-/** Shared chart + trade panel grid — middle width between Anchor (340–440) and Sail (300–380). */
-export const DEPOSIT_TRADE_PANEL_GRID_CLASS =
+/** Anchor earn layout — trade column up to 400px (panel padding → ~359px form width). */
+export const ANCHOR_TRADE_PANEL_GRID_CLASS =
   "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(330px,400px)] lg:items-start lg:min-h-[650px]";
+
+/** Sail trade layout — original trade column width. */
+export const SAIL_TRADE_PANEL_GRID_CLASS =
+  "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-start lg:min-h-[650px]";
+
+/** @deprecated Use ANCHOR_TRADE_PANEL_GRID_CLASS or SAIL_TRADE_PANEL_GRID_CLASS */
+export const DEPOSIT_TRADE_PANEL_GRID_CLASS = ANCHOR_TRADE_PANEL_GRID_CLASS;
 
 /** @deprecated Use DEPOSIT_EMBEDDED_PANEL_HEIGHT */
 export const ANCHOR_EMBEDDED_PANEL_HEIGHT = DEPOSIT_EMBEDDED_PANEL_HEIGHT;

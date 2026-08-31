@@ -13,11 +13,11 @@ import { AnchorMobileTradeBar } from "./AnchorMobileTradeBar";
 import type { AnchorWalletStatsStripProps } from "./AnchorWalletStatsStrip";
 
 import {
-  DEPOSIT_TRADE_PANEL_GRID_CLASS,
+  ANCHOR_TRADE_PANEL_GRID_CLASS,
 } from "@/components/deposit/depositFlowStyles";
 
-/** @deprecated Use DEPOSIT_TRADE_PANEL_GRID_CLASS */
-const ANCHOR_EARN_MAIN_GRID_CLASS = DEPOSIT_TRADE_PANEL_GRID_CLASS;
+/** @deprecated Use ANCHOR_TRADE_PANEL_GRID_CLASS */
+const ANCHOR_EARN_MAIN_GRID_CLASS = ANCHOR_TRADE_PANEL_GRID_CLASS;
 
 const ANCHOR_TRADE_PANEL_ID = "anchor-trade-panel";
 

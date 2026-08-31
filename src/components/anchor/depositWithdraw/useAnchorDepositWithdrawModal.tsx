@@ -90,6 +90,7 @@ import { DepositPermitToggle } from "@/components/deposit/DepositPermitToggle";
 import {
   DepositTradeFeeFooter,
   type DepositTradeFeeItem,
+  pctToDepositFeeRatio,
 } from "@/components/deposit/DepositTradeFeeFooter";
 import { DepositModalLayout } from "@/components/deposit/DepositModalLayout";
 import { AnchorBuyTransactionOverview } from "@/components/anchor/AnchorBuyTransactionOverview";
@@ -10997,7 +10998,10 @@ export function useAnchorDepositWithdrawModal({
         depositAmount > 0 && feePercentage !== undefined
           ? {
               percentage: feePercentage,
-              usd: depositAmount * (feePercentage / 100) * depositTokenPriceUSD,
+              usd:
+                depositAmount *
+                (feePercentage / 100) *
+                depositTokenPriceUSD,
             }
           : undefined,
     };
@@ -11017,6 +11021,7 @@ export function useAnchorDepositWithdrawModal({
     selectedRewardToken,
     feePercentage,
     depositTokenPriceUSD,
+    simpleMode,
   ]);
 
   const buyFeeFooter = useMemo(() => {
@@ -11048,8 +11053,16 @@ export function useAnchorDepositWithdrawModal({
     const items: DepositTradeFeeItem[] = [
       {
         label: "Buy",
-        displayValue,
-        estimatePct: displayFee,
+        displayValue:
+          showRange && !(amount && parseFloat(amount) > 0)
+            ? displayValue
+            : undefined,
+        ratio:
+          displayFee !== undefined
+            ? pctToDepositFeeRatio(displayFee)
+            : !showRange && feeRange
+              ? pctToDepositFeeRatio(feeRange.min)
+              : undefined,
         isMintSail: true,
         tooltip: (
           <div className="space-y-2">
@@ -11122,14 +11135,18 @@ export function useAnchorDepositWithdrawModal({
     const items: DepositTradeFeeItem[] = [];
 
     if (showSellFee && sellFeeValue !== null) {
+      const hasAmount =
+        redeemInputAmount &&
+        redeemInputAmount > 0n &&
+        redeemFeePercentage !== undefined;
       items.push({
         label: "Sell",
-        displayValue: sellFeeValue,
-        estimatePct:
-          redeemInputAmount &&
-          redeemInputAmount > 0n &&
-          redeemFeePercentage !== undefined
-            ? redeemFeePercentage
+        displayValue:
+          !hasAmount && sellFeeValue.includes("–") ? sellFeeValue : undefined,
+        ratio: hasAmount
+          ? pctToDepositFeeRatio(redeemFeePercentage!)
+          : sellFeeRange && !sellFeeRange.hasRange
+            ? pctToDepositFeeRatio(sellFeeRange.min)
             : undefined,
         isMintSail: false,
         tooltip: (
@@ -11147,7 +11164,8 @@ export function useAnchorDepositWithdrawModal({
     if (showEarlyFee) {
       items.push({
         label: "Early withdraw",
-        displayValue: selectedPoolEarlyWithdrawFee!.displayValue,
+        ratio: pctToDepositFeeRatio(selectedPoolEarlyWithdrawFee!.percent),
+        isMintSail: false,
         tooltip: (
           <div className="space-y-2">
             <p className="font-semibold">Early Withdrawal Fee</p>

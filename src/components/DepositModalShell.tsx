@@ -6,6 +6,11 @@ import {
   HARBOR_FROSTED_MODAL_SHELL,
   HARBOR_FROSTED_PANEL_FILL,
 } from "@/components/shared/harborFrostedSurfaceStyles";
+import {
+  DEPOSIT_MODAL_CONTENT_CLASS,
+  DEPOSIT_MODAL_MAX_WIDTH_CLASS,
+  DEPOSIT_MODAL_PANEL_HEIGHT_CLASS,
+} from "@/components/deposit/depositFlowStyles";
 import { DepositModalExpandedNotifications } from "@/components/DepositModalExpandedNotifications";
 import { DepositModalNotificationBell } from "@/components/DepositModalNotificationBell";
 import {
@@ -71,8 +76,8 @@ export function DepositModalShell({
 
   if (variant === "inline") {
     return (
-      <div className={cn("flex min-h-0 flex-col", panelClassName)}>
-        <div className="mb-2 shrink-0">{tabs}</div>
+      <div className={cn("flex min-h-0 flex-1 flex-col", panelClassName)}>
+        <div className="shrink-0">{tabs}</div>
         <div className={cn("flex min-h-0 flex-1 flex-col", contentClassName)}>
           {children}
         </div>
@@ -90,9 +95,11 @@ export function DepositModalShell({
 
       <div
         className={cn(
-          "relative isolate flex w-full max-w-md flex-col animate-in fade-in-0 scale-in-95 duration-200 md:max-w-lg",
+          "relative isolate flex flex-col animate-in fade-in-0 scale-in-95 duration-200",
+          DEPOSIT_MODAL_MAX_WIDTH_CLASS,
           HARBOR_FROSTED_MODAL_SHELL,
-          "max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] overflow-hidden rounded-xl",
+          "overflow-hidden rounded-xl",
+          DEPOSIT_MODAL_PANEL_HEIGHT_CLASS,
           panelClassName
         )}
       >
@@ -152,7 +159,7 @@ export function DepositModalShell({
               </DepositModalExpandedNotifications>
             ) : null}
 
-            <div className={cn("relative z-20 shrink-0 border-b border-[#1E4775]/20 px-2 pb-2 pt-1.5 sm:px-3", HARBOR_FROSTED_PANEL_FILL)}>
+            <div className={cn("relative z-20 shrink-0 border-b border-[#1E4775]/20 px-2 pt-1.5 sm:px-3", HARBOR_FROSTED_PANEL_FILL)}>
               {tabs}
             </div>
           </>
@@ -160,8 +167,8 @@ export function DepositModalShell({
 
         <div
           className={cn(
-            "flex min-h-0 flex-1 flex-col",
-            contentClassName || "p-3 sm:p-4 lg:p-6"
+            DEPOSIT_MODAL_CONTENT_CLASS,
+            contentClassName
           )}
         >
           {children}

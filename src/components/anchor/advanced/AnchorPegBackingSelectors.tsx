@@ -19,22 +19,20 @@ import {
 import {
   ANCHOR_ADVANCED_FROSTED_LIGHT_PANEL,
   MARKET_SELECTOR_FIELD_LABEL_CLASS,
+  MARKET_SELECTOR_ICON_SIZE,
   MARKET_SELECTOR_PAIR_FIELD_CLASS,
   MARKET_SELECTOR_ROW_CLASS,
   MARKET_SELECTOR_TOKEN_FIELD_CLASS,
+  MARKET_SELECTOR_TRIGGER_CLASS,
+  MARKET_SELECTOR_TRIGGER_INNER_CLASS,
+  MARKET_SELECTOR_TRIGGER_TITLE_CLASS,
 } from "./anchorAdvancedStyles";
 
 const DROPDOWN_MENU_CLASS = `absolute left-0 top-[calc(100%+0.35rem)] z-[120] min-w-full w-max max-w-[min(100vw-2rem,26rem)] max-h-80 overflow-y-auto rounded-xl shadow-2xl ${ANCHOR_ADVANCED_FROSTED_LIGHT_PANEL} p-1.5`;
 
-const DROPDOWN_TRIGGER_CLASS = `flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-left transition hover:brightness-[1.02] ${ANCHOR_ADVANCED_FROSTED_LIGHT_PANEL}`;
-
 const OPTION_ACTIVE = "bg-[#1E4775]/10";
 const OPTION_HOVER = "hover:bg-[#1E4775]/[0.06]";
 const TITLE_CLASS = "truncate text-sm font-semibold text-[#1E4775]";
-const TRIGGER_TITLE_CLASS =
-  "text-base font-semibold leading-tight text-[#1E4775]";
-const BACKING_TRIGGER_TITLE_CLASS =
-  "whitespace-nowrap text-base font-semibold leading-tight text-[#1E4775]";
 const SUBTITLE_CLASS = "truncate text-[11px] font-medium text-[#1E4775]/55";
 const APY_CLASS =
   "whitespace-nowrap text-[11px] font-semibold tabular-nums text-[#4A9784] sm:text-xs";
@@ -43,8 +41,6 @@ const STATUS_CHIP_CLASS =
   "shrink-0 rounded-full bg-[#1E4775]/8 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#64748b]";
 const SECTION_LABEL_CLASS =
   "px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/45";
-
-const SELECTOR_ICON_SIZE = 22;
 
 function normalizeApyDisplay(apyLabel?: string): string | null {
   if (!apyLabel) return null;
@@ -121,7 +117,7 @@ function FrostedDropdown({
       <button
         type="button"
         onClick={() => onOpenChange(!open)}
-        className={`${DROPDOWN_TRIGGER_CLASS} w-full`}
+        className={`${MARKET_SELECTOR_TRIGGER_CLASS} w-full`}
         aria-expanded={open}
         aria-haspopup="listbox"
       >
@@ -147,7 +143,7 @@ function PegChainIcon({ market }: { market: DefinedMarket }) {
     <NetworkIconCell
       chainName={harborMarketChainKey(market)}
       chainLogo={market.chain?.logo}
-      size={SELECTOR_ICON_SIZE}
+      size={MARKET_SELECTOR_ICON_SIZE}
     />
   );
 }
@@ -223,7 +219,7 @@ function BackingOptionRow({
           isComingSoon ? "opacity-90 saturate-[0.78]" : ""
         } ${active ? OPTION_ACTIVE : OPTION_HOVER}`}
       >
-        <TokenLogo symbol={backingLabel} size={SELECTOR_ICON_SIZE} />
+        <TokenLogo symbol={backingLabel} size={MARKET_SELECTOR_ICON_SIZE} />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5 overflow-hidden">
           <span
             className={`truncate ${TITLE_CLASS} ${
@@ -354,12 +350,12 @@ export function AnchorPegBackingSelectors({
           if (next) setBackingOpen(false);
         }}
         trigger={
-          <>
+          <div className={MARKET_SELECTOR_TRIGGER_INNER_CLASS}>
             <PegChainIcon market={selectedBacking.market} />
-            <span className={`min-w-0 flex-1 ${TRIGGER_TITLE_CLASS}`}>
+            <span className={`min-w-0 flex-1 ${MARKET_SELECTOR_TRIGGER_TITLE_CLASS}`}>
               {selectedPegGroup.pegLabel}
             </span>
-          </>
+          </div>
         }
       >
         {pegGroups.map((group) => (
@@ -381,13 +377,13 @@ export function AnchorPegBackingSelectors({
           if (next) setPegOpen(false);
         }}
         trigger={
-          <>
+          <div className={`${MARKET_SELECTOR_TRIGGER_INNER_CLASS} min-w-0`}>
             <TokenLogo
               symbol={selectedBacking.backingLabel}
-              size={SELECTOR_ICON_SIZE}
+              size={MARKET_SELECTOR_ICON_SIZE}
             />
             <span
-              className={`${BACKING_TRIGGER_TITLE_CLASS} ${
+              className={`shrink-0 whitespace-nowrap ${MARKET_SELECTOR_TRIGGER_TITLE_CLASS} ${
                 selectedBacking.isComingSoon ? "text-[#64748b]" : ""
               }`}
             >
@@ -400,7 +396,7 @@ export function AnchorPegBackingSelectors({
               <span className={STATUS_CHIP_CLASS}>Coming soon</span>
             ) : null}
             <span className="min-w-0 flex-1" aria-hidden="true" />
-          </>
+          </div>
         }
       >
         {liveBackings.map((option) => (

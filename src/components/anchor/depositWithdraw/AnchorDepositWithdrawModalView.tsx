@@ -35,7 +35,6 @@ import { DepositModalTitle } from "@/components/DepositModalTitle";
 import { InfoCallout } from "@/components/InfoCallout";
 import { ErrorBanner, ReservedErrorSlot } from "@/components/anchor/ErrorBanner";
 import { DepositPermitToggle } from "@/components/deposit/DepositPermitToggle";
-import { DepositTradeFeeFooter } from "@/components/deposit/DepositTradeFeeFooter";
 import { DepositModalLayout } from "@/components/deposit/DepositModalLayout";
 import { AnchorBuyTransactionOverview } from "@/components/anchor/AnchorBuyTransactionOverview";
 import { AnchorTransactionOverview } from "@/components/anchor/AnchorTransactionOverview";
@@ -50,6 +49,7 @@ import {
   ANCHOR_MODAL_FOOTER_WRAPPER,
   ANCHOR_MODAL_SCROLL_CLASS,
   ANCHOR_MODAL_SECTION_GAP,
+  DEPOSIT_EMBEDDED_CONTENT_CLASS,
   DEPOSIT_SECTION_LABEL_CLASS,
   DEPOSIT_SEGMENT_STACK_CLASS,
   DEPOSIT_SEGMENT_TRACK_CLASS,
@@ -631,12 +631,10 @@ export function AnchorDepositWithdrawModalView(
           panelClassName={
             embedded
               ? "flex h-full min-h-0 flex-col overflow-hidden"
-              : "max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col overflow-hidden"
+              : undefined
           }
           contentClassName={
-            embedded
-              ? "flex min-h-0 flex-1 flex-col overflow-hidden"
-              : "flex min-h-0 flex-1 flex-col p-3 sm:p-4"
+            embedded ? DEPOSIT_EMBEDDED_CONTENT_CLASS : undefined
           }
         >
             {simpleMode ? (
@@ -1618,14 +1616,14 @@ export function AnchorDepositWithdrawModalView(
                               : "wallet") === "pool") &&
                           hasPoolSellAmount &&
                           activeTab !== "sell" ? (
-                            <div className="mt-2 rounded-lg border border-[#1E4775]/12 bg-white/60 px-2.5 py-2">
-                              <div className="text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/50">
+                            <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-[#1E4775]/12 bg-white/60 px-2.5 py-2">
+                              <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/50">
                                 Amount to sell
-                              </div>
-                              <div className="font-mono text-sm font-semibold text-[#1E4775]">
+                              </span>
+                              <span className="font-mono text-sm font-semibold tabular-nums text-[#1E4775]">
                                 {formatTokenAmount18(poolSellAmountWei, 6)}{" "}
                                 {peggedTokenSymbol}
-                              </div>
+                              </span>
                             </div>
                           ) : null}
 

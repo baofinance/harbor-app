@@ -12,7 +12,7 @@ import {
 } from "@/components/shared/harborFrostedSurfaceStyles";
 import {
   DEPOSIT_EMBEDDED_PANEL_HEIGHT,
-  DEPOSIT_TRADE_PANEL_GRID_CLASS,
+  SAIL_TRADE_PANEL_GRID_CLASS,
   DEPOSIT_AMOUNT_CARD_CLASS,
   DEPOSIT_CANCEL_BUTTON_CLASS,
   DEPOSIT_PRIMARY_DISABLED_CLASS,
@@ -51,9 +51,9 @@ export const SAIL_ADVANCED_HEADER_DIVIDER =
   "h-px w-full bg-gradient-to-r from-transparent via-[#1E4775]/18 to-transparent";
 
 /** Two-column Sail UI+ layout — chart/main left, trade panel right (lg+). */
-export const SAIL_ADVANCED_MAIN_GRID_COLUMNS = DEPOSIT_TRADE_PANEL_GRID_CLASS;
+export const SAIL_ADVANCED_MAIN_GRID_COLUMNS = SAIL_TRADE_PANEL_GRID_CLASS;
 
-export const SAIL_ADVANCED_MAIN_GRID_CLASS = DEPOSIT_TRADE_PANEL_GRID_CLASS;
+export const SAIL_ADVANCED_MAIN_GRID_CLASS = SAIL_TRADE_PANEL_GRID_CLASS;
 
 /** @deprecated Use SAIL_ADVANCED_MAIN_GRID_CLASS */
 export const SAIL_ADVANCED_GRID_CLASS = SAIL_ADVANCED_MAIN_GRID_CLASS;
@@ -87,6 +87,20 @@ export const MARKET_SELECTOR_ZONE_LABEL_CLASS =
 
 /** Field label above each selector column (Sail token, Pair, Backing, …). */
 export const MARKET_SELECTOR_FIELD_LABEL_CLASS = `${MARKET_SELECTOR_ZONE_LABEL_CLASS} uppercase`;
+
+/** Icon size inside market selector triggers (token logo, chain icon). */
+export const MARKET_SELECTOR_ICON_SIZE = 20;
+
+/** Closed dropdown trigger — fixed height so token/pair columns match. */
+export const MARKET_SELECTOR_TRIGGER_CLASS = `flex h-11 w-full min-w-0 items-center gap-2 rounded-xl px-3 text-left transition hover:brightness-[1.02] ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`;
+
+/** Inner row for trigger content (icon + label). */
+export const MARKET_SELECTOR_TRIGGER_INNER_CLASS =
+  "flex min-w-0 flex-1 items-center gap-2.5";
+
+/** Trigger primary label — pair/token title text. */
+export const MARKET_SELECTOR_TRIGGER_TITLE_CLASS =
+  "truncate text-sm font-semibold leading-none text-[#1E4775]";
 
 /** Small zone label above header stat groups — alias for selector zone labels. */
 export const SAIL_ADVANCED_SECTION_LABEL = MARKET_SELECTOR_ZONE_LABEL_CLASS;
@@ -122,7 +136,8 @@ export const SAIL_ADVANCED_META = MV_META_TEXT;
 export const SAIL_ADVANCED_HEADLINE = MV_HEADLINE;
 
 /** Embedded mint / redeem form — single white frosted shell. */
-export const SAIL_EMBEDDED_FORM_PANEL = `rounded-xl p-2.5 sm:p-3 text-[#1E4775] ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`;
+/** Horizontal + top padding only — pinned footer owns bottom inset. */
+export const SAIL_EMBEDDED_FORM_PANEL = `rounded-xl px-2.5 pt-2.5 pb-0 sm:px-3 sm:pt-3 text-[#1E4775] ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`;
 
 export { DEPOSIT_EMBEDDED_PANEL_HEIGHT as SAIL_EMBEDDED_PANEL_HEIGHT };
 
