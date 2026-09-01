@@ -93,7 +93,6 @@ import { useAnchorClaimCompound } from "@/hooks/anchor/useAnchorClaimCompound";
 import { RewardTokensDisplay } from "@/components/anchor/RewardTokensDisplay";
 import { AnchorAdvancedLayout } from "@/components/anchor/advanced";
 import { useAnchorSelectedMarket } from "@/hooks/anchor/useAnchorSelectedMarket";
-import { IndexMarketsLoadError } from "@/components/shared/IndexMarketsLoadError";
 import { IndexMarksSubgraphErrorBanner } from "@/components/shared/IndexMarksSubgraphErrorBanner";
 import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
 import {
@@ -346,7 +345,7 @@ export default function AnchorPage() {
     return map;
   }, [allMarketsData]);
 
-  const marketsReady = !isLoadingReads && !isReadsError;
+  const marketsReady = displayedAnchorMarkets.length > 0;
 
   const {
     selectedMarketId,
@@ -446,8 +445,10 @@ export default function AnchorPage() {
             <IndexMarksSubgraphErrorBanner error={ledgerMarksError} />
           )}
 
-          {isLoadingReads ? null : isReadsError ? (
-            <IndexMarketsLoadError onRetry={() => refetchReads()} />
+          {displayedAnchorMarkets.length === 0 ? (
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.06] px-4 py-8 text-center text-sm text-white/70">
+              No Earn markets match the current filters.
+            </div>
           ) : (
             <AnchorAdvancedLayout
               selectedMarketId={selectedMarketId}
@@ -464,12 +465,16 @@ export default function AnchorPage() {
               claimableRewardsUSD={claimableRewardsUSD}
               isClaiming={isClaimingAll || isCompoundingAll}
               onClaim={() => setIsClaimAllModalOpen(true)}
+              isLoadingMarketData={isLoadingReads}
+              marketDataError={isReadsError}
+              onRetryMarketData={() => refetchReads()}
               walletStats={{
                 isConnected,
                 earnPortfolioUSD: allMarketsTotalPositionUSD || 0,
                 positionsCount,
                 vaprPercent: blendedVaprPercent,
                 isLoadingMarks: isLoadingLedgerMarks || isLoadingAnchorMarks,
+                isLoadingPortfolio: isLoadingReads,
                 totalMarks: totalAnchorLedgerMarks || totalAnchorMarks || 0,
                 marksPerDay,
               }}

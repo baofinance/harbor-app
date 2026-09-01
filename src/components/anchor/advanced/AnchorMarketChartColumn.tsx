@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useEffect } from "react";
 import type { DefinedMarket } from "@/config/markets";
 import { pegTargetToAssetKey } from "@/utils/pegAssetChart";
 import {
@@ -30,6 +31,10 @@ type AnchorMarketChartColumnProps = {
 export function AnchorMarketChartColumn({ market }: AnchorMarketChartColumnProps) {
   const pegTarget = market.pegTarget || "USD";
   const assetKey = pegTargetToAssetKey(pegTarget);
+
+  useEffect(() => {
+    void import("@/components/charts/PegTargetUsdChart");
+  }, []);
 
   return (
     <div

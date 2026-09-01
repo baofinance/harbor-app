@@ -11,12 +11,14 @@ type AnchorMarketMetricsCollapsibleProps = {
   market: DefinedMarket;
   marketData: MarketData | undefined;
   peggedPriceUSD?: number;
+  isLoading?: boolean;
 };
 
 export function AnchorMarketMetricsCollapsible({
   market,
   marketData,
   peggedPriceUSD,
+  isLoading = false,
 }: AnchorMarketMetricsCollapsibleProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -37,11 +39,17 @@ export function AnchorMarketMetricsCollapsible({
         />
       </button>
       {expanded ? (
-        <AnchorMarketMetricsPanel
-          market={market}
-          marketData={marketData}
-          peggedPriceUSD={peggedPriceUSD}
-        />
+        isLoading && !marketData ? (
+          <p className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-6 text-center text-sm text-white/55">
+            Loading market metrics…
+          </p>
+        ) : (
+          <AnchorMarketMetricsPanel
+            market={market}
+            marketData={marketData}
+            peggedPriceUSD={peggedPriceUSD}
+          />
+        )
       ) : null}
     </div>
   );

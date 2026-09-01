@@ -26,9 +26,10 @@ import {
   formatPegUsdPrice,
   liveUsdPriceForPegAsset,
   pegChangePctClassName,
-  pegChartHistorySinceTimestamp,
+  pegChartFetchSinceTimestamp,
   pegAssetDisplayLabel,
   PEG_TARGET_CHART_TIME_RANGES,
+  startOfYearTimestamp,
   type PegChartPeriodChanges,
   type PegTargetChartTimeRange,
 } from "@/utils/pegAssetChart";
@@ -40,13 +41,19 @@ type ChartRow = {
   price: number;
 };
 
-function PegChartPeriodStats({ changes }: { changes: PegChartPeriodChanges }) {
+function PegChartPeriodStats({
+  changes,
+  ytdLoading = false,
+}: {
+  changes: PegChartPeriodChanges;
+  ytdLoading?: boolean;
+}) {
   const items = [
     { label: "1h change", value: changes.change1hPct },
     { label: "24h change", value: changes.change24hPct },
     {
       label: "YTD change",
-      value: changes.changeYtdPct,
+      value: ytdLoading ? null : changes.changeYtdPct,
       hint: "Since Jan 1 (UTC)",
     },
   ] as const;
@@ -111,16 +118,31 @@ export type PegTargetUsdChartProps = {
 
 /** Single-series peg asset vs USD chart (Chainlink round history + live spot). */
 export function PegTargetUsdChart({ asset, className = "" }: PegTargetUsdChartProps) {
-  const [timeRange, setTimeRange] = useState<PegTargetChartTimeRange>("1M");
+  const [timeRange, setTimeRange] = useState<PegTargetChartTimeRange>("1W");
   const pegTargetPrices = usePegTargetPrices();
 
-  const historySinceTimestamp = useMemo(() => pegChartHistorySinceTimestamp(), []);
+  const chartSinceTimestamp = useMemo(
+    () => pegChartFetchSinceTimestamp(timeRange),
+    [timeRange],
+  );
+  const ytdSinceTimestamp = useMemo(() => startOfYearTimestamp(), []);
+  const needsSeparateYtdFetch = ytdSinceTimestamp < chartSinceTimestamp;
 
   const { priceHistory, isLoading } = useChainlinkUsdHistory(
     asset,
     asset !== "USD",
-    historySinceTimestamp,
+    chartSinceTimestamp,
   );
+
+  const { priceHistory: ytdHistory, isLoading: isYtdLoading } =
+    useChainlinkUsdHistory(
+      asset,
+      asset !== "USD" && needsSeparateYtdFetch,
+      ytdSinceTimestamp,
+    );
+
+  const statsHistory =
+    needsSeparateYtdFetch && ytdHistory.length > 0 ? ytdHistory : priceHistory;
 
   const filteredHistory = useMemo(
     () => filterPegChartPointsByRange(priceHistory, timeRange),
@@ -140,8 +162,8 @@ export function PegTargetUsdChart({ asset, className = "" }: PegTargetUsdChartPr
   const assetLabel = pegAssetDisplayLabel(asset);
   const rangeChangePct = computePegChartRangeChangePct(filteredHistory);
   const periodChanges = useMemo(
-    () => computePegChartPeriodChanges(priceHistory, livePrice),
-    [priceHistory, livePrice],
+    () => computePegChartPeriodChanges(statsHistory, livePrice),
+    [statsHistory, livePrice],
   );
 
   const formatTimestamp = useMemo(
@@ -297,7 +319,10 @@ export function PegTargetUsdChart({ asset, className = "" }: PegTargetUsdChartPr
       </div>
 
       {!isLoading && priceHistory.length > 0 ? (
-        <PegChartPeriodStats changes={periodChanges} />
+        <PegChartPeriodStats
+          changes={periodChanges}
+          ytdLoading={needsSeparateYtdFetch && isYtdLoading}
+        />
       ) : null}
     </div>
   );

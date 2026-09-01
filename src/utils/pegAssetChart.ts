@@ -146,6 +146,16 @@ export function pegChartHistorySinceTimestamp(
   return Math.min(threeMonthLookback, ytdStart);
 }
 
+/** Fetch window for the visible chart range (+ buffer for 1h/24h stats). */
+export function pegChartFetchSinceTimestamp(
+  range: PegTargetChartTimeRange,
+  nowSec = Math.floor(Date.now() / 1000),
+): number {
+  const rangeStart = nowSec - sailChartRangeWindowSec(range) - 4 * 3600;
+  const statsStart = nowSec - 86400 - 7200;
+  return Math.min(rangeStart, statsStart);
+}
+
 /** Chainlink peg charts: oracle round density limits reliable history to ~3M. */
 export const PEG_TARGET_CHART_TIME_RANGES = [
   "1D",

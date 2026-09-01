@@ -19,6 +19,8 @@ export type AnchorWalletStatsStripProps = {
   /** Blended vAPR from stability-pool positions (percent). */
   vaprPercent: number | null;
   isLoadingMarks: boolean;
+  /** Portfolio / positions / vAPR still loading from on-chain reads. */
+  isLoadingPortfolio?: boolean;
   totalMarks: number;
   /** Shown in the Marks info tooltip on hover. */
   marksPerDay: number;
@@ -75,6 +77,7 @@ export function AnchorWalletStatsStrip({
   positionsCount,
   vaprPercent,
   isLoadingMarks,
+  isLoadingPortfolio = false,
   totalMarks,
   marksPerDay,
   className = "",
@@ -91,7 +94,11 @@ export function AnchorWalletStatsStrip({
   }
 
   const vaprLabel =
-    vaprPercent !== null && vaprPercent > 0 ? formatAPR(vaprPercent) : "—";
+    isLoadingPortfolio
+      ? "…"
+      : vaprPercent !== null && vaprPercent > 0
+        ? formatAPR(vaprPercent)
+        : "—";
 
   return (
     <div
@@ -100,9 +107,14 @@ export function AnchorWalletStatsStrip({
     >
       <StatCell
         label="Earn portfolio"
-        value={formatUSD(earnPortfolioUSD, { compact: false })}
+        value={
+          isLoadingPortfolio ? "…" : formatUSD(earnPortfolioUSD, { compact: false })
+        }
       />
-      <StatCell label="Positions" value={String(positionsCount)} />
+      <StatCell
+        label="Positions"
+        value={isLoadingPortfolio ? "…" : String(positionsCount)}
+      />
       <StatCell label="vAPR" value={vaprLabel} />
       <StatCell
         label="Marks"

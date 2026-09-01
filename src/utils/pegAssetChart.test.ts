@@ -4,6 +4,7 @@ import {
   computePegChartRangeChangePct,
   filterPegChartPointsByRange,
   liveUsdPriceForPegAsset,
+  pegChartFetchSinceTimestamp,
   pegPriceAtOrBefore,
   pegTargetToAssetKey,
   startOfYearTimestamp,
@@ -64,5 +65,13 @@ describe("pegAssetChart", () => {
     const filtered = filterPegChartPointsByRange(points, "1M", now);
     expect(filtered).toHaveLength(2);
     expect(filtered[0]?.timestamp).toBe(now - 86400 * 10);
+  });
+
+  it("scopes fetch window to selected chart range", () => {
+    const now = 1_700_000_000;
+    const oneMonthSince = pegChartFetchSinceTimestamp("1M", now);
+    const threeMonthSince = pegChartFetchSinceTimestamp("3M", now);
+    expect(oneMonthSince).toBeGreaterThan(threeMonthSince);
+    expect(now - oneMonthSince).toBeLessThanOrEqual(31 * 86400 + 4 * 3600);
   });
 });

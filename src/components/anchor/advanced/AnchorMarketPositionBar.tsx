@@ -19,6 +19,7 @@ export type AnchorMarketPositionBarProps = {
   sailPoolUSD?: number;
   bestApr?: number;
   haTokenPriceUSD?: number;
+  isLoading?: boolean;
   className?: string;
 };
 
@@ -41,6 +42,7 @@ export function AnchorMarketPositionBar({
   sailPoolUSD = 0,
   bestApr,
   haTokenPriceUSD,
+  isLoading = false,
   className = "",
 }: AnchorMarketPositionBarProps) {
   const shellClass = `${ANCHOR_ADVANCED_HEADER_STRIP_SHELL} grid grid-cols-2 ${ANCHOR_ADVANCED_HEADER_STRIP_DIVIDE} sm:grid-cols-4 sm:divide-y-0 ${className}`.trim();
@@ -58,29 +60,50 @@ export function AnchorMarketPositionBar({
 
   const hasPosition = (positionUSD ?? 0) > 0;
   const pegLabel = market.pegTarget || "USD";
+  const loadingValue = isLoading ? "…" : "—";
 
   return (
     <div className={shellClass} aria-label="Your position in this market">
       <StatCell
         label="Your position"
-        value={hasPosition ? formatUSD(positionUSD ?? 0) : "—"}
+        value={
+          isLoading
+            ? "…"
+            : hasPosition
+              ? formatUSD(positionUSD ?? 0)
+              : loadingValue
+        }
       />
       <StatCell
         label="Collateral pool"
-        value={collateralPoolUSD > 0 ? formatUSD(collateralPoolUSD) : "—"}
+        value={
+          isLoading
+            ? "…"
+            : collateralPoolUSD > 0
+              ? formatUSD(collateralPoolUSD)
+              : loadingValue
+        }
       />
       <StatCell
         label="Sail pool"
-        value={sailPoolUSD > 0 ? formatUSD(sailPoolUSD) : "—"}
+        value={
+          isLoading
+            ? "…"
+            : sailPoolUSD > 0
+              ? formatUSD(sailPoolUSD)
+              : loadingValue
+        }
       />
       <StatCell
         label={bestApr && bestApr > 0 ? "Best APR" : `ha / ${pegLabel}`}
         value={
-          bestApr && bestApr > 0
-            ? formatAPR(bestApr)
-            : haTokenPriceUSD !== undefined && haTokenPriceUSD > 0
-              ? formatUSD(haTokenPriceUSD)
-              : "—"
+          isLoading
+            ? "…"
+            : bestApr && bestApr > 0
+              ? formatAPR(bestApr)
+              : haTokenPriceUSD !== undefined && haTokenPriceUSD > 0
+                ? formatUSD(haTokenPriceUSD)
+                : loadingValue
         }
       />
     </div>

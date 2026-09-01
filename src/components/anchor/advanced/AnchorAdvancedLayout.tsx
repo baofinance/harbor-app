@@ -43,6 +43,10 @@ export type AnchorAdvancedLayoutProps = {
   claimableRewardsUSD?: number;
   isClaiming?: boolean;
   onClaim?: () => void;
+  /** On-chain market reads still in flight (pools, TVL, APR, …). */
+  isLoadingMarketData?: boolean;
+  marketDataError?: boolean;
+  onRetryMarketData?: () => void;
 };
 
 export function AnchorAdvancedLayout({
@@ -61,6 +65,9 @@ export function AnchorAdvancedLayout({
   claimableRewardsUSD = 0,
   isClaiming = false,
   onClaim,
+  isLoadingMarketData = false,
+  marketDataError = false,
+  onRetryMarketData,
 }: AnchorAdvancedLayoutProps) {
   const [tradeTab, setTradeTab] = useState<"deposit" | "withdraw">("deposit");
 
@@ -114,6 +121,27 @@ export function AnchorAdvancedLayout({
 
   return (
     <div className="space-y-5 pb-[calc(4.25rem+env(safe-area-inset-bottom))] lg:pb-0">
+      {marketDataError ? (
+        <div
+          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-400/25 bg-amber-500/10 px-4 py-3 text-sm text-white/90"
+          role="status"
+        >
+          <p className="min-w-0">
+            Some on-chain market data could not be loaded. The chart and trade
+            panel are still available.
+          </p>
+          {onRetryMarketData ? (
+            <button
+              type="button"
+              onClick={onRetryMarketData}
+              className="shrink-0 rounded-md bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/15"
+            >
+              Retry
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       <AnchorMarketHeader
         selectedMarketId={selectedMarketId}
         selectedMarket={selectedMarket}
@@ -129,6 +157,7 @@ export function AnchorAdvancedLayout({
           sailPoolUSD: selectedMarketData?.sailPoolDepositUSD,
           bestApr: bestApr > 0 ? bestApr : undefined,
           haTokenPriceUSD: peggedPriceUSD,
+          isLoading: isLoadingMarketData,
         }}
         educationBestAprLabel={educationBestAprLabel}
       />
@@ -175,6 +204,7 @@ export function AnchorAdvancedLayout({
           market={selectedMarket}
           marketData={selectedMarketData}
           peggedPriceUSD={peggedPriceUSD}
+          isLoading={isLoadingMarketData}
         />
       </div>
 
