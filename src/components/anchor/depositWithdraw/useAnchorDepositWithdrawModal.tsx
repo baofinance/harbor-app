@@ -563,7 +563,7 @@ export function useAnchorDepositWithdrawModal({
             ? `Zap ${(progressConfig.zapAsset || progressConfig.wrappedZapAsset)!.toUpperCase()} & deposit to stability pool`
             : progressConfig.useZap && progressConfig.zapAsset
               ? `Zap ${progressConfig.zapAsset.toUpperCase()} to anchor token`
-              : "Buy anchor token";
+              : "Mint anchor token";
         addStep("mint", mintLabel, txHashes.mint);
       }
       if (progressConfig.includeApprovePegged) {
@@ -615,10 +615,10 @@ export function useAnchorDepositWithdrawModal({
         addStep("permit-redeem", "Sign permit for anchor token (no gas)");
       }
       if (progressConfig.includeApproveRedeem || hasApproveRedeemTx) {
-        addStep("approve-redeem", "Approve anchor token for sale", txHashes.approveRedeem);
+        addStep("approve-redeem", "Approve anchor token for redeem", txHashes.approveRedeem);
       }
       if (progressConfig.includeRedeem || hasRedeemTx) {
-        addStep("redeem", "Sell anchor token for collateral", txHashes.redeem);
+        addStep("redeem", "Redeem anchor token for collateral", txHashes.redeem);
       }
     }
 
@@ -4412,7 +4412,7 @@ export function useAnchorDepositWithdrawModal({
         selectedMarket?.name ||
         marketId;
       steps.push({
-        label: `Sell (${redeemMarketName})`,
+        label: `Redeem (${redeemMarketName})`,
         detail: redeemCollateralSymbol || "collateral",
       });
     }
@@ -9571,7 +9571,7 @@ export function useAnchorDepositWithdrawModal({
             errorName === "ActionPaused"
           ) {
             if (errorName === "ActionPaused") {
-              errorMessage = "Buying is currently paused. Please try again later.";
+              errorMessage = "Minting is currently paused. Please try again later.";
             } else {
               errorMessage = "This deposit would bring the collateral ratio below the minimum allowed. Please deposit a smaller amount or try again later when market conditions improve.";
             }
@@ -9814,7 +9814,7 @@ export function useAnchorDepositWithdrawModal({
         (!targetRedeemMinterAddress || !targetRedeemPeggedTokenAddress)
       ) {
         throw new Error(
-          "Sell market is not configured. Please choose a different sell asset."
+          "Redeem market is not configured. Please choose a different redeem asset."
         );
       }
 
@@ -9852,11 +9852,11 @@ export function useAnchorDepositWithdrawModal({
         (collateralIsImmediate && !collateralWindowOpen) ||
         (sailIsImmediate && !sailWindowOpen);
 
-      // Title: Request Withdrawal | Withdraw (1% Fee) | Withdraw | Sell | Withdraw (1% Fee) & Sell
+      // Title: Request Withdrawal | Withdraw (1% Fee) | Withdraw | Redeem | Withdraw (1% Fee) & Redeem
       const progressTitle = (() => {
         if (isRequestOnly) return "Request Withdrawal";
         if (withdrawOnly) return hasFee ? "Withdraw (1% Fee)" : "Withdraw";
-        return hasFee ? "Withdraw (1% Fee) & Sell" : "Sell";
+        return hasFee ? "Withdraw (1% Fee) & Redeem" : "Redeem";
       })();
 
       setProgressConfig((prev) => ({
@@ -10521,7 +10521,7 @@ export function useAnchorDepositWithdrawModal({
         includeApproveRedeem:
           needsApproval && !(permitEnabled && isPermitCapable),
         includeRedeem: true,
-        title: "Sell",
+        title: "Redeem",
       });
       // Show progress modal for transaction feedback
       progress.show();
@@ -10937,7 +10937,7 @@ export function useAnchorDepositWithdrawModal({
     if (base.kind === "submit") {
       return {
         ...base,
-        label: "Continue to Sell →",
+        label: "Continue to Redeem →",
         variant: "navy",
       };
     }
@@ -11418,7 +11418,7 @@ export function useAnchorDepositWithdrawModal({
           withdrawRedeemPriceInputs,
         );
         overviewFees.push({
-          label: "Sell fee",
+          label: "Redeem fee",
           percentage: redeemDryRun.feePercentage,
           usd: sellFeeUsd > 0 ? sellFeeUsd : undefined,
         });
@@ -11490,20 +11490,20 @@ export function useAnchorDepositWithdrawModal({
         case "approving":
           return "Approving...";
         case "minting":
-          return "Buying...";
+          return "Minting...";
         case "depositing":
           return "Depositing...";
         case "success":
-          return mintOnly ? "Buy" : "Buy & Deposit";
+          return mintOnly ? "Mint" : "Mint & Deposit";
         case "error":
           return "Try Again";
         default:
           if (mintOnly) {
-            return needsApproval ? "Approve & Buy" : "Buy";
+            return needsApproval ? "Approve & Mint" : "Mint";
           } else {
             return needsApproval || needsPeggedTokenApproval
-              ? "Approve & Buy & Deposit"
-              : "Buy & Deposit";
+              ? "Approve & Mint & Deposit"
+              : "Mint & Deposit";
           }
       }
     } else if (activeTab === "withdraw") {
@@ -11527,7 +11527,7 @@ export function useAnchorDepositWithdrawModal({
           case "withdrawing":
             return "Withdrawing...";
           case "redeeming":
-            return "Selling...";
+            return "Redeeming...";
           case "success":
             return baseLabel;
           case "error":
@@ -11541,13 +11541,13 @@ export function useAnchorDepositWithdrawModal({
         case "approving":
           return "Approving...";
         case "redeeming":
-          return "Selling...";
+          return "Redeeming...";
         case "success":
-          return "Sell";
+          return "Redeem";
         case "error":
           return "Try Again";
         default:
-          return "Sell";
+          return "Redeem";
       }
     }
     return "Submit";

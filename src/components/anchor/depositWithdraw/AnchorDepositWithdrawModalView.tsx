@@ -1629,7 +1629,7 @@ export function AnchorDepositWithdrawModalView(
                           activeTab !== "sell" ? (
                             <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-[#1E4775]/12 bg-white/60 px-2.5 py-2">
                               <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/50">
-                                Amount to sell
+                                Amount to redeem
                               </span>
                               <span className="font-mono text-sm font-semibold tabular-nums text-[#1E4775]">
                                 {formatTokenAmount18(poolSellAmountWei, 6)}{" "}

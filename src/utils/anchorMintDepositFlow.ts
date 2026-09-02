@@ -67,7 +67,7 @@ export async function depositMintedPeggedToStabilityPool(
 
   if (depositAmount <= 0n) {
     throw new Error(
-      "Buy succeeded but could not determine purchased amount to deposit.",
+      "Mint succeeded but could not determine minted amount to deposit.",
     );
   }
 
@@ -185,7 +185,7 @@ export function buildCollateralMintProgressFields(
       zapAndDeposit: combinedZapPoolZap,
       wrappedZapAndDeposit: combinedWrappedPoolZap,
       wrappedZapAsset: wrappedZapAssetName,
-      title: "Buy anchor token & Deposit",
+      title: "Mint anchor token & Deposit",
     };
   }
 
@@ -201,7 +201,7 @@ export function buildCollateralMintProgressFields(
       zapAndDeposit: false,
       wrappedZapAndDeposit: false,
       wrappedZapAsset: wrappedZapAssetName,
-      title: "Buy anchor token & Deposit",
+      title: "Mint anchor token & Deposit",
     };
   }
 
@@ -216,7 +216,7 @@ export function buildCollateralMintProgressFields(
     zapAndDeposit: false,
     wrappedZapAndDeposit: false,
     wrappedZapAsset: null,
-    title: "Buy anchor token",
+    title: "Mint anchor token",
   };
 }
 
@@ -274,7 +274,7 @@ export function separatePoolProgressPatch(): {
     includeMint: true,
     includeApprovePegged: true,
     includeDeposit: true,
-    title: "Buy anchor token & Deposit",
+    title: "Mint anchor token & Deposit",
   };
 }
 

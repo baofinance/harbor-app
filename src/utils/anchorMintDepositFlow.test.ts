@@ -58,7 +58,7 @@ describe("buildCollateralMintProgressFields", () => {
     expect(fields.includeApprovePegged).toBe(false);
     expect(fields.includeDeposit).toBe(false);
     expect(fields.zapAndDeposit).toBe(false);
-    expect(fields.title).toBe("Buy anchor token");
+    expect(fields.title).toBe("Mint anchor token");
   });
 
   it("uses wrapped combined pool zap for wstETH/fxSAVE", () => {

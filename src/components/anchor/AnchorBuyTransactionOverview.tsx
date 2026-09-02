@@ -28,7 +28,7 @@ export function AnchorBuyTransactionOverview({
         fee
           ? [
               {
-                label: fee.label ?? "Buy fee",
+                label: fee.label ?? "Mint fee",
                 percentage: fee.percentage,
                 usd: fee.usd,
               },
