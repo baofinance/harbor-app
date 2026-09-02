@@ -1,13 +1,15 @@
 "use client";
 
+import type { ReactNode } from "react";
+import InfoTooltip from "@/components/InfoTooltip";
 import { SailConnectWalletStripNotice } from "@/components/sail/advanced/SailConnectWalletStripNotice";
+import { formatUSD } from "@/utils/formatters";
 import {
   SAIL_ADVANCED_HEADER_STRIP_DIVIDE,
   SAIL_ADVANCED_HEADER_STRIP_LABEL,
   SAIL_ADVANCED_HEADER_STRIP_SHELL,
   SAIL_ADVANCED_HEADER_STRIP_VALUE,
 } from "@/components/sail/advanced/sailAdvancedStyles";
-import { formatUSD } from "@/utils/formatters";
 
 export type SailWalletStatsStripProps = {
   isConnected: boolean;
@@ -22,6 +24,8 @@ export type SailWalletStatsStripProps = {
   pnlSummaryLoading: boolean;
   isLoadingSailMarks: boolean;
   totalSailMarks: number;
+  /** Shown in the Marks info tooltip on hover. */
+  marksPerDay?: number;
   showSailMarks?: boolean;
   /** When true, stats grid sits inside a parent frosted shell (no outer card). */
   embedded?: boolean;
@@ -37,6 +41,13 @@ function formatSailMarks(value: number): string {
     minimumFractionDigits: value < 100 ? 2 : 0,
     maximumFractionDigits: value < 100 ? 2 : 0,
   });
+}
+
+function formatMarksPerDay(value: number): string {
+  if (value <= 0) return "0 marks/day";
+  return `${value.toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+  })} marks/day`;
 }
 
 function formatPnL(
@@ -80,14 +91,21 @@ function StatCell({
   label,
   value,
   valueClassName = SAIL_ADVANCED_HEADER_STRIP_VALUE,
+  labelExtra,
 }: {
-  label: string;
+  label: ReactNode;
   value: string;
   valueClassName?: string;
+  labelExtra?: ReactNode;
 }) {
   return (
     <div className={SAIL_WALLET_STATS_CELL}>
-      <span className={SAIL_ADVANCED_HEADER_STRIP_LABEL}>{label}</span>
+      <span
+        className={`${SAIL_ADVANCED_HEADER_STRIP_LABEL} inline-flex items-center justify-center gap-1`}
+      >
+        {label}
+        {labelExtra}
+      </span>
       <span className={valueClassName} title={value}>
         {value}
       </span>
@@ -110,6 +128,7 @@ export function SailWalletStatsStrip({
   pnlSummaryLoading,
   isLoadingSailMarks,
   totalSailMarks,
+  marksPerDay = 0,
   showSailMarks = true,
   embedded = false,
   className = "",
@@ -148,7 +167,33 @@ export function SailWalletStatsStrip({
         valueClassName={pnl.valueClassName}
       />
       {showSailMarks ? (
-        <StatCell label="Sail marks" value={marksValue} />
+        <StatCell
+          label="Marks"
+          value={marksValue}
+          labelExtra={
+            <InfoTooltip
+              label={
+                <div className="space-y-2 text-left">
+                  <p className="text-sm font-semibold text-white">
+                    {isLoadingSailMarks ? "…" : formatMarksPerDay(marksPerDay)}
+                  </p>
+                  <p className="text-xs leading-relaxed text-white/85">
+                    Marks are earned by holding sail tokens in leverage
+                    markets.
+                  </p>
+                </div>
+              }
+              side="top"
+            >
+              <span
+                className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[#1E4775]/35 text-[9px] font-bold leading-none text-[#1E4775]/70"
+                aria-hidden
+              >
+                i
+              </span>
+            </InfoTooltip>
+          }
+        />
       ) : null}
     </div>
   );
@@ -169,9 +214,9 @@ export function SailWalletMarksChip({
     <div
       className={`${SAIL_ADVANCED_HEADER_STRIP_SHELL} grid ${className}`.trim()}
       style={{ gridTemplateColumns: "minmax(0, 1fr)" }}
-      aria-label="Sail marks"
+      aria-label="Marks"
     >
-      <StatCell label="Sail marks" value={marksValue} />
+      <StatCell label="Marks" value={marksValue} />
     </div>
   );
 }

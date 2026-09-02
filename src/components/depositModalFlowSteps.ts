@@ -22,11 +22,11 @@ export function genesisWithdrawFlowParts(): string[] {
 }
 
 export function sailMintFlowParts(): string[] {
-  return [DEPOSIT_MODAL_STEP.depositCollateralAmount];
+  return ["Amount"];
 }
 
 export function sailRedeemFlowParts(): string[] {
-  return [DEPOSIT_MODAL_STEP.redeemCollateralAmount];
+  return ["Amount"];
 }
 
 /** Simple-mode deposit: mint then deposit (unless mint-only). */

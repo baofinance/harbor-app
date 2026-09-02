@@ -127,8 +127,8 @@ export function AnchorWalletStatsStrip({
                   {isLoadingMarks ? "…" : formatMarksPerDay(marksPerDay)}
                 </p>
                 <p className="text-xs leading-relaxed text-white/85">
-                  Anchor Ledger Marks are earned by holding anchor tokens and
-                  depositing into stability pools.
+                  Marks are earned by holding anchor tokens and depositing into
+                  stability pools.
                 </p>
               </div>
             }

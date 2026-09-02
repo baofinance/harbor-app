@@ -45,6 +45,7 @@ export default function SailPage() {
     sailMarksError,
     sailPnLSummary,
     totalSailMarks,
+    sailMarksPerDay,
     isLoadingSailMarks,
     sailMarketIdToIndex,
     reads,
@@ -208,6 +209,7 @@ export default function SailPage() {
               pnlSummaryLoading: sailPnLSummary.isLoading,
               isLoadingSailMarks,
               totalSailMarks,
+              marksPerDay: sailMarksPerDay,
             }}
           />
         )}

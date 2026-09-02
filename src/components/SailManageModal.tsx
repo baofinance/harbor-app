@@ -1963,13 +1963,11 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
  ) : (
  <DepositModalLayout
    flowOverview={
-     !embedded ? (
-       <DepositModalFlowOverview
-         parts={
-           activeTab === "mint" ? sailMintFlowParts() : sailRedeemFlowParts()
-         }
-       />
-     ) : null
+     <DepositModalFlowOverview
+       parts={
+         activeTab === "mint" ? sailMintFlowParts() : sailRedeemFlowParts()
+       }
+     />
    }
    scroll={
      <>

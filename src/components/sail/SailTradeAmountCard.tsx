@@ -17,8 +17,6 @@ export function SailTradeAmountCard({
       {...props}
       tokenSelector={tokenSelector}
       showTokenSelector={activeTab === "mint" && !!tokenSelector}
-      tokenRowLabel={activeTab === "mint" ? "Pay with" : undefined}
-      amountSectionLabel={activeTab === "redeem" ? "Sell amount" : undefined}
     />
   );
 }
