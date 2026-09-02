@@ -61,9 +61,9 @@ export function AnchorMarketTagline({
             : TAGLINE_CLASS
         }
       >
-        Earn with{" "}
+        Earn native yield with{" "}
         <span className={ACCENT_CLASS}>{haSymbol}</span>, pegged to{" "}
-        <span className={ACCENT_CLASS}>{pegTarget}</span>
+        <span className={ACCENT_CLASS}>{pegTarget}</span>.
       </p>
     </div>
   );
