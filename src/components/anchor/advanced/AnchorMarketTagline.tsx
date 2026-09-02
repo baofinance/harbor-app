@@ -3,7 +3,7 @@
 import type { DefinedMarket } from "@/config/markets";
 
 const TAGLINE_CLASS =
-  "text-center text-xl font-bold leading-snug text-white/90 sm:text-2xl lg:text-3xl lg:whitespace-nowrap";
+  "text-center text-lg font-bold leading-snug text-white/90 sm:text-xl lg:text-2xl";
 const ACCENT_CLASS = "font-extrabold text-[#6bc4a8]";
 const PERKS_CLASS =
   "mb-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[11px] font-medium tracking-wide text-white/70 sm:gap-x-0 sm:text-xs";
@@ -57,13 +57,13 @@ export function AnchorMarketTagline({
       <p
         className={
           inline
-            ? "min-w-0 text-left text-base font-bold leading-tight text-white/90 sm:text-lg lg:whitespace-nowrap lg:text-center lg:text-xl xl:text-2xl"
+            ? "min-w-0 text-left text-base font-bold leading-tight text-white/90 sm:text-lg lg:text-center lg:text-xl xl:text-2xl"
             : TAGLINE_CLASS
         }
       >
-        Earn yield with{" "}
-        <span className={ACCENT_CLASS}>{haSymbol}</span> while staying pegged to{" "}
-        <span className={ACCENT_CLASS}>{pegTarget}</span>.
+        Earn with{" "}
+        <span className={ACCENT_CLASS}>{haSymbol}</span>, pegged to{" "}
+        <span className={ACCENT_CLASS}>{pegTarget}</span>
       </p>
     </div>
   );

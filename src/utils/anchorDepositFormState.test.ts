@@ -38,12 +38,12 @@ describe("anchorDepositFormState", () => {
     expect(isDepositPrimaryActionDisabled(action)).toBe(true);
   });
 
-  it("returns continue to step 2 by default", () => {
+  it("returns continue to deposit by default", () => {
     const action = resolveAnchorDepositStep1PrimaryAction(base);
     expect(action).toEqual({
       kind: "submit",
-      label: "Continue to Step 2 →",
-      variant: "navy",
+      label: "Continue to Deposit →",
+      variant: "mint",
     });
   });
 
@@ -52,15 +52,15 @@ describe("anchorDepositFormState", () => {
       ...base,
       mintOnly: true,
     });
-    expect(depositPrimaryActionLabel(action)).toBe("Buy");
+    expect(depositPrimaryActionLabel(action)).toBe("Mint");
   });
 
-  it("returns stability pool when skipping reward step", () => {
+  it("returns continue to deposit when skipping reward step", () => {
     const action = resolveAnchorDepositStep1PrimaryAction({
       ...base,
       skipRewardStep: true,
     });
-    expect(depositPrimaryActionLabel(action)).toBe("Continue to Stability Pool →");
+    expect(depositPrimaryActionLabel(action)).toBe("Continue to Deposit →");
   });
 });
 
@@ -81,14 +81,14 @@ describe("resolveAnchorDepositStep2PrimaryAction", () => {
     expect(action).toEqual({
       kind: "submit",
       label: "Continue to Stability Pool →",
-      variant: "navy",
+      variant: "mint",
     });
   });
 
   it("returns mint without pool when no reward token", () => {
     const action = resolveAnchorDepositStep2PrimaryAction(step2Base);
     expect(depositPrimaryActionLabel(action)).toBe(
-      "Buy (no stability pool deposit)",
+      "Mint (no stability pool deposit)",
     );
   });
 
@@ -118,7 +118,7 @@ describe("resolveAnchorDepositStep3PrimaryAction", () => {
 
   it("returns mint and deposit when pool selected", () => {
     const action = resolveAnchorDepositStep3PrimaryAction(step3Base);
-    expect(depositPrimaryActionLabel(action)).toBe("Buy & Deposit");
+    expect(depositPrimaryActionLabel(action)).toBe("Mint & Deposit");
   });
 
   it("returns select pool when reward token chosen but pool missing", () => {

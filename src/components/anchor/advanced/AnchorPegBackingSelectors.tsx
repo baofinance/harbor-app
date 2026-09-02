@@ -342,7 +342,7 @@ export function AnchorPegBackingSelectors({
       } ${className}`.trim()}
     >
       <FrostedDropdown
-        label="Anchor token"
+        label="Peg"
         className={MARKET_SELECTOR_TOKEN_FIELD_CLASS}
         open={pegOpen}
         onOpenChange={(next) => {

@@ -2,6 +2,13 @@ import type { DefinedMarket } from "@/config/markets";
 
 export type AnchorDepositWithdrawTab = "deposit" | "withdraw" | "sell";
 
+export type AnchorTopTab = "mint" | "redeem";
+
+export type AnchorRedeemFlowMode =
+  | "withdrawAndRedeem"
+  | "withdrawOnly"
+  | "redeemOnly";
+
 export type AnchorDepositWithdrawInitialTab =
   | AnchorDepositWithdrawTab
   | "mint"

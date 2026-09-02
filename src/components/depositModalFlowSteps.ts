@@ -29,21 +29,21 @@ export function sailRedeemFlowParts(): string[] {
   return [DEPOSIT_MODAL_STEP.redeemCollateralAmount];
 }
 
-/** Simple-mode deposit: buy then deposit (unless buy-only). */
+/** Simple-mode deposit: mint then deposit (unless mint-only). */
 export function anchorSimpleDepositFlowParts(mintOnly: boolean): string[] {
-  if (mintOnly) return [DEPOSIT_MODAL_STEP.buyMint];
-  return [DEPOSIT_MODAL_STEP.buyMint, DEPOSIT_MODAL_STEP.deposit];
+  if (mintOnly) return ["Mint"];
+  return ["Mint", DEPOSIT_MODAL_STEP.deposit];
 }
 
-/** Simple-mode withdraw: withdraw then sell (unless withdraw-only). */
+/** Simple-mode withdraw: withdraw then redeem (unless withdraw-only). */
 export function anchorSimpleWithdrawFlowParts(withdrawOnly: boolean): string[] {
   if (withdrawOnly) return [DEPOSIT_MODAL_STEP.withdraw];
-  return [DEPOSIT_MODAL_STEP.withdraw, DEPOSIT_MODAL_STEP.sellRedeem];
+  return [DEPOSIT_MODAL_STEP.withdraw, "Redeem"];
 }
 
-/** Simple-mode sell tab: wallet sell only. */
+/** Simple-mode redeem-only: wallet redeem. */
 export function anchorSimpleSellFlowParts(): string[] {
-  return [DEPOSIT_MODAL_STEP.sellRedeem];
+  return ["Redeem"];
 }
 
 export function anchorDepositFlowParts(options: {
@@ -65,6 +65,6 @@ export function anchorWithdrawFlowParts(withdrawOnly: boolean): string[] {
   }
   return [
     DEPOSIT_MODAL_STEP.withdrawStabilityPoolAmount,
-    DEPOSIT_MODAL_STEP.redeemCollateral,
+    "Redeem for collateral",
   ];
 }

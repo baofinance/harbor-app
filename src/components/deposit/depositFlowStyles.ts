@@ -42,7 +42,7 @@ export const DEPOSIT_MODAL_PANEL_HEIGHT_CLASS =
 export const DEPOSIT_MODAL_CONTENT_CLASS =
   "flex min-h-0 flex-1 flex-col overflow-hidden px-3 pt-3 sm:px-4 sm:pt-4";
 
-/** Embedded inline shell — panel shell owns horizontal padding (~359px inner at lg). */
+/** Embedded inline shell — panel shell owns horizontal padding. */
 export const DEPOSIT_EMBEDDED_CONTENT_CLASS =
   "flex min-h-0 flex-1 flex-col overflow-hidden";
 
@@ -90,16 +90,15 @@ export const ANCHOR_MODAL_FOOTER_CHROME =
 export const DEPOSIT_EMBEDDED_PANEL_HEIGHT =
   "flex min-h-[22rem] flex-col overflow-hidden sm:min-h-[26rem] lg:h-full lg:min-h-[650px] lg:max-h-[650px]";
 
-/** Anchor earn layout — trade column up to 400px (panel padding → ~359px form width). */
-export const ANCHOR_TRADE_PANEL_GRID_CLASS =
-  "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(330px,400px)] lg:items-start lg:min-h-[650px]";
-
-/** Sail trade layout — original trade column width. */
-export const SAIL_TRADE_PANEL_GRID_CLASS =
+/** Embedded trade column width on Earn / Leverage layout (lg). */
+export const DEPOSIT_TRADE_PANEL_GRID_CLASS =
   "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-start lg:min-h-[650px]";
 
-/** @deprecated Use ANCHOR_TRADE_PANEL_GRID_CLASS or SAIL_TRADE_PANEL_GRID_CLASS */
-export const DEPOSIT_TRADE_PANEL_GRID_CLASS = ANCHOR_TRADE_PANEL_GRID_CLASS;
+/** @deprecated Use DEPOSIT_TRADE_PANEL_GRID_CLASS */
+export const ANCHOR_TRADE_PANEL_GRID_CLASS = DEPOSIT_TRADE_PANEL_GRID_CLASS;
+
+/** @deprecated Use DEPOSIT_TRADE_PANEL_GRID_CLASS */
+export const SAIL_TRADE_PANEL_GRID_CLASS = DEPOSIT_TRADE_PANEL_GRID_CLASS;
 
 /** @deprecated Use DEPOSIT_EMBEDDED_PANEL_HEIGHT */
 export const ANCHOR_EMBEDDED_PANEL_HEIGHT = DEPOSIT_EMBEDDED_PANEL_HEIGHT;

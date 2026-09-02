@@ -23,7 +23,7 @@ export type ResolveAnchorDepositStep1ActionInput = {
 
 function continueLabel(input: ResolveAnchorDepositStep1ActionInput): string {
   if (input.mintOnly) {
-    return "Buy";
+    return "Mint";
   }
   if (input.isDirectPeggedDeposit) {
     return "Continue to Deposit →";
@@ -113,7 +113,7 @@ export function resolveAnchorDepositStep2PrimaryAction(
 
   return {
     kind: "submit",
-    label: "Buy (no stability pool deposit)",
+    label: "Mint (no stability pool deposit)",
     variant: "mint",
   };
 }
@@ -168,10 +168,10 @@ export function resolveAnchorDepositStep3PrimaryAction(
   }
 
   if (selectedStabilityPool) {
-    return { kind: "submit", label: "Buy & Deposit", variant: "mint" };
+    return { kind: "submit", label: "Mint & Deposit", variant: "mint" };
   }
 
-  return { kind: "submit", label: "Buy", variant: "mint" };
+  return { kind: "submit", label: "Mint", variant: "mint" };
 }
 
 export type ResolveAnchorWithdrawPrimaryActionInput = {

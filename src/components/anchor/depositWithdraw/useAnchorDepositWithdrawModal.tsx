@@ -145,6 +145,8 @@ import type {
   AnchorDepositWithdrawStep,
   AnchorDepositWithdrawTab,
   AnchorDepositWithdrawTransactionStatus,
+  AnchorRedeemFlowMode,
+  AnchorTopTab,
 } from "./types";
 
 type TabType = AnchorDepositWithdrawTab;
@@ -4861,18 +4863,41 @@ export function useAnchorDepositWithdrawModal({
     [flowPage],
   );
 
-  const handleWithdrawFlowModeChange = useCallback(
-    (mode: "withdrawOnly" | "withdrawAndSell") => {
+  const handleRedeemFlowModeChange = useCallback(
+    (mode: AnchorRedeemFlowMode) => {
+      setError(null);
+      setTransactionNotificationError(null);
+      setStep("input");
+
+      if (mode === "redeemOnly") {
+        if (activeTab !== "sell") {
+          setActiveTab("sell");
+        }
+        setWithdrawOnly(false);
+        configureSellFromWalletTab();
+        return;
+      }
+
+      if (activeTab === "sell") {
+        setActiveTab("withdraw");
+      }
+
       const nextWithdrawOnly = mode === "withdrawOnly";
       setWithdrawOnly(nextWithdrawOnly);
       if (flowPage > 1) {
         setFlowPage(1);
       }
-      setError(null);
-      setTransactionNotificationError(null);
-      setStep("input");
     },
-    [flowPage],
+    [activeTab, flowPage, configureSellFromWalletTab],
+  );
+
+  const handleWithdrawFlowModeChange = useCallback(
+    (mode: "withdrawOnly" | "withdrawAndSell") => {
+      handleRedeemFlowModeChange(
+        mode === "withdrawOnly" ? "withdrawOnly" : "withdrawAndRedeem",
+      );
+    },
+    [handleRedeemFlowModeChange],
   );
 
   /** From deposit page back to buy/mint: keep amount & deposit asset. */
@@ -6166,6 +6191,24 @@ export function useAnchorDepositWithdrawModal({
       setStabilityPoolType("collateral");
     }
   };
+
+  const handleTopTabChange = (tab: AnchorTopTab) => {
+    if (tab === "mint") {
+      handleTabChange("deposit");
+      return;
+    }
+    if (activeTab === "withdraw" || activeTab === "sell") {
+      return;
+    }
+    handleTabChange("withdraw");
+    setWithdrawOnly(false);
+  };
+
+  const redeemFlowMode: AnchorRedeemFlowMode = useMemo(() => {
+    if (activeTab === "sell") return "redeemOnly";
+    if (withdrawOnly) return "withdrawOnly";
+    return "withdrawAndRedeem";
+  }, [activeTab, withdrawOnly]);
 
   const handleMaxClick = () => {
     if (activeTab === "deposit") {
@@ -11045,14 +11088,14 @@ export function useAnchorDepositWithdrawModal({
 
     const heading =
       amount && parseFloat(amount) > 0
-        ? "Buy fee"
+        ? "Mint fee"
         : feeRange?.hasRange
           ? "Fee range"
-          : "Buy fee";
+          : "Mint fee";
 
     const items: DepositTradeFeeItem[] = [
       {
-        label: "Buy",
+        label: "Mint",
         displayValue:
           showRange && !(amount && parseFloat(amount) > 0)
             ? displayValue
@@ -11066,9 +11109,9 @@ export function useAnchorDepositWithdrawModal({
         isMintSail: true,
         tooltip: (
           <div className="space-y-2">
-            <p className="font-semibold">Dynamic Buy Fees</p>
+            <p className="font-semibold">Dynamic Mint Fees</p>
             <p>
-              Buy fees adjust in real time based on market health and your
+              Mint fees adjust in real time based on market health and your
               deposit size.
             </p>
           </div>
@@ -11102,10 +11145,10 @@ export function useAnchorDepositWithdrawModal({
       redeemInputAmount &&
       redeemInputAmount > 0n &&
       redeemFeePercentage !== undefined
-        ? "Sell fee"
+        ? "Redeem fee"
         : sellFeeRange?.hasRange && marketsForToken.length > 1
           ? "Fee range"
-          : "Sell fee";
+          : "Redeem fee";
 
     const sellFeeValue = (() => {
       if (!showSellFee) return null;
@@ -11140,7 +11183,7 @@ export function useAnchorDepositWithdrawModal({
         redeemInputAmount > 0n &&
         redeemFeePercentage !== undefined;
       items.push({
-        label: "Sell",
+        label: "Redeem",
         displayValue:
           !hasAmount && sellFeeValue.includes("–") ? sellFeeValue : undefined,
         ratio: hasAmount
@@ -11151,9 +11194,9 @@ export function useAnchorDepositWithdrawModal({
         isMintSail: false,
         tooltip: (
           <div className="space-y-2">
-            <p className="font-semibold">Dynamic Sell Fees</p>
+            <p className="font-semibold">Dynamic Redeem Fees</p>
             <p>
-              Sell fees adjust in real time based on market health and your
+              Redeem fees adjust in real time based on market health and your
               withdraw size when redeeming to collateral.
             </p>
           </div>
@@ -11967,6 +12010,9 @@ export function useAnchorDepositWithdrawModal({
     resetSimpleDepositFlowKeepToken,
     handleBuyFlowModeChange,
     handleWithdrawFlowModeChange,
+    handleRedeemFlowModeChange,
+    handleTopTabChange,
+    redeemFlowMode,
     leaveRewardTokenStepToAmount,
     goToFlowPage,
     handleDepositFlowStepClick,

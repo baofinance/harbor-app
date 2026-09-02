@@ -13,6 +13,8 @@ export type AnchorEmbeddedClaimBarProps = {
   claimableRewardsUSD: number;
   isClaiming?: boolean;
   onClaim: () => void;
+  /** Above the trade panel (default) or below it. */
+  placement?: "above" | "below";
 };
 
 /** Full-width claimable + Claim row under the embedded Anchor manage panel. */
@@ -21,6 +23,7 @@ export function AnchorEmbeddedClaimBar({
   claimableRewardsUSD,
   isClaiming = false,
   onClaim,
+  placement = "below",
 }: AnchorEmbeddedClaimBarProps) {
   if (!isConnected) return null;
 
@@ -28,7 +31,9 @@ export function AnchorEmbeddedClaimBar({
 
   return (
     <div
-      className={`mt-3 grid w-full grid-cols-[1fr_auto] items-center gap-3 rounded-xl px-4 py-3.5 sm:gap-6 sm:px-5 ${ANCHOR_ADVANCED_FROSTED_LIGHT_PANEL}`}
+      className={`grid w-full grid-cols-[1fr_auto] items-center gap-3 rounded-xl px-4 py-3.5 sm:gap-6 sm:px-5 ${ANCHOR_ADVANCED_FROSTED_LIGHT_PANEL} ${
+        placement === "above" ? "mb-3" : "mt-3"
+      }`}
     >
       <div className="min-w-0">
         <p className={ANCHOR_ADVANCED_HEADER_STRIP_LABEL}>Claimable value</p>

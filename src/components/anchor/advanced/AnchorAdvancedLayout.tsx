@@ -210,8 +210,8 @@ export function AnchorAdvancedLayout({
 
       {isComingSoon ? null : (
         <AnchorMobileTradeBar
-          onDeposit={() => openTradeTab("deposit")}
-          onWithdraw={() => openTradeTab("withdraw")}
+          onMint={() => openTradeTab("deposit")}
+          onRedeem={() => openTradeTab("withdraw")}
         />
       )}
 

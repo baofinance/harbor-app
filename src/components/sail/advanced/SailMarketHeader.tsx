@@ -49,9 +49,8 @@ export function SailMarketHeader({
   const usePairSelectors = dropdownOptions.length > 1;
 
   return (
-    <header className="relative z-10 flex flex-col gap-4 overflow-visible">
+    <header className="relative z-10 flex flex-col gap-4 overflow-visible border-b border-white/10 pb-4">
       <div className="min-w-0 overflow-visible">
-        <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>Market</p>
         <div className="grid min-w-0 gap-4 overflow-visible lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center lg:gap-8">
           {usePairSelectors ? (
             <SailTokenPairSelectors

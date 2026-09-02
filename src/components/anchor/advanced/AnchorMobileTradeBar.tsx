@@ -6,16 +6,16 @@ import {
 } from "./anchorAdvancedStyles";
 
 type AnchorMobileTradeBarProps = {
-  onDeposit: () => void;
-  onWithdraw: () => void;
-  depositDisabled?: boolean;
+  onMint: () => void;
+  onRedeem: () => void;
+  mintDisabled?: boolean;
 };
 
-/** Sticky Deposit / Withdraw shortcuts — scrolls to the embedded panel on small screens. */
+/** Sticky Mint / Redeem shortcuts — scrolls to the embedded panel on small screens. */
 export function AnchorMobileTradeBar({
-  onDeposit,
-  onWithdraw,
-  depositDisabled = false,
+  onMint,
+  onRedeem,
+  mintDisabled = false,
 }: AnchorMobileTradeBarProps) {
   return (
     <div
@@ -25,20 +25,20 @@ export function AnchorMobileTradeBar({
       <div className="mx-auto flex max-w-lg gap-2 px-3 pt-3">
         <button
           type="button"
-          onClick={onDeposit}
-          disabled={depositDisabled}
+          onClick={onMint}
+          disabled={mintDisabled}
           className={`${ANCHOR_MOBILE_DEPOSIT_BUTTON_CLASS} ${
-            depositDisabled ? "cursor-not-allowed opacity-40" : ""
+            mintDisabled ? "cursor-not-allowed opacity-40" : ""
           }`}
         >
-          Deposit
+          Mint
         </button>
         <button
           type="button"
-          onClick={onWithdraw}
+          onClick={onRedeem}
           className={ANCHOR_MOBILE_WITHDRAW_BUTTON_CLASS}
         >
-          Withdraw
+          Redeem
         </button>
       </div>
     </div>

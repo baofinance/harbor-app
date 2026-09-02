@@ -37,6 +37,7 @@ export function AnchorMarketActionPanel({
 }: AnchorMarketActionPanelProps) {
   return (
     <aside className="flex w-full min-w-0 flex-col">
+      {claimBar ? <AnchorEmbeddedClaimBar {...claimBar} placement="above" /> : null}
       <div
         className={`${ANCHOR_EMBEDDED_FORM_PANEL} ${ANCHOR_EMBEDDED_PANEL_HEIGHT} flex w-full min-w-0 flex-col overflow-hidden`}
       >
@@ -65,7 +66,6 @@ export function AnchorMarketActionPanel({
           </div>
         )}
       </div>
-      {claimBar ? <AnchorEmbeddedClaimBar {...claimBar} /> : null}
     </aside>
   );
 }

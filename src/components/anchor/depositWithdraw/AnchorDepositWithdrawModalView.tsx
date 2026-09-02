@@ -419,6 +419,9 @@ export function AnchorDepositWithdrawModalView(
     resetSimpleDepositFlowKeepToken,
     handleBuyFlowModeChange,
     handleWithdrawFlowModeChange,
+    handleRedeemFlowModeChange,
+    handleTopTabChange,
+    redeemFlowMode,
     leaveRewardTokenStepToAmount,
     goToFlowPage,
     handleDepositFlowStepClick,
@@ -596,10 +599,10 @@ export function AnchorDepositWithdrawModalView(
               }
               actionLabel={
                 activeTab === "deposit"
-                  ? "Buy"
+                  ? "Mint"
                   : activeTab === "withdraw"
                     ? "Withdraw"
-                    : "Sell"
+                    : "Redeem"
               }
             />
           }
@@ -613,16 +616,14 @@ export function AnchorDepositWithdrawModalView(
           tabs={
             <DepositModalTabHeader
               tabs={[
-                { value: "deposit", label: "Buy" },
-                { value: "withdraw", label: "Withdraw" },
-                { value: "sell", label: "Sell" },
+                { value: "mint", label: "Mint" },
+                { value: "redeem", label: "Redeem" },
               ]}
-              activeTab={activeTab}
-              onTabChange={(v) => handleTabChange(v as TabType)}
+              activeTab={activeTab === "deposit" ? "mint" : "redeem"}
+              onTabChange={(v) => handleTopTabChange(v as "mint" | "redeem")}
               disabled={isProcessing}
               tabDisabled={{
-                deposit: depositsBlocked,
-                sell: !canSellFromWallet,
+                mint: depositsBlocked,
               }}
             />
           }
@@ -684,12 +685,12 @@ export function AnchorDepositWithdrawModalView(
                       <div
                         className={DEPOSIT_SEGMENT_TRACK_CLASS}
                         role="tablist"
-                        aria-label="Buy flow"
+                        aria-label="Mint flow"
                       >
                         {(
                           [
                             { id: "deposit" as const, label: "Deposit" },
-                            { id: "mintOnly" as const, label: "Buy only" },
+                            { id: "mintOnly" as const, label: "Mint" },
                           ] as const
                         ).map(({ id, label }) => {
                           const active = id === "mintOnly" ? mintOnly : !mintOnly;
@@ -1116,36 +1117,42 @@ export function AnchorDepositWithdrawModalView(
                         )
                       }
                     >
-                    {(simpleMode ? flowPage === 1 && activeTab === "withdraw" : true) ? (
+                    {simpleMode && (activeTab === "withdraw" || activeTab === "sell") ? (
                     <div className={DEPOSIT_SEGMENT_STACK_CLASS}>
                       <div
                         className={DEPOSIT_SEGMENT_TRACK_CLASS}
                         role="tablist"
-                        aria-label="Withdraw flow"
+                        aria-label="Redeem flow"
                       >
                         {(
                           [
                             {
-                              id: "withdrawAndSell" as const,
-                              label: "Withdraw & Sell",
+                              id: "withdrawAndRedeem" as const,
+                              label: "Withdraw & Redeem",
                             },
                             {
                               id: "withdrawOnly" as const,
-                              label: "Withdraw only",
+                              label: "Withdraw",
+                            },
+                            {
+                              id: "redeemOnly" as const,
+                              label: "Redeem",
                             },
                           ] as const
                         ).map(({ id, label }) => {
-                          const active =
-                            id === "withdrawOnly" ? withdrawOnly : !withdrawOnly;
+                          const active = redeemFlowMode === id;
+                          const disabled =
+                            isProcessing ||
+                            (id === "redeemOnly" && !canSellFromWallet);
                           return (
                             <button
                               key={id}
                               type="button"
                               role="tab"
                               aria-selected={active}
-                              disabled={isProcessing}
-                              onClick={() => handleWithdrawFlowModeChange(id)}
-                              className={`flex flex-1 basis-0 min-w-0 items-center justify-center rounded-md py-1 text-xs font-semibold transition disabled:opacity-50 ${
+                              disabled={disabled}
+                              onClick={() => handleRedeemFlowModeChange(id)}
+                              className={`flex flex-1 basis-0 min-w-0 items-center justify-center rounded-md px-1 py-1 text-[11px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 sm:text-xs ${
                                 active
                                   ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
                                   : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
@@ -1156,6 +1163,10 @@ export function AnchorDepositWithdrawModalView(
                           );
                         })}
                       </div>
+                    </div>
+                    ) : null}
+                    {(simpleMode ? flowPage === 1 && activeTab === "withdraw" : activeTab === "withdraw") ? (
+                    <div className={DEPOSIT_SEGMENT_STACK_CLASS}>
                     {/* Reward / collateral filter: fxSAVE vs wstETH (when both exist) */}
                     {(() => {
                       const poolRows = withdrawPoolRowsForActiveRail;
@@ -1553,12 +1564,12 @@ export function AnchorDepositWithdrawModalView(
                           {activeTab !== "sell" ? (
                             <>
                           <div className={DEPOSIT_SECTION_LABEL_CLASS}>
-                            Sell from
+                            Redeem from
                           </div>
                           <div
                             className={`${DEPOSIT_SEGMENT_TRACK_CLASS} mt-1`}
                             role="tablist"
-                            aria-label="Sell from"
+                            aria-label="Redeem from"
                           >
                             {hasPoolSellAmount ? (
                               <button
@@ -1633,7 +1644,7 @@ export function AnchorDepositWithdrawModalView(
                             <div className="mt-2 space-y-2">
                               {activeTab === "sell" ? (
                                 <div className={DEPOSIT_SECTION_LABEL_CLASS}>
-                                  Sell amount
+                                  Redeem amount
                                 </div>
                               ) : null}
                               <div className="relative">
@@ -1686,12 +1697,12 @@ export function AnchorDepositWithdrawModalView(
                         {marketsForToken.length > 1 ? (
                           <div>
                             <div className={DEPOSIT_SECTION_LABEL_CLASS}>
-                              Sell via market
+                              Redeem via market
                             </div>
                             <div
                               className={`${DEPOSIT_SEGMENT_TRACK_CLASS} mt-1`}
                               role="tablist"
-                              aria-label="Sell via market"
+                              aria-label="Redeem via market"
                             >
                               <button
                                 type="button"
@@ -2099,13 +2110,13 @@ export function AnchorDepositWithdrawModalView(
                                 ({parseFloat(amount).toFixed(6)} {selectedDepositAsset || collateralSymbol} ≈ {Number(formatEther(expectedOutput)).toFixed(6)} {outputSymbol})
                               </div>
                             )}
-                            {/* Buy fee */}
+                            {/* Mint fee */}
                             {feePercentage !== undefined && amount && parseFloat(amount) > 0 && (
                               <>
                                 {expectedOutput && <div className="border-t border-[#1E4775]/20"></div>}
                                 <div className="flex justify-between items-center text-xs">
                                   <span className="text-[#1E4775]/70">
-                                    Buy fee:
+                                    Mint fee:
                                   </span>
                                   <span
                                     className={`font-bold font-mono ${
@@ -2218,7 +2229,7 @@ export function AnchorDepositWithdrawModalView(
                         <div className="mt-2 pt-2 border-t border-[#1E4775]/20">
                           <div className="flex justify-between items-center text-xs">
                             <span className="text-[#1E4775]/70">
-                              Buy fee:
+                              Mint fee:
                             </span>
                             <span
                               className={`font-bold font-mono ${
@@ -2896,10 +2907,10 @@ export function AnchorDepositWithdrawModalView(
                   <div className="p-3 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/30 text-[#1E4775] text-sm text-center">
                     ✅{" "}
                     {activeTab === "deposit"
-                      ? "Buy"
+                      ? "Mint"
                       : activeTab === "withdraw"
                       ? "Withdraw"
-                      : "Sell"}
+                      : "Redeem"}
                     {" "}
                     successful!
                   </div>
