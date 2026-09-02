@@ -31,14 +31,14 @@ export function AnchorEmbeddedClaimBar({
 
   return (
     <div
-      className={`grid w-full grid-cols-[1fr_auto] items-center gap-3 rounded-xl px-4 py-3.5 sm:gap-6 sm:px-5 ${ANCHOR_ADVANCED_FROSTED_LIGHT_PANEL} ${
+      className={`grid h-[60px] w-full grid-cols-[1fr_auto] items-center gap-2 rounded-xl px-3.5 sm:gap-4 sm:px-4 ${ANCHOR_ADVANCED_FROSTED_LIGHT_PANEL} ${
         placement === "above" ? "mb-3" : "mt-3"
       }`}
     >
-      <div className="min-w-0">
+      <div className="min-w-0 leading-tight">
         <p className={ANCHOR_ADVANCED_HEADER_STRIP_LABEL}>Claimable value</p>
         <p
-          className={`${ANCHOR_ADVANCED_HEADER_STRIP_VALUE} text-base sm:text-lg ${
+          className={`${ANCHOR_ADVANCED_HEADER_STRIP_VALUE} text-sm sm:text-base ${
             hasClaimable ? "text-[#2d6b5c]" : ""
           }`}
         >
@@ -49,7 +49,7 @@ export function AnchorEmbeddedClaimBar({
         type="button"
         onClick={onClaim}
         disabled={isClaiming || !hasClaimable}
-        className={`${INDEX_EARN_CLAIM_BUTTON_CLASS_DESKTOP} h-10 min-w-[6.5rem] shrink-0 px-8 sm:min-w-[8.5rem] disabled:cursor-not-allowed disabled:opacity-40`}
+        className={`${INDEX_EARN_CLAIM_BUTTON_CLASS_DESKTOP} h-9 min-w-[6rem] shrink-0 px-6 sm:min-w-[7.5rem] disabled:cursor-not-allowed disabled:opacity-40`}
       >
         {isClaiming ? "Claiming…" : "Claim"}
       </button>

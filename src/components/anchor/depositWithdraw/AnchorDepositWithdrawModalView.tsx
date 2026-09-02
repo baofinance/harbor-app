@@ -1563,13 +1563,10 @@ export function AnchorDepositWithdrawModalView(
                         <div>
                           {activeTab !== "sell" ? (
                             <>
-                          <div className={DEPOSIT_SECTION_LABEL_CLASS}>
-                            Redeem from
-                          </div>
                           <div
-                            className={`${DEPOSIT_SEGMENT_TRACK_CLASS} mt-1`}
+                            className={DEPOSIT_SEGMENT_TRACK_CLASS}
                             role="tablist"
-                            aria-label="Redeem from"
+                            aria-label="Redeem source"
                           >
                             {hasPoolSellAmount ? (
                               <button
@@ -1714,7 +1711,7 @@ export function AnchorDepositWithdrawModalView(
                                 onClick={() =>
                                   setRedeemMarketSelectionMode("auto")
                                 }
-                                className={`flex-1 rounded-md px-2.5 py-2 text-xs font-semibold transition disabled:opacity-50 ${
+                                className={`flex flex-1 items-center justify-center rounded-md px-2 py-1 text-xs font-semibold transition disabled:opacity-50 ${
                                   redeemMarketSelectionMode === "auto"
                                     ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
                                     : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
@@ -1732,7 +1729,7 @@ export function AnchorDepositWithdrawModalView(
                                 onClick={() =>
                                   setRedeemMarketSelectionMode("manual")
                                 }
-                                className={`flex-1 rounded-md px-2.5 py-2 text-xs font-semibold transition disabled:opacity-50 ${
+                                className={`flex flex-1 items-center justify-center rounded-md px-2 py-1 text-xs font-semibold transition disabled:opacity-50 ${
                                   redeemMarketSelectionMode === "manual"
                                     ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
                                     : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
