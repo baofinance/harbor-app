@@ -1217,7 +1217,12 @@ export function useAnchorDepositWithdrawModal({
   // This ensures the minting market is locked to the deposit asset
   // We only update in Step 1 to prevent resets when selecting pools in Step 3
   useEffect(() => {
-    if (simpleMode && flowPage === 1 && marketForDepositAsset) {
+    if (
+      simpleMode &&
+      flowPage === 1 &&
+      activeTab === "deposit" &&
+      marketForDepositAsset
+    ) {
       // Find the marketId for the marketForDepositAsset
       const matchingMarket = marketsForToken.find(
         ({ market: m }) => m === marketForDepositAsset
@@ -1226,7 +1231,7 @@ export function useAnchorDepositWithdrawModal({
         setSelectedMarketId(matchingMarket.marketId);
       }
     }
-  }, [marketForDepositAsset, flowPage, simpleMode, marketsForToken]);
+  }, [marketForDepositAsset, flowPage, simpleMode, activeTab, marketsForToken]);
 
   // Use market for deposit asset if available, otherwise use selected market
   const activeMarketForFees = marketForDepositAsset || selectedMarket;
@@ -5707,6 +5712,30 @@ export function useAnchorDepositWithdrawModal({
       ),
     [withdrawPoolRowsForActiveRail, withdrawPoolTypeTab],
   );
+
+  // Keep contract reads (pool balance caps, request windows) aligned with the pool row shown in withdraw step 1.
+  useEffect(() => {
+    if (!isActive || activeTab !== "withdraw") return;
+    if (simpleMode && flowPage !== 1) return;
+    const row = activeWithdrawPoolRow;
+    if (!row || selectedMarketId === row.marketId) return;
+    setSelectedMarketId(row.marketId);
+    if (redeemMarketSelectionMode === "auto") {
+      setSelectedRedeemMarketId(row.marketId);
+      const redeemSym = row.market?.collateral?.symbol;
+      if (redeemSym) {
+        setSelectedRedeemAsset(redeemSym);
+      }
+    }
+  }, [
+    isActive,
+    activeTab,
+    simpleMode,
+    flowPage,
+    activeWithdrawPoolRow,
+    selectedMarketId,
+    redeemMarketSelectionMode,
+  ]);
 
   // Default Collateral/Sail tab to the pool with the larger balance (until user picks).
   useEffect(() => {

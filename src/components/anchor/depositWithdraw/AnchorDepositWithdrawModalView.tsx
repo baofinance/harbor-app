@@ -1210,18 +1210,28 @@ export function AnchorDepositWithdrawModalView(
                                 p.poolType === "collateral"
                                   ? collateralPoolFeePercent
                                   : sailPoolFeePercent;
-                              const immediateCap =
+                              const globalImmediateCap =
                                 p.poolType === "collateral"
                                   ? collateralPoolImmediateCap
                                   : sailPoolImmediateCap;
-                              const exceeds =
-                                p.poolType === "collateral"
-                                  ? positionExceedsBalance.collateralPool
-                                  : positionExceedsBalance.sailPool;
+                              const rowImmediateCap =
+                                p.marketId === selectedMarketId
+                                  ? globalImmediateCap
+                                  : p.balance;
                               const amountValue =
                                 p.poolType === "collateral"
                                   ? positionAmounts.collateralPool
                                   : positionAmounts.sailPool;
+                              const exceeds = (() => {
+                                if (!amountValue) return false;
+                                try {
+                                  return (
+                                    parseEther(amountValue) > rowImmediateCap
+                                  );
+                                } catch {
+                                  return false;
+                                }
+                              })();
 
                               return (
                                     <div className="space-y-1.5">
@@ -1356,7 +1366,7 @@ export function AnchorDepositWithdrawModalView(
                                       handlePositionAmountChange(
                                                 modeKey as any,
                                         e.target.value,
-                                                immediateCap
+                                                rowImmediateCap
                                       )
                                     }
                                     placeholder="0.0"
@@ -1369,13 +1379,13 @@ export function AnchorDepositWithdrawModalView(
                                       setPositionAmounts((prev) => ({
                                         ...prev,
                                                 [modeKey]: formatEther(
-                                                  immediateCap
+                                                  rowImmediateCap
                                         ),
                                       }));
                                     }}
                                     className={DEPOSIT_AMOUNT_MAX_BUTTON_CLASS}
                                             disabled={
-                                              isProcessing || immediateCap === 0n
+                                              isProcessing || rowImmediateCap === 0n
                                             }
                                   >
                                     MAX
@@ -1384,7 +1394,7 @@ export function AnchorDepositWithdrawModalView(
                                 </div>
                               )}
 
-                                      {isImmediate && immediateCap === 0n && (
+                                      {isImmediate && rowImmediateCap === 0n && (
                                 <p className="text-[10px] text-[#1E4775]/60 mt-1">
                                           Early withdraw is temporarily unavailable:
                                           the pool is at its minimum total supply.
