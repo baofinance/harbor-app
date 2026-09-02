@@ -3,7 +3,7 @@
 import type { DefinedMarket } from "@/config/markets";
 
 const TAGLINE_CLASS =
-  "text-center text-lg font-bold leading-snug text-white/90 sm:text-xl lg:text-2xl";
+  "min-w-0 text-center text-xl font-bold leading-snug text-white/90 sm:text-2xl lg:text-3xl";
 const ACCENT_CLASS = "font-extrabold text-[#6bc4a8]";
 const PERKS_CLASS =
   "mb-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[11px] font-medium tracking-wide text-white/70 sm:gap-x-0 sm:text-xs";
@@ -57,7 +57,7 @@ export function AnchorMarketTagline({
       <p
         className={
           inline
-            ? "min-w-0 text-left text-base font-bold leading-tight text-white/90 sm:text-lg lg:text-center lg:text-xl xl:text-2xl"
+            ? "min-w-0 text-left text-lg font-bold leading-tight text-white/90 sm:text-xl lg:text-center lg:text-2xl xl:text-3xl"
             : TAGLINE_CLASS
         }
       >
