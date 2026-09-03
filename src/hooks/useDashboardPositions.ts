@@ -69,6 +69,7 @@ const SAIL_POSITIONS_QUERY = `
     ) {
       id
       tokenAddress
+      balance
       balanceUSD
       totalCostBasisUSD
       realizedPnLUSD
@@ -743,22 +744,116 @@ export function useDashboardPositions() {
     const raw = (sailData?.userSailPositions ?? []) as Array<{
       id: string;
       tokenAddress: string;
-      balanceUSD?: string;
-      totalCostBasisUSD?: string;
+      balance?: string;
+      balanceUSD?: string | number;
+      totalCostBasisUSD?: string | number;
     }>;
-    const rows: DashboardPositionRow[] = [];
-    const tokensFromSailSubgraphRow = new Set<string>();
 
+    // Cost basis by token — independent of indexer balanceUSD (Sail page does the same).
+    const costByToken = new Map<
+      string,
+      {
+        id: string;
+        balance?: string;
+        balanceUSD: number;
+        totalCostBasisUSD?: string | number;
+      }
+    >();
     for (const p of raw) {
-      const usd = parseFloat(p.balanceUSD || "0");
-      if (!nonZeroUsd(usd)) continue;
       const tok = String(p.tokenAddress || "").toLowerCase();
+      if (!tok) continue;
+      costByToken.set(tok, {
+        id: p.id,
+        balance: p.balance,
+        balanceUSD: parseFloat(String(p.balanceUSD ?? "0")) || 0,
+        totalCostBasisUSD: p.totalCostBasisUSD,
+      });
+    }
+
+    const rows: DashboardPositionRow[] = [];
+    const tokensEmitted = new Set<string>();
+
+    // Prefer marks ledger balances for display USD (same source as portfolio totals),
+    // then attach Sail-subgraph cost basis so PnL matches the Sail page formula.
+    for (const s of sailBalances) {
+      if (!nonZeroBalanceToken(s.balance)) continue;
+      const tok = s.tokenAddress.toLowerCase();
+
+      const levMeta = index.leveragedTokenByAddressLower.get(tok);
+      const haMeta = index.haTokenByAddressLower.get(tok);
+      const meta = levMeta ?? haMeta;
+      const marketId = meta?.marketId;
+      const balanceTokens = parseFloat(s.balance);
+      const priceUsd = marketId
+        ? tokenPricesByMarket[marketId]?.leveragedPriceUSD
+        : undefined;
+      const { usd, usdUnpriced } = resolveUsdValue(
+        s.balanceUSD,
+        balanceTokens,
+        priceUsd,
+      );
+      if (!shouldShowPositionRow(balanceTokens, usd, usdUnpriced)) continue;
+
+      const marketLabel = meta?.displayName ?? "Sail";
+      const levSymFromMarks =
+        levMeta && marketCfg(levMeta.marketId)?.leveragedToken?.symbol;
+      const cost = costByToken.get(tok);
+      const hasCostBasis = cost != null;
+
+      rows.push(
+        withChain({
+          id: hasCostBasis ? `lev-${cost!.id}` : `sailbal-${s.id}`,
+          category: "leverage",
+          marketId: meta?.marketId,
+          marketLabel,
+          detail: hasCostBasis
+            ? `${levSymFromMarks ?? "Leveraged"} · position`
+            : "Sail token · marks",
+          iconSymbol:
+            levSymFromMarks || iconSymbolFromMarketLabel(marketLabel),
+          statusTone: "neutral",
+          statusLabel: hasCostBasis ? "Position" : "Marks",
+          usd,
+          usdUnpriced,
+          ...(hasCostBasis
+            ? sailUnrealizedPnL(usd, cost!.totalCostBasisUSD)
+            : {}),
+          href: buildSailMarketPageHref(meta?.marketId),
+        }),
+      );
+      tokensEmitted.add(tok);
+    }
+
+    // Subgraph-only leftovers (token not in marks ledger).
+    for (const [tok, p] of costByToken) {
+      if (tokensEmitted.has(tok)) continue;
+
       const meta = index.leveragedTokenByAddressLower.get(tok);
       const marketLabel = meta?.displayName ?? "Sail";
       const levSym =
         meta &&
-        (markets as Record<string, { leveragedToken?: { symbol?: string } }>)[meta.marketId]
-          ?.leveragedToken?.symbol;
+        (markets as Record<string, { leveragedToken?: { symbol?: string } }>)[
+          meta.marketId
+        ]?.leveragedToken?.symbol;
+
+      let balanceTokens = 0;
+      if (p.balance) {
+        try {
+          balanceTokens = Number(BigInt(p.balance)) / 1e18;
+        } catch {
+          balanceTokens = parseFloat(p.balance) || 0;
+        }
+      }
+      const priceUsd = meta?.marketId
+        ? tokenPricesByMarket[meta.marketId]?.leveragedPriceUSD
+        : undefined;
+      const { usd, usdUnpriced } = resolveUsdValue(
+        p.balanceUSD,
+        balanceTokens,
+        priceUsd,
+      );
+      if (!shouldShowPositionRow(balanceTokens, usd, usdUnpriced)) continue;
+
       rows.push(
         withChain({
           id: `lev-${p.id}`,
@@ -770,52 +865,12 @@ export function useDashboardPositions() {
           statusTone: "neutral",
           statusLabel: "Position",
           usd,
+          usdUnpriced,
           ...sailUnrealizedPnL(usd, p.totalCostBasisUSD),
           href: buildSailMarketPageHref(meta?.marketId),
-        })
+        }),
       );
-      tokensFromSailSubgraphRow.add(tok);
-    }
-
-    // Sail hs-token balances from marks ledger (same source as Genesis); show under Sail, not Earn.
-    // Skip when the Sail price subgraph already lists the same token (avoid duplicate lines / totals).
-    for (const s of sailBalances) {
-      if (!nonZeroBalanceToken(s.balance)) continue;
-      const tok = s.tokenAddress.toLowerCase();
-      if (tokensFromSailSubgraphRow.has(tok)) continue;
-
-      const levMeta = index.leveragedTokenByAddressLower.get(tok);
-      const haMeta = index.haTokenByAddressLower.get(tok);
-      const meta = levMeta ?? haMeta;
-      const marketId = meta?.marketId;
-      const balanceTokens = parseFloat(s.balance);
-      const priceUsd = marketId
-        ? tokenPricesByMarket[marketId]?.leveragedPriceUSD
-        : undefined;
-      const { usd, usdUnpriced } = resolveUsdValue(s.balanceUSD, balanceTokens, priceUsd);
-      if (!shouldShowPositionRow(balanceTokens, usd, usdUnpriced)) continue;
-
-      const marketLabel = meta?.displayName ?? "Sail";
-      const levSymFromMarks =
-        levMeta &&
-        marketCfg(levMeta.marketId)?.leveragedToken?.symbol;
-      rows.push(
-        withChain({
-          id: `sailbal-${s.id}`,
-          category: "leverage",
-          marketId: meta?.marketId,
-          marketLabel,
-          detail: "Sail token · marks",
-          iconSymbol:
-            levSymFromMarks ||
-            iconSymbolFromMarketLabel(marketLabel),
-          statusTone: "neutral",
-          statusLabel: "Marks",
-          usd,
-          usdUnpriced,
-          href: buildSailMarketPageHref(meta?.marketId),
-        })
-      );
+      tokensEmitted.add(tok);
     }
 
     return rows.sort((a, b) => b.usd - a.usd);
