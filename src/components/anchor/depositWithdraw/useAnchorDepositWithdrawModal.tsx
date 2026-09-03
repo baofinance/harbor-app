@@ -4997,10 +4997,6 @@ export function useAnchorDepositWithdrawModal({
         }));
         setWithdrawFromCollateralPool(true);
         setWithdrawFromSailPool(false);
-        setPositionAmounts((prev) => ({
-          ...prev,
-          sailPool: "",
-        }));
       } else {
         setSelectedPositions((prev) => ({
           ...prev,
@@ -5011,11 +5007,13 @@ export function useAnchorDepositWithdrawModal({
         }));
         setWithdrawFromSailPool(true);
         setWithdrawFromCollateralPool(false);
-        setPositionAmounts((prev) => ({
-          ...prev,
-          collateralPool: "",
-        }));
       }
+      // Always reset amounts on pool/market switch so MAX can't leave a stale value.
+      setPositionAmounts((prev) => ({
+        ...prev,
+        collateralPool: "",
+        sailPool: "",
+      }));
       if (switchingMarket) {
         setWithdrawalMethods((prev) => ({
           ...prev,

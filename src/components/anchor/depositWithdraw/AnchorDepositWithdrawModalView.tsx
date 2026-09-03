@@ -1210,12 +1210,16 @@ export function AnchorDepositWithdrawModalView(
                                 p.poolType === "collateral"
                                   ? collateralPoolFeePercent
                                   : sailPoolFeePercent;
+                              // Always cap from the same balance shown in the strip (positionsMap
+                              // row). Global immediate caps can prefer subgraph/contract reads and
+                              // diverge — that made MAX fill a higher amount than "Balance".
                               const globalImmediateCap =
                                 p.poolType === "collateral"
                                   ? collateralPoolImmediateCap
                                   : sailPoolImmediateCap;
                               const rowImmediateCap =
-                                p.marketId === selectedMarketId
+                                p.marketId === selectedMarketId &&
+                                globalImmediateCap < p.balance
                                   ? globalImmediateCap
                                   : p.balance;
                               const amountValue =
