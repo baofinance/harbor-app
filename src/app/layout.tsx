@@ -6,6 +6,7 @@ import { AppBackgroundProvider } from "@/contexts/AppBackgroundContext";
 import { headers } from "next/headers";
 import Navigation from "@/components/Navigation";
 import FadeContent from "@/components/FadeContent";
+import { MobileTradeBarScrollClearance } from "@/components/MobileTradeBarScrollClearance";
 import { DocumentTextIcon, ScaleIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { SiDiscord, SiX } from "react-icons/si";
 
@@ -169,6 +170,7 @@ export default async function RootLayout({
      </div>
    </div>
  </footer>
+ <MobileTradeBarScrollClearance />
  </ContextProvider>
  </div>
  </body>
