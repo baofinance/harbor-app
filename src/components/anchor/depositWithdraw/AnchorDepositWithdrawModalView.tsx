@@ -421,7 +421,6 @@ export function AnchorDepositWithdrawModalView(
     handleWithdrawFlowModeChange,
     handleRedeemFlowModeChange,
     handleTopTabChange,
-    redeemFlowMode,
     leaveRewardTokenStepToAmount,
     goToFlowPage,
     handleDepositFlowStepClick,
@@ -1131,16 +1130,15 @@ export function AnchorDepositWithdrawModalView(
                               label: "Withdraw & Redeem",
                             },
                             {
-                              id: "withdrawOnly" as const,
-                              label: "Withdraw",
-                            },
-                            {
                               id: "redeemOnly" as const,
                               label: "Redeem",
                             },
                           ] as const
                         ).map(({ id, label }) => {
-                          const active = redeemFlowMode === id;
+                          const active =
+                            id === "redeemOnly"
+                              ? activeTab === "sell"
+                              : activeTab !== "sell";
                           const disabled =
                             isProcessing ||
                             (id === "redeemOnly" && !canSellFromWallet);
@@ -1183,9 +1181,6 @@ export function AnchorDepositWithdrawModalView(
                           )
                           .filter(Boolean),
                       );
-                      const hasMultipleCollateralTypes =
-                        collateralTypes.has("fxSAVE") &&
-                        collateralTypes.has("wstETH");
 
                       const renderPoolControls = (
                         p: (typeof poolRows)[0],
@@ -1429,14 +1424,16 @@ export function AnchorDepositWithdrawModalView(
                       const poolCollateralTabs = (
                         ["fxSAVE", "wstETH"] as const
                       ).filter((sym) => collateralTypes.has(sym));
+                      // 1 collateral: hide rail. Exactly 2: boxed selectors (mockup).
+                      // 3+: full-width icon+name dropdown — not implemented yet.
+                      const showBoxedCollateralRail =
+                        poolCollateralTabs.length === 2;
 
                       return (
-                        <div className="space-y-0.5">
-                          <div className={DEPOSIT_SEGMENT_STACK_CLASS}>
-                          {hasMultipleCollateralTypes &&
-                            poolCollateralTabs.length > 1 && (
+                        <div className="space-y-1.5">
+                          {showBoxedCollateralRail ? (
                               <div
-                                className={DEPOSIT_SEGMENT_TRACK_CLASS}
+                                className="grid grid-cols-2 gap-1.5"
                                 role="tablist"
                                 aria-label="Pool collateral type"
                               >
@@ -1473,10 +1470,10 @@ export function AnchorDepositWithdrawModalView(
                                           }
                                         }
                                       }}
-                                      className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1 text-xs font-semibold transition disabled:opacity-50 ${
+                                      className={`flex items-center justify-center gap-1.5 rounded-xl border px-2.5 py-2 text-xs font-semibold transition disabled:opacity-50 ${
                                         active
-                                          ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
-                                          : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
+                                          ? "border-[#1E4775]/20 bg-white text-[#1E4775] shadow-sm"
+                                          : "border-transparent bg-[#e2e8f0]/80 text-[#94a3b8] hover:text-[#64748b]"
                                       }`}
                                     >
                                       <TokenLogo symbol={sym} size={16} />
@@ -1485,76 +1482,129 @@ export function AnchorDepositWithdrawModalView(
                                   );
                                 })}
                               </div>
-                            )}
-                          <div
-                            className={DEPOSIT_SEGMENT_TRACK_CLASS}
-                            role="tablist"
-                            aria-label="Stability pool"
-                          >
-                            {(["collateral", "sail"] as const).map(
-                              (poolType) => {
-                                const row = poolRows.find(
-                                  (r) => r.poolType === poolType,
-                                );
-                                const active =
-                                  withdrawPoolTypeTab === poolType;
-                                const label =
-                                  poolType === "collateral"
-                                    ? "Collateral"
-                                    : "Sail";
-                                return (
-                                  <button
-                                    key={poolType}
-                                    type="button"
-                                    role="tab"
-                                    aria-selected={active}
-                                    disabled={isProcessing || !row}
-                                    onClick={() => {
-                                      if (poolType === withdrawPoolTypeTab)
-                                        return;
-                                      withdrawPoolTypeTabUserSelectedRef.current = true;
-                                      setWithdrawPoolTypeTab(poolType);
-                                      if (row) {
-                                        selectWithdrawPoolRow(
-                                          row,
-                                          row.marketId !== selectedMarketId,
-                                        );
-                                      }
-                                    }}
-                                    className={`flex flex-1 basis-0 min-w-0 items-center justify-center gap-1.5 rounded-md py-1 text-xs font-semibold transition disabled:opacity-50 ${
-                                      active
-                                        ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
-                                        : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
-                                    }`}
-                                  >
-                                    {label}
-                                  </button>
-                                );
-                              },
-                            )}
-                          </div>
-                          </div>
-                          {activeWithdrawPoolRow ? (
-                            <div className={`${DEPOSIT_AMOUNT_CARD_CLASS} space-y-1.5`}>
-                              <DepositBalanceStrip
-                                ariaLabel={`Pool ${peggedTokenSymbol} balance`}
-                              >
-                                {formatBalance(
-                                  activeWithdrawPoolRow.balance,
-                                  peggedTokenSymbol,
-                                  6,
-                                  18,
-                                )}
-                              </DepositBalanceStrip>
-                              {activeWithdrawPoolRow.balance > 0n ? (
-                                renderPoolControls(activeWithdrawPoolRow)
-                              ) : (
-                                <p className="text-center text-xs text-[#1E4775]/45 py-1">
-                                  No position in this pool
-                                </p>
+                            ) : null}
+                          <div className={`${DEPOSIT_AMOUNT_CARD_CLASS} space-y-1.5`}>
+                            <div
+                              className={DEPOSIT_SEGMENT_TRACK_CLASS}
+                              role="tablist"
+                              aria-label="Stability pool"
+                            >
+                              {(["collateral", "sail"] as const).map(
+                                (poolType) => {
+                                  const row = poolRows.find(
+                                    (r) => r.poolType === poolType,
+                                  );
+                                  const active =
+                                    withdrawPoolTypeTab === poolType;
+                                  const label =
+                                    poolType === "collateral"
+                                      ? "Collateral"
+                                      : "Sail";
+                                  return (
+                                    <button
+                                      key={poolType}
+                                      type="button"
+                                      role="tab"
+                                      aria-selected={active}
+                                      disabled={isProcessing || !row}
+                                      onClick={() => {
+                                        if (poolType === withdrawPoolTypeTab)
+                                          return;
+                                        withdrawPoolTypeTabUserSelectedRef.current = true;
+                                        setWithdrawPoolTypeTab(poolType);
+                                        if (row) {
+                                          selectWithdrawPoolRow(
+                                            row,
+                                            row.marketId !== selectedMarketId,
+                                          );
+                                        }
+                                      }}
+                                      className={`flex flex-1 basis-0 min-w-0 items-center justify-center gap-1.5 rounded-md py-1 text-xs font-semibold transition disabled:opacity-50 ${
+                                        active
+                                          ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
+                                          : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
+                                      }`}
+                                    >
+                                      {label}
+                                    </button>
+                                  );
+                                },
                               )}
                             </div>
-                          ) : null}
+                            {activeWithdrawPoolRow ? (
+                              <>
+                                <DepositBalanceStrip
+                                  ariaLabel={`Pool ${peggedTokenSymbol} balance`}
+                                >
+                                  {formatBalance(
+                                    activeWithdrawPoolRow.balance,
+                                    peggedTokenSymbol,
+                                    6,
+                                    18,
+                                  )}
+                                </DepositBalanceStrip>
+                                {activeWithdrawPoolRow.balance > 0n ? (
+                                  renderPoolControls(activeWithdrawPoolRow)
+                                ) : (
+                                  <p className="text-center text-xs text-[#1E4775]/45 py-1">
+                                    No position in this pool
+                                  </p>
+                                )}
+                              </>
+                            ) : null}
+                            <div className="flex items-center justify-between rounded-lg border border-[#1E4775]/12 bg-white/60 px-2.5 py-1.5 text-[10px]">
+                              <div className="min-w-0 pr-2">
+                                <span className="font-semibold text-[#1E4775]">
+                                  Withdraw only
+                                </span>
+                                <span className="text-[#1E4775]/60">
+                                  {" "}
+                                  · Skip redeem
+                                </span>
+                              </div>
+                              <label className="flex items-center gap-1.5 text-[#1E4775]/80 shrink-0">
+                                <span
+                                  className={
+                                    withdrawOnly
+                                      ? "text-[#1E4775]"
+                                      : "text-[#1E4775]/60"
+                                  }
+                                >
+                                  {withdrawOnly ? "On" : "Off"}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (withdrawOnly) {
+                                      handleRedeemFlowModeChange(
+                                        "withdrawAndRedeem",
+                                      );
+                                    } else {
+                                      handleRedeemFlowModeChange(
+                                        "withdrawOnly",
+                                      );
+                                    }
+                                  }}
+                                  disabled={isProcessing}
+                                  className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
+                                    withdrawOnly
+                                      ? "bg-[#1E4775]"
+                                      : "bg-[#1E4775]/30"
+                                  }`}
+                                  aria-pressed={withdrawOnly}
+                                  aria-label="Skip redeem and withdraw only"
+                                >
+                                  <span
+                                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                                      withdrawOnly
+                                        ? "translate-x-3.5"
+                                        : "translate-x-0.5"
+                                    }`}
+                                  />
+                                </button>
+                              </label>
+                            </div>
+                          </div>
                         </div>
                       );
                     })()}
