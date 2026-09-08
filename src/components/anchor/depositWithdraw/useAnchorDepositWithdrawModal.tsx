@@ -507,8 +507,9 @@ export function useAnchorDepositWithdrawModal({
     null
   );
 
-  // Step tracking for simple mode (1: deposit token/amount, 2: reward token, 3: stability pool)
-  type FlowPage = 1 | 2;
+  // Step tracking for simple mode deposit: 1 amount, 2 deposit.
+  // Position-first redeem: 1 choose position, 2 redeem route (optional), 2/3 confirm.
+  type FlowPage = 1 | 2 | 3;
   const [flowPage, setFlowPage] = useState<FlowPage>(1);
   const [selectedRedeemPositionKey, setSelectedRedeemPositionKey] = useState<
     string | null
@@ -3821,7 +3822,7 @@ export function useAnchorDepositWithdrawModal({
     if (
       simpleMode &&
       activeTab === "withdraw" &&
-      flowPage === 2 &&
+      (flowPage === 2 || flowPage === 3) &&
       !withdrawOnly
     ) {
       let poolTotal = 0n;
@@ -3986,7 +3987,7 @@ export function useAnchorDepositWithdrawModal({
 
       if (
         !isActive ||
-        activeTab !== "withdraw" ||
+        (activeTab !== "withdraw" && activeTab !== "sell") ||
         withdrawOnly ||
         !redeemInputAmount ||
         redeemInputAmount === 0n ||
@@ -4118,6 +4119,52 @@ export function useAnchorDepositWithdrawModal({
 
     return bestId;
   }, [marketsForToken, redeemMarketPreviews]);
+
+  const redeemRouteOptions = useMemo(() => {
+    return marketsForToken.map(({ marketId, market: m }) => {
+      const preview = redeemMarketPreviews.get(marketId);
+      const feePercent = redeemMarketFeesMap.get(marketId);
+      const collateralSymbol = m?.collateral?.symbol || "";
+      const receiveAmount =
+        preview && preview.wrappedOut > 0n
+          ? Number(formatEther(preview.wrappedOut))
+          : undefined;
+      const priceUsd =
+        collateralSymbol === "fxSAVE"
+          ? fxSAVEPrice
+          : collateralSymbol === "wstETH" || collateralSymbol === "stETH"
+            ? (collateralSymbol === "wstETH" ? wstETHPrice : stETHPrice)
+            : undefined;
+      const receiveUsd =
+        receiveAmount !== undefined &&
+        priceUsd !== undefined &&
+        priceUsd > 0
+          ? receiveAmount * priceUsd
+          : undefined;
+
+      return {
+        marketId,
+        marketName: m?.name || marketId,
+        collateralSymbol,
+        feePercent,
+        receiveAmount:
+          receiveAmount !== undefined && Number.isFinite(receiveAmount)
+            ? receiveAmount
+            : undefined,
+        receiveUsd,
+        isCapped: preview?.isCapped,
+        isBest: !!recommendedRedeemMarketId && marketId === recommendedRedeemMarketId,
+      };
+    });
+  }, [
+    marketsForToken,
+    redeemMarketPreviews,
+    redeemMarketFeesMap,
+    recommendedRedeemMarketId,
+    fxSAVEPrice,
+    wstETHPrice,
+    stETHPrice,
+  ]);
 
   const isCrossMarketRedeem =
     !!selectedRedeemMarketId &&
@@ -4378,35 +4425,6 @@ export function useAnchorDepositWithdrawModal({
     () => anchorSimpleDepositFlowParts(mintOnly),
     [mintOnly],
   );
-
-  const simpleWithdrawFlowParts = useMemo(() => {
-    if (!simpleMode) return anchorSimpleWithdrawFlowParts(withdrawOnly);
-    const confirmLabel =
-      selectedRedeemPositionKey === "wallet"
-        ? ("Redeem" as const)
-        : selectedRedeemPositionKey &&
-            ((selectedRedeemPositionKey.endsWith("-collateral") &&
-              withdrawalMethods.collateralPool === "request") ||
-              (selectedRedeemPositionKey.endsWith("-sail") &&
-                withdrawalMethods.sailPool === "request"))
-          ? ("Request" as const)
-          : ("Confirm" as const);
-    return anchorSimpleRedeemPositionFlowParts(flowPage, confirmLabel);
-  }, [
-    simpleMode,
-    withdrawOnly,
-    flowPage,
-    selectedRedeemPositionKey,
-    withdrawalMethods.collateralPool,
-    withdrawalMethods.sailPool,
-  ]);
-
-  const simpleSellFlowParts = useMemo(() => {
-    if (simpleMode) {
-      return anchorSimpleRedeemPositionFlowParts(flowPage, "Redeem");
-    }
-    return anchorSimpleSellFlowParts();
-  }, [simpleMode, flowPage]);
 
   const poolSellAmountWei = useMemo(() => {
     let total = 0n;
@@ -4985,23 +5003,27 @@ export function useAnchorDepositWithdrawModal({
     (index: number) => {
       const targetPage = (index + 1) as FlowPage;
       if (targetPage >= flowPage) return;
-      setSelectedRedeemPositionKey(null);
-      setActiveTab("withdraw");
-      setWithdrawOnly(false);
-      setEarlyWithdraw1PctEnabled(false);
-      setSellRedeemSource("pool");
-      setSelectedPositions((prev) => ({
-        ...prev,
-        wallet: false,
-        collateralPool: false,
-        sailPool: false,
-      }));
-      setPositionAmounts({
-        wallet: "",
-        collateralPool: "",
-        sailPool: "",
-      });
-      goToFlowPage(1);
+      if (targetPage === 1) {
+        setSelectedRedeemPositionKey(null);
+        setActiveTab("withdraw");
+        setWithdrawOnly(false);
+        setEarlyWithdraw1PctEnabled(false);
+        setSellRedeemSource("pool");
+        setSelectedPositions((prev) => ({
+          ...prev,
+          wallet: false,
+          collateralPool: false,
+          sailPool: false,
+        }));
+        setPositionAmounts({
+          wallet: "",
+          collateralPool: "",
+          sailPool: "",
+        });
+        goToFlowPage(1);
+        return;
+      }
+      goToFlowPage(targetPage);
     },
     [flowPage, goToFlowPage],
   );
@@ -5013,6 +5035,10 @@ export function useAnchorDepositWithdrawModal({
 
   const handleWithdrawFlowBack = useCallback(() => {
     if (flowPage <= 1) return;
+    if (flowPage === 3) {
+      goToFlowPage(2);
+      return;
+    }
     setSelectedRedeemPositionKey(null);
     setActiveTab("withdraw");
     setWithdrawOnly(false);
@@ -5790,6 +5816,81 @@ export function useAnchorDepositWithdrawModal({
       null,
     [redeemPositionsBase, selectedRedeemPositionKey],
   );
+
+  const needsRedeemRouteStep = useMemo(() => {
+    if (!simpleMode || marketsForToken.length <= 1 || withdrawOnly) {
+      return false;
+    }
+    if (!selectedRedeemPosition) return false;
+    if (selectedRedeemPosition.kind === "wallet") return true;
+    if (earlyWithdraw1PctEnabled) return true;
+    if (selectedRedeemPosition.windowOpen) return true;
+    const method =
+      selectedRedeemPosition.poolType === "collateral"
+        ? withdrawalMethods.collateralPool
+        : withdrawalMethods.sailPool;
+    return method === "immediate";
+  }, [
+    simpleMode,
+    marketsForToken.length,
+    withdrawOnly,
+    selectedRedeemPosition,
+    earlyWithdraw1PctEnabled,
+    withdrawalMethods.collateralPool,
+    withdrawalMethods.sailPool,
+  ]);
+
+  const isRedeemRouteFlowPage =
+    simpleMode && needsRedeemRouteStep && flowPage === 2;
+  const isRedeemConfirmFlowPage =
+    simpleMode &&
+    !!selectedRedeemPosition &&
+    (needsRedeemRouteStep ? flowPage === 3 : flowPage === 2);
+
+  // Drop the confirm page when the route step is no longer needed (e.g. free request).
+  useEffect(() => {
+    if (!needsRedeemRouteStep && flowPage === 3) {
+      setFlowPage(2);
+    }
+  }, [needsRedeemRouteStep, flowPage]);
+
+  const simpleWithdrawFlowParts = useMemo(() => {
+    if (!simpleMode) return anchorSimpleWithdrawFlowParts(withdrawOnly);
+    const confirmLabel =
+      selectedRedeemPositionKey === "wallet"
+        ? ("Redeem" as const)
+        : selectedRedeemPositionKey &&
+            ((selectedRedeemPositionKey.endsWith("-collateral") &&
+              withdrawalMethods.collateralPool === "request") ||
+              (selectedRedeemPositionKey.endsWith("-sail") &&
+                withdrawalMethods.sailPool === "request")) &&
+            !earlyWithdraw1PctEnabled
+          ? ("Request" as const)
+          : ("Confirm" as const);
+    return anchorSimpleRedeemPositionFlowParts(flowPage, {
+      confirmLabel,
+      includeRouteStep: needsRedeemRouteStep,
+    });
+  }, [
+    simpleMode,
+    withdrawOnly,
+    flowPage,
+    selectedRedeemPositionKey,
+    withdrawalMethods.collateralPool,
+    withdrawalMethods.sailPool,
+    earlyWithdraw1PctEnabled,
+    needsRedeemRouteStep,
+  ]);
+
+  const simpleSellFlowParts = useMemo(() => {
+    if (simpleMode) {
+      return anchorSimpleRedeemPositionFlowParts(flowPage, {
+        confirmLabel: "Redeem",
+        includeRouteStep: needsRedeemRouteStep,
+      });
+    }
+    return anchorSimpleSellFlowParts();
+  }, [simpleMode, flowPage, needsRedeemRouteStep]);
 
   const directPeggedBalance = directPeggedBalanceData || 0n;
 
@@ -11411,11 +11512,23 @@ export function useAnchorDepositWithdrawModal({
           ? positionAmounts.sailPool
           : "";
 
-  // Prefill full balance for immediate pool withdraw / early withdraw once.
+  // Prefill full balance for wallet redeem / immediate pool withdraw once amounts are needed.
   useEffect(() => {
-    if (!simpleMode || flowPage !== 2) return;
-    if (!selectedRedeemPosition || selectedRedeemPosition.kind !== "pool")
+    if (!simpleMode || flowPage < 2) return;
+    if (!selectedRedeemPosition) return;
+
+    if (selectedRedeemPosition.kind === "wallet") {
+      setPositionAmounts((prev) => {
+        if (prev.wallet) return prev;
+        if (!peggedBalance || peggedBalance === 0n) return prev;
+        return {
+          ...prev,
+          wallet: formatEther(peggedBalance),
+        };
+      });
       return;
+    }
+
     if (redeemStepActionKind === "request") return;
     const modeKey =
       selectedRedeemPosition.poolType === "collateral"
@@ -11433,14 +11546,32 @@ export function useAnchorDepositWithdrawModal({
     flowPage,
     selectedRedeemPosition,
     redeemStepActionKind,
+    peggedBalance,
   ]);
+
+  const handleContinueRedeemRoute = useCallback(() => {
+    if (!isRedeemRouteFlowPage) return;
+    setFlowPage(3);
+    setStep("input");
+    setError(null);
+  }, [isRedeemRouteFlowPage]);
 
   const withdrawPrimaryAction = useMemo((): DepositPrimaryAction => {
     if (step === "error") return { kind: "retry" };
     if (!isConnected) return { kind: "connect" };
 
-    // Position-first redeem: request needs no amount; early withdraw does.
-    if (simpleMode && flowPage === 2) {
+    // Multi-market route picker
+    if (isRedeemRouteFlowPage) {
+      const amountOk =
+        !!redeemStepAmountValue && parseFloat(redeemStepAmountValue) > 0;
+      if (!amountOk) {
+        return { kind: "enter_amount", label: "Select amount" };
+      }
+      return { kind: "submit", label: "Continue", variant: "navy" };
+    }
+
+    // Position-first redeem confirm: request needs no amount; early withdraw does.
+    if (isRedeemConfirmFlowPage) {
       if (redeemStepActionKind === "request" && !earlyWithdraw1PctEnabled) {
         const pendingLabel =
           selectedRedeemPositionDisplay?.kind === "pool" &&
@@ -11493,8 +11624,8 @@ export function useAnchorDepositWithdrawModal({
   }, [
     step,
     isConnected,
-    simpleMode,
-    flowPage,
+    isRedeemRouteFlowPage,
+    isRedeemConfirmFlowPage,
     redeemStepActionKind,
     earlyWithdraw1PctEnabled,
     selectedRedeemPositionDisplay,
@@ -11677,11 +11808,11 @@ export function useAnchorDepositWithdrawModal({
     if ((activeTab !== "withdraw" && activeTab !== "sell") || !simpleMode) {
       return null;
     }
-    // Position-first: fees only after a position is chosen
-    if (flowPage === 1) return null;
+    // Position-first: fees only on confirm (not list / route)
+    if (flowPage === 1 || isRedeemRouteFlowPage) return null;
     // Request / early-withdraw / withdraw-only: fee story lives in overview + CTA
     if (
-      flowPage === 2 &&
+      isRedeemConfirmFlowPage &&
       (redeemStepActionKind === "request" ||
         earlyWithdraw1PctEnabled ||
         withdrawOnly)
@@ -11690,7 +11821,7 @@ export function useAnchorDepositWithdrawModal({
     }
 
     const showSellFee =
-      (flowPage === 2 || activeTab === "sell") &&
+      (isRedeemConfirmFlowPage || activeTab === "sell") &&
       (activeTab === "sell" || !withdrawOnly);
     const showEarlyFee = !!selectedPoolEarlyWithdrawFee;
 
@@ -11784,6 +11915,8 @@ export function useAnchorDepositWithdrawModal({
     activeTab,
     simpleMode,
     flowPage,
+    isRedeemRouteFlowPage,
+    isRedeemConfirmFlowPage,
     withdrawOnly,
     selectedPoolEarlyWithdrawFee,
     redeemInputAmount,
@@ -11799,18 +11932,15 @@ export function useAnchorDepositWithdrawModal({
       if ((activeTab !== "withdraw" && activeTab !== "sell") || !simpleMode) {
         return null;
       }
-      const effectiveFlowPage = activeTab === "sell" ? 2 : flowPage;
-      // Position-first: no overview on the list step
-      if (simpleMode && effectiveFlowPage === 1) {
+      // Position-first: no overview on list or route step
+      if (flowPage === 1 || isRedeemRouteFlowPage) {
         return null;
       }
-      if (effectiveFlowPage !== 1 && effectiveFlowPage !== 2) return null;
+      if (!isRedeemConfirmFlowPage) return null;
       if (step !== "input" && step !== "error") return null;
 
       // Request-only: info box owns the key timing — skip flat overview duplicate
       if (
-        simpleMode &&
-        effectiveFlowPage === 2 &&
         redeemStepActionKind === "request" &&
         !earlyWithdraw1PctEnabled
       ) {
@@ -11894,26 +12024,7 @@ export function useAnchorDepositWithdrawModal({
         };
       };
 
-      if (effectiveFlowPage === 1) {
-        if (!hasPoolSell) {
-          return {
-            receiveAmount: null,
-            receiveSymbol: peggedTokenSymbol,
-            emptyMessage: "Select a pool and enter an amount.",
-          };
-        }
-
-        if (withdrawOnly) {
-          return buildPoolWithdrawPreview("You will receive");
-        }
-
-        return buildPoolWithdrawPreview(
-          "You will withdraw",
-          `${poolLabelCompact} → ${redeemCollateralSymbol || "collateral"}`,
-        );
-      }
-
-      // Page 2 — withdraw only: ha tokens to wallet (skip redeem preview)
+      // Confirm — withdraw only: ha tokens to wallet (skip redeem preview)
       if (
         simpleMode &&
         withdrawOnly &&
@@ -11924,7 +12035,7 @@ export function useAnchorDepositWithdrawModal({
         return buildPoolWithdrawPreview("You will receive");
       }
 
-      // Page 2 — sell / redeem
+      // Confirm — sell / redeem
       if (!hasPoolSell && !hasWalletSell) {
         return {
           receiveAmount: null,
@@ -12060,6 +12171,8 @@ export function useAnchorDepositWithdrawModal({
       activeTab,
       simpleMode,
       flowPage,
+      isRedeemRouteFlowPage,
+      isRedeemConfirmFlowPage,
       step,
       withdrawOnly,
       sellRedeemSource,
@@ -12383,6 +12496,9 @@ export function useAnchorDepositWithdrawModal({
     selectedRedeemPosition,
     selectedRedeemPositionDisplay,
     selectedRedeemWithdrawalTiming,
+    needsRedeemRouteStep,
+    isRedeemRouteFlowPage,
+    isRedeemConfirmFlowPage,
     handleSelectRedeemPosition,
     handleBackToRedeemPositions,
     enableRedeemEarlyWithdraw,
@@ -12577,6 +12693,7 @@ export function useAnchorDepositWithdrawModal({
     redeemMarketPreviewReads,
     redeemMarketPreviews,
     recommendedRedeemMarketId,
+    redeemRouteOptions,
     isCrossMarketRedeem,
     showWithdrawRedemptionCapNotice,
     showWithdrawCrossMarketNotice,
@@ -12723,6 +12840,7 @@ export function useAnchorDepositWithdrawModal({
     handleContinueDepositPage,
     hasValidWithdrawSelection,
     handleContinueToSell,
+    handleContinueRedeemRoute,
     handleSellRedeemSourceChange,
     handleSellMarketSelectChange,
     depositPagePrimaryAction,

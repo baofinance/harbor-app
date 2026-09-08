@@ -62,6 +62,7 @@ import { buildDepositTokenDropdownGroups } from "@/utils/depositTokenDropdownOpt
 import { useAnchorDepositWithdrawModal } from "./useAnchorDepositWithdrawModal";
 import { AnchorRedeemPositionList } from "./AnchorRedeemPositionList";
 import { AnchorRedeemPositionStep } from "./AnchorRedeemPositionStep";
+import { AnchorRedeemRouteStep } from "./AnchorRedeemRouteStep";
 
 export type AnchorDepositWithdrawViewModel = ReturnType<
   typeof useAnchorDepositWithdrawModal
@@ -195,6 +196,9 @@ export function AnchorDepositWithdrawModalView(
     selectedRedeemPosition,
     selectedRedeemPositionDisplay,
     selectedRedeemWithdrawalTiming,
+    needsRedeemRouteStep,
+    isRedeemRouteFlowPage,
+    isRedeemConfirmFlowPage,
     handleSelectRedeemPosition,
     handleBackToRedeemPositions,
     enableRedeemEarlyWithdraw,
@@ -389,6 +393,7 @@ export function AnchorDepositWithdrawModalView(
     redeemMarketPreviewReads,
     redeemMarketPreviews,
     recommendedRedeemMarketId,
+    redeemRouteOptions,
     isCrossMarketRedeem,
     showWithdrawRedemptionCapNotice,
     showWithdrawCrossMarketNotice,
@@ -534,6 +539,7 @@ export function AnchorDepositWithdrawModalView(
     handleContinueDepositPage,
     hasValidWithdrawSelection,
     handleContinueToSell,
+    handleContinueRedeemRoute,
     handleSellRedeemSourceChange,
     handleSellMarketSelectChange,
     depositPagePrimaryAction,
@@ -1152,6 +1158,20 @@ export function AnchorDepositWithdrawModalView(
                             disabled={isProcessing}
                             onSelect={handleSelectRedeemPosition}
                           />
+                        ) : isRedeemRouteFlowPage ? (
+                          <AnchorRedeemRouteStep
+                            options={redeemRouteOptions}
+                            selectedMarketId={selectedRedeemMarketId || null}
+                            autoMode={redeemMarketSelectionMode === "auto"}
+                            recommendedMarketId={recommendedRedeemMarketId}
+                            disabled={isProcessing}
+                            onSelectAuto={() =>
+                              handleSellMarketSelectChange("auto")
+                            }
+                            onSelectMarket={(marketId) =>
+                              handleSellMarketSelectChange(marketId)
+                            }
+                          />
                         ) : (
                           <AnchorRedeemPositionStep
                             position={selectedRedeemPositionDisplay}
@@ -1222,36 +1242,42 @@ export function AnchorDepositWithdrawModalView(
                           ? flowPage === 1
                             ? step1PrimaryAction
                             : depositPagePrimaryAction
-                          : activeTab === "sell" || flowPage === 2
-                            ? withdrawPrimaryAction
-                            : withdrawPage1PrimaryAction
+                          : flowPage === 1
+                            ? withdrawPage1PrimaryAction
+                            : withdrawPrimaryAction
                       }
                       onSubmit={
                         activeTab === "deposit"
                           ? flowPage === 1
                             ? handleContinueStep1
                             : handleContinueDepositPage
-                          : activeTab === "sell" || flowPage === 2
-                            ? handleAction
-                            : withdrawOnly
+                          : flowPage === 1
+                            ? withdrawOnly
                               ? handleAction
                               : handleContinueToSell
+                            : isRedeemRouteFlowPage
+                              ? handleContinueRedeemRoute
+                              : handleAction
                       }
                       onRetry={
                         activeTab === "deposit"
                           ? flowPage === 1
                             ? handleContinueStep1
                             : handleContinueDepositPage
-                          : activeTab === "sell" || flowPage === 2
-                            ? handleAction
-                            : withdrawOnly
+                          : flowPage === 1
+                            ? withdrawOnly
                               ? handleAction
                               : handleContinueToSell
+                            : isRedeemRouteFlowPage
+                              ? handleContinueRedeemRoute
+                              : handleAction
                       }
                       feeFooter={
                         activeTab === "deposit"
                           ? buyFeeFooter
-                          : flowPage === 2 || activeTab === "sell"
+                          : isRedeemConfirmFlowPage ||
+                              (!simpleMode &&
+                                (flowPage === 2 || activeTab === "sell"))
                             ? withdrawFeeFooter
                             : null
                       }

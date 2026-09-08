@@ -43,10 +43,22 @@ export function anchorSimpleWithdrawFlowParts(withdrawOnly: boolean): string[] {
 
 /** Position-first Earn redeem crumbs. */
 export function anchorSimpleRedeemPositionFlowParts(
-  flowPage: 1 | 2,
-  confirmLabel: "Redeem" | "Request" | "Confirm" = "Confirm",
+  flowPage: 1 | 2 | 3,
+  options: {
+    confirmLabel?: "Redeem" | "Request" | "Confirm";
+    includeRouteStep?: boolean;
+  } = {},
 ): string[] {
+  const confirmLabel = options.confirmLabel ?? "Confirm";
+  const includeRouteStep = options.includeRouteStep ?? false;
+
   if (flowPage === 1) return ["Choose position"];
+
+  if (includeRouteStep) {
+    if (flowPage === 2) return ["Choose position", "Redeem to"];
+    return ["Choose position", "Redeem to", confirmLabel];
+  }
+
   return ["Choose position", confirmLabel];
 }
 
