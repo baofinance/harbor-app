@@ -3,8 +3,9 @@ import { HARBOR_BTN_GLASS_OUTLINE_LIGHT } from "@/components/shared/harborButton
 /** Combined amount input card for deposit / trade flows. */
 export const DEPOSIT_AMOUNT_CARD_CLASS = `rounded-xl border border-[#1E4775]/12 bg-white/70 p-2.5 shadow-sm backdrop-blur-sm`;
 
-/** Transaction overview card — matches input card styling. */
-export const DEPOSIT_OVERVIEW_CARD_CLASS = DEPOSIT_AMOUNT_CARD_CLASS;
+/** Transaction overview — quieter than the amount card so the form stays primary. */
+export const DEPOSIT_OVERVIEW_CARD_CLASS =
+  "rounded-lg bg-[#1E4775]/[0.04] px-3 py-2 ring-1 ring-[#1E4775]/8";
 
 /** Vertical gap between sections in Anchor simple-mode deposit / withdraw panels. */
 export const ANCHOR_MODAL_SECTION_GAP = "space-y-2";
@@ -85,14 +86,14 @@ export const ANCHOR_TRANSACTION_OVERVIEW_WRAPPER = "shrink-0";
 
 /** Section title above the overview card. */
 export const ANCHOR_TRANSACTION_OVERVIEW_LABEL =
-  "block text-sm font-semibold text-[#1E4775] mb-1";
+  "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/45";
 
 /** Inner content stack when overview has receive + fees. */
-export const ANCHOR_TRANSACTION_OVERVIEW_INNER = "space-y-2";
+export const ANCHOR_TRANSACTION_OVERVIEW_INNER = "space-y-1.5";
 
 /** Fee / bonus rows below the receive summary. */
 export const ANCHOR_TRANSACTION_OVERVIEW_FEE_DIVIDER =
-  "pt-2 border-t border-[#1E4775]/15 space-y-1 text-xs";
+  "space-y-1 border-t border-[#1E4775]/10 pt-1.5 text-[11px]";
 
 /** Footer region (fee row + primary action). */
 export const ANCHOR_MODAL_FOOTER_WRAPPER = "shrink-0";

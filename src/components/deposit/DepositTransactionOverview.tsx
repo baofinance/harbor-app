@@ -64,8 +64,8 @@ export function DepositTransactionOverview({
 
         {!hasReceive ? (
           <div
-            className={`text-xs ${
-              statusVariant === "error" ? "text-red-600" : "text-[#1E4775]/70"
+            className={`text-[11px] leading-snug ${
+              statusVariant === "error" ? "text-red-600" : "text-[#1E4775]/55"
             }`}
           >
             {statusMessage ?? emptyMessage}
@@ -74,21 +74,21 @@ export function DepositTransactionOverview({
           <div className={ANCHOR_TRANSACTION_OVERVIEW_INNER}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-sm font-medium text-[#1E4775]/70">
+                <div className="text-xs font-medium text-[#1E4775]/55">
                   {receiveLabel}
                 </div>
                 {sourceLine ? (
-                  <div className="mt-0.5 truncate text-[11px] leading-tight text-[#1E4775]/50">
+                  <div className="mt-0.5 truncate text-[10px] leading-tight text-[#1E4775]/40">
                     {sourceLine}
                   </div>
                 ) : null}
               </div>
               <div className="shrink-0 text-right">
-                <div className="font-mono text-base font-bold leading-tight text-[#1E4775]">
+                <div className="font-mono text-sm font-semibold leading-tight tabular-nums text-[#1E4775]/85">
                   {receiveAmount} {receiveSymbol}
                 </div>
                 {receiveUsd !== undefined && receiveUsd > 0 ? (
-                  <div className="font-mono text-[11px] text-[#1E4775]/50">
+                  <div className="font-mono text-[10px] text-[#1E4775]/45">
                     $
                     {receiveUsd.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
@@ -106,10 +106,12 @@ export function DepositTransactionOverview({
                     key={fee.label}
                     className="flex items-center justify-between gap-2"
                   >
-                    <span className="text-[#1E4775]/70">{fee.label}</span>
+                    <span className="text-[#1E4775]/50">{fee.label}</span>
                     <span
-                      className={`font-mono font-semibold tabular-nums ${
-                        fee.percentage > 2 ? "text-red-600" : "text-[#1E4775]"
+                      className={`font-mono tabular-nums ${
+                        fee.percentage > 2
+                          ? "font-semibold text-red-600"
+                          : "font-medium text-[#1E4775]/70"
                       }`}
                     >
                       {fee.percentage.toFixed(2)}%
@@ -123,9 +125,9 @@ export function DepositTransactionOverview({
                   </div>
                 ))}
                 {totalFeeUsd !== undefined && totalFeeUsd > 0 && (fees?.length ?? 0) > 1 ? (
-                  <div className="mt-0.5 flex items-center justify-between gap-2 border-t border-[#1E4775]/10 pt-1.5">
-                    <span className="font-medium text-[#1E4775]/80">Total fees</span>
-                    <span className="font-mono font-semibold tabular-nums text-[#1E4775]">
+                  <div className="mt-0.5 flex items-center justify-between gap-2 border-t border-[#1E4775]/8 pt-1.5">
+                    <span className="font-medium text-[#1E4775]/55">Total fees</span>
+                    <span className="font-mono font-medium tabular-nums text-[#1E4775]/75">
                       $
                       {totalFeeUsd.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
@@ -135,9 +137,9 @@ export function DepositTransactionOverview({
                   </div>
                 ) : null}
                 {bonus ? (
-                  <div className="flex items-center justify-between gap-2 text-green-700">
+                  <div className="flex items-center justify-between gap-2 text-green-700/80">
                     <span>Bonus</span>
-                    <span className="font-mono font-semibold tabular-nums">
+                    <span className="font-mono font-medium tabular-nums">
                       {bonus.percentage.toFixed(2)}%
                     </span>
                   </div>
