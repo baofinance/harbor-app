@@ -5208,6 +5208,7 @@ export function useAnchorDepositWithdrawModal({
 
   const disableRedeemEarlyWithdraw = useCallback(() => {
     setEarlyWithdraw1PctEnabled(false);
+    setWithdrawOnly(false);
     setWithdrawalMethods((prev) => ({
       ...prev,
       collateralPool: "request",
@@ -11463,6 +11464,15 @@ export function useAnchorDepositWithdrawModal({
       }
 
       if (redeemStepActionKind === "withdrawAndRedeem" || earlyWithdraw1PctEnabled) {
+        if (withdrawOnly) {
+          return {
+            kind: "submit",
+            label: earlyWithdraw1PctEnabled
+              ? "Withdraw · 1% fee"
+              : "Withdraw",
+            variant: "navy",
+          };
+        }
         return {
           kind: "submit",
           label: earlyWithdraw1PctEnabled
@@ -11490,6 +11500,7 @@ export function useAnchorDepositWithdrawModal({
     selectedRedeemPositionDisplay,
     redeemStepAmountValue,
     hasValidWithdrawSelection,
+    withdrawOnly,
   ]);
 
   const depositTokenPriceUSD = useMemo(() => {
@@ -11668,10 +11679,12 @@ export function useAnchorDepositWithdrawModal({
     }
     // Position-first: fees only after a position is chosen
     if (flowPage === 1) return null;
-    // Request / early-withdraw: fee story lives in overview + CTA — hide pills
+    // Request / early-withdraw / withdraw-only: fee story lives in overview + CTA
     if (
       flowPage === 2 &&
-      (redeemStepActionKind === "request" || earlyWithdraw1PctEnabled)
+      (redeemStepActionKind === "request" ||
+        earlyWithdraw1PctEnabled ||
+        withdrawOnly)
     ) {
       return null;
     }
@@ -11898,6 +11911,17 @@ export function useAnchorDepositWithdrawModal({
           "You will withdraw",
           `${poolLabelCompact} → ${redeemCollateralSymbol || "collateral"}`,
         );
+      }
+
+      // Page 2 — withdraw only: ha tokens to wallet (skip redeem preview)
+      if (
+        simpleMode &&
+        withdrawOnly &&
+        hasPoolSell &&
+        (redeemStepActionKind === "withdrawAndRedeem" ||
+          earlyWithdraw1PctEnabled)
+      ) {
+        return buildPoolWithdrawPreview("You will receive");
       }
 
       // Page 2 — sell / redeem

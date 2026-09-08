@@ -1163,6 +1163,14 @@ export function AnchorDepositWithdrawModalView(
                             earlyWithdrawEnabled={earlyWithdraw1PctEnabled}
                             onEnableEarlyWithdraw={enableRedeemEarlyWithdraw}
                             onDisableEarlyWithdraw={disableRedeemEarlyWithdraw}
+                            showWithdrawOnlyToggle={
+                              selectedRedeemPositionDisplay.kind === "pool" &&
+                              redeemStepShowAmount &&
+                              (selectedRedeemPositionDisplay.windowOpen ||
+                                earlyWithdraw1PctEnabled)
+                            }
+                            withdrawOnly={withdrawOnly}
+                            onWithdrawOnlyChange={setWithdrawOnly}
                             onChangePosition={handleBackToRedeemPositions}
                             withdrawalDelayLabel={
                               selectedRedeemWithdrawalTiming.delayLabel
