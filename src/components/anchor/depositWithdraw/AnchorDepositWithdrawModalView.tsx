@@ -632,8 +632,8 @@ export function AnchorDepositWithdrawModalView(
           tabs={
             <DepositModalTabHeader
               tabs={[
-                { value: "mint", label: "Mint" },
-                { value: "redeem", label: "Redeem" },
+                { value: "mint", label: "Mint", subtitle: "(and deposit)" },
+                { value: "redeem", label: "Redeem", subtitle: "(and withdraw)" },
               ]}
               activeTab={activeTab === "deposit" ? "mint" : "redeem"}
               onTabChange={(v) => handleTopTabChange(v as "mint" | "redeem")}
