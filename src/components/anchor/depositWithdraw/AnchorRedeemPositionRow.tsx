@@ -33,6 +33,60 @@ function rewardTokensForPosition(position: AnchorRedeemPosition): string[] {
   return Array.isArray(rewards) ? rewards.filter(Boolean) : [];
 }
 
+type RequestTone = "default" | "pending" | "ready";
+
+function requestToneForPosition(position: AnchorRedeemPosition): RequestTone {
+  if (position.kind !== "pool") return "default";
+  if (position.requestStatus?.state === "pending") return "pending";
+  if (position.requestStatus?.state === "open" || position.windowOpen) {
+    return "ready";
+  }
+  return "default";
+}
+
+const TONE_STYLES: Record<
+  RequestTone,
+  {
+    row: string;
+    rowSelected: string;
+    rowHover: string;
+    title: string;
+    badge: string;
+    value: string;
+    muted: string;
+  }
+> = {
+  default: {
+    row: "border-[#1E4775]/12 bg-white/70",
+    rowSelected: "border-[#1E4775]/35 bg-white/95 shadow-sm",
+    rowHover: "hover:border-[#1E4775]/22 hover:bg-white/85",
+    title: "text-[#1E4775]/70",
+    badge: "",
+    value: "text-[#1E4775]",
+    muted: "text-[#1E4775]/55",
+  },
+  pending: {
+    row: "border-amber-300/70 bg-amber-50/90",
+    rowSelected: "border-amber-400 bg-amber-50 shadow-sm",
+    rowHover: "hover:border-amber-400 hover:bg-amber-50",
+    title: "text-amber-900/70",
+    badge:
+      "bg-amber-200/70 text-amber-900 ring-1 ring-amber-300/60",
+    value: "text-amber-950",
+    muted: "text-amber-900/55",
+  },
+  ready: {
+    row: "border-[#4A9784]/35 bg-[#4A9784]/10",
+    rowSelected: "border-[#4A9784]/55 bg-[#4A9784]/15 shadow-sm",
+    rowHover: "hover:border-[#4A9784]/45 hover:bg-[#4A9784]/14",
+    title: "text-[#2f6f5f]/80",
+    badge:
+      "bg-[#4A9784]/20 text-[#2f6f5f] ring-1 ring-[#4A9784]/30",
+    value: "text-[#1f4f44]",
+    muted: "text-[#2f6f5f]/65",
+  },
+};
+
 export type AnchorRedeemPositionRowProps = {
   position: AnchorRedeemPosition;
   peggedTokenSymbol: string;
@@ -63,22 +117,28 @@ export function AnchorRedeemPositionRow({
   const rewardTokens = rewardTokensForPosition(position);
   const requestStatus =
     position.kind === "pool" ? position.requestStatus : undefined;
-  const ready =
-    position.kind === "pool" &&
-    (position.windowOpen === true || requestStatus?.state === "open");
+  const tone = requestToneForPosition(position);
+  const styles = TONE_STYLES[tone];
 
   const content = (
     <>
       <div className="flex min-w-0 items-center justify-between gap-2">
-        <p className="min-w-0 truncate text-[11px] font-medium leading-tight text-[#1E4775]/70">
+        <p
+          className={`min-w-0 truncate text-[11px] font-medium leading-tight ${styles.title}`}
+        >
           {redeemPositionTitle(position, peggedTokenSymbol)}
         </p>
-        {requestStatus?.state === "pending" ? (
-          <span className="shrink-0 rounded-full bg-[#1E4775]/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#1E4775]/75">
+        {tone === "pending" && requestStatus ? (
+          <span
+            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${styles.badge}`}
+          >
             {requestStatus.label}
           </span>
-        ) : ready ? (
-          <span className="shrink-0 rounded-full bg-[#4A9784]/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#2f6f5f]">
+        ) : null}
+        {tone === "ready" ? (
+          <span
+            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${styles.badge}`}
+          >
             {requestStatus?.label ?? "Ready"}
           </span>
         ) : null}
@@ -98,25 +158,31 @@ export function AnchorRedeemPositionRow({
               ))}
             </span>
           ) : null}
-          <span className="truncate text-sm font-semibold tabular-nums text-[#1E4775]">
+          <span
+            className={`truncate text-sm font-semibold tabular-nums ${styles.value}`}
+          >
             {aprLabel}
             {position.kind === "pool" ? (
-              <span className="ml-1 text-[11px] font-medium text-[#1E4775]/50">
+              <span className={`ml-1 text-[11px] font-medium ${styles.muted}`}>
                 APR
               </span>
             ) : null}
           </span>
         </div>
 
-        <p className="shrink-0 font-mono text-sm font-semibold tabular-nums text-[#1E4775]">
+        <p
+          className={`shrink-0 font-mono text-sm font-semibold tabular-nums ${styles.value}`}
+        >
           {formatHaBalance(position.balance)}{" "}
-          <span className="text-[11px] font-semibold text-[#1E4775]/65">
+          <span className={`text-[11px] font-semibold ${styles.muted}`}>
             {peggedTokenSymbol}
           </span>
         </p>
 
         {usdLabel ? (
-          <p className="shrink-0 font-mono text-xs tabular-nums text-[#1E4775]/55">
+          <p
+            className={`shrink-0 font-mono text-xs tabular-nums ${styles.muted}`}
+          >
             {usdLabel}
           </p>
         ) : null}
@@ -127,9 +193,7 @@ export function AnchorRedeemPositionRow({
   );
 
   const rowClass = `flex w-full flex-col gap-1.5 rounded-xl border px-3 py-2.5 text-left transition ${
-    selected
-      ? "border-[#1E4775]/35 bg-white/95 shadow-sm"
-      : "border-[#1E4775]/12 bg-white/70"
+    selected ? styles.rowSelected : styles.row
   } ${className}`;
 
   if (onSelect) {
@@ -140,7 +204,7 @@ export function AnchorRedeemPositionRow({
         aria-selected={selected}
         disabled={disabled}
         onClick={onSelect}
-        className={`${rowClass} hover:border-[#1E4775]/22 hover:bg-white/85 disabled:cursor-not-allowed disabled:opacity-50`}
+        className={`${rowClass} ${styles.rowHover} disabled:cursor-not-allowed disabled:opacity-50`}
       >
         {content}
       </button>

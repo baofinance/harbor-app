@@ -5,6 +5,7 @@ import {
   DEPOSIT_SECTION_LABEL_CLASS,
 } from "@/components/deposit/depositFlowStyles";
 import type { AnchorRedeemPosition } from "@/utils/anchorRedeemPositions";
+import { isRequestedRedeemPosition } from "@/utils/anchorRedeemPositions";
 import { AnchorRedeemPositionRow } from "./AnchorRedeemPositionRow";
 
 export type AnchorRedeemPositionListProps = {
@@ -14,6 +15,45 @@ export type AnchorRedeemPositionListProps = {
   disabled?: boolean;
   onSelect: (position: AnchorRedeemPosition) => void;
 };
+
+function PositionSection({
+  label,
+  positions,
+  peggedTokenSymbol,
+  selectedKey,
+  disabled,
+  onSelect,
+  listLabel,
+}: {
+  label: string;
+  positions: readonly AnchorRedeemPosition[];
+  peggedTokenSymbol: string;
+  selectedKey: string | null;
+  disabled?: boolean;
+  onSelect: (position: AnchorRedeemPosition) => void;
+  listLabel: string;
+}) {
+  if (positions.length === 0) return null;
+
+  return (
+    <div className="space-y-1.5">
+      <p className={DEPOSIT_SECTION_LABEL_CLASS}>{label}</p>
+      <ul className="space-y-1.5" role="listbox" aria-label={listLabel}>
+        {positions.map((position) => (
+          <li key={position.key}>
+            <AnchorRedeemPositionRow
+              position={position}
+              peggedTokenSymbol={peggedTokenSymbol}
+              selected={position.key === selectedKey}
+              disabled={disabled}
+              onSelect={() => onSelect(position)}
+            />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export function AnchorRedeemPositionList({
   positions,
@@ -34,22 +74,29 @@ export function AnchorRedeemPositionList({
     );
   }
 
+  const activePositions = positions.filter((p) => !isRequestedRedeemPosition(p));
+  const requestedPositions = positions.filter(isRequestedRedeemPosition);
+
   return (
-    <div className="space-y-2">
-      <p className={DEPOSIT_SECTION_LABEL_CLASS}>Your positions</p>
-      <ul className="space-y-1.5" role="listbox" aria-label="Redeem positions">
-        {positions.map((position) => (
-          <li key={position.key}>
-            <AnchorRedeemPositionRow
-              position={position}
-              peggedTokenSymbol={peggedTokenSymbol}
-              selected={position.key === selectedKey}
-              disabled={disabled}
-              onSelect={() => onSelect(position)}
-            />
-          </li>
-        ))}
-      </ul>
+    <div className="space-y-3.5">
+      <PositionSection
+        label="Your positions"
+        listLabel="Active redeem positions"
+        positions={activePositions}
+        peggedTokenSymbol={peggedTokenSymbol}
+        selectedKey={selectedKey}
+        disabled={disabled}
+        onSelect={onSelect}
+      />
+      <PositionSection
+        label="Requested withdrawals"
+        listLabel="Requested withdrawal positions"
+        positions={requestedPositions}
+        peggedTokenSymbol={peggedTokenSymbol}
+        selectedKey={selectedKey}
+        disabled={disabled}
+        onSelect={onSelect}
+      />
     </div>
   );
 }

@@ -96,6 +96,18 @@ export function deriveRedeemRequestStatus(
   return undefined;
 }
 
+/** Pool has an active withdrawal request (waiting or window open). */
+export function isRequestedRedeemPosition(
+  position: AnchorRedeemPosition,
+): position is AnchorRedeemPoolPosition {
+  if (position.kind !== "pool") return false;
+  return (
+    position.requestStatus?.state === "pending" ||
+    position.requestStatus?.state === "open" ||
+    position.windowOpen === true
+  );
+}
+
 /** Build selectable redeem positions: non-zero pools + wallet ha when present. */
 export function buildAnchorRedeemPositions(input: {
   peggedBalance: bigint;
@@ -135,14 +147,14 @@ export function buildAnchorRedeemPositions(input: {
     });
   }
 
-  // Pin ready / pending request pools first (after wallet).
+  // Wallet → idle pools → requested (ready before pending).
   positions.sort((a, b) => {
     if (a.kind === "wallet") return -1;
     if (b.kind === "wallet") return 1;
     const rank = (p: AnchorRedeemPoolPosition) => {
-      if (p.requestStatus?.state === "open" || p.windowOpen) return 0;
-      if (p.requestStatus?.state === "pending") return 1;
-      return 2;
+      if (p.requestStatus?.state === "open" || p.windowOpen) return 2;
+      if (p.requestStatus?.state === "pending") return 3;
+      return 1;
     };
     return rank(a) - rank(b);
   });

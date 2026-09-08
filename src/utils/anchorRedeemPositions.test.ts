@@ -57,7 +57,7 @@ describe("buildAnchorRedeemPositions", () => {
     ]);
   });
 
-  it("pins window-open pools after wallet", () => {
+  it("places window-open pools after idle positions", () => {
     const windowOpenByPoolAddress = new Map([
       ["0xccc", true],
       ["0xaaa", false],
@@ -86,13 +86,13 @@ describe("buildAnchorRedeemPositions", () => {
     });
 
     expect(positions.map((p) => p.key)).toEqual([
-      "b-collateral",
       "a-collateral",
+      "b-collateral",
     ]);
-    expect(positions[0]?.kind === "pool" && positions[0].windowOpen).toBe(true);
+    expect(positions[1]?.kind === "pool" && positions[1].windowOpen).toBe(true);
   });
 
-  it("attaches pending request countdown and sorts pending before idle", () => {
+  it("attaches pending request countdown and sorts requested after idle", () => {
     const now = 1_700_000_000;
     const pending = deriveRedeemRequestStatus(
       [BigInt(now + 600), BigInt(now + 600 + 86_400)],
@@ -123,9 +123,9 @@ describe("buildAnchorRedeemPositions", () => {
       ],
       requestStatusByPoolAddress,
     });
-    expect(positions.map((p) => p.key)).toEqual(["pending", "idle"]);
+    expect(positions.map((p) => p.key)).toEqual(["idle", "pending"]);
     expect(
-      positions[0]?.kind === "pool" && positions[0].requestStatus?.label,
+      positions[1]?.kind === "pool" && positions[1].requestStatus?.label,
     ).toMatch(/^Opens in /);
   });
 });
