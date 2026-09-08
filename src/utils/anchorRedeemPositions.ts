@@ -12,12 +12,18 @@ export type AnchorRedeemPoolPosition = {
   balance: bigint;
   /** Fee-free withdrawal window currently open (optional badge). */
   windowOpen?: boolean;
+  /** Optional display enrichment */
+  usdValue?: number;
+  apr?: number;
 };
 
 export type AnchorRedeemWalletPosition = {
   key: "wallet";
   kind: "wallet";
   balance: bigint;
+  usdValue?: number;
+  /** Wallet holdings do not earn pool APR. */
+  apr?: undefined;
 };
 
 export type AnchorRedeemStepActionKind =
@@ -83,20 +89,20 @@ export function buildAnchorRedeemPositions(input: {
 
 export function redeemPositionTitle(
   position: AnchorRedeemPosition,
-  peggedSymbol: string,
+  _peggedSymbol?: string,
 ): string {
   if (position.kind === "wallet") {
-    return "In wallet";
+    return "Wallet";
   }
   if (position.poolType === "sail") {
-    return "Earn · Sail";
+    return "Sail pool";
   }
   const collateral =
     position.market?.collateral?.symbol ||
     (position.market as { wrappedCollateralToken?: { symbol?: string } })
       ?.wrappedCollateralToken?.symbol ||
     "Collateral";
-  return `Earn · ${collateral}`;
+  return `${collateral} pool`;
 }
 
 export function redeemPositionSubtitle(
@@ -104,4 +110,33 @@ export function redeemPositionSubtitle(
 ): string | undefined {
   if (position.kind === "wallet") return undefined;
   return position.market?.name || position.marketId;
+}
+
+/** Attach USD value + pool APR for display rows. */
+export function enrichAnchorRedeemPositions(
+  positions: readonly AnchorRedeemPosition[],
+  input: {
+    peggedPriceUSD: number;
+    aprByPoolAddress?: ReadonlyMap<string, number | undefined>;
+  },
+): AnchorRedeemPosition[] {
+  const price = input.peggedPriceUSD;
+  return positions.map((position) => {
+    const balanceNum = Number(position.balance) / 1e18;
+    const usdValue =
+      price > 0 && Number.isFinite(balanceNum)
+        ? balanceNum * price
+        : undefined;
+    if (position.kind === "wallet") {
+      return { ...position, usdValue, apr: undefined };
+    }
+    const apr = input.aprByPoolAddress?.get(
+      position.poolAddress.toLowerCase(),
+    );
+    return {
+      ...position,
+      usdValue,
+      apr: apr !== undefined && Number.isFinite(apr) ? apr : undefined,
+    };
+  });
 }

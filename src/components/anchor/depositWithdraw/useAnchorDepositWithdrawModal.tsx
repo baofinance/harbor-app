@@ -78,6 +78,7 @@ import {
 import type { AnchorRedeemStepActionKind } from "@/utils/anchorRedeemPositions";
 import {
   buildAnchorRedeemPositions,
+  enrichAnchorRedeemPositions,
   type AnchorRedeemPosition,
 } from "@/utils/anchorRedeemPositions";
 import { DepositModalTitle } from "@/components/DepositModalTitle";
@@ -5692,7 +5693,7 @@ export function useAnchorDepositWithdrawModal({
     return map;
   }, [redeemWindowContracts, redeemWindowReads]);
 
-  const redeemPositions = useMemo(
+  const redeemPositionsBase = useMemo(
     () =>
       buildAnchorRedeemPositions({
         peggedBalance,
@@ -5704,8 +5705,9 @@ export function useAnchorDepositWithdrawModal({
 
   const selectedRedeemPosition = useMemo(
     () =>
-      redeemPositions.find((p) => p.key === selectedRedeemPositionKey) ?? null,
-    [redeemPositions, selectedRedeemPositionKey],
+      redeemPositionsBase.find((p) => p.key === selectedRedeemPositionKey) ??
+      null,
+    [redeemPositionsBase, selectedRedeemPositionKey],
   );
 
   const directPeggedBalance = directPeggedBalanceData || 0n;
@@ -6188,6 +6190,27 @@ export function useAnchorDepositWithdrawModal({
       eurPrice,
       peggedTokenPriceUsdWei,
     ]
+  );
+
+  const redeemPoolAprByAddress = useMemo(() => {
+    const map = new Map<string, number | undefined>();
+    for (const pool of poolsWithAprFallback) {
+      map.set(String(pool.address).toLowerCase(), pool.apr);
+    }
+    return map;
+  }, [poolsWithAprFallback]);
+
+  const redeemPositions = useMemo(
+    () =>
+      enrichAnchorRedeemPositions(redeemPositionsBase, {
+        peggedPriceUSD: withdrawRedeemPriceInputs.peggedPriceUSD,
+        aprByPoolAddress: redeemPoolAprByAddress,
+      }),
+    [
+      redeemPositionsBase,
+      withdrawRedeemPriceInputs.peggedPriceUSD,
+      redeemPoolAprByAddress,
+    ],
   );
 
   const currentDepositUSD =

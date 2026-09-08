@@ -5,6 +5,7 @@ import {
   DEPOSIT_AMOUNT_CARD_CLASS,
   DEPOSIT_SECTION_LABEL_CLASS,
 } from "@/components/deposit/depositFlowStyles";
+import { formatUSD } from "@/utils/formatters";
 import type { AnchorRedeemPosition } from "@/utils/anchorRedeemPositions";
 import {
   redeemPositionSubtitle,
@@ -19,6 +20,14 @@ function formatHaBalance(balance: bigint): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 4,
   });
+}
+
+function formatAprLabel(apr: number | undefined): string {
+  if (apr === undefined || !Number.isFinite(apr)) return "—";
+  if (apr === 0) return "0.00%";
+  if (apr < 0.01) return "<0.01%";
+  if (apr > 1000) return ">1000%";
+  return `${apr.toFixed(2)}%`;
 }
 
 export type AnchorRedeemPositionListProps = {
@@ -41,8 +50,8 @@ export function AnchorRedeemPositionList({
       <div className={`${DEPOSIT_AMOUNT_CARD_CLASS} px-3 py-6 text-center`}>
         <p className="text-sm font-semibold text-[#1E4775]">No positions</p>
         <p className="mt-1 text-xs leading-snug text-[#1E4775]/65">
-          You don&apos;t hold any {peggedTokenSymbol} in your wallet or Earn
-          pools yet. Mint first to get started.
+          You don&apos;t hold any {peggedTokenSymbol} in your wallet or
+          stability pools yet. Mint first to get started.
         </p>
       </div>
     );
@@ -57,6 +66,15 @@ export function AnchorRedeemPositionList({
           const subtitle = redeemPositionSubtitle(position);
           const ready =
             position.kind === "pool" && position.windowOpen === true;
+          const usdLabel =
+            position.usdValue !== undefined && position.usdValue > 0
+              ? formatUSD(position.usdValue, { compact: false })
+              : "—";
+          const aprLabel =
+            position.kind === "wallet"
+              ? "—"
+              : formatAprLabel(position.apr);
+
           return (
             <li key={position.key}>
               <button
@@ -86,15 +104,27 @@ export function AnchorRedeemPositionList({
                     <p className="mt-0.5 truncate text-[11px] text-[#1E4775]/55">
                       {subtitle}
                     </p>
-                  ) : null}
+                  ) : (
+                    <p className="mt-0.5 text-[11px] text-[#1E4775]/55">
+                      In wallet
+                    </p>
+                  )}
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="font-mono text-sm font-semibold tabular-nums text-[#1E4775]">
-                    {formatHaBalance(position.balance)}
+                    {formatHaBalance(position.balance)}{" "}
+                    <span className="text-[11px] font-semibold text-[#1E4775]/65">
+                      {peggedTokenSymbol}
+                    </span>
                   </p>
-                  <p className="text-[10px] font-medium text-[#1E4775]/50">
-                    {peggedTokenSymbol}
+                  <p className="mt-0.5 font-mono text-[11px] tabular-nums text-[#1E4775]/70">
+                    {usdLabel}
                   </p>
+                  {position.kind === "pool" ? (
+                    <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/50">
+                      {aprLabel} APR
+                    </p>
+                  ) : null}
                 </div>
               </button>
             </li>

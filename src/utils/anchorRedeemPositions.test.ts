@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DefinedMarket } from "@/config/markets";
 import {
   buildAnchorRedeemPositions,
+  enrichAnchorRedeemPositions,
   redeemPositionTitle,
 } from "./anchorRedeemPositions";
 
@@ -91,13 +92,13 @@ describe("buildAnchorRedeemPositions", () => {
 });
 
 describe("redeemPositionTitle", () => {
-  it("labels wallet and pool kinds", () => {
+  it("labels wallet and pool kinds without Earn prefix", () => {
     expect(
       redeemPositionTitle(
         { key: "wallet", kind: "wallet", balance: 1n },
         "haETH",
       ),
-    ).toBe("In wallet");
+    ).toBe("Wallet");
     expect(
       redeemPositionTitle(
         {
@@ -111,7 +112,7 @@ describe("redeemPositionTitle", () => {
         },
         "haETH",
       ),
-    ).toBe("Earn · Sail");
+    ).toBe("Sail pool");
     expect(
       redeemPositionTitle(
         {
@@ -125,6 +126,33 @@ describe("redeemPositionTitle", () => {
         },
         "haETH",
       ),
-    ).toBe("Earn · fxSAVE");
+    ).toBe("fxSAVE pool");
+  });
+});
+
+describe("enrichAnchorRedeemPositions", () => {
+  it("adds usd value and pool apr", () => {
+    const aprByPoolAddress = new Map<string, number | undefined>([
+      ["0xaaa", 12.5],
+    ]);
+    const enriched = enrichAnchorRedeemPositions(
+      [
+        { key: "wallet", kind: "wallet", balance: 10n ** 18n },
+        {
+          key: "a-collateral",
+          kind: "pool",
+          marketId: "a",
+          market: marketA,
+          poolType: "collateral",
+          poolAddress: "0xaaa",
+          balance: 2n * 10n ** 18n,
+        },
+      ],
+      { peggedPriceUSD: 100, aprByPoolAddress },
+    );
+    expect(enriched[0]?.usdValue).toBeCloseTo(100);
+    expect(enriched[0]?.kind === "wallet" && enriched[0].apr).toBeUndefined();
+    expect(enriched[1]?.usdValue).toBeCloseTo(200);
+    expect(enriched[1]?.kind === "pool" && enriched[1].apr).toBe(12.5);
   });
 });
