@@ -197,6 +197,7 @@ export function AnchorDepositWithdrawModalView(
     handleSelectRedeemPosition,
     handleBackToRedeemPositions,
     enableRedeemEarlyWithdraw,
+    disableRedeemEarlyWithdraw,
     handleRedeemPositionAmountChange,
     handleRedeemPositionMax,
     redeemStepActionKind,
@@ -1137,7 +1138,6 @@ export function AnchorDepositWithdrawModalView(
                           <AnchorRedeemPositionStep
                             position={selectedRedeemPositionDisplay}
                             peggedTokenSymbol={peggedTokenSymbol}
-                            receiveSymbol={redeemCollateralSymbol}
                             showAmount={redeemStepShowAmount}
                             amount={redeemStepAmountValue}
                             onAmountChange={handleRedeemPositionAmountChange}
@@ -1152,6 +1152,7 @@ export function AnchorDepositWithdrawModalView(
                             }
                             earlyWithdrawEnabled={earlyWithdraw1PctEnabled}
                             onEnableEarlyWithdraw={enableRedeemEarlyWithdraw}
+                            onDisableEarlyWithdraw={disableRedeemEarlyWithdraw}
                             onChangePosition={handleBackToRedeemPositions}
                             withdrawalDelayLabel={
                               selectedRedeemWithdrawalTiming.delayLabel

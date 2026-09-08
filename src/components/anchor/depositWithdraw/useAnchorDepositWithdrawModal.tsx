@@ -5206,6 +5206,20 @@ export function useAnchorDepositWithdrawModal({
     selectedPositions.sailPool,
   ]);
 
+  const disableRedeemEarlyWithdraw = useCallback(() => {
+    setEarlyWithdraw1PctEnabled(false);
+    setWithdrawalMethods((prev) => ({
+      ...prev,
+      collateralPool: "request",
+      sailPool: "request",
+    }));
+    setPositionAmounts((prev) => ({
+      ...prev,
+      collateralPool: "",
+      sailPool: "",
+    }));
+  }, []);
+
   // Helper function to calculate max acceptable amount for swap deposits
   const calculateMaxSwapAmount = useMemo(() => {
     // Skip for direct deposits (wstETH, fxSAVE) that don't need swaps
@@ -11429,7 +11443,7 @@ export function useAnchorDepositWithdrawModal({
       return {
         ...base,
         label: earlyWithdraw1PctEnabled
-          ? "Withdraw (1% fee) & Redeem"
+          ? "Withdraw & Redeem · 1% fee"
           : "Withdraw & Redeem",
         variant: "navy" as const,
       };
@@ -11622,11 +11636,10 @@ export function useAnchorDepositWithdrawModal({
     }
     // Position-first: fees only after a position is chosen
     if (flowPage === 1) return null;
-    // Request-only: timing lives in the info box; hide redeem/early fee pills
+    // Request / early-withdraw: fee story lives in overview + CTA — hide pills
     if (
       flowPage === 2 &&
-      redeemStepActionKind === "request" &&
-      !earlyWithdraw1PctEnabled
+      (redeemStepActionKind === "request" || earlyWithdraw1PctEnabled)
     ) {
       return null;
     }
@@ -11923,7 +11936,12 @@ export function useAnchorDepositWithdrawModal({
         usd?: number;
       }> = [];
 
-      if (redeemDryRun.feePercentage !== undefined) {
+      const redeemFeePct = redeemDryRun.feePercentage;
+      const showRedeemFee =
+        redeemFeePct !== undefined &&
+        !(earlyWithdraw1PctEnabled && redeemFeePct <= 0);
+
+      if (showRedeemFee && redeemFeePct !== undefined) {
         const sellFeeAmount = Number(formatEther(redeemDryRun.fee));
         const sellFeeUsd = amountToUSD(
           sellFeeAmount,
@@ -11932,14 +11950,14 @@ export function useAnchorDepositWithdrawModal({
         );
         overviewFees.push({
           label: "Redeem fee",
-          percentage: redeemDryRun.feePercentage,
+          percentage: redeemFeePct,
           usd: sellFeeUsd > 0 ? sellFeeUsd : undefined,
         });
       }
 
       if (earlyFee) {
         overviewFees.push({
-          label: "Early withdraw fee",
+          label: earlyWithdraw1PctEnabled ? "Early withdraw" : "Early withdraw fee",
           percentage: earlyFee.feePercent,
           usd: earlyFeeUsd > 0 ? earlyFeeUsd : undefined,
         });
@@ -12301,6 +12319,7 @@ export function useAnchorDepositWithdrawModal({
     handleSelectRedeemPosition,
     handleBackToRedeemPositions,
     enableRedeemEarlyWithdraw,
+    disableRedeemEarlyWithdraw,
     handleRedeemPositionAmountChange,
     handleRedeemPositionMax,
     redeemStepActionKind,

@@ -117,7 +117,6 @@ function RequestWithdrawalInfoBox({
 export type AnchorRedeemPositionStepProps = {
   position: AnchorRedeemPosition;
   peggedTokenSymbol: string;
-  receiveSymbol?: string;
   /** When true, show amount field (wallet or immediate pool withdraw). */
   showAmount: boolean;
   amount: string;
@@ -129,6 +128,7 @@ export type AnchorRedeemPositionStepProps = {
   showEarlyWithdrawLink?: boolean;
   earlyWithdrawEnabled?: boolean;
   onEnableEarlyWithdraw?: () => void;
+  onDisableEarlyWithdraw?: () => void;
   onChangePosition: () => void;
   helperText?: string;
   /** From getWithdrawalWindow — shown in the request info box. */
@@ -139,7 +139,6 @@ export type AnchorRedeemPositionStepProps = {
 export function AnchorRedeemPositionStep({
   position,
   peggedTokenSymbol,
-  receiveSymbol,
   showAmount,
   amount,
   onAmountChange,
@@ -149,6 +148,7 @@ export function AnchorRedeemPositionStep({
   showEarlyWithdrawLink = false,
   earlyWithdrawEnabled = false,
   onEnableEarlyWithdraw,
+  onDisableEarlyWithdraw,
   onChangePosition,
   helperText,
   withdrawalDelayLabel = "1 hour",
@@ -201,16 +201,6 @@ export function AnchorRedeemPositionStep({
         />
       )}
 
-      {receiveSymbol && actionKind !== "request" ? (
-        <p className="px-0.5 text-[11px] leading-snug text-[#1E4775]/55">
-          You&apos;ll receive {receiveSymbol}
-          {actionKind === "withdrawAndRedeem"
-            ? " after withdraw and redeem"
-            : ""}
-          .
-        </p>
-      ) : null}
-
       {showEarlyWithdrawLink &&
       !earlyWithdrawEnabled &&
       onEnableEarlyWithdraw ? (
@@ -224,10 +214,17 @@ export function AnchorRedeemPositionStep({
         </button>
       ) : null}
 
-      {showEarlyWithdrawLink && earlyWithdrawEnabled ? (
-        <p className="text-[11px] font-medium text-[#b45309]">
-          Early withdraw enabled (1% fee). Enter an amount above, then confirm.
-        </p>
+      {showEarlyWithdrawLink &&
+      earlyWithdrawEnabled &&
+      onDisableEarlyWithdraw ? (
+        <button
+          type="button"
+          onClick={onDisableEarlyWithdraw}
+          disabled={disabled}
+          className="w-full text-left text-[11px] font-medium text-[#1E4775]/55 underline-offset-2 transition hover:text-[#1E4775] hover:underline disabled:opacity-50"
+        >
+          Switch back to free request
+        </button>
       ) : null}
     </div>
   );
