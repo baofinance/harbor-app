@@ -118,6 +118,52 @@ function RequestWithdrawalInfoBox({
   );
 }
 
+function ModeToggleRow({
+  label,
+  tooltip,
+  enabled,
+  onToggle,
+  disabled,
+  ariaLabel,
+}: {
+  label: string;
+  tooltip: string;
+  enabled: boolean;
+  onToggle: () => void;
+  disabled?: boolean;
+  ariaLabel: string;
+}) {
+  return (
+    <div className={DEPOSIT_MODE_TOGGLE_ROW_CLASS}>
+      <div className="flex min-w-0 items-center gap-1.5">
+        <p className="text-xs font-semibold text-[#1E4775]">{label}</p>
+        <SimpleTooltip label={tooltip} side="top" maxWidth={240}>
+          <span className="inline-flex h-4 w-4 cursor-help items-center justify-center text-[#1E4775]/50 hover:text-[#1E4775]">
+            <Info className="h-3.5 w-3.5" aria-hidden />
+            <span className="sr-only">More info</span>
+          </span>
+        </SimpleTooltip>
+      </div>
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={disabled}
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+          enabled ? "bg-[#1E4775]" : "bg-[#1E4775]/25"
+        }`}
+        aria-pressed={enabled}
+        aria-label={ariaLabel}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+            enabled ? "translate-x-4" : "translate-x-1"
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
 export type AnchorRedeemPositionStepProps = {
   position: AnchorRedeemPosition;
   peggedTokenSymbol: string;
@@ -128,8 +174,8 @@ export type AnchorRedeemPositionStepProps = {
   onMax: () => void;
   disabled?: boolean;
   actionKind: AnchorRedeemStepActionKind;
-  /** Show quiet early-withdraw affordance (pool, window not open). */
-  showEarlyWithdrawLink?: boolean;
+  /** Free vs fast withdrawal toggle (pool, window not open). */
+  showEarlyWithdrawToggle?: boolean;
   earlyWithdrawEnabled?: boolean;
   onEnableEarlyWithdraw?: () => void;
   onDisableEarlyWithdraw?: () => void;
@@ -153,7 +199,7 @@ export function AnchorRedeemPositionStep({
   onMax,
   disabled = false,
   actionKind,
-  showEarlyWithdrawLink = false,
+  showEarlyWithdrawToggle = false,
   earlyWithdrawEnabled = false,
   onEnableEarlyWithdraw,
   onDisableEarlyWithdraw,
@@ -165,6 +211,11 @@ export function AnchorRedeemPositionStep({
   withdrawalDelayLabel = "1 hour",
   withdrawalDurationLabel = "24 hours",
 }: AnchorRedeemPositionStepProps) {
+  const canToggleSpeed =
+    showEarlyWithdrawToggle &&
+    !!onEnableEarlyWithdraw &&
+    !!onDisableEarlyWithdraw;
+
   return (
     <div className="space-y-2.5">
       <div className="space-y-1">
@@ -185,6 +236,29 @@ export function AnchorRedeemPositionStep({
           selected
         />
       </div>
+
+      {canToggleSpeed ? (
+        <div className="space-y-1">
+          <p className={DEPOSIT_SECTION_LABEL_CLASS}>Speed</p>
+          <ModeToggleRow
+            label={
+              earlyWithdrawEnabled ? "Fast withdrawal" : "Free withdrawal"
+            }
+            tooltip={
+              earlyWithdrawEnabled
+                ? "Withdraw immediately with a 1% fee."
+                : `Request now for free. Window opens after ~${withdrawalDelayLabel} and lasts ~${withdrawalDurationLabel}.`
+            }
+            enabled={earlyWithdrawEnabled}
+            onToggle={() => {
+              if (earlyWithdrawEnabled) onDisableEarlyWithdraw();
+              else onEnableEarlyWithdraw();
+            }}
+            disabled={disabled}
+            ariaLabel="Toggle fast withdrawal"
+          />
+        </div>
+      ) : null}
 
       {showAmount ? (
         <DepositAmountCard
@@ -215,70 +289,19 @@ export function AnchorRedeemPositionStep({
       {showWithdrawOnlyToggle && onWithdrawOnlyChange ? (
         <div className="space-y-1">
           <p className={DEPOSIT_SECTION_LABEL_CLASS}>Mode</p>
-          <div className={DEPOSIT_MODE_TOGGLE_ROW_CLASS}>
-            <div className="flex min-w-0 items-center gap-1.5">
-              <p className="text-xs font-semibold text-[#1E4775]">
-                {withdrawOnly ? "Withdraw only" : "Withdraw + redeem"}
-              </p>
-              <SimpleTooltip
-                label={
-                  withdrawOnly
-                    ? `Receive ${peggedTokenSymbol} in your wallet without redeeming to collateral.`
-                    : "Withdraw from the pool and redeem to collateral in one step."
-                }
-                side="top"
-                maxWidth={240}
-              >
-                <span className="inline-flex h-4 w-4 cursor-help items-center justify-center text-[#1E4775]/50 hover:text-[#1E4775]">
-                  <Info className="h-3.5 w-3.5" aria-hidden />
-                  <span className="sr-only">More info</span>
-                </span>
-              </SimpleTooltip>
-            </div>
-            <button
-              type="button"
-              onClick={() => onWithdrawOnlyChange(!withdrawOnly)}
-              disabled={disabled}
-              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
-                withdrawOnly ? "bg-[#1E4775]" : "bg-[#1E4775]/25"
-              }`}
-              aria-pressed={withdrawOnly}
-              aria-label="Toggle withdraw only"
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
-                  withdrawOnly ? "translate-x-4" : "translate-x-1"
-                }`}
-              />
-            </button>
-          </div>
+          <ModeToggleRow
+            label={withdrawOnly ? "Withdraw only" : "Withdraw + redeem"}
+            tooltip={
+              withdrawOnly
+                ? `Receive ${peggedTokenSymbol} in your wallet without redeeming to collateral.`
+                : "Withdraw from the pool and redeem to collateral in one step."
+            }
+            enabled={withdrawOnly}
+            onToggle={() => onWithdrawOnlyChange(!withdrawOnly)}
+            disabled={disabled}
+            ariaLabel="Toggle withdraw only"
+          />
         </div>
-      ) : null}
-
-      {showEarlyWithdrawLink &&
-      !earlyWithdrawEnabled &&
-      onEnableEarlyWithdraw ? (
-        <button
-          type="button"
-          onClick={onEnableEarlyWithdraw}
-          disabled={disabled}
-          className="w-full text-left text-[11px] font-medium text-[#1E4775]/55 underline-offset-2 transition hover:text-[#1E4775] hover:underline disabled:opacity-50"
-        >
-          Need it sooner? Withdraw now with a 1% fee
-        </button>
-      ) : null}
-
-      {showEarlyWithdrawLink &&
-      earlyWithdrawEnabled &&
-      onDisableEarlyWithdraw ? (
-        <button
-          type="button"
-          onClick={onDisableEarlyWithdraw}
-          disabled={disabled}
-          className="w-full text-left text-[11px] font-medium text-[#1E4775]/55 underline-offset-2 transition hover:text-[#1E4775] hover:underline disabled:opacity-50"
-        >
-          Switch back to free request
-        </button>
       ) : null}
     </div>
   );
