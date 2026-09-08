@@ -11253,15 +11253,31 @@ export function useAnchorDepositWithdrawModal({
     handleMint();
   }, [step, handleMint]);
 
-  const hasValidWithdrawSelection = useMemo(
-    () =>
-      hasAnchorWithdrawValidSelection({
-        selectedPositions,
-        withdrawalMethods,
-        positionAmounts,
-      }),
-    [selectedPositions, withdrawalMethods, positionAmounts],
-  );
+  const hasValidWithdrawSelection = useMemo(() => {
+    if (
+      simpleMode &&
+      selectedRedeemPosition?.kind === "pool" &&
+      !earlyWithdraw1PctEnabled
+    ) {
+      const method =
+        selectedRedeemPosition.poolType === "collateral"
+          ? withdrawalMethods.collateralPool
+          : withdrawalMethods.sailPool;
+      if (method === "request") return true;
+    }
+    return hasAnchorWithdrawValidSelection({
+      selectedPositions,
+      withdrawalMethods,
+      positionAmounts,
+    });
+  }, [
+    simpleMode,
+    selectedRedeemPosition,
+    earlyWithdraw1PctEnabled,
+    selectedPositions,
+    withdrawalMethods,
+    positionAmounts,
+  ]);
 
   const handleContinueToSell = useCallback(() => {
     if (!hasValidWithdrawSelection) return;
@@ -11418,46 +11434,62 @@ export function useAnchorDepositWithdrawModal({
     redeemStepActionKind,
   ]);
 
-  const withdrawPrimaryAction = useMemo(() => {
-    const base = resolveAnchorWithdrawPrimaryAction({
+  const withdrawPrimaryAction = useMemo((): DepositPrimaryAction => {
+    if (step === "error") return { kind: "retry" };
+    if (!isConnected) return { kind: "connect" };
+
+    // Position-first redeem: request needs no amount; early withdraw does.
+    if (simpleMode && flowPage === 2) {
+      if (redeemStepActionKind === "request" && !earlyWithdraw1PctEnabled) {
+        const pendingLabel =
+          selectedRedeemPositionDisplay?.kind === "pool" &&
+          selectedRedeemPositionDisplay.requestStatus?.state === "pending"
+            ? selectedRedeemPositionDisplay.requestStatus.label
+            : null;
+        if (pendingLabel) {
+          return { kind: "enter_amount", label: pendingLabel };
+        }
+        return {
+          kind: "submit",
+          label: "Request withdrawal",
+          variant: "navy",
+        };
+      }
+
+      const amountOk =
+        !!redeemStepAmountValue && parseFloat(redeemStepAmountValue) > 0;
+      if (!amountOk) {
+        return { kind: "enter_amount", label: "Select amount" };
+      }
+
+      if (redeemStepActionKind === "withdrawAndRedeem" || earlyWithdraw1PctEnabled) {
+        return {
+          kind: "submit",
+          label: earlyWithdraw1PctEnabled
+            ? "Withdraw & Redeem · 1% fee"
+            : "Withdraw & Redeem",
+          variant: "navy",
+        };
+      }
+
+      return { kind: "submit", label: "Redeem", variant: "navy" };
+    }
+
+    return resolveAnchorWithdrawPrimaryAction({
       step,
       isConnected,
       hasValidSelection: hasValidWithdrawSelection,
     });
-    if (!simpleMode || flowPage !== 2 || base.kind !== "submit") {
-      return base;
-    }
-    if (redeemStepActionKind === "request") {
-      const pendingLabel =
-        selectedRedeemPositionDisplay?.kind === "pool" &&
-        selectedRedeemPositionDisplay.requestStatus?.state === "pending"
-          ? selectedRedeemPositionDisplay.requestStatus.label
-          : null;
-      if (pendingLabel) {
-        // Disable CTA while waiting — countdown is the label
-        return { kind: "enter_amount" as const, label: pendingLabel };
-      }
-      return { ...base, label: "Request withdrawal", variant: "navy" as const };
-    }
-    if (redeemStepActionKind === "withdrawAndRedeem") {
-      return {
-        ...base,
-        label: earlyWithdraw1PctEnabled
-          ? "Withdraw & Redeem · 1% fee"
-          : "Withdraw & Redeem",
-        variant: "navy" as const,
-      };
-    }
-    return { ...base, label: "Redeem", variant: "navy" as const };
   }, [
     step,
     isConnected,
-    hasValidWithdrawSelection,
     simpleMode,
     flowPage,
     redeemStepActionKind,
     earlyWithdraw1PctEnabled,
     selectedRedeemPositionDisplay,
+    redeemStepAmountValue,
+    hasValidWithdrawSelection,
   ]);
 
   const depositTokenPriceUSD = useMemo(() => {
