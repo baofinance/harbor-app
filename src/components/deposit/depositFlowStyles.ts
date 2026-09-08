@@ -5,7 +5,7 @@ export const DEPOSIT_AMOUNT_CARD_CLASS = `rounded-xl border border-[#1E4775]/12 
 
 /** Transaction overview — quieter than the amount card so the form stays primary. */
 export const DEPOSIT_OVERVIEW_CARD_CLASS =
-  "rounded-lg bg-[#1E4775]/[0.04] px-3 py-2 ring-1 ring-[#1E4775]/8";
+  "rounded-lg bg-[#1E4775]/[0.04] px-3 py-2";
 
 /** Vertical gap between sections in Anchor simple-mode deposit / withdraw panels. */
 export const ANCHOR_MODAL_SECTION_GAP = "space-y-2";
@@ -27,7 +27,7 @@ export const DEPOSIT_MODE_SEGMENT_ACTIVE_CLASS =
 
 /** Shared chrome row for mint-only / withdraw-only mode toggles. */
 export const DEPOSIT_MODE_TOGGLE_ROW_CLASS =
-  "flex items-center justify-between gap-3 rounded-xl bg-[#1E4775]/[0.07] px-3 py-2.5 ring-1 ring-[#1E4775]/12";
+  "flex items-center justify-between gap-3 rounded-xl bg-[#1E4775]/[0.07] px-3 py-2.5";
 
 /** Active segment thumb — shared by toggles and read-only balance strip. */
 export const DEPOSIT_SEGMENT_ACTIVE_CLASS =
