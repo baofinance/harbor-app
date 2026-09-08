@@ -24,9 +24,9 @@ export const DEPOSIT_MODE_SEGMENT_TRACK_CLASS =
 export const DEPOSIT_MODE_SEGMENT_ACTIVE_CLASS =
   "bg-white text-[#1E4775] shadow-sm";
 
-/** Inactive thumb for mode switches. */
-export const DEPOSIT_MODE_SEGMENT_INACTIVE_CLASS =
-  "bg-transparent text-[#1E4775]/55 hover:text-[#1E4775]/80";
+/** Shared chrome row for mint-only / withdraw-only mode toggles. */
+export const DEPOSIT_MODE_TOGGLE_ROW_CLASS =
+  "flex items-center justify-between gap-3 rounded-xl bg-[#1E4775]/[0.07] px-3 py-2.5 ring-1 ring-[#1E4775]/12";
 
 /** Active segment thumb — shared by toggles and read-only balance strip. */
 export const DEPOSIT_SEGMENT_ACTIVE_CLASS =
