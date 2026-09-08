@@ -89,6 +89,7 @@ function ModeToggleRow({
   onToggle,
   disabled,
   ariaLabel,
+  badge,
 }: {
   label: string;
   tooltip: string;
@@ -96,11 +97,17 @@ function ModeToggleRow({
   onToggle: () => void;
   disabled?: boolean;
   ariaLabel: string;
+  badge?: string;
 }) {
   return (
     <div className={DEPOSIT_MODE_TOGGLE_ROW_CLASS}>
       <div className="flex min-w-0 items-center gap-1.5">
         <p className="text-xs font-semibold text-[#1E4775]">{label}</p>
+        {badge ? (
+          <span className="shrink-0 rounded-full border border-harbor-coral/35 bg-harbor-coral/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#b45309]">
+            {badge}
+          </span>
+        ) : null}
         <SimpleTooltip label={tooltip} side="top" maxWidth={240}>
           <span className="inline-flex h-4 w-4 cursor-help items-center justify-center text-[#1E4775]/50 hover:text-[#1E4775]">
             <Info className="h-3.5 w-3.5" aria-hidden />
@@ -208,6 +215,7 @@ export function AnchorRedeemPositionStep({
             label={
               earlyWithdrawEnabled ? "Fast withdrawal" : "Free withdrawal"
             }
+            badge={earlyWithdrawEnabled ? "1% fee" : undefined}
             tooltip={
               earlyWithdrawEnabled
                 ? "Withdraw immediately with a 1% fee."
