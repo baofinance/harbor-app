@@ -196,6 +196,7 @@ export function AnchorDepositWithdrawModalView(
     selectedRedeemPosition,
     selectedRedeemPositionDisplay,
     selectedRedeemWithdrawalTiming,
+    needsRedeemRouteStep,
     isRedeemRouteFlowPage,
     isRedeemConfirmFlowPage,
     handleSelectRedeemPosition,
@@ -539,7 +540,7 @@ export function AnchorDepositWithdrawModalView(
     handleContinueDepositPage,
     hasValidWithdrawSelection,
     handleContinueToSell,
-    handleContinueRedeemRoute,
+    handleContinueToRedeemRoute,
     handleSellRedeemSourceChange,
     handleSellMarketSelectChange,
     depositPagePrimaryAction,
@@ -1293,8 +1294,8 @@ export function AnchorDepositWithdrawModalView(
                             ? withdrawOnly
                               ? handleAction
                               : handleContinueToSell
-                            : isRedeemRouteFlowPage
-                              ? handleContinueRedeemRoute
+                            : isRedeemConfirmFlowPage && needsRedeemRouteStep
+                              ? handleContinueToRedeemRoute
                               : handleAction
                       }
                       onRetry={
@@ -1306,14 +1307,15 @@ export function AnchorDepositWithdrawModalView(
                             ? withdrawOnly
                               ? handleAction
                               : handleContinueToSell
-                            : isRedeemRouteFlowPage
-                              ? handleContinueRedeemRoute
+                            : isRedeemConfirmFlowPage && needsRedeemRouteStep
+                              ? handleContinueToRedeemRoute
                               : handleAction
                       }
                       feeFooter={
                         activeTab === "deposit"
                           ? buyFeeFooter
                           : isRedeemConfirmFlowPage ||
+                              isRedeemRouteFlowPage ||
                               (!simpleMode &&
                                 (flowPage === 2 || activeTab === "sell"))
                             ? withdrawFeeFooter

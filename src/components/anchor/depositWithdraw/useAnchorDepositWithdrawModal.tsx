@@ -5905,14 +5905,12 @@ export function useAnchorDepositWithdrawModal({
     withdrawalMethods.sailPool,
   ]);
 
-  const isRedeemRouteFlowPage =
-    simpleMode && needsRedeemRouteStep && flowPage === 2;
   const isRedeemConfirmFlowPage =
-    simpleMode &&
-    !!selectedRedeemPosition &&
-    (needsRedeemRouteStep ? flowPage === 3 : flowPage === 2);
+    simpleMode && !!selectedRedeemPosition && flowPage === 2;
+  const isRedeemRouteFlowPage =
+    simpleMode && needsRedeemRouteStep && flowPage === 3;
 
-  // Drop the confirm page when the route step is no longer needed (e.g. free request).
+  // Drop the route page when it is no longer needed (e.g. free request / withdraw-only).
   useEffect(() => {
     if (!needsRedeemRouteStep && flowPage === 3) {
       setFlowPage(2);
@@ -11635,28 +11633,18 @@ export function useAnchorDepositWithdrawModal({
     peggedBalance,
   ]);
 
-  const handleContinueRedeemRoute = useCallback(() => {
-    if (!isRedeemRouteFlowPage) return;
+  const handleContinueToRedeemRoute = useCallback(() => {
+    if (!isRedeemConfirmFlowPage || !needsRedeemRouteStep) return;
     setFlowPage(3);
     setStep("input");
     setError(null);
-  }, [isRedeemRouteFlowPage]);
+  }, [isRedeemConfirmFlowPage, needsRedeemRouteStep]);
 
   const withdrawPrimaryAction = useMemo((): DepositPrimaryAction => {
     if (step === "error") return { kind: "retry" };
     if (!isConnected) return { kind: "connect" };
 
-    // Multi-market route picker
-    if (isRedeemRouteFlowPage) {
-      const amountOk =
-        !!redeemStepAmountValue && parseFloat(redeemStepAmountValue) > 0;
-      if (!amountOk) {
-        return { kind: "enter_amount", label: "Select amount" };
-      }
-      return { kind: "submit", label: "Continue", variant: "navy" };
-    }
-
-    // Position-first redeem confirm: request needs no amount; early withdraw does.
+    // Amount / confirm step — Continue into route when multi-market redeem applies.
     if (isRedeemConfirmFlowPage) {
       if (redeemStepActionKind === "request" && !earlyWithdraw1PctEnabled) {
         const pendingLabel =
@@ -11678,6 +11666,10 @@ export function useAnchorDepositWithdrawModal({
         !!redeemStepAmountValue && parseFloat(redeemStepAmountValue) > 0;
       if (!amountOk) {
         return { kind: "enter_amount", label: "Select amount" };
+      }
+
+      if (needsRedeemRouteStep) {
+        return { kind: "submit", label: "Continue", variant: "navy" };
       }
 
       if (redeemStepActionKind === "withdrawAndRedeem" || earlyWithdraw1PctEnabled) {
@@ -11702,6 +11694,27 @@ export function useAnchorDepositWithdrawModal({
       return { kind: "submit", label: "Redeem", variant: "navy" };
     }
 
+    // Multi-market route picker — final submit after amount is already chosen.
+    if (isRedeemRouteFlowPage) {
+      const amountOk =
+        !!redeemStepAmountValue && parseFloat(redeemStepAmountValue) > 0;
+      if (!amountOk) {
+        return { kind: "enter_amount", label: "Select amount" };
+      }
+
+      if (redeemStepActionKind === "withdrawAndRedeem" || earlyWithdraw1PctEnabled) {
+        return {
+          kind: "submit",
+          label: earlyWithdraw1PctEnabled
+            ? "Withdraw & Redeem · 1% fee"
+            : "Withdraw & Redeem",
+          variant: "navy",
+        };
+      }
+
+      return { kind: "submit", label: "Redeem", variant: "navy" };
+    }
+
     return resolveAnchorWithdrawPrimaryAction({
       step,
       isConnected,
@@ -11710,8 +11723,9 @@ export function useAnchorDepositWithdrawModal({
   }, [
     step,
     isConnected,
-    isRedeemRouteFlowPage,
     isRedeemConfirmFlowPage,
+    isRedeemRouteFlowPage,
+    needsRedeemRouteStep,
     redeemStepActionKind,
     earlyWithdraw1PctEnabled,
     selectedRedeemPositionDisplay,
@@ -11921,8 +11935,8 @@ export function useAnchorDepositWithdrawModal({
     if ((activeTab !== "withdraw" && activeTab !== "sell") || !simpleMode) {
       return null;
     }
-    // Position-first: fees only on confirm (not list / route)
-    if (flowPage === 1 || isRedeemRouteFlowPage) return null;
+    // Position-first: fees on amount + route steps (not list)
+    if (flowPage === 1) return null;
     // Request / early-withdraw / withdraw-only: fee story lives in overview + CTA
     if (
       isRedeemConfirmFlowPage &&
@@ -11934,7 +11948,7 @@ export function useAnchorDepositWithdrawModal({
     }
 
     const showSellFee =
-      (isRedeemConfirmFlowPage || activeTab === "sell") &&
+      (isRedeemConfirmFlowPage || isRedeemRouteFlowPage || activeTab === "sell") &&
       (activeTab === "sell" || !withdrawOnly);
     const showEarlyFee = !!selectedPoolEarlyWithdrawFee;
 
@@ -12045,15 +12059,16 @@ export function useAnchorDepositWithdrawModal({
       if ((activeTab !== "withdraw" && activeTab !== "sell") || !simpleMode) {
         return null;
       }
-      // Position-first: no overview on list or route step
-      if (flowPage === 1 || isRedeemRouteFlowPage) {
+      // Position-first: no overview on the list step
+      if (flowPage === 1) {
         return null;
       }
-      if (!isRedeemConfirmFlowPage) return null;
+      if (!isRedeemConfirmFlowPage && !isRedeemRouteFlowPage) return null;
       if (step !== "input" && step !== "error") return null;
 
       // Request-only: info box owns the key timing — skip flat overview duplicate
       if (
+        isRedeemConfirmFlowPage &&
         redeemStepActionKind === "request" &&
         !earlyWithdraw1PctEnabled
       ) {
@@ -12957,7 +12972,7 @@ export function useAnchorDepositWithdrawModal({
     handleContinueDepositPage,
     hasValidWithdrawSelection,
     handleContinueToSell,
-    handleContinueRedeemRoute,
+    handleContinueToRedeemRoute,
     handleSellRedeemSourceChange,
     handleSellMarketSelectChange,
     depositPagePrimaryAction,

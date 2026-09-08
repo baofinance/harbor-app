@@ -54,9 +54,10 @@ export function anchorSimpleRedeemPositionFlowParts(
 
   if (flowPage === 1) return ["Choose position"];
 
+  // Amount / confirm comes before optional multi-market "Redeem to".
   if (includeRouteStep) {
-    if (flowPage === 2) return ["Choose position", "Redeem to"];
-    return ["Choose position", "Redeem to", confirmLabel];
+    if (flowPage === 2) return ["Choose position", confirmLabel];
+    return ["Choose position", confirmLabel, "Redeem to"];
   }
 
   return ["Choose position", confirmLabel];
