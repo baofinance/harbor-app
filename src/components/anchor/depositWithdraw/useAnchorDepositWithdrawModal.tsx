@@ -11761,15 +11761,15 @@ export function useAnchorDepositWithdrawModal({
 
     if (showEarlyFee) {
       items.push({
-        label: "Early withdraw",
+        label: "Withdraw",
         ratio: pctToDepositFeeRatio(selectedPoolEarlyWithdrawFee!.percent),
         isMintSail: false,
         tooltip: (
           <div className="space-y-2">
-            <p className="font-semibold">Early Withdrawal Fee</p>
+            <p className="font-semibold">Withdraw Fee</p>
             <p>
-              0% during an open request window or when using Request Withdrawal.
-              1% when withdrawing immediately outside the window.
+              Charged when exiting a stability pool. Free during an open request
+              window; 1% for fast withdrawal outside the window.
             </p>
           </div>
         ),
@@ -11777,7 +11777,7 @@ export function useAnchorDepositWithdrawModal({
     }
 
     const heading =
-      items.length > 1 ? "Fees" : showSellFee ? sellFeeLabel : "Early withdraw fee";
+      items.length > 1 ? "Fees" : showSellFee ? sellFeeLabel : "Withdraw fee";
 
     return <DepositTradeFeeFooter heading={heading} items={items} />;
   }, [
