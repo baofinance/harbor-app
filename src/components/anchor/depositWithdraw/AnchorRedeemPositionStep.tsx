@@ -2,7 +2,10 @@
 
 import { Info } from "lucide-react";
 import { DepositAmountCard } from "@/components/deposit/DepositAmountCard";
-import { DEPOSIT_SECTION_LABEL_CLASS } from "@/components/deposit/depositFlowStyles";
+import {
+  DEPOSIT_MODE_TOGGLE_ROW_CLASS,
+  DEPOSIT_SECTION_LABEL_CLASS,
+} from "@/components/deposit/depositFlowStyles";
 import type {
   AnchorRedeemPosition,
   AnchorRedeemStepActionKind,
