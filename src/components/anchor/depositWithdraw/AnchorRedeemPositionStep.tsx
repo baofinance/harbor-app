@@ -34,85 +34,49 @@ function RequestWithdrawalInfoBox({
       ? (position.requestStatus?.label ?? "Ready now")
       : null;
 
-  const title = pendingLabel
-    ? "Withdrawal requested"
+  const timingRows = pendingLabel
+    ? [
+        { label: "Fee-free window", value: pendingLabel },
+        { label: "Fee-free duration", value: withdrawalDurationLabel },
+      ]
     : openLabel
-      ? "Withdrawal window open"
-      : "Request full position";
+      ? [
+          { label: "Fee-free window", value: openLabel },
+          { label: "Fee-free duration", value: withdrawalDurationLabel },
+        ]
+      : [
+          { label: "Fee-free window opens in", value: withdrawalDelayLabel },
+          { label: "Fee-free window duration", value: withdrawalDurationLabel },
+        ];
 
-  const body =
+  const footer =
     helperText ??
-    (pendingLabel ? (
-      <>
-        Your exit is queued. The fee-free window{" "}
-        <span className="font-semibold text-[#1E4775]">
-          {pendingLabel.toLowerCase()}
-        </span>
-        , then stays open for{" "}
-        <span className="font-semibold text-[#1E4775]">
-          {withdrawalDurationLabel}
-        </span>
-        . Come back during that window to withdraw and redeem to collateral.
-      </>
-    ) : openLabel ? (
-      <>
-        Your fee-free window is open
-        {openLabel !== "Ready now" ? (
-          <>
-            {" "}
-            (
-            <span className="font-semibold text-[#1E4775]">{openLabel}</span>)
-          </>
-        ) : null}
-        . Withdraw and redeem to collateral before it closes.
-      </>
-    ) : (
-      <>
-        Starts the exit from this Earn pool. The fee-free window opens after{" "}
-        <span className="font-semibold text-[#1E4775]">
-          {withdrawalDelayLabel}
-        </span>
-        , then lasts{" "}
-        <span className="font-semibold text-[#1E4775]">
-          {withdrawalDurationLabel}
-        </span>
-        . Come back during that window to finish and redeem to collateral.
-      </>
-    ));
+    (pendingLabel
+      ? "Come back during the fee-free window to complete your withdrawal."
+      : openLabel
+        ? "Complete your withdrawal before the fee-free window closes."
+        : "After your withdraw request is made, come back in the fee-free window to complete your withdrawal.");
 
   return (
     <div
-      className="rounded-xl border border-[#1E4775]/15 bg-[#1E4775]/[0.06] px-3 py-3"
+      className="rounded-xl bg-[#1E4775]/[0.06] px-3 py-3"
       role="note"
     >
-      <div className="flex items-start gap-2.5">
-        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1E4775]/10 text-[#1E4775]">
-          <Info className="h-4 w-4" aria-hidden />
-        </div>
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <p className="text-sm font-semibold text-[#1E4775]">{title}</p>
-          <p className="text-xs leading-snug text-[#1E4775]/75">{body}</p>
-          <div className="flex flex-wrap gap-1.5 pt-0.5">
-            {pendingLabel ? (
-              <span className="rounded-md bg-white/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775] ring-1 ring-[#1E4775]/15">
-                {pendingLabel}
+      <div className="space-y-2">
+        <div className="space-y-1.5">
+          {timingRows.map((row) => (
+            <div
+              key={row.label}
+              className="flex items-baseline justify-between gap-3 text-xs"
+            >
+              <span className="text-[#1E4775]/60">{row.label}</span>
+              <span className="shrink-0 rounded-md bg-white/80 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-[#1E4775]">
+                {row.value}
               </span>
-            ) : openLabel ? (
-              <span className="rounded-md bg-[#4A9784]/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#2f6f5f] ring-1 ring-[#4A9784]/25">
-                {openLabel}
-              </span>
-            ) : (
-              <>
-                <span className="rounded-md bg-white/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/80 ring-1 ring-[#1E4775]/10">
-                  ~{withdrawalDelayLabel} delay
-                </span>
-                <span className="rounded-md bg-white/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/80 ring-1 ring-[#1E4775]/10">
-                  ~{withdrawalDurationLabel} window
-                </span>
-              </>
-            )}
-          </div>
+            </div>
+          ))}
         </div>
+        <p className="text-[11px] leading-snug text-[#1E4775]/55">{footer}</p>
       </div>
     </div>
   );
