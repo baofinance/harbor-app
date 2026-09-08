@@ -41,6 +41,15 @@ export function anchorSimpleWithdrawFlowParts(withdrawOnly: boolean): string[] {
   return [DEPOSIT_MODAL_STEP.withdraw, "Redeem"];
 }
 
+/** Position-first Earn redeem crumbs. */
+export function anchorSimpleRedeemPositionFlowParts(
+  flowPage: 1 | 2,
+  confirmLabel: "Redeem" | "Request" | "Confirm" = "Confirm",
+): string[] {
+  if (flowPage === 1) return ["Choose position"];
+  return ["Choose position", confirmLabel];
+}
+
 /** Simple-mode redeem-only: wallet redeem. */
 export function anchorSimpleSellFlowParts(): string[] {
   return ["Redeem"];

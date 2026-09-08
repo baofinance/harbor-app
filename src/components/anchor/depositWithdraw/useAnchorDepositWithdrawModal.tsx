@@ -71,9 +71,15 @@ import { DepositModalFlowOverview } from "@/components/DepositModalFlowOverview"
 import {
   anchorDepositFlowParts,
   anchorSimpleDepositFlowParts,
+  anchorSimpleRedeemPositionFlowParts,
   anchorSimpleSellFlowParts,
   anchorSimpleWithdrawFlowParts,
 } from "@/components/depositModalFlowSteps";
+import type { AnchorRedeemStepActionKind } from "@/utils/anchorRedeemPositions";
+import {
+  buildAnchorRedeemPositions,
+  type AnchorRedeemPosition,
+} from "@/utils/anchorRedeemPositions";
 import { DepositModalTitle } from "@/components/DepositModalTitle";
 import { InfoCallout } from "@/components/InfoCallout";
 import { ErrorBanner, ReservedErrorSlot } from "@/components/anchor/ErrorBanner";
@@ -270,10 +276,9 @@ export function useAnchorDepositWithdrawModal({
     ) {
       return "deposit";
     }
-    if (initialTab === "redeem") {
-      return "sell";
-    }
+    // Position-first redeem starts on withdraw + flow page 1 (not sell).
     if (
+      initialTab === "redeem" ||
       initialTab === "withdraw" ||
       initialTab === "withdraw-redeem"
     ) {
@@ -286,7 +291,8 @@ export function useAnchorDepositWithdrawModal({
 
   // Get positions from subgraph (same as expanded view)
   const { poolDeposits, haBalances, error: marksError } = useAnchorLedgerMarks({
-    enabled: isActive && activeTab === "withdraw",
+    enabled:
+      isActive && (activeTab === "withdraw" || activeTab === "sell"),
   });
   const defaultProgressConfig = {
     mode: null as "collateral" | "direct" | "withdraw" | null,
@@ -499,9 +505,10 @@ export function useAnchorDepositWithdrawModal({
 
   // Step tracking for simple mode (1: deposit token/amount, 2: reward token, 3: stability pool)
   type FlowPage = 1 | 2;
-  const [flowPage, setFlowPage] = useState<FlowPage>(
-    initialTab === "redeem" ? 2 : 1,
-  );
+  const [flowPage, setFlowPage] = useState<FlowPage>(1);
+  const [selectedRedeemPositionKey, setSelectedRedeemPositionKey] = useState<
+    string | null
+  >(null);
 
   const configureSellFromWalletTab = useCallback(() => {
     setFlowPage(2);
@@ -520,10 +527,19 @@ export function useAnchorDepositWithdrawModal({
     }));
   }, []);
 
+  // Legacy sell-tab entry still configures wallet redeem; position-first uses explicit select.
   useEffect(() => {
     if (!isActive || !simpleMode || activeTab !== "sell") return;
-    configureSellFromWalletTab();
-  }, [isActive, simpleMode, activeTab, configureSellFromWalletTab]);
+    if (selectedRedeemPositionKey === "wallet") {
+      configureSellFromWalletTab();
+    }
+  }, [
+    isActive,
+    simpleMode,
+    activeTab,
+    selectedRedeemPositionKey,
+    configureSellFromWalletTab,
+  ]);
 
   // Progress modal state (reuses TransactionProgressModal)
   const progressSteps = useMemo<TransactionStep[]>(() => {
@@ -4356,12 +4372,34 @@ export function useAnchorDepositWithdrawModal({
     [mintOnly],
   );
 
-  const simpleWithdrawFlowParts = useMemo(
-    () => anchorSimpleWithdrawFlowParts(withdrawOnly),
-    [withdrawOnly],
-  );
+  const simpleWithdrawFlowParts = useMemo(() => {
+    if (!simpleMode) return anchorSimpleWithdrawFlowParts(withdrawOnly);
+    const confirmLabel =
+      selectedRedeemPosition?.kind === "wallet"
+        ? ("Redeem" as const)
+        : selectedRedeemPosition?.kind === "pool" &&
+            ((selectedRedeemPosition.poolType === "collateral" &&
+              withdrawalMethods.collateralPool === "request") ||
+              (selectedRedeemPosition.poolType === "sail" &&
+                withdrawalMethods.sailPool === "request"))
+          ? ("Request" as const)
+          : ("Confirm" as const);
+    return anchorSimpleRedeemPositionFlowParts(flowPage, confirmLabel);
+  }, [
+    simpleMode,
+    withdrawOnly,
+    flowPage,
+    selectedRedeemPosition,
+    withdrawalMethods.collateralPool,
+    withdrawalMethods.sailPool,
+  ]);
 
-  const simpleSellFlowParts = useMemo(() => anchorSimpleSellFlowParts(), []);
+  const simpleSellFlowParts = useMemo(() => {
+    if (simpleMode) {
+      return anchorSimpleRedeemPositionFlowParts(flowPage, "Redeem");
+    }
+    return anchorSimpleSellFlowParts();
+  }, [simpleMode, flowPage]);
 
   const poolSellAmountWei = useMemo(() => {
     let total = 0n;
@@ -4940,6 +4978,22 @@ export function useAnchorDepositWithdrawModal({
     (index: number) => {
       const targetPage = (index + 1) as FlowPage;
       if (targetPage >= flowPage) return;
+      setSelectedRedeemPositionKey(null);
+      setActiveTab("withdraw");
+      setWithdrawOnly(false);
+      setEarlyWithdraw1PctEnabled(false);
+      setSellRedeemSource("pool");
+      setSelectedPositions((prev) => ({
+        ...prev,
+        wallet: false,
+        collateralPool: false,
+        sailPool: false,
+      }));
+      setPositionAmounts({
+        wallet: "",
+        collateralPool: "",
+        sailPool: "",
+      });
       goToFlowPage(1);
     },
     [flowPage, goToFlowPage],
@@ -4952,6 +5006,22 @@ export function useAnchorDepositWithdrawModal({
 
   const handleWithdrawFlowBack = useCallback(() => {
     if (flowPage <= 1) return;
+    setSelectedRedeemPositionKey(null);
+    setActiveTab("withdraw");
+    setWithdrawOnly(false);
+    setEarlyWithdraw1PctEnabled(false);
+    setSellRedeemSource("pool");
+    setSelectedPositions((prev) => ({
+      ...prev,
+      wallet: false,
+      collateralPool: false,
+      sailPool: false,
+    }));
+    setPositionAmounts({
+      wallet: "",
+      collateralPool: "",
+      sailPool: "",
+    });
     goToFlowPage(1);
   }, [flowPage, goToFlowPage]);
 
@@ -5026,6 +5096,82 @@ export function useAnchorDepositWithdrawModal({
     },
     [],
   );
+
+  const handleSelectRedeemPosition = useCallback(
+    (position: AnchorRedeemPosition) => {
+      setError(null);
+      setTransactionNotificationError(null);
+      setStep("input");
+      setSelectedRedeemPositionKey(position.key);
+      setWithdrawOnly(false);
+      setEarlyWithdraw1PctEnabled(false);
+
+      if (position.kind === "wallet") {
+        setActiveTab("sell");
+        setSelectedRedeemPositionKey("wallet");
+        configureSellFromWalletTab();
+        setRedeemMarketSelectionMode("auto");
+        return;
+      }
+
+      setActiveTab("withdraw");
+      selectWithdrawPoolRow(
+        { marketId: position.marketId, poolType: position.poolType },
+        position.marketId !== selectedMarketId,
+      );
+      setSellRedeemSource("pool");
+      setSelectedPositions((prev) => ({
+        ...prev,
+        wallet: false,
+      }));
+      setPositionAmounts((prev) => ({
+        ...prev,
+        wallet: "",
+        collateralPool: "",
+        sailPool: "",
+      }));
+      setRedeemMarketSelectionMode("auto");
+      setFlowPage(2);
+    },
+    [
+      configureSellFromWalletTab,
+      selectWithdrawPoolRow,
+      selectedMarketId,
+    ],
+  );
+
+  const handleBackToRedeemPositions = useCallback(() => {
+    setSelectedRedeemPositionKey(null);
+    setActiveTab("withdraw");
+    setWithdrawOnly(false);
+    setEarlyWithdraw1PctEnabled(false);
+    setFlowPage(1);
+    setSellRedeemSource("pool");
+    setSelectedPositions((prev) => ({
+      ...prev,
+      wallet: false,
+      collateralPool: false,
+      sailPool: false,
+    }));
+    setPositionAmounts({
+      wallet: "",
+      collateralPool: "",
+      sailPool: "",
+    });
+    setStep("input");
+    setError(null);
+    setTransactionNotificationError(null);
+  }, []);
+
+  const enableRedeemEarlyWithdraw = useCallback(() => {
+    setEarlyWithdraw1PctEnabled(true);
+    setWithdrawalMethods((prev) => {
+      const next = { ...prev };
+      if (selectedPositions.collateralPool) next.collateralPool = "immediate";
+      if (selectedPositions.sailPool) next.sailPool = "immediate";
+      return next;
+    });
+  }, [selectedPositions.collateralPool, selectedPositions.sailPool]);
 
   // Helper function to calculate max acceptable amount for swap deposits
   const calculateMaxSwapAmount = useMemo(() => {
@@ -5497,6 +5643,71 @@ export function useAnchorDepositWithdrawModal({
       ? peggedBalanceFromSubgraph
       : peggedBalanceContract;
   const canSellFromWallet = peggedBalance > 0n;
+
+  const redeemWindowContracts = useMemo(() => {
+    if (!simpleMode) return [];
+    return groupedPoolPositions
+      .filter((row) => row.balance > 0n && row.poolAddress)
+      .map((row) => ({
+        address: row.poolAddress as `0x${string}`,
+        abi: STABILITY_POOL_ABI,
+        functionName: "getWithdrawalRequest" as const,
+        args: address
+          ? ([address] as const)
+          : (["0x0000000000000000000000000000000000000000"] as const),
+      }));
+  }, [simpleMode, groupedPoolPositions, address]);
+
+  const { data: redeemWindowReads } = useContractReads({
+    contracts: redeemWindowContracts,
+    query: {
+      enabled:
+        simpleMode &&
+        isActive &&
+        (activeTab === "withdraw" || activeTab === "sell") &&
+        redeemWindowContracts.length > 0 &&
+        !!address,
+      refetchInterval: 30_000,
+    },
+  });
+
+  const redeemWindowOpenByPoolAddress = useMemo(() => {
+    const map = new Map<string, boolean>();
+    redeemWindowContracts.forEach((c, i) => {
+      const result = redeemWindowReads?.[i]?.result as
+        | readonly [bigint, bigint]
+        | undefined;
+      if (!result) {
+        map.set(c.address.toLowerCase(), false);
+        return;
+      }
+      const [start, end] = result;
+      if (start === 0n && end === 0n) {
+        map.set(c.address.toLowerCase(), false);
+        return;
+      }
+      const now = BigInt(Math.floor(Date.now() / 1000));
+      map.set(c.address.toLowerCase(), now >= start && now <= end);
+    });
+    return map;
+  }, [redeemWindowContracts, redeemWindowReads]);
+
+  const redeemPositions = useMemo(
+    () =>
+      buildAnchorRedeemPositions({
+        peggedBalance,
+        poolRows: groupedPoolPositions,
+        windowOpenByPoolAddress: redeemWindowOpenByPoolAddress,
+      }),
+    [peggedBalance, groupedPoolPositions, redeemWindowOpenByPoolAddress],
+  );
+
+  const selectedRedeemPosition = useMemo(
+    () =>
+      redeemPositions.find((p) => p.key === selectedRedeemPositionKey) ?? null,
+    [redeemPositions, selectedRedeemPositionKey],
+  );
+
   const directPeggedBalance = directPeggedBalanceData || 0n;
 
   // Get balance for selected deposit asset in simple mode
@@ -6199,8 +6410,18 @@ export function useAnchorDepositWithdrawModal({
     setTransactionNotificationError(null);
     setTxHash(null);
     if (simpleMode) {
-      if (tab === "sell") {
-        configureSellFromWalletTab();
+      if (tab === "withdraw") {
+        setSelectedRedeemPositionKey(null);
+        setFlowPage(1);
+        setWithdrawOnly(false);
+        setEarlyWithdraw1PctEnabled(false);
+      } else if (tab === "sell") {
+        // Position-first: sell only after wallet row selected; keep page 2.
+        if (selectedRedeemPositionKey === "wallet") {
+          configureSellFromWalletTab();
+        } else {
+          setFlowPage(1);
+        }
       } else {
         setFlowPage(1);
       }
@@ -6216,6 +6437,7 @@ export function useAnchorDepositWithdrawModal({
     if (tab === "deposit") {
       setDepositInStabilityPool(true);
       setStabilityPoolType("collateral");
+      setSelectedRedeemPositionKey(null);
     }
   };
 
@@ -6225,6 +6447,8 @@ export function useAnchorDepositWithdrawModal({
       return;
     }
     if (activeTab === "withdraw" || activeTab === "sell") {
+      // Already on redeem: return to position list
+      handleBackToRedeemPositions();
       return;
     }
     handleTabChange("withdraw");
@@ -6353,6 +6577,46 @@ export function useAnchorDepositWithdrawModal({
       setPositionAmounts((prev) => ({ ...prev, [field]: value }));
     }
   };
+
+  const handleRedeemPositionAmountChange = useCallback(
+    (value: string) => {
+      if (selectedRedeemPosition?.kind === "wallet") {
+        handlePositionAmountChange("wallet", value, peggedBalance);
+        return;
+      }
+      if (selectedRedeemPosition?.kind === "pool") {
+        const modeKey =
+          selectedRedeemPosition.poolType === "collateral"
+            ? "collateralPool"
+            : "sailPool";
+        handlePositionAmountChange(
+          modeKey,
+          value,
+          selectedRedeemPosition.balance,
+        );
+      }
+    },
+    [selectedRedeemPosition, peggedBalance],
+  );
+
+  const handleRedeemPositionMax = useCallback(() => {
+    if (!selectedRedeemPosition) return;
+    if (selectedRedeemPosition.kind === "wallet") {
+      setPositionAmounts((prev) => ({
+        ...prev,
+        wallet: formatEther(peggedBalance),
+      }));
+      return;
+    }
+    const modeKey =
+      selectedRedeemPosition.poolType === "collateral"
+        ? "collateralPool"
+        : "sailPool";
+    setPositionAmounts((prev) => ({
+      ...prev,
+      [modeKey]: formatEther(selectedRedeemPosition.balance),
+    }));
+  }, [selectedRedeemPosition, peggedBalance]);
 
   // Check if any position amount exceeds its balance
   const positionExceedsBalance = useMemo(() => {
@@ -10948,6 +11212,11 @@ export function useAnchorDepositWithdrawModal({
   );
 
   const withdrawPage1PrimaryAction = useMemo((): DepositPrimaryAction => {
+    if (simpleMode) {
+      if (step === "error") return { kind: "retry" };
+      if (!isConnected) return { kind: "connect" };
+      return { kind: "enter_amount", label: "Select a position" };
+    }
     if (withdrawOnly) {
       return resolveAnchorWithdrawPrimaryAction({
         step,
@@ -10970,21 +11239,94 @@ export function useAnchorDepositWithdrawModal({
     }
     return base;
   }, [
+    simpleMode,
     step,
     isConnected,
     hasValidWithdrawSelection,
     withdrawOnly,
   ]);
 
-  const withdrawPrimaryAction = useMemo(
-    () =>
-      resolveAnchorWithdrawPrimaryAction({
-        step,
-        isConnected,
-        hasValidSelection: hasValidWithdrawSelection,
-      }),
-    [step, isConnected, hasValidWithdrawSelection],
-  );
+  const redeemStepActionKind = useMemo((): AnchorRedeemStepActionKind => {
+    if (!selectedRedeemPosition || selectedRedeemPosition.kind === "wallet") {
+      return "redeem";
+    }
+    const method =
+      selectedRedeemPosition.poolType === "collateral"
+        ? withdrawalMethods.collateralPool
+        : withdrawalMethods.sailPool;
+    if (method === "request") return "request";
+    return "withdrawAndRedeem";
+  }, [selectedRedeemPosition, withdrawalMethods]);
+
+  const redeemStepShowAmount =
+    !!selectedRedeemPosition &&
+    (selectedRedeemPosition.kind === "wallet" ||
+      redeemStepActionKind !== "request");
+
+  const redeemStepAmountValue =
+    selectedRedeemPosition?.kind === "wallet"
+      ? positionAmounts.wallet
+      : selectedRedeemPosition?.poolType === "collateral"
+        ? positionAmounts.collateralPool
+        : selectedRedeemPosition?.poolType === "sail"
+          ? positionAmounts.sailPool
+          : "";
+
+  // Prefill full balance for immediate pool withdraw / early withdraw once.
+  useEffect(() => {
+    if (!simpleMode || flowPage !== 2) return;
+    if (!selectedRedeemPosition || selectedRedeemPosition.kind !== "pool")
+      return;
+    if (redeemStepActionKind === "request") return;
+    const modeKey =
+      selectedRedeemPosition.poolType === "collateral"
+        ? "collateralPool"
+        : "sailPool";
+    setPositionAmounts((prev) => {
+      if (prev[modeKey]) return prev;
+      return {
+        ...prev,
+        [modeKey]: formatEther(selectedRedeemPosition.balance),
+      };
+    });
+  }, [
+    simpleMode,
+    flowPage,
+    selectedRedeemPosition,
+    redeemStepActionKind,
+  ]);
+
+  const withdrawPrimaryAction = useMemo(() => {
+    const base = resolveAnchorWithdrawPrimaryAction({
+      step,
+      isConnected,
+      hasValidSelection: hasValidWithdrawSelection,
+    });
+    if (!simpleMode || flowPage !== 2 || base.kind !== "submit") {
+      return base;
+    }
+    if (redeemStepActionKind === "request") {
+      return { ...base, label: "Request withdrawal", variant: "navy" as const };
+    }
+    if (redeemStepActionKind === "withdrawAndRedeem") {
+      return {
+        ...base,
+        label: earlyWithdraw1PctEnabled
+          ? "Withdraw (1% fee) & Redeem"
+          : "Withdraw & Redeem",
+        variant: "navy" as const,
+      };
+    }
+    return { ...base, label: "Redeem", variant: "navy" as const };
+  }, [
+    step,
+    isConnected,
+    hasValidWithdrawSelection,
+    simpleMode,
+    flowPage,
+    redeemStepActionKind,
+    earlyWithdraw1PctEnabled,
+  ]);
 
   const depositTokenPriceUSD = useMemo(() => {
     const sym = (selectedDepositAsset || collateralSymbol).toLowerCase();
@@ -11270,8 +11612,26 @@ export function useAnchorDepositWithdrawModal({
         return null;
       }
       const effectiveFlowPage = activeTab === "sell" ? 2 : flowPage;
+      // Position-first: no overview on the list step
+      if (simpleMode && effectiveFlowPage === 1) {
+        return null;
+      }
       if (effectiveFlowPage !== 1 && effectiveFlowPage !== 2) return null;
       if (step !== "input" && step !== "error") return null;
+
+      // Request-only: show messaging instead of collateral preview
+      if (
+        simpleMode &&
+        effectiveFlowPage === 2 &&
+        redeemStepActionKind === "request"
+      ) {
+        return {
+          receiveAmount: null,
+          receiveSymbol: peggedTokenSymbol,
+          emptyMessage:
+            "Requesting withdrawal keeps your tokens in the pool until the window opens.",
+        };
+      }
 
       const hasCollateralPool = selectedPositions.collateralPool;
       const hasSailPool = selectedPositions.sailPool;
@@ -11509,6 +11869,7 @@ export function useAnchorDepositWithdrawModal({
       redeemDryRun,
       redeemPreview?.isCapped,
       withdrawRedeemPriceInputs,
+      redeemStepActionKind,
     ]);
 
   const getButtonText = () => {
@@ -11805,6 +12166,17 @@ export function useAnchorDepositWithdrawModal({
     publicClient,
     marketsForToken,
     groupedPoolPositions,
+    redeemPositions,
+    selectedRedeemPositionKey,
+    selectedRedeemPosition,
+    handleSelectRedeemPosition,
+    handleBackToRedeemPositions,
+    enableRedeemEarlyWithdraw,
+    handleRedeemPositionAmountChange,
+    handleRedeemPositionMax,
+    redeemStepActionKind,
+    redeemStepShowAmount,
+    redeemStepAmountValue,
     selectedMarketHasPoolDeposit,
     marketIdWithAnyPoolDeposit,
     groupBalanceContracts,

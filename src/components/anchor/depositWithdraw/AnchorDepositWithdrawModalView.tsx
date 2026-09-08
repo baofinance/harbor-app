@@ -59,6 +59,8 @@ import { DepositStabilityPoolCard } from "@/components/deposit/DepositStabilityP
 import { TokenLogo } from "@/components/shared";
 import { buildDepositTokenDropdownGroups } from "@/utils/depositTokenDropdownOptions";
 import { useAnchorDepositWithdrawModal } from "./useAnchorDepositWithdrawModal";
+import { AnchorRedeemPositionList } from "./AnchorRedeemPositionList";
+import { AnchorRedeemPositionStep } from "./AnchorRedeemPositionStep";
 
 export type AnchorDepositWithdrawViewModel = ReturnType<
   typeof useAnchorDepositWithdrawModal
@@ -187,6 +189,17 @@ export function AnchorDepositWithdrawModalView(
     publicClient,
     marketsForToken,
     groupedPoolPositions,
+    redeemPositions,
+    selectedRedeemPositionKey,
+    selectedRedeemPosition,
+    handleSelectRedeemPosition,
+    handleBackToRedeemPositions,
+    enableRedeemEarlyWithdraw,
+    handleRedeemPositionAmountChange,
+    handleRedeemPositionMax,
+    redeemStepActionKind,
+    redeemStepShowAmount,
+    redeemStepAmountValue,
     selectedMarketHasPoolDeposit,
     marketIdWithAnyPoolDeposit,
     groupBalanceContracts,
@@ -654,17 +667,9 @@ export function AnchorDepositWithdrawModalView(
                           ? simpleSellFlowParts
                           : simpleWithdrawFlowParts
                       }
-                      activeIndex={activeTab === "sell" ? 0 : flowPage - 1}
-                      onStepClick={
-                        activeTab === "sell"
-                          ? undefined
-                          : handleWithdrawFlowStepClick
-                      }
-                      onBack={
-                        activeTab === "sell"
-                          ? undefined
-                          : handleWithdrawFlowBack
-                      }
+                      activeIndex={flowPage - 1}
+                      onStepClick={handleWithdrawFlowStepClick}
+                      onBack={handleWithdrawFlowBack}
                     />
                   )
                 }
@@ -1117,811 +1122,36 @@ export function AnchorDepositWithdrawModalView(
                       }
                     >
                     {simpleMode && (activeTab === "withdraw" || activeTab === "sell") ? (
-                    <div className={DEPOSIT_SEGMENT_STACK_CLASS}>
-                      <div
-                        className={DEPOSIT_SEGMENT_TRACK_CLASS}
-                        role="tablist"
-                        aria-label="Redeem flow"
-                      >
-                        {(
-                          [
-                            {
-                              id: "withdrawAndRedeem" as const,
-                              label: "Withdraw & Redeem",
-                            },
-                            {
-                              id: "redeemOnly" as const,
-                              label: "Redeem",
-                            },
-                          ] as const
-                        ).map(({ id, label }) => {
-                          const active =
-                            id === "redeemOnly"
-                              ? activeTab === "sell"
-                              : activeTab !== "sell";
-                          const disabled =
-                            isProcessing ||
-                            (id === "redeemOnly" && !canSellFromWallet);
-                          return (
-                            <button
-                              key={id}
-                              type="button"
-                              role="tab"
-                              aria-selected={active}
-                              disabled={disabled}
-                              onClick={() => handleRedeemFlowModeChange(id)}
-                              className={`flex flex-1 basis-0 min-w-0 items-center justify-center rounded-md px-1 py-1 text-[11px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 sm:text-xs ${
-                                active
-                                  ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
-                                  : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
-                              }`}
-                            >
-                              {label}
-                            </button>
-                          );
-                        })}
+                      <div className={DEPOSIT_SEGMENT_STACK_CLASS}>
+                        {flowPage === 1 || !selectedRedeemPosition ? (
+                          <AnchorRedeemPositionList
+                            positions={redeemPositions}
+                            peggedTokenSymbol={peggedTokenSymbol}
+                            selectedKey={selectedRedeemPositionKey}
+                            disabled={isProcessing}
+                            onSelect={handleSelectRedeemPosition}
+                          />
+                        ) : (
+                          <AnchorRedeemPositionStep
+                            position={selectedRedeemPosition}
+                            peggedTokenSymbol={peggedTokenSymbol}
+                            receiveSymbol={redeemCollateralSymbol}
+                            showAmount={redeemStepShowAmount}
+                            amount={redeemStepAmountValue}
+                            onAmountChange={handleRedeemPositionAmountChange}
+                            onMax={handleRedeemPositionMax}
+                            disabled={isProcessing}
+                            actionKind={redeemStepActionKind}
+                            showEarlyWithdrawLink={
+                              selectedRedeemPosition.kind === "pool" &&
+                              !selectedRedeemPosition.windowOpen
+                            }
+                            earlyWithdrawEnabled={earlyWithdraw1PctEnabled}
+                            onEnableEarlyWithdraw={enableRedeemEarlyWithdraw}
+                            onChangePosition={handleBackToRedeemPositions}
+                          />
+                        )}
                       </div>
-                    </div>
-                    ) : null}
-                    {(simpleMode ? flowPage === 1 && activeTab === "withdraw" : activeTab === "withdraw") ? (
-                    <div className={DEPOSIT_SEGMENT_STACK_CLASS}>
-                    {/* Reward / collateral filter: fxSAVE vs wstETH (when both exist) */}
-                    {(() => {
-                      const poolRows = withdrawPoolRowsForActiveRail;
-                      if (poolRows.length === 0) return null;
-
-                      const collateralTypes = new Set(
-                        groupedPoolPositions
-                          .map((r) =>
-                            (
-                              r.market?.collateral?.symbol ||
-                              r.market?.wrappedCollateralToken?.symbol ||
-                              ""
-                            ).trim(),
-                          )
-                          .filter(Boolean),
-                      );
-
-                      const renderPoolControls = (
-                        p: (typeof poolRows)[0],
-                      ) => {
-                              const modeKey =
-                                p.poolType === "collateral"
-                                  ? "collateralPool"
-                                  : "sailPool";
-                              const isImmediate =
-                                (p.poolType === "collateral"
-                                  ? withdrawalMethods.collateralPool
-                                  : withdrawalMethods.sailPool) === "immediate";
-                              const request =
-                                p.poolType === "collateral"
-                                  ? collateralPoolRequest
-                                  : sailPoolRequest;
-                              const window =
-                                p.poolType === "collateral"
-                                  ? collateralPoolWindow
-                                  : sailPoolWindow;
-                              const feePercent =
-                                p.poolType === "collateral"
-                                  ? collateralPoolFeePercent
-                                  : sailPoolFeePercent;
-                              // Always cap from the same balance shown in the strip (positionsMap
-                              // row). Global immediate caps can prefer subgraph/contract reads and
-                              // diverge — that made MAX fill a higher amount than "Balance".
-                              const globalImmediateCap =
-                                p.poolType === "collateral"
-                                  ? collateralPoolImmediateCap
-                                  : sailPoolImmediateCap;
-                              const rowImmediateCap =
-                                p.marketId === selectedMarketId &&
-                                globalImmediateCap < p.balance
-                                  ? globalImmediateCap
-                                  : p.balance;
-                              const amountValue =
-                                p.poolType === "collateral"
-                                  ? positionAmounts.collateralPool
-                                  : positionAmounts.sailPool;
-                              const exceeds = (() => {
-                                if (!amountValue) return false;
-                                try {
-                                  return (
-                                    parseEther(amountValue) > rowImmediateCap
-                                  );
-                                } catch {
-                                  return false;
-                                }
-                              })();
-
-                              return (
-                                    <div className="space-y-1.5">
-                              {/* Withdrawal Method: Request (default) or Early Withdraw (1% fee, gated by toggle unless window open) */}
-                              {(() => {
-                                const poolWindowOpen = !!(request && request[0] > 0n && request[1] > 0n) && (() => {
-                                  const [start, end] = request;
-                                  const now = BigInt(Math.floor(Date.now() / 1000));
-                                  return now >= start && now <= end;
-                                })();
-                                const showEarlyWithdrawOption = poolWindowOpen || earlyWithdraw1PctEnabled;
-                                const show1PctToggle = !poolWindowOpen;
-                                const immediateFeeDisplay = getFeeFreeDisplay(
-                                  request,
-                                  feePercent
-                                );
-                                const immediateWithdrawLabel =
-                                  immediateFeeDisplay === "free"
-                                    ? "Withdraw"
-                                    : "Early Withdraw";
-                                return (
-                                  <>
-                              <div className="flex items-center rounded-lg overflow-hidden bg-[#1E4775]/8 p-0.5 mb-1.5">
-                                {showEarlyWithdrawOption && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setWithdrawalMethods((prev) => ({
-                                      ...prev,
-                                              [modeKey]: "immediate",
-                                    }))
-                                  }
-                                  disabled={isProcessing}
-                                  className={`flex-1 px-3 py-1.5 text-xs font-medium transition-all rounded-md ${
-                                            isImmediate
-                                      ? "bg-[#1E4775] text-white shadow-sm"
-                                      : "text-[#1E4775]/70 hover:text-[#1E4775]"
-                                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                                >
-                                  {immediateWithdrawLabel} ({immediateFeeDisplay})
-                                </button>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setWithdrawalMethods((prev) => ({
-                                      ...prev,
-                                              [modeKey]: "request",
-                                    }))
-                                  }
-                                  disabled={isProcessing}
-                                  className={`flex-1 px-3 py-1.5 text-xs font-medium transition-all rounded-md ${
-                                            !isImmediate
-                                      ? "bg-[#1E4775] text-white shadow-sm"
-                                      : "text-[#1E4775]/70 hover:text-[#1E4775]"
-                                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                                >
-                                          Request Withdrawal
-                                          {getRequestStatusText(request)}
-                                </button>
-                              </div>
-                              {show1PctToggle && (
-                                <div className="flex items-center justify-between rounded-lg border border-[#1E4775]/12 bg-white/60 px-2.5 py-1.5 text-[10px] mb-1.5">
-                                  <span className="text-[#1E4775]/80">
-                                    Pay 1% fee to withdraw immediately (no waiting)
-                                  </span>
-                                  <label className="flex items-center gap-1.5 text-[#1E4775]/80 shrink-0">
-                                    <span className={earlyWithdraw1PctEnabled ? "text-[#1E4775]" : "text-[#1E4775]/60"}>
-                                      {earlyWithdraw1PctEnabled ? "On" : "Off"}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const next = !earlyWithdraw1PctEnabled;
-                                        setEarlyWithdraw1PctEnabled(next);
-                                        setWithdrawalMethods((m) => ({
-                                          ...m,
-                                          [modeKey]: next ? "immediate" : "request",
-                                        }));
-                                      }}
-                                      disabled={isProcessing}
-                                      className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
-                                        earlyWithdraw1PctEnabled ? "bg-[#1E4775]" : "bg-[#1E4775]/30"
-                                      }`}
-                                      aria-pressed={earlyWithdraw1PctEnabled}
-                                      aria-label="Enable 1% early withdraw"
-                                    >
-                                      <span
-                                        className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                                          earlyWithdraw1PctEnabled ? "translate-x-3.5" : "translate-x-0.5"
-                                        }`}
-                                      />
-                                    </button>
-                                  </label>
-                                </div>
-                              )}
-                                  </>
-                                );
-                              })()}
-
-                                      {/* Window status banner */}
-                                      {(() => {
-                                        const bannerInfo =
-                                          getWindowBannerInfo(request, window);
-                                        if (!bannerInfo) return null;
-
-                                        if (bannerInfo.type === "coming") {
-                                          return (
-                                            <div className="mt-2 px-3 py-2 rounded-lg bg-[#FF8A7A]/20 border border-[#FF8A7A]/40 text-[10px] text-[#FF8A7A] font-medium">
-                                              {bannerInfo.message}
-                                            </div>
-                                          );
-                                        }
-                                        if (bannerInfo.type === "open") {
-                                          return (
-                                            <div className="mt-2 px-3 py-2 rounded-lg bg-[#7FD4C0]/20 border border-[#7FD4C0]/40 text-[10px] text-[#7FD4C0] font-medium">
-                                              {bannerInfo.message}
-                                            </div>
-                                          );
-                                        }
-                                        return null;
-                                      })()}
-
-                              {/* Amount input - only show for immediate withdrawals */}
-                                      {isImmediate && (
-                                <div className="mt-1.5">
-                                  <div className="relative">
-                                  <input
-                                    type="text"
-                                            value={amountValue}
-                                    onChange={(e) =>
-                                      handlePositionAmountChange(
-                                                modeKey as any,
-                                        e.target.value,
-                                                rowImmediateCap
-                                      )
-                                    }
-                                    placeholder="0.0"
-                                    className={depositAmountInputClass(exceeds)}
-                                    disabled={isProcessing}
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setPositionAmounts((prev) => ({
-                                        ...prev,
-                                                [modeKey]: formatEther(
-                                                  rowImmediateCap
-                                        ),
-                                      }));
-                                    }}
-                                    className={DEPOSIT_AMOUNT_MAX_BUTTON_CLASS}
-                                            disabled={
-                                              isProcessing || rowImmediateCap === 0n
-                                            }
-                                  >
-                                    MAX
-                                  </button>
-                                  </div>
-                                </div>
-                              )}
-
-                                      {isImmediate && rowImmediateCap === 0n && (
-                                <p className="text-[10px] text-[#1E4775]/60 mt-1">
-                                          Early withdraw is temporarily unavailable:
-                                          the pool is at its minimum total supply.
-                                          Use Request (free) or wait for TVL to
-                                          increase.
-                                        </p>
-                                      )}
-
-                                      {/* Info message for request method - only show if no window banner */}
-                                      {!isImmediate &&
-                                        !getWindowBannerInfo(request, window) && (
-                                          <p className="text-[10px] text-[#1E4775]/60 mt-1">
-                                            Submit a withdrawal request. After a{" "}
-                                            {window
-                                              ? formatDuration(window[0])
-                                              : "..."}{" "}
-                                            delay, you&apos;ll have a fee-free window of{" "}
-                                            {window
-                                              ? formatDuration(window[1])
-                                              : "..."}{" "}
-                                            to withdraw.
-                                </p>
-                          )}
-                                    </div>
-                              );
-                      };
-
-                      const poolCollateralTabs = (
-                        ["fxSAVE", "wstETH"] as const
-                      ).filter((sym) => collateralTypes.has(sym));
-                      // 1 collateral: hide rail. Exactly 2: boxed selectors (mockup).
-                      // 3+: full-width icon+name dropdown — not implemented yet.
-                      const showBoxedCollateralRail =
-                        poolCollateralTabs.length === 2;
-
-                      return (
-                        <div className="space-y-1.5">
-                          {showBoxedCollateralRail ? (
-                              <div
-                                className="grid grid-cols-2 gap-1.5"
-                                role="tablist"
-                                aria-label="Pool collateral type"
-                              >
-                                {poolCollateralTabs.map((sym) => {
-                                  const active =
-                                    withdrawPoolCollateralTab === sym;
-                                  return (
-                                    <button
-                                      key={sym}
-                                      type="button"
-                                      role="tab"
-                                      aria-selected={active}
-                                      disabled={isProcessing}
-                                      onClick={() => {
-                                        if (sym === withdrawPoolCollateralTab) return;
-                                        withdrawPoolTabUserSelectedRef.current = true;
-                                        withdrawPoolUserSelectedMarketRef.current = true;
-                                        clearWithdrawPoolSelectionAndInputs();
-                                        setWithdrawPoolCollateralTab(sym);
-                                        setRedeemMarketSelectionMode("auto");
-                                        const match = marketsForToken.find(
-                                          ({ market: m }) =>
-                                            (m?.collateral?.symbol ||
-                                              m?.wrappedCollateralToken
-                                                ?.symbol) === sym
-                                        );
-                                        if (match) {
-                                          setSelectedMarketId(match.marketId);
-                                          setSelectedRedeemMarketId(match.marketId);
-                                          const redeemSym =
-                                            match.market?.collateral?.symbol;
-                                          if (redeemSym) {
-                                            setSelectedRedeemAsset(redeemSym);
-                                          }
-                                        }
-                                      }}
-                                      className={`flex items-center justify-center gap-1.5 rounded-xl border px-2.5 py-2 text-xs font-semibold transition disabled:opacity-50 ${
-                                        active
-                                          ? "border-[#1E4775]/20 bg-white text-[#1E4775] shadow-sm"
-                                          : "border-transparent bg-[#e2e8f0]/80 text-[#94a3b8] hover:text-[#64748b]"
-                                      }`}
-                                    >
-                                      <TokenLogo symbol={sym} size={16} />
-                                      {sym}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            ) : null}
-                          <div className={`${DEPOSIT_AMOUNT_CARD_CLASS} space-y-1.5`}>
-                            <div
-                              className={DEPOSIT_SEGMENT_TRACK_CLASS}
-                              role="tablist"
-                              aria-label="Stability pool"
-                            >
-                              {(["collateral", "sail"] as const).map(
-                                (poolType) => {
-                                  const row = poolRows.find(
-                                    (r) => r.poolType === poolType,
-                                  );
-                                  const active =
-                                    withdrawPoolTypeTab === poolType;
-                                  const label =
-                                    poolType === "collateral"
-                                      ? "Collateral"
-                                      : "Sail";
-                                  return (
-                                    <button
-                                      key={poolType}
-                                      type="button"
-                                      role="tab"
-                                      aria-selected={active}
-                                      disabled={isProcessing || !row}
-                                      onClick={() => {
-                                        if (poolType === withdrawPoolTypeTab)
-                                          return;
-                                        withdrawPoolTypeTabUserSelectedRef.current = true;
-                                        setWithdrawPoolTypeTab(poolType);
-                                        if (row) {
-                                          selectWithdrawPoolRow(
-                                            row,
-                                            row.marketId !== selectedMarketId,
-                                          );
-                                        }
-                                      }}
-                                      className={`flex flex-1 basis-0 min-w-0 items-center justify-center gap-1.5 rounded-md py-1 text-xs font-semibold transition disabled:opacity-50 ${
-                                        active
-                                          ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
-                                          : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
-                                      }`}
-                                    >
-                                      {label}
-                                    </button>
-                                  );
-                                },
-                              )}
-                            </div>
-                            {activeWithdrawPoolRow ? (
-                              <>
-                                <DepositBalanceStrip
-                                  ariaLabel={`Pool ${peggedTokenSymbol} balance`}
-                                >
-                                  {formatBalance(
-                                    activeWithdrawPoolRow.balance,
-                                    peggedTokenSymbol,
-                                    6,
-                                    18,
-                                  )}
-                                </DepositBalanceStrip>
-                                {activeWithdrawPoolRow.balance > 0n ? (
-                                  renderPoolControls(activeWithdrawPoolRow)
-                                ) : (
-                                  <p className="text-center text-xs text-[#1E4775]/45 py-1">
-                                    No position in this pool
-                                  </p>
-                                )}
-                              </>
-                            ) : null}
-                            <div className="flex items-center justify-between rounded-lg border border-[#1E4775]/12 bg-white/60 px-2.5 py-1.5 text-[10px]">
-                              <div className="min-w-0 pr-2">
-                                <span className="font-semibold text-[#1E4775]">
-                                  Withdraw only
-                                </span>
-                                <span className="text-[#1E4775]/60">
-                                  {" "}
-                                  · Skip redeem
-                                </span>
-                              </div>
-                              <label className="flex items-center gap-1.5 text-[#1E4775]/80 shrink-0">
-                                <span
-                                  className={
-                                    withdrawOnly
-                                      ? "text-[#1E4775]"
-                                      : "text-[#1E4775]/60"
-                                  }
-                                >
-                                  {withdrawOnly ? "On" : "Off"}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (withdrawOnly) {
-                                      handleRedeemFlowModeChange(
-                                        "withdrawAndRedeem",
-                                      );
-                                    } else {
-                                      handleRedeemFlowModeChange(
-                                        "withdrawOnly",
-                                      );
-                                    }
-                                  }}
-                                  disabled={isProcessing}
-                                  className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
-                                    withdrawOnly
-                                      ? "bg-[#1E4775]"
-                                      : "bg-[#1E4775]/30"
-                                  }`}
-                                  aria-pressed={withdrawOnly}
-                                  aria-label="Skip redeem and withdraw only"
-                                >
-                                  <span
-                                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                                      withdrawOnly
-                                        ? "translate-x-3.5"
-                                        : "translate-x-0.5"
-                                    }`}
-                                  />
-                                </button>
-                              </label>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    {activeTab === "withdraw" &&
-                    collateralPoolBalance === 0n &&
-                      sailPoolBalance === 0n && (
-                      <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#17395F]/20 text-center text-sm text-[#1E4775]/50">
-                        No positions found
-                      </div>
-                    )}
-
-                    </div>
-                    ) : null}
-
-                    {(simpleMode ? flowPage === 2 || activeTab === "sell" : true) ? (
-                    <>
-                    {(!withdrawOnly || activeTab === "sell") && (
-                      <div className={`${DEPOSIT_AMOUNT_CARD_CLASS} space-y-2`}>
-                        <div>
-                          {activeTab !== "sell" ? (
-                            <>
-                          <div
-                            className={DEPOSIT_SEGMENT_TRACK_CLASS}
-                            role="tablist"
-                            aria-label="Redeem source"
-                          >
-                            {hasPoolSellAmount ? (
-                              <button
-                                type="button"
-                                role="tab"
-                                aria-selected={
-                                  (hasPoolSellAmount
-                                    ? sellRedeemSource
-                                    : "wallet") === "pool"
-                                }
-                                disabled={isProcessing}
-                                onClick={() =>
-                                  handleSellRedeemSourceChange("pool")
-                                }
-                                className={`flex flex-1 items-center justify-center rounded-md px-2 py-1 text-xs font-semibold transition disabled:opacity-50 ${
-                                  (hasPoolSellAmount
-                                    ? sellRedeemSource
-                                    : "wallet") === "pool"
-                                    ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
-                                    : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
-                                }`}
-                              >
-                                Pool withdraw
-                              </button>
-                            ) : null}
-                            <button
-                              type="button"
-                              role="tab"
-                              aria-selected={
-                                (hasPoolSellAmount
-                                  ? sellRedeemSource
-                                  : "wallet") === "wallet"
-                              }
-                              disabled={isProcessing || !canSellFromWallet}
-                              onClick={() =>
-                                handleSellRedeemSourceChange("wallet")
-                              }
-                              className={`flex flex-1 items-center justify-center rounded-md px-2 py-1 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                                (hasPoolSellAmount
-                                  ? sellRedeemSource
-                                  : "wallet") === "wallet"
-                                  ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
-                                  : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
-                              }`}
-                            >
-                              Wallet
-                            </button>
-                          </div>
-                            </>
-                          ) : null}
-
-                          {(activeTab === "sell" ||
-                            (hasPoolSellAmount
-                              ? sellRedeemSource
-                              : "wallet") === "pool") &&
-                          hasPoolSellAmount &&
-                          activeTab !== "sell" ? (
-                            <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-[#1E4775]/12 bg-white/60 px-2.5 py-2">
-                              <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/50">
-                                Amount to redeem
-                              </span>
-                              <span className="font-mono text-sm font-semibold tabular-nums text-[#1E4775]">
-                                {formatTokenAmount18(poolSellAmountWei, 6)}{" "}
-                                {peggedTokenSymbol}
-                              </span>
-                            </div>
-                          ) : null}
-
-                          {activeTab === "sell" ||
-                          sellRedeemSource === "wallet" ||
-                          !hasPoolSellAmount ? (
-                            <div className="mt-2 space-y-2">
-                              {activeTab === "sell" ? (
-                                <div className={DEPOSIT_SECTION_LABEL_CLASS}>
-                                  Redeem amount
-                                </div>
-                              ) : null}
-                              <div className="relative">
-                                <input
-                                  id="sell-wallet-amount"
-                                  type="text"
-                                  aria-label="Wallet amount"
-                                  value={positionAmounts.wallet}
-                                  onChange={(e) =>
-                                    handlePositionAmountChange(
-                                      "wallet",
-                                      e.target.value,
-                                      peggedBalance,
-                                    )
-                                  }
-                                  placeholder="0.0"
-                                  className={depositAmountInputClass(
-                                    positionExceedsBalance.wallet,
-                                  )}
-                                  disabled={isProcessing || !canSellFromWallet}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setPositionAmounts((prev) => ({
-                                      ...prev,
-                                      wallet: formatEther(peggedBalance),
-                                    }));
-                                  }}
-                                  className={DEPOSIT_AMOUNT_MAX_BUTTON_CLASS}
-                                  disabled={isProcessing || !canSellFromWallet}
-                                >
-                                  MAX
-                                </button>
-                              </div>
-                              <DepositBalanceStrip
-                                ariaLabel={`Wallet ${peggedTokenSymbol} balance`}
-                              >
-                                {formatBalance(
-                                  peggedBalance,
-                                  peggedTokenSymbol,
-                                  6,
-                                  18,
-                                )}
-                              </DepositBalanceStrip>
-                            </div>
-                          ) : null}
-                        </div>
-
-                        {marketsForToken.length > 1 ? (
-                          <div>
-                            <div className={DEPOSIT_SECTION_LABEL_CLASS}>
-                              Redeem via market
-                            </div>
-                            <div
-                              className={`${DEPOSIT_SEGMENT_TRACK_CLASS} mt-1`}
-                              role="tablist"
-                              aria-label="Redeem via market"
-                            >
-                              <button
-                                type="button"
-                                role="tab"
-                                aria-selected={
-                                  redeemMarketSelectionMode === "auto"
-                                }
-                                disabled={isProcessing}
-                                onClick={() =>
-                                  setRedeemMarketSelectionMode("auto")
-                                }
-                                className={`flex flex-1 items-center justify-center rounded-md px-2 py-1 text-xs font-semibold transition disabled:opacity-50 ${
-                                  redeemMarketSelectionMode === "auto"
-                                    ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
-                                    : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
-                                }`}
-                              >
-                                Auto
-                              </button>
-                              <button
-                                type="button"
-                                role="tab"
-                                aria-selected={
-                                  redeemMarketSelectionMode === "manual"
-                                }
-                                disabled={isProcessing}
-                                onClick={() =>
-                                  setRedeemMarketSelectionMode("manual")
-                                }
-                                className={`flex flex-1 items-center justify-center rounded-md px-2 py-1 text-xs font-semibold transition disabled:opacity-50 ${
-                                  redeemMarketSelectionMode === "manual"
-                                    ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
-                                    : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
-                                }`}
-                              >
-                                Manual
-                              </button>
-                            </div>
-
-                            {redeemMarketSelectionMode === "auto" ? (
-                              <p className="mt-2 text-[11px] leading-snug text-[#1E4775]/65 px-0.5">
-                                Best path ·{" "}
-                                <span className="font-medium text-[#1E4775]">
-                                  {marketsForToken.find(
-                                    (m) =>
-                                      m.marketId === recommendedRedeemMarketId,
-                                  )?.market?.name ||
-                                    selectedRedeemMarket?.market?.name ||
-                                    "..."}
-                                </span>
-                                {" · "}
-                                {redeemCollateralSymbol}
-                              </p>
-                            ) : (
-                              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                {marketsForToken.map(
-                                  ({ marketId: mid, market: m }) => {
-                                    const preview =
-                                      redeemMarketPreviews.get(mid);
-                                    const collateralSym =
-                                      m?.collateral?.symbol || "";
-                                    const collateralKey =
-                                      collateralSym.toLowerCase() === "fxsave"
-                                        ? "fxSAVE"
-                                        : collateralSym.toLowerCase() ===
-                                            "wsteth"
-                                          ? "wstETH"
-                                          : collateralSym;
-                                    const isSelected =
-                                      (selectedRedeemMarketId ||
-                                        selectedMarketId) === mid;
-                                    const isCapped =
-                                      preview?.isCapped ?? false;
-                                    const isRecommended =
-                                      recommendedRedeemMarketId === mid &&
-                                      !isCapped;
-
-                                    return (
-                                      <button
-                                        key={mid}
-                                        type="button"
-                                        disabled={isProcessing}
-                                        onClick={() =>
-                                          handleSellMarketSelectChange(mid)
-                                        }
-                                        className={`rounded-lg border px-2.5 py-2.5 text-left transition disabled:opacity-50 ${
-                                          isSelected
-                                            ? "border-[#1E4775] bg-[#17395F]/10 shadow-sm"
-                                            : "border-[#1E4775]/15 bg-white/50 hover:bg-[#17395F]/5"
-                                        }`}
-                                      >
-                                        <div className="flex items-start justify-between gap-2">
-                                          <div className="flex min-w-0 items-center gap-2">
-                                            <TokenIconClient
-                                              symbol={collateralKey}
-                                              size={20}
-                                              className="shrink-0"
-                                            />
-                                            <div className="text-sm font-semibold text-[#1E4775]">
-                                              {collateralKey}
-                                            </div>
-                                          </div>
-                                          <div
-                                            className={`mt-0.5 h-3.5 w-3.5 shrink-0 rounded-full border-2 ${
-                                              isSelected
-                                                ? "border-[#1E4775] bg-[#1E4775]"
-                                                : "border-[#1E4775]/30"
-                                            }`}
-                                          />
-                                        </div>
-                                        <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                                          {isRecommended ? (
-                                            <span className="text-[9px] font-semibold uppercase tracking-wide px-1 py-0.5 rounded bg-[#4A9784]/15 text-[#4A9784]">
-                                              Recommended
-                                            </span>
-                                          ) : null}
-                                          {isCapped ? (
-                                            <span className="text-[9px] font-semibold uppercase tracking-wide px-1 py-0.5 rounded bg-amber-100 text-amber-800">
-                                              Capped
-                                            </span>
-                                          ) : null}
-                                        </div>
-                                        {preview &&
-                                        preview.wrappedOut > 0n &&
-                                        redeemInputAmount &&
-                                        redeemInputAmount > 0n ? (
-                                          <div className="mt-1 font-mono text-[11px] text-[#1E4775]/70">
-                                            ~{" "}
-                                            {Number(
-                                              formatEther(preview.wrappedOut),
-                                            ).toFixed(4)}{" "}
-                                            {collateralSym}
-                                            {preview.isCapped
-                                              ? " (partial)"
-                                              : ""}
-                                          </div>
-                                        ) : null}
-                                      </button>
-                                    );
-                                  },
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ) : null}
-                      </div>
-                    )}
-
-                    {!simpleMode &&
-                      peggedBalance === 0n &&
-                      collateralPoolBalance === 0n &&
-                      sailPoolBalance === 0n && (
-                      <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#17395F]/20 text-center text-sm text-[#1E4775]/50">
-                        No positions found
-                      </div>
-                    )}
-
-                    </>
                     ) : null}
 
                     {simpleMode && error ? (
@@ -1940,16 +1170,11 @@ export function AnchorDepositWithdrawModalView(
                           "Enter an amount to see what you'll receive.",
                       })}
                     />
-                  ) : (
+                  ) : withdrawTransactionOverview ? (
                     <AnchorTransactionOverview
-                      {...(withdrawTransactionOverview ?? {
-                        receiveAmount: null,
-                        receiveSymbol: peggedTokenSymbol,
-                        emptyMessage:
-                          "Enter an amount to see what you'll receive.",
-                      })}
+                      {...withdrawTransactionOverview}
                     />
-                  )
+                  ) : null
                 }
                 footer={
                   step === "success" ? null : (
@@ -1987,7 +1212,11 @@ export function AnchorDepositWithdrawModalView(
                               : handleContinueToSell
                       }
                       feeFooter={
-                        activeTab === "deposit" ? buyFeeFooter : withdrawFeeFooter
+                        activeTab === "deposit"
+                          ? buyFeeFooter
+                          : flowPage === 2 || activeTab === "sell"
+                            ? withdrawFeeFooter
+                            : null
                       }
                     />
                   )
