@@ -12,6 +12,8 @@ export type TransactionOverviewFee = {
   label: string;
   percentage: number;
   usd?: number;
+  /** Optional step hint shown beside the label, e.g. "pool exit". */
+  hint?: string;
 };
 
 export type DepositTransactionOverviewProps = {
@@ -106,7 +108,12 @@ export function DepositTransactionOverview({
                     key={fee.label}
                     className="flex items-center justify-between gap-2"
                   >
-                    <span className="text-[#1E4775]/50">{fee.label}</span>
+                    <span className="text-[#1E4775]/50">
+                      {fee.label}
+                      {fee.hint ? (
+                        <span className="text-[#1E4775]/35"> · {fee.hint}</span>
+                      ) : null}
+                    </span>
                     <span
                       className={`font-mono tabular-nums ${
                         fee.percentage > 2
@@ -114,7 +121,9 @@ export function DepositTransactionOverview({
                           : "font-medium text-[#1E4775]/70"
                       }`}
                     >
-                      {fee.percentage.toFixed(2)}%
+                      {fee.percentage <= 0
+                        ? "Free"
+                        : `${fee.percentage.toFixed(2)}%`}
                       {fee.usd !== undefined && fee.usd > 0
                         ? ` · $${fee.usd.toLocaleString(undefined, {
                             minimumFractionDigits: 2,

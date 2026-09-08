@@ -11990,14 +11990,30 @@ export function useAnchorDepositWithdrawModal({
         label: string;
         percentage: number;
         usd?: number;
+        hint?: string;
       }> = [];
 
-      const redeemFeePct = redeemDryRun.feePercentage;
-      const showRedeemFee =
-        redeemFeePct !== undefined &&
-        !(earlyWithdraw1PctEnabled && redeemFeePct <= 0);
+      const isPoolWithdrawAndRedeem =
+        hasPoolSell && isImmediateWithdrawal && !withdrawOnly;
 
-      if (showRedeemFee && redeemFeePct !== undefined) {
+      // Withdraw + redeem: always show both step fees so the split is obvious.
+      if (isPoolWithdrawAndRedeem) {
+        overviewFees.push({
+          label: "Withdraw fee",
+          hint: earlyWithdraw1PctEnabled ? "fast exit" : "pool exit",
+          percentage: earlyFee?.feePercent ?? 0,
+          usd: earlyFeeUsd > 0 ? earlyFeeUsd : undefined,
+        });
+      } else if (earlyFee) {
+        overviewFees.push({
+          label: "Withdraw fee",
+          percentage: earlyFee.feePercent,
+          usd: earlyFeeUsd > 0 ? earlyFeeUsd : undefined,
+        });
+      }
+
+      const redeemFeePct = redeemDryRun.feePercentage;
+      if (redeemFeePct !== undefined) {
         const sellFeeAmount = Number(formatEther(redeemDryRun.fee));
         const sellFeeUsd = amountToUSD(
           sellFeeAmount,
@@ -12006,16 +12022,11 @@ export function useAnchorDepositWithdrawModal({
         );
         overviewFees.push({
           label: "Redeem fee",
+          hint: isPoolWithdrawAndRedeem
+            ? `to ${collateralSym || "collateral"}`
+            : undefined,
           percentage: redeemFeePct,
           usd: sellFeeUsd > 0 ? sellFeeUsd : undefined,
-        });
-      }
-
-      if (earlyFee) {
-        overviewFees.push({
-          label: earlyWithdraw1PctEnabled ? "Early withdraw" : "Early withdraw fee",
-          percentage: earlyFee.feePercent,
-          usd: earlyFeeUsd > 0 ? earlyFeeUsd : undefined,
         });
       }
 
