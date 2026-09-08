@@ -1162,7 +1162,7 @@ export function AnchorDepositWithdrawModalView(
                             onMax={handleRedeemPositionMax}
                             disabled={isProcessing}
                             actionKind={redeemStepActionKind}
-                            showEarlyWithdrawLink={
+                            showEarlyWithdrawToggle={
                               selectedRedeemPositionDisplay.kind === "pool" &&
                               !selectedRedeemPositionDisplay.windowOpen &&
                               selectedRedeemPositionDisplay.requestStatus
