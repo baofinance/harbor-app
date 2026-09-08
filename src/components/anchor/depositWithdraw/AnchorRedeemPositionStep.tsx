@@ -1,6 +1,7 @@
 "use client";
 
 import { Info } from "lucide-react";
+import SimpleTooltip from "@/components/SimpleTooltip";
 import { DepositAmountCard } from "@/components/deposit/DepositAmountCard";
 import {
   DEPOSIT_MODE_TOGGLE_ROW_CLASS,
@@ -215,15 +216,24 @@ export function AnchorRedeemPositionStep({
         <div className="space-y-1">
           <p className={DEPOSIT_SECTION_LABEL_CLASS}>Mode</p>
           <div className={DEPOSIT_MODE_TOGGLE_ROW_CLASS}>
-            <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-1.5">
               <p className="text-xs font-semibold text-[#1E4775]">
                 {withdrawOnly ? "Withdraw only" : "Withdraw + redeem"}
               </p>
-              <p className="text-[11px] leading-snug text-[#1E4775]/60">
-                {withdrawOnly
-                  ? `Receive ${peggedTokenSymbol} in your wallet without redeeming to collateral.`
-                  : "Withdraw from the pool and redeem to collateral in one step."}
-              </p>
+              <SimpleTooltip
+                label={
+                  withdrawOnly
+                    ? `Receive ${peggedTokenSymbol} in your wallet without redeeming to collateral.`
+                    : "Withdraw from the pool and redeem to collateral in one step."
+                }
+                side="top"
+                maxWidth={240}
+              >
+                <span className="inline-flex h-4 w-4 cursor-help items-center justify-center text-[#1E4775]/50 hover:text-[#1E4775]">
+                  <Info className="h-3.5 w-3.5" aria-hidden />
+                  <span className="sr-only">More info</span>
+                </span>
+              </SimpleTooltip>
             </div>
             <button
               type="button"

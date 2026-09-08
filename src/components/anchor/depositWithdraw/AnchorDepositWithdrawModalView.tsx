@@ -693,15 +693,24 @@ export function AnchorDepositWithdrawModalView(
                       <div className="space-y-1">
                         <p className={DEPOSIT_SECTION_LABEL_CLASS}>Mode</p>
                         <div className={DEPOSIT_MODE_TOGGLE_ROW_CLASS}>
-                          <div className="min-w-0">
+                          <div className="flex min-w-0 items-center gap-1.5">
                             <p className="text-xs font-semibold text-[#1E4775]">
                               {mintOnly ? "Mint only" : "Mint + deposit"}
                             </p>
-                            <p className="text-[11px] leading-snug text-[#1E4775]/60">
-                              {mintOnly
-                                ? "Mint to your wallet without depositing to a stability pool."
-                                : "Mint and deposit to a stability pool for yield."}
-                            </p>
+                            <SimpleTooltip
+                              label={
+                                mintOnly
+                                  ? "Mint to your wallet without depositing to a stability pool."
+                                  : "Mint and deposit to a stability pool for yield."
+                              }
+                              side="top"
+                              maxWidth={240}
+                            >
+                              <span className="inline-flex h-4 w-4 cursor-help items-center justify-center text-[#1E4775]/50 hover:text-[#1E4775]">
+                                <Info className="h-3.5 w-3.5" aria-hidden />
+                                <span className="sr-only">More info</span>
+                              </span>
+                            </SimpleTooltip>
                           </div>
                           <button
                             type="button"
