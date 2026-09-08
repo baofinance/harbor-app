@@ -4375,12 +4375,12 @@ export function useAnchorDepositWithdrawModal({
   const simpleWithdrawFlowParts = useMemo(() => {
     if (!simpleMode) return anchorSimpleWithdrawFlowParts(withdrawOnly);
     const confirmLabel =
-      selectedRedeemPosition?.kind === "wallet"
+      selectedRedeemPositionKey === "wallet"
         ? ("Redeem" as const)
-        : selectedRedeemPosition?.kind === "pool" &&
-            ((selectedRedeemPosition.poolType === "collateral" &&
+        : selectedRedeemPositionKey &&
+            ((selectedRedeemPositionKey.endsWith("-collateral") &&
               withdrawalMethods.collateralPool === "request") ||
-              (selectedRedeemPosition.poolType === "sail" &&
+              (selectedRedeemPositionKey.endsWith("-sail") &&
                 withdrawalMethods.sailPool === "request"))
           ? ("Request" as const)
           : ("Confirm" as const);
@@ -4389,7 +4389,7 @@ export function useAnchorDepositWithdrawModal({
     simpleMode,
     withdrawOnly,
     flowPage,
-    selectedRedeemPosition,
+    selectedRedeemPositionKey,
     withdrawalMethods.collateralPool,
     withdrawalMethods.sailPool,
   ]);
