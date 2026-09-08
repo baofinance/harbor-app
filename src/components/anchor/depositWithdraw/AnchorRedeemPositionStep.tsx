@@ -1,25 +1,117 @@
 "use client";
 
-import { formatEther } from "viem";
+import { Info } from "lucide-react";
 import { DepositAmountCard } from "@/components/deposit/DepositAmountCard";
-import {
-  DEPOSIT_AMOUNT_CARD_CLASS,
-  DEPOSIT_SECTION_LABEL_CLASS,
-} from "@/components/deposit/depositFlowStyles";
+import { DEPOSIT_SECTION_LABEL_CLASS } from "@/components/deposit/depositFlowStyles";
 import type {
   AnchorRedeemPosition,
   AnchorRedeemStepActionKind,
 } from "@/utils/anchorRedeemPositions";
-import { redeemPositionTitle } from "@/utils/anchorRedeemPositions";
+import { AnchorRedeemPositionRow } from "./AnchorRedeemPositionRow";
 
-function formatHaBalance(balance: bigint): string {
-  const n = Number(formatEther(balance));
-  if (!Number.isFinite(n)) return "0";
-  if (n > 0 && n < 0.0001) return "<0.0001";
-  return n.toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 4,
-  });
+function RequestWithdrawalInfoBox({
+  position,
+  helperText,
+  withdrawalDelayLabel,
+  withdrawalDurationLabel,
+}: {
+  position: AnchorRedeemPosition;
+  helperText?: string;
+  withdrawalDelayLabel: string;
+  withdrawalDurationLabel: string;
+}) {
+  const pendingLabel =
+    position.kind === "pool" && position.requestStatus?.state === "pending"
+      ? position.requestStatus.label
+      : null;
+  const openLabel =
+    position.kind === "pool" &&
+    (position.requestStatus?.state === "open" || position.windowOpen)
+      ? (position.requestStatus?.label ?? "Ready now")
+      : null;
+
+  const title = pendingLabel
+    ? "Withdrawal requested"
+    : openLabel
+      ? "Withdrawal window open"
+      : "Request full position";
+
+  const body =
+    helperText ??
+    (pendingLabel ? (
+      <>
+        Your exit is queued. The fee-free window{" "}
+        <span className="font-semibold text-[#1E4775]">
+          {pendingLabel.toLowerCase()}
+        </span>
+        , then stays open for{" "}
+        <span className="font-semibold text-[#1E4775]">
+          {withdrawalDurationLabel}
+        </span>
+        . Come back during that window to withdraw and redeem to collateral.
+      </>
+    ) : openLabel ? (
+      <>
+        Your fee-free window is open
+        {openLabel !== "Ready now" ? (
+          <>
+            {" "}
+            (
+            <span className="font-semibold text-[#1E4775]">{openLabel}</span>)
+          </>
+        ) : null}
+        . Withdraw and redeem to collateral before it closes.
+      </>
+    ) : (
+      <>
+        Starts the exit from this Earn pool. The fee-free window opens after{" "}
+        <span className="font-semibold text-[#1E4775]">
+          {withdrawalDelayLabel}
+        </span>
+        , then lasts{" "}
+        <span className="font-semibold text-[#1E4775]">
+          {withdrawalDurationLabel}
+        </span>
+        . Come back during that window to finish and redeem to collateral.
+      </>
+    ));
+
+  return (
+    <div
+      className="rounded-xl border border-[#1E4775]/15 bg-[#1E4775]/[0.06] px-3 py-3"
+      role="note"
+    >
+      <div className="flex items-start gap-2.5">
+        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1E4775]/10 text-[#1E4775]">
+          <Info className="h-4 w-4" aria-hidden />
+        </div>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <p className="text-sm font-semibold text-[#1E4775]">{title}</p>
+          <p className="text-xs leading-snug text-[#1E4775]/75">{body}</p>
+          <div className="flex flex-wrap gap-1.5 pt-0.5">
+            {pendingLabel ? (
+              <span className="rounded-md bg-white/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775] ring-1 ring-[#1E4775]/15">
+                {pendingLabel}
+              </span>
+            ) : openLabel ? (
+              <span className="rounded-md bg-[#4A9784]/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#2f6f5f] ring-1 ring-[#4A9784]/25">
+                {openLabel}
+              </span>
+            ) : (
+              <>
+                <span className="rounded-md bg-white/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/80 ring-1 ring-[#1E4775]/10">
+                  ~{withdrawalDelayLabel} delay
+                </span>
+                <span className="rounded-md bg-white/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/80 ring-1 ring-[#1E4775]/10">
+                  ~{withdrawalDurationLabel} window
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export type AnchorRedeemPositionStepProps = {
@@ -39,6 +131,9 @@ export type AnchorRedeemPositionStepProps = {
   onEnableEarlyWithdraw?: () => void;
   onChangePosition: () => void;
   helperText?: string;
+  /** From getWithdrawalWindow — shown in the request info box. */
+  withdrawalDelayLabel?: string;
+  withdrawalDurationLabel?: string;
 };
 
 export function AnchorRedeemPositionStep({
@@ -56,27 +151,28 @@ export function AnchorRedeemPositionStep({
   onEnableEarlyWithdraw,
   onChangePosition,
   helperText,
+  withdrawalDelayLabel = "1 hour",
+  withdrawalDurationLabel = "24 hours",
 }: AnchorRedeemPositionStepProps) {
-  const title = redeemPositionTitle(position, peggedTokenSymbol);
-
   return (
-    <div className="space-y-2">
-      <div className={`${DEPOSIT_AMOUNT_CARD_CLASS} flex items-start gap-3`}>
-        <div className="min-w-0 flex-1">
-          <p className={DEPOSIT_SECTION_LABEL_CLASS}>Selected</p>
-          <p className="text-sm font-semibold text-[#1E4775]">{title}</p>
-          <p className="mt-1 font-mono text-xs tabular-nums text-[#1E4775]/75">
-            {formatHaBalance(position.balance)} {peggedTokenSymbol}
-          </p>
+    <div className="space-y-2.5">
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-2 px-0.5">
+          <p className={DEPOSIT_SECTION_LABEL_CLASS}>Selected position</p>
+          <button
+            type="button"
+            onClick={onChangePosition}
+            disabled={disabled}
+            className="shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold text-[#1E4775]/70 transition hover:bg-[#1E4775]/5 hover:text-[#1E4775] disabled:opacity-50"
+          >
+            Change
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onChangePosition}
-          disabled={disabled}
-          className="shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold text-[#1E4775]/70 transition hover:bg-[#1E4775]/5 hover:text-[#1E4775] disabled:opacity-50"
-        >
-          Change
-        </button>
+        <AnchorRedeemPositionRow
+          position={position}
+          peggedTokenSymbol={peggedTokenSymbol}
+          selected
+        />
       </div>
 
       {showAmount ? (
@@ -97,16 +193,12 @@ export function AnchorRedeemPositionStep({
           }}
         />
       ) : (
-        <div className={`${DEPOSIT_AMOUNT_CARD_CLASS} space-y-1.5`}>
-          <p className={DEPOSIT_SECTION_LABEL_CLASS}>Withdrawal</p>
-          <p className="text-sm font-semibold text-[#1E4775]">
-            Request full position
-          </p>
-          <p className="text-xs leading-snug text-[#1E4775]/65">
-            {helperText ??
-              "Starts the exit from this Earn pool. Come back when the withdrawal window opens to finish and redeem to collateral."}
-          </p>
-        </div>
+        <RequestWithdrawalInfoBox
+          position={position}
+          helperText={helperText}
+          withdrawalDelayLabel={withdrawalDelayLabel}
+          withdrawalDurationLabel={withdrawalDurationLabel}
+        />
       )}
 
       {receiveSymbol && actionKind !== "request" ? (
@@ -119,7 +211,9 @@ export function AnchorRedeemPositionStep({
         </p>
       ) : null}
 
-      {showEarlyWithdrawLink && !earlyWithdrawEnabled && onEnableEarlyWithdraw ? (
+      {showEarlyWithdrawLink &&
+      !earlyWithdrawEnabled &&
+      onEnableEarlyWithdraw ? (
         <button
           type="button"
           onClick={onEnableEarlyWithdraw}

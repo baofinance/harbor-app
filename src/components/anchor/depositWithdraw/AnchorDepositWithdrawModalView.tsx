@@ -192,6 +192,8 @@ export function AnchorDepositWithdrawModalView(
     redeemPositions,
     selectedRedeemPositionKey,
     selectedRedeemPosition,
+    selectedRedeemPositionDisplay,
+    selectedRedeemWithdrawalTiming,
     handleSelectRedeemPosition,
     handleBackToRedeemPositions,
     enableRedeemEarlyWithdraw,
@@ -1123,7 +1125,7 @@ export function AnchorDepositWithdrawModalView(
                     >
                     {simpleMode && (activeTab === "withdraw" || activeTab === "sell") ? (
                       <div className={DEPOSIT_SEGMENT_STACK_CLASS}>
-                        {flowPage === 1 || !selectedRedeemPosition ? (
+                        {flowPage === 1 || !selectedRedeemPositionDisplay ? (
                           <AnchorRedeemPositionList
                             positions={redeemPositions}
                             peggedTokenSymbol={peggedTokenSymbol}
@@ -1133,7 +1135,7 @@ export function AnchorDepositWithdrawModalView(
                           />
                         ) : (
                           <AnchorRedeemPositionStep
-                            position={selectedRedeemPosition}
+                            position={selectedRedeemPositionDisplay}
                             peggedTokenSymbol={peggedTokenSymbol}
                             receiveSymbol={redeemCollateralSymbol}
                             showAmount={redeemStepShowAmount}
@@ -1143,12 +1145,20 @@ export function AnchorDepositWithdrawModalView(
                             disabled={isProcessing}
                             actionKind={redeemStepActionKind}
                             showEarlyWithdrawLink={
-                              selectedRedeemPosition.kind === "pool" &&
-                              !selectedRedeemPosition.windowOpen
+                              selectedRedeemPositionDisplay.kind === "pool" &&
+                              !selectedRedeemPositionDisplay.windowOpen &&
+                              selectedRedeemPositionDisplay.requestStatus
+                                ?.state !== "open"
                             }
                             earlyWithdrawEnabled={earlyWithdraw1PctEnabled}
                             onEnableEarlyWithdraw={enableRedeemEarlyWithdraw}
                             onChangePosition={handleBackToRedeemPositions}
+                            withdrawalDelayLabel={
+                              selectedRedeemWithdrawalTiming.delayLabel
+                            }
+                            withdrawalDurationLabel={
+                              selectedRedeemWithdrawalTiming.durationLabel
+                            }
                           />
                         )}
                       </div>

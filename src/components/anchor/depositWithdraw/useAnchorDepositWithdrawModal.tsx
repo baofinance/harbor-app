@@ -78,8 +78,11 @@ import {
 import type { AnchorRedeemStepActionKind } from "@/utils/anchorRedeemPositions";
 import {
   buildAnchorRedeemPositions,
+  deriveRedeemRequestStatus,
   enrichAnchorRedeemPositions,
+  formatWithdrawalWindowTiming,
   type AnchorRedeemPosition,
+  type AnchorRedeemRequestStatus,
 } from "@/utils/anchorRedeemPositions";
 import { DepositModalTitle } from "@/components/DepositModalTitle";
 import { InfoCallout } from "@/components/InfoCallout";
@@ -5672,6 +5675,20 @@ export function useAnchorDepositWithdrawModal({
     },
   });
 
+  // Keep countdown badges fresh between chain refetches.
+  const [redeemCountdownNowSec, setRedeemCountdownNowSec] = useState(() =>
+    Math.floor(Date.now() / 1000),
+  );
+  useEffect(() => {
+    if (!simpleMode || (activeTab !== "withdraw" && activeTab !== "sell")) {
+      return;
+    }
+    const id = window.setInterval(() => {
+      setRedeemCountdownNowSec(Math.floor(Date.now() / 1000));
+    }, 15_000);
+    return () => window.clearInterval(id);
+  }, [simpleMode, activeTab]);
+
   const redeemWindowOpenByPoolAddress = useMemo(() => {
     const map = new Map<string, boolean>();
     redeemWindowContracts.forEach((c, i) => {
@@ -5687,11 +5704,25 @@ export function useAnchorDepositWithdrawModal({
         map.set(c.address.toLowerCase(), false);
         return;
       }
-      const now = BigInt(Math.floor(Date.now() / 1000));
+      const now = BigInt(redeemCountdownNowSec);
       map.set(c.address.toLowerCase(), now >= start && now <= end);
     });
     return map;
-  }, [redeemWindowContracts, redeemWindowReads]);
+  }, [redeemWindowContracts, redeemWindowReads, redeemCountdownNowSec]);
+
+  const redeemRequestStatusByPoolAddress = useMemo(() => {
+    const map = new Map<string, AnchorRedeemRequestStatus | undefined>();
+    redeemWindowContracts.forEach((c, i) => {
+      const result = redeemWindowReads?.[i]?.result as
+        | readonly [bigint, bigint]
+        | undefined;
+      map.set(
+        c.address.toLowerCase(),
+        deriveRedeemRequestStatus(result, redeemCountdownNowSec),
+      );
+    });
+    return map;
+  }, [redeemWindowContracts, redeemWindowReads, redeemCountdownNowSec]);
 
   const redeemPositionsBase = useMemo(
     () =>
@@ -5699,8 +5730,14 @@ export function useAnchorDepositWithdrawModal({
         peggedBalance,
         poolRows: groupedPoolPositions,
         windowOpenByPoolAddress: redeemWindowOpenByPoolAddress,
+        requestStatusByPoolAddress: redeemRequestStatusByPoolAddress,
       }),
-    [peggedBalance, groupedPoolPositions, redeemWindowOpenByPoolAddress],
+    [
+      peggedBalance,
+      groupedPoolPositions,
+      redeemWindowOpenByPoolAddress,
+      redeemRequestStatusByPoolAddress,
+    ],
   );
 
   const selectedRedeemPosition = useMemo(
@@ -6212,6 +6249,23 @@ export function useAnchorDepositWithdrawModal({
       redeemPoolAprByAddress,
     ],
   );
+
+  const selectedRedeemPositionDisplay = useMemo(
+    () =>
+      redeemPositions.find((p) => p.key === selectedRedeemPositionKey) ?? null,
+    [redeemPositions, selectedRedeemPositionKey],
+  );
+
+  const selectedRedeemWithdrawalTiming = useMemo(() => {
+    if (!selectedRedeemPosition || selectedRedeemPosition.kind !== "pool") {
+      return formatWithdrawalWindowTiming(undefined);
+    }
+    const window =
+      selectedRedeemPosition.poolType === "collateral"
+        ? (collateralPoolWindow as readonly [bigint, bigint] | undefined)
+        : (sailPoolWindow as readonly [bigint, bigint] | undefined);
+    return formatWithdrawalWindowTiming(window);
+  }, [selectedRedeemPosition, collateralPoolWindow, sailPoolWindow]);
 
   const currentDepositUSD =
     peggedTokenPriceUsdWei > 0n && currentDeposit
@@ -11329,6 +11383,15 @@ export function useAnchorDepositWithdrawModal({
       return base;
     }
     if (redeemStepActionKind === "request") {
+      const pendingLabel =
+        selectedRedeemPositionDisplay?.kind === "pool" &&
+        selectedRedeemPositionDisplay.requestStatus?.state === "pending"
+          ? selectedRedeemPositionDisplay.requestStatus.label
+          : null;
+      if (pendingLabel) {
+        // Disable CTA while waiting — countdown is the label
+        return { kind: "enter_amount" as const, label: pendingLabel };
+      }
       return { ...base, label: "Request withdrawal", variant: "navy" as const };
     }
     if (redeemStepActionKind === "withdrawAndRedeem") {
@@ -11349,6 +11412,7 @@ export function useAnchorDepositWithdrawModal({
     flowPage,
     redeemStepActionKind,
     earlyWithdraw1PctEnabled,
+    selectedRedeemPositionDisplay,
   ]);
 
   const depositTokenPriceUSD = useMemo(() => {
@@ -11525,6 +11589,16 @@ export function useAnchorDepositWithdrawModal({
     if ((activeTab !== "withdraw" && activeTab !== "sell") || !simpleMode) {
       return null;
     }
+    // Position-first: fees only after a position is chosen
+    if (flowPage === 1) return null;
+    // Request-only: timing lives in the info box; hide redeem/early fee pills
+    if (
+      flowPage === 2 &&
+      redeemStepActionKind === "request" &&
+      !earlyWithdraw1PctEnabled
+    ) {
+      return null;
+    }
 
     const showSellFee =
       (flowPage === 2 || activeTab === "sell") &&
@@ -11627,6 +11701,8 @@ export function useAnchorDepositWithdrawModal({
     redeemFeePercentage,
     sellFeeRange,
     marketsForToken.length,
+    redeemStepActionKind,
+    earlyWithdraw1PctEnabled,
   ]);
 
   const withdrawTransactionOverview =
@@ -11642,18 +11718,14 @@ export function useAnchorDepositWithdrawModal({
       if (effectiveFlowPage !== 1 && effectiveFlowPage !== 2) return null;
       if (step !== "input" && step !== "error") return null;
 
-      // Request-only: show messaging instead of collateral preview
+      // Request-only: info box owns the key timing — skip flat overview duplicate
       if (
         simpleMode &&
         effectiveFlowPage === 2 &&
-        redeemStepActionKind === "request"
+        redeemStepActionKind === "request" &&
+        !earlyWithdraw1PctEnabled
       ) {
-        return {
-          receiveAmount: null,
-          receiveSymbol: peggedTokenSymbol,
-          emptyMessage:
-            "Requesting withdrawal keeps your tokens in the pool until the window opens.",
-        };
+        return null;
       }
 
       const hasCollateralPool = selectedPositions.collateralPool;
@@ -11893,6 +11965,7 @@ export function useAnchorDepositWithdrawModal({
       redeemPreview?.isCapped,
       withdrawRedeemPriceInputs,
       redeemStepActionKind,
+      earlyWithdraw1PctEnabled,
     ]);
 
   const getButtonText = () => {
@@ -12192,6 +12265,8 @@ export function useAnchorDepositWithdrawModal({
     redeemPositions,
     selectedRedeemPositionKey,
     selectedRedeemPosition,
+    selectedRedeemPositionDisplay,
+    selectedRedeemWithdrawalTiming,
     handleSelectRedeemPosition,
     handleBackToRedeemPositions,
     enableRedeemEarlyWithdraw,

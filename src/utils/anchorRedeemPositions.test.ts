@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { DefinedMarket } from "@/config/markets";
 import {
   buildAnchorRedeemPositions,
+  deriveRedeemRequestStatus,
   enrichAnchorRedeemPositions,
+  formatWithdrawalWindowTiming,
   redeemPositionTitle,
 } from "./anchorRedeemPositions";
 
@@ -88,6 +90,75 @@ describe("buildAnchorRedeemPositions", () => {
       "a-collateral",
     ]);
     expect(positions[0]?.kind === "pool" && positions[0].windowOpen).toBe(true);
+  });
+
+  it("attaches pending request countdown and sorts pending before idle", () => {
+    const now = 1_700_000_000;
+    const pending = deriveRedeemRequestStatus(
+      [BigInt(now + 600), BigInt(now + 600 + 86_400)],
+      now,
+    );
+    const requestStatusByPoolAddress = new Map([
+      ["0xaaa", pending],
+    ]);
+    const positions = buildAnchorRedeemPositions({
+      peggedBalance: 0n,
+      poolRows: [
+        {
+          key: "idle",
+          marketId: "b",
+          market: marketB,
+          poolType: "collateral",
+          poolAddress: "0xccc",
+          balance: 1n * 10n ** 18n,
+        },
+        {
+          key: "pending",
+          marketId: "a",
+          market: marketA,
+          poolType: "collateral",
+          poolAddress: "0xaaa",
+          balance: 2n * 10n ** 18n,
+        },
+      ],
+      requestStatusByPoolAddress,
+    });
+    expect(positions.map((p) => p.key)).toEqual(["pending", "idle"]);
+    expect(
+      positions[0]?.kind === "pool" && positions[0].requestStatus?.label,
+    ).toMatch(/^Opens in /);
+  });
+});
+
+describe("deriveRedeemRequestStatus", () => {
+  it("returns pending, open, or undefined from request window", () => {
+    const now = 1_000;
+    expect(deriveRedeemRequestStatus(undefined, now)).toBeUndefined();
+    expect(deriveRedeemRequestStatus([0n, 0n], now)).toBeUndefined();
+    expect(deriveRedeemRequestStatus([1_200n, 2_000n], now)?.state).toBe(
+      "pending",
+    );
+    expect(deriveRedeemRequestStatus([1_200n, 2_000n], now)?.label).toBe(
+      "Opens in 4m",
+    );
+    expect(deriveRedeemRequestStatus([900n, 1_500n], now)?.state).toBe("open");
+    expect(deriveRedeemRequestStatus([900n, 1_500n], now)?.label).toBe(
+      "9m left",
+    );
+    expect(deriveRedeemRequestStatus([100n, 200n], now)).toBeUndefined();
+  });
+});
+
+describe("formatWithdrawalWindowTiming", () => {
+  it("formats delay and duration from getWithdrawalWindow", () => {
+    expect(formatWithdrawalWindowTiming(undefined)).toEqual({
+      delayLabel: "1 hour",
+      durationLabel: "24 hours",
+    });
+    expect(formatWithdrawalWindowTiming([3600n, 86_400n])).toEqual({
+      delayLabel: "1 hour",
+      durationLabel: "24 hours",
+    });
   });
 });
 
