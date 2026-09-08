@@ -94,22 +94,16 @@ export function redeemPositionTitle(
   if (position.kind === "wallet") {
     return "Wallet";
   }
-  if (position.poolType === "sail") {
-    return "Sail pool";
-  }
-  const collateral =
-    position.market?.collateral?.symbol ||
-    (position.market as { wrappedCollateralToken?: { symbol?: string } })
-      ?.wrappedCollateralToken?.symbol ||
-    "Collateral";
-  return `${collateral} pool`;
+  const marketName = position.market?.name || position.marketId;
+  const poolLabel = position.poolType === "sail" ? "sail pool" : "collateral pool";
+  return `${marketName} ${poolLabel}`;
 }
 
 export function redeemPositionSubtitle(
   position: AnchorRedeemPosition,
 ): string | undefined {
   if (position.kind === "wallet") return undefined;
-  return position.market?.name || position.marketId;
+  return undefined;
 }
 
 /** Attach USD value + pool APR for display rows. */

@@ -92,7 +92,7 @@ describe("buildAnchorRedeemPositions", () => {
 });
 
 describe("redeemPositionTitle", () => {
-  it("labels wallet and pool kinds without Earn prefix", () => {
+  it("labels wallet and market + pool type on one line", () => {
     expect(
       redeemPositionTitle(
         { key: "wallet", kind: "wallet", balance: 1n },
@@ -112,7 +112,7 @@ describe("redeemPositionTitle", () => {
         },
         "haETH",
       ),
-    ).toBe("Sail pool");
+    ).toBe("fxUSD - ETH sail pool");
     expect(
       redeemPositionTitle(
         {
@@ -126,7 +126,7 @@ describe("redeemPositionTitle", () => {
         },
         "haETH",
       ),
-    ).toBe("fxSAVE pool");
+    ).toBe("fxUSD - ETH collateral pool");
   });
 });
 

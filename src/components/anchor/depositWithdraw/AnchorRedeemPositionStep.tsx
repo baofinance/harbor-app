@@ -10,10 +10,7 @@ import type {
   AnchorRedeemPosition,
   AnchorRedeemStepActionKind,
 } from "@/utils/anchorRedeemPositions";
-import {
-  redeemPositionSubtitle,
-  redeemPositionTitle,
-} from "@/utils/anchorRedeemPositions";
+import { redeemPositionTitle } from "@/utils/anchorRedeemPositions";
 
 function formatHaBalance(balance: bigint): string {
   const n = Number(formatEther(balance));
@@ -60,7 +57,6 @@ export function AnchorRedeemPositionStep({
   onChangePosition,
   helperText,
 }: AnchorRedeemPositionStepProps) {
-  const subtitle = redeemPositionSubtitle(position);
   const title = redeemPositionTitle(position, peggedTokenSymbol);
 
   return (
@@ -69,9 +65,6 @@ export function AnchorRedeemPositionStep({
         <div className="min-w-0 flex-1">
           <p className={DEPOSIT_SECTION_LABEL_CLASS}>Selected</p>
           <p className="text-sm font-semibold text-[#1E4775]">{title}</p>
-          {subtitle ? (
-            <p className="mt-0.5 text-[11px] text-[#1E4775]/55">{subtitle}</p>
-          ) : null}
           <p className="mt-1 font-mono text-xs tabular-nums text-[#1E4775]/75">
             {formatHaBalance(position.balance)} {peggedTokenSymbol}
           </p>
