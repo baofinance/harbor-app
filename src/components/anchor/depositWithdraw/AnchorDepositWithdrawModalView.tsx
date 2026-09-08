@@ -196,7 +196,6 @@ export function AnchorDepositWithdrawModalView(
     selectedRedeemPosition,
     selectedRedeemPositionDisplay,
     selectedRedeemWithdrawalTiming,
-    needsRedeemRouteStep,
     isRedeemRouteFlowPage,
     isRedeemConfirmFlowPage,
     handleSelectRedeemPosition,
