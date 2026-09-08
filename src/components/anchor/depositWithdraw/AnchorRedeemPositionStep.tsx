@@ -212,32 +212,36 @@ export function AnchorRedeemPositionStep({
       )}
 
       {showWithdrawOnlyToggle && onWithdrawOnlyChange ? (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-[#1E4775]/12 bg-white/70 px-3 py-2.5">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-[#1E4775]">
-              Withdraw only
-            </p>
-            <p className="text-[11px] leading-snug text-[#1E4775]/55">
-              Receive {peggedTokenSymbol} in your wallet instead of redeeming to
-              collateral.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => onWithdrawOnlyChange(!withdrawOnly)}
-            disabled={disabled}
-            className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
-              withdrawOnly ? "bg-[#1E4775]" : "bg-[#1E4775]/30"
-            }`}
-            aria-pressed={withdrawOnly}
-            aria-label="Toggle withdraw only"
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                withdrawOnly ? "translate-x-4" : "translate-x-1"
+        <div className="space-y-1">
+          <p className={DEPOSIT_SECTION_LABEL_CLASS}>Mode</p>
+          <div className={DEPOSIT_MODE_TOGGLE_ROW_CLASS}>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-[#1E4775]">
+                {withdrawOnly ? "Withdraw only" : "Withdraw + redeem"}
+              </p>
+              <p className="text-[11px] leading-snug text-[#1E4775]/60">
+                {withdrawOnly
+                  ? `Receive ${peggedTokenSymbol} in your wallet without redeeming to collateral.`
+                  : "Withdraw from the pool and redeem to collateral in one step."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onWithdrawOnlyChange(!withdrawOnly)}
+              disabled={disabled}
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+                withdrawOnly ? "bg-[#1E4775]" : "bg-[#1E4775]/25"
               }`}
-            />
-          </button>
+              aria-pressed={withdrawOnly}
+              aria-label="Toggle withdraw only"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                  withdrawOnly ? "translate-x-4" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
         </div>
       ) : null}
 
