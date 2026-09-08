@@ -2667,7 +2667,9 @@ export function useAnchorDepositWithdrawModal({
       const next = { ...prev };
       if (selectedPositions.collateralPool) {
         const windowOpen = isWindowOpen(collateralPoolRequest);
-        const desired = windowOpen ? "immediate" : (prev.collateralPool === "immediate" && earlyWithdraw1PctEnabled ? "immediate" : "request");
+        // Fee-free window OR explicit early-withdraw opt-in → immediate
+        const desired =
+          windowOpen || earlyWithdraw1PctEnabled ? "immediate" : "request";
         if (next.collateralPool !== desired) {
           next.collateralPool = desired;
           changed = true;
@@ -2675,7 +2677,8 @@ export function useAnchorDepositWithdrawModal({
       }
       if (selectedPositions.sailPool) {
         const windowOpen = isWindowOpen(sailPoolRequest);
-        const desired = windowOpen ? "immediate" : (prev.sailPool === "immediate" && earlyWithdraw1PctEnabled ? "immediate" : "request");
+        const desired =
+          windowOpen || earlyWithdraw1PctEnabled ? "immediate" : "request";
         if (next.sailPool !== desired) {
           next.sailPool = desired;
           changed = true;
@@ -5169,13 +5172,39 @@ export function useAnchorDepositWithdrawModal({
 
   const enableRedeemEarlyWithdraw = useCallback(() => {
     setEarlyWithdraw1PctEnabled(true);
-    setWithdrawalMethods((prev) => {
-      const next = { ...prev };
-      if (selectedPositions.collateralPool) next.collateralPool = "immediate";
-      if (selectedPositions.sailPool) next.sailPool = "immediate";
-      return next;
-    });
-  }, [selectedPositions.collateralPool, selectedPositions.sailPool]);
+
+    const key = selectedRedeemPositionKey;
+    const isCollateral =
+      key?.endsWith("-collateral") || selectedPositions.collateralPool;
+    const isSail = key?.endsWith("-sail") || selectedPositions.sailPool;
+
+    setWithdrawalMethods((prev) => ({
+      ...prev,
+      ...(isCollateral ? { collateralPool: "immediate" as const } : null),
+      ...(isSail ? { sailPool: "immediate" as const } : null),
+      // Fallback: unknown pool key still needs a method flip for the amount UI
+      ...(!isCollateral && !isSail && key && key !== "wallet"
+        ? {
+            collateralPool: "immediate" as const,
+            sailPool: "immediate" as const,
+          }
+        : null),
+    }));
+
+    // Keep selection flags in sync — fee / validity checks depend on them
+    if (isCollateral || isSail) {
+      setSelectedPositions((prev) => ({
+        ...prev,
+        wallet: false,
+        collateralPool: !!isCollateral,
+        sailPool: !!isSail,
+      }));
+    }
+  }, [
+    selectedRedeemPositionKey,
+    selectedPositions.collateralPool,
+    selectedPositions.sailPool,
+  ]);
 
   // Helper function to calculate max acceptable amount for swap deposits
   const calculateMaxSwapAmount = useMemo(() => {
@@ -11327,18 +11356,20 @@ export function useAnchorDepositWithdrawModal({
     if (!selectedRedeemPosition || selectedRedeemPosition.kind === "wallet") {
       return "redeem";
     }
+    if (earlyWithdraw1PctEnabled) return "withdrawAndRedeem";
     const method =
       selectedRedeemPosition.poolType === "collateral"
         ? withdrawalMethods.collateralPool
         : withdrawalMethods.sailPool;
     if (method === "request") return "request";
     return "withdrawAndRedeem";
-  }, [selectedRedeemPosition, withdrawalMethods]);
+  }, [selectedRedeemPosition, withdrawalMethods, earlyWithdraw1PctEnabled]);
 
   const redeemStepShowAmount =
     !!selectedRedeemPosition &&
     (selectedRedeemPosition.kind === "wallet" ||
-      redeemStepActionKind !== "request");
+      redeemStepActionKind !== "request" ||
+      earlyWithdraw1PctEnabled);
 
   const redeemStepAmountValue =
     selectedRedeemPosition?.kind === "wallet"
