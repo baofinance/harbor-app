@@ -1,4 +1,9 @@
 import type { DepositPrimaryAction } from "@/utils/depositFormState";
+import type { MintValidation } from "@/utils/anchorMintValidation";
+import {
+  mintValidationBlocksSubmit,
+  mintValidationCtaLabel,
+} from "@/utils/anchorMintValidation";
 
 export type AnchorDepositModalStep =
   | "input"
@@ -19,6 +24,7 @@ export type ResolveAnchorDepositStep1ActionInput = {
   isDirectPeggedDeposit: boolean;
   skipRewardStep: boolean;
   rewardTokenOptionsCount: number;
+  mintValidation?: MintValidation | null;
 };
 
 function continueLabel(input: ResolveAnchorDepositStep1ActionInput): string {
@@ -41,6 +47,7 @@ export function resolveAnchorDepositStep1PrimaryAction(
     currentBalance,
     selectedDepositAsset,
     step,
+    mintValidation,
   } = input;
 
   if (step === "error") {
@@ -65,6 +72,13 @@ export function resolveAnchorDepositStep1PrimaryAction(
 
   if (currentBalance != null && parsed > currentBalance) {
     return { kind: "exceeds_balance" };
+  }
+
+  if (mintValidationBlocksSubmit(mintValidation)) {
+    return {
+      kind: "enter_amount",
+      label: mintValidationCtaLabel(mintValidation) ?? "Mint unavailable",
+    };
   }
 
   return {
@@ -129,6 +143,7 @@ export type ResolveAnchorDepositStep3ActionInput = {
     poolType: "collateral" | "sail";
   } | null;
   isDirectPeggedDeposit: boolean;
+  mintValidation?: MintValidation | null;
 };
 
 export function resolveAnchorDepositStep3PrimaryAction(
@@ -142,6 +157,7 @@ export function resolveAnchorDepositStep3PrimaryAction(
     selectedRewardToken,
     selectedStabilityPool,
     isDirectPeggedDeposit,
+    mintValidation,
   } = input;
 
   if (step === "error") {
@@ -161,6 +177,17 @@ export function resolveAnchorDepositStep3PrimaryAction(
 
   if (selectedRewardToken && !selectedStabilityPool) {
     return { kind: "enter_amount", label: "Select a stability pool" };
+  }
+
+  // Direct ha deposit skips mint dry-run; otherwise gate on mint capacity.
+  if (
+    !isDirectPeggedDeposit &&
+    mintValidationBlocksSubmit(mintValidation)
+  ) {
+    return {
+      kind: "enter_amount",
+      label: mintValidationCtaLabel(mintValidation) ?? "Mint unavailable",
+    };
   }
 
   if (isDirectPeggedDeposit && selectedStabilityPool) {

@@ -55,6 +55,35 @@ describe("anchorDepositFormState", () => {
     expect(depositPrimaryActionLabel(action)).toBe("Mint");
   });
 
+  it("disables continue when mint validation is blocked", () => {
+    const action = resolveAnchorDepositStep1PrimaryAction({
+      ...base,
+      mintOnly: true,
+      mintValidation: {
+        status: "blocked",
+        message: "This size can't be minted right now.",
+        isDisallowed: true,
+      },
+    });
+    expect(action).toEqual({
+      kind: "enter_amount",
+      label: "Mint unavailable",
+    });
+    expect(isDepositPrimaryActionDisabled(action)).toBe(true);
+  });
+
+  it("disables continue while mint validation is pending", () => {
+    const action = resolveAnchorDepositStep1PrimaryAction({
+      ...base,
+      mintValidation: {
+        status: "pending",
+        message: "Checking…",
+      },
+    });
+    expect(depositPrimaryActionLabel(action)).toBe("Checking mint…");
+    expect(isDepositPrimaryActionDisabled(action)).toBe(true);
+  });
+
   it("returns continue to deposit when skipping reward step", () => {
     const action = resolveAnchorDepositStep1PrimaryAction({
       ...base,

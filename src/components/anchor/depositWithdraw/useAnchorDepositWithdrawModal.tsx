@@ -128,6 +128,11 @@ import {
   hasAnchorWithdrawValidSelection,
 } from "@/utils/anchorDepositFormState";
 import type { DepositPrimaryAction } from "@/utils/depositFormState";
+import {
+  mintValidationBlocksSubmit,
+  parseMintDryRunResult,
+  resolveMintValidation,
+} from "@/utils/anchorMintValidation";
 import { DepositStabilityPoolCard } from "@/components/deposit/DepositStabilityPoolCard";
 import { TokenLogo } from "@/components/shared";
 import { getRevertReason } from "@/utils/parseViemRevert";
@@ -3692,7 +3697,11 @@ export function useAnchorDepositWithdrawModal({
 
   // Dry run for swapped amounts to check if minter will accept full amount
   // Only run when swap quote is ready and amount is debounced
-  const { data: swapDryRunOutput } = useContractRead({
+  const {
+    data: swapDryRunOutput,
+    error: swapDryRunError,
+    isFetching: swapDryRunFetching,
+  } = useContractRead({
     address: minterAddress as `0x${string}`,
     abi: MINTER_PEGGED_ABI,
     functionName: "mintPeggedTokenDryRun",
@@ -4633,7 +4642,11 @@ export function useAnchorDepositWithdrawModal({
     return parsedAmount;
   }, [wstETHAmountFromContract, parsedAmount]);
 
-  const { data: anvilDryRunData, error: anvilDryRunError } = useContractRead({
+  const {
+    data: anvilDryRunData,
+    error: anvilDryRunError,
+    isFetching: anvilDryRunFetching,
+  } = useContractRead({
     address: feeMinterAddress as `0x${string}`,
     abi: MINTER_PEGGED_ABI,
     functionName: "mintPeggedTokenDryRun",
@@ -4642,23 +4655,29 @@ export function useAnchorDepositWithdrawModal({
   });
 
   // Dry run query using regular hook for production
-  const { data: regularDryRunData, error: regularDryRunError } =
-    useContractRead({
-      address: feeMinterAddress as `0x${string}`,
-      abi: MINTER_PEGGED_ABI,
-      functionName: "mintPeggedTokenDryRun",
-      args: amountForFeeDryRun ? [amountForFeeDryRun] : undefined,
-      query: {
-        enabled: !shouldUseAnvilHook && dryRunEnabled && !!amountForFeeDryRun,
-        retry: 1,
-      },
-    });
+  const {
+    data: regularDryRunData,
+    error: regularDryRunError,
+    isFetching: regularDryRunFetching,
+  } = useContractRead({
+    address: feeMinterAddress as `0x${string}`,
+    abi: MINTER_PEGGED_ABI,
+    functionName: "mintPeggedTokenDryRun",
+    args: amountForFeeDryRun ? [amountForFeeDryRun] : undefined,
+    query: {
+      enabled: !shouldUseAnvilHook && dryRunEnabled && !!amountForFeeDryRun,
+      retry: 1,
+    },
+  });
 
   // Use the appropriate dry run data based on environment
   const dryRunData = shouldUseAnvilHook ? anvilDryRunData : regularDryRunData;
   const dryRunError = shouldUseAnvilHook
     ? anvilDryRunError
     : regularDryRunError;
+  const dryRunFetching = shouldUseAnvilHook
+    ? anvilDryRunFetching
+    : regularDryRunFetching;
 
   if (process.env.NODE_ENV === "development" && activeTab === "deposit") {
     console.log("[Dry Run Data]", {
@@ -4883,6 +4902,52 @@ export function useAnchorDepositWithdrawModal({
     
     return feePercent;
   }, [anyTokenDeposit.needsSwap, swapDryRunOutput, swappedAmountForDryRun, dryRunData, dryRunError, parsedAmount, isDirectPeggedDeposit, activeMarketForFees, market, selectedDepositAsset, activeCollateralSymbol, btcPrice, ethPrice]);
+
+  const mintValidation = useMemo(() => {
+    const hasAmount = !!amount && parseFloat(amount) > 0;
+
+    if (anyTokenDeposit.needsSwap) {
+      return resolveMintValidation({
+        isDirectPeggedDeposit,
+        hasAmount,
+        isLoading:
+          anyTokenDeposit.isLoadingSwapQuote ||
+          (!!swappedAmountForDryRun &&
+            swappedAmountForDryRun > 0n &&
+            swapDryRunFetching &&
+            !swapDryRunOutput),
+        hasDryRunError: !!swapDryRunError,
+        dryRun: parseMintDryRunResult(swapDryRunOutput),
+        inputAmountWrapped: swappedAmountForDryRun,
+      });
+    }
+
+    return resolveMintValidation({
+      isDirectPeggedDeposit,
+      hasAmount,
+      isLoading:
+        !!amountForFeeDryRun &&
+        amountForFeeDryRun > 0n &&
+        dryRunFetching &&
+        !dryRunData,
+      hasDryRunError: !!dryRunError,
+      dryRun: parseMintDryRunResult(dryRunData),
+      inputAmountWrapped: amountForFeeDryRun,
+    });
+  }, [
+    amount,
+    anyTokenDeposit.needsSwap,
+    anyTokenDeposit.isLoadingSwapQuote,
+    isDirectPeggedDeposit,
+    swappedAmountForDryRun,
+    swapDryRunFetching,
+    swapDryRunOutput,
+    swapDryRunError,
+    amountForFeeDryRun,
+    dryRunFetching,
+    dryRunData,
+    dryRunError,
+  ]);
 
   // Auto-adjust amount when minter refuses full deposit
   const [depositLimitWarning, setDepositLimitWarning] = useState<string | null>(null);
@@ -6987,6 +7052,16 @@ export function useAnchorDepositWithdrawModal({
         marketArchived
           ? "This market is archived. New deposits and mints are not accepted."
           : "Deposits are unavailable while this market is in maintenance."
+      );
+      return;
+    }
+    if (
+      !isDirectPeggedDeposit &&
+      mintValidationBlocksSubmit(mintValidation)
+    ) {
+      handleTxError(
+        mintValidation.message ??
+          "This mint size isn't available right now. Try a smaller amount.",
       );
       return;
     }
@@ -11286,6 +11361,9 @@ export function useAnchorDepositWithdrawModal({
     ) {
       return;
     }
+    if (mintValidationBlocksSubmit(mintValidation)) {
+      return;
+    }
     if (mintOnly) {
       handleMint();
       return;
@@ -11300,6 +11378,7 @@ export function useAnchorDepositWithdrawModal({
     selectedDepositAsset,
     amount,
     error,
+    mintValidation,
     mintOnly,
     rewardTokenOptions,
     handleMint,
@@ -11329,6 +11408,7 @@ export function useAnchorDepositWithdrawModal({
         isDirectPeggedDeposit,
         skipRewardStep,
         rewardTokenOptionsCount: rewardTokenOptions.length,
+        mintValidation,
       }),
     [
       isConnected,
@@ -11342,6 +11422,7 @@ export function useAnchorDepositWithdrawModal({
       isDirectPeggedDeposit,
       skipRewardStep,
       rewardTokenOptions.length,
+      mintValidation,
     ],
   );
 
@@ -11350,10 +11431,13 @@ export function useAnchorDepositWithdrawModal({
       handleMint();
       return;
     }
+    if (mintValidationBlocksSubmit(mintValidation)) {
+      return;
+    }
     setMintOnly(false);
     setDepositInStabilityPool(true);
     handleMint();
-  }, [step, handleMint]);
+  }, [step, handleMint, mintValidation]);
 
   const hasValidWithdrawSelection = useMemo(() => {
     if (
@@ -11437,6 +11521,7 @@ export function useAnchorDepositWithdrawModal({
         selectedRewardToken,
         selectedStabilityPool,
         isDirectPeggedDeposit,
+        mintValidation,
       }),
     [
       step,
@@ -11446,6 +11531,7 @@ export function useAnchorDepositWithdrawModal({
       selectedRewardToken,
       selectedStabilityPool,
       isDirectPeggedDeposit,
+      mintValidation,
     ],
   );
 
@@ -11704,16 +11790,42 @@ export function useAnchorDepositWithdrawModal({
     }
 
     return {
-      receiveAmount: peggedAmount > 0 ? peggedAmount.toFixed(4) : null,
+      receiveAmount:
+        mintValidation.status === "blocked" || mintValidation.status === "pending"
+          ? null
+          : peggedAmount > 0
+            ? peggedAmount.toFixed(4)
+            : null,
       receiveSymbol: peggedTokenSymbol,
-      receiveUsd: receiveUsd > 0 ? receiveUsd : undefined,
+      receiveUsd:
+        mintValidation.status === "blocked" || mintValidation.status === "pending"
+          ? undefined
+          : receiveUsd > 0
+            ? receiveUsd
+            : undefined,
       sourceLine,
       emptyMessage:
         flowPage === 2 && !selectedStabilityPool
           ? "Select a pool to see what you'll receive."
           : "Enter an amount to see what you'll receive.",
+      statusMessage:
+        mintValidation.status === "pending" || mintValidation.status === "blocked"
+          ? mintValidation.message ?? undefined
+          : undefined,
+      statusVariant:
+        mintValidation.status === "blocked"
+          ? ("error" as const)
+          : undefined,
+      bannerMessage:
+        mintValidation.status === "capped"
+          ? mintValidation.message ?? undefined
+          : mintValidation.status === "blocked"
+            ? mintValidation.message ?? undefined
+            : undefined,
       fee:
-        depositAmount > 0 && feePercentage !== undefined
+        depositAmount > 0 &&
+        feePercentage !== undefined &&
+        mintValidation.status !== "blocked"
           ? {
               percentage: feePercentage,
               usd:
@@ -11740,6 +11852,7 @@ export function useAnchorDepositWithdrawModal({
     feePercentage,
     depositTokenPriceUSD,
     simpleMode,
+    mintValidation,
   ]);
 
   const buyFeeFooter = useMemo(() => {
@@ -12272,14 +12385,17 @@ export function useAnchorDepositWithdrawModal({
     if (activeTab === "deposit") {
       // Check if fee is excessively high (>50% means you'd lose more than half your deposit)
       const hasExcessiveFee = feePercentage !== undefined && feePercentage > 50;
-      
+      const mintBlocked =
+        !isDirectPeggedDeposit && mintValidationBlocksSubmit(mintValidation);
+
       return (
         step === "approving" ||
         step === "minting" ||
         step === "depositing" ||
         !amount ||
         parseFloat(amount) <= 0 ||
-        hasExcessiveFee
+        hasExcessiveFee ||
+        mintBlocked
       );
     } else if (activeTab === "withdraw") {
       // Check if at least one position is selected with a valid amount
@@ -12732,6 +12848,7 @@ export function useAnchorDepositWithdrawModal({
     minCollateralRatio,
     formatCollateralRatio,
     feePercentage,
+    mintValidation,
     depositLimitWarning,
     setDepositLimitWarning,
     tempMaxWarning,

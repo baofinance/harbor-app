@@ -431,6 +431,7 @@ export function AnchorDepositWithdrawModalView(
     minCollateralRatio,
     formatCollateralRatio,
     feePercentage,
+    mintValidation,
     depositLimitWarning,
     setDepositLimitWarning,
     tempMaxWarning,
@@ -865,17 +866,36 @@ export function AnchorDepositWithdrawModalView(
                         customHandleChange: handleAmountChange,
                       }}
                       afterAmount={
-                        showPermitToggle ? (
-                          <DepositPermitToggle
-                            mode={
-                              showDepositPermitToggle ? "deposit" : "redemption"
-                            }
-                            enabled={permitEnabled}
-                            onToggle={() => setPermitEnabled((prev) => !prev)}
-                            disabled={isProcessing}
-                            disableReason={disableReason}
-                          />
-                        ) : null
+                        <>
+                          {showPermitToggle ? (
+                            <DepositPermitToggle
+                              mode={
+                                showDepositPermitToggle ? "deposit" : "redemption"
+                              }
+                              enabled={permitEnabled}
+                              onToggle={() => setPermitEnabled((prev) => !prev)}
+                              disabled={isProcessing}
+                              disableReason={disableReason}
+                            />
+                          ) : null}
+                          {!isDirectPeggedDeposit &&
+                          mintValidation.message &&
+                          (mintValidation.status === "blocked" ||
+                            mintValidation.status === "pending" ||
+                            mintValidation.status === "capped") ? (
+                            <div
+                              className={`mt-2 rounded-lg border px-2.5 py-2 text-xs leading-snug ${
+                                mintValidation.status === "blocked"
+                                  ? "border-red-300 bg-red-50 text-red-800"
+                                  : mintValidation.status === "capped"
+                                    ? "border-amber-300 bg-amber-50 text-amber-900"
+                                    : "border-[#1E4775]/15 bg-white/80 text-[#1E4775]/70"
+                              }`}
+                            >
+                              {mintValidation.message}
+                            </div>
+                          ) : null}
+                        </>
                       }
                     />
                     {/* Swap Preview - show when using any token deposit (always visible when swap asset is selected) */}
@@ -1099,8 +1119,27 @@ export function AnchorDepositWithdrawModalView(
                           </div>
                         )}
 
+                        {!depositLimitWarning &&
+                          !isDirectPeggedDeposit &&
+                          mintValidation.message &&
+                          (mintValidation.status === "blocked" ||
+                            mintValidation.status === "capped") && (
+                            <div
+                              className={`mt-2 p-2 border text-xs ${
+                                mintValidation.status === "blocked"
+                                  ? "bg-red-50 border-red-300 text-red-800"
+                                  : "bg-yellow-50 border-yellow-300 text-yellow-800"
+                              }`}
+                            >
+                              {mintValidation.message}
+                            </div>
+                          )}
+
                         {/* Fee Warning */}
-                        {!depositLimitWarning && feePercentage !== undefined && feePercentage > 2 && (
+                        {!depositLimitWarning &&
+                          mintValidation.status !== "blocked" &&
+                          feePercentage !== undefined &&
+                          feePercentage > 2 && (
                           <div className={`mt-2 p-2 border text-xs ${
                             feePercentage > 50
                               ? "bg-red-100 border-red-400 text-red-800" 

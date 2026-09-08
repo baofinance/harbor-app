@@ -7,7 +7,7 @@ import {
 
 export type AnchorBuyTransactionOverviewProps = Omit<
   DepositTransactionOverviewProps,
-  "fees" | "receiveLabel" | "statusMessage" | "statusVariant" | "bannerMessage" | "bonus"
+  "fees" | "receiveLabel" | "bonus"
 > & {
   fee?: {
     label?: string;
