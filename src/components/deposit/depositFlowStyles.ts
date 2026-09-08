@@ -9,9 +9,24 @@ export const DEPOSIT_OVERVIEW_CARD_CLASS = DEPOSIT_AMOUNT_CARD_CLASS;
 /** Vertical gap between sections in Anchor simple-mode deposit / withdraw panels. */
 export const ANCHOR_MODAL_SECTION_GAP = "space-y-2";
 
-/** Shared pill segment track (Deposit/Mint, Collateral/Sail, fxSAVE/wstETH, etc.). */
+/** Shared pill segment track (Collateral/Sail, fxSAVE/wstETH, reward tokens, etc.). */
 export const DEPOSIT_SEGMENT_TRACK_CLASS =
   "flex w-full rounded-lg bg-[#e2e8f0] p-px";
+
+/**
+ * Mode switch track (Deposit / Mint) — navy-tinted chrome so it reads as
+ * navigation, not part of the white amount form below.
+ */
+export const DEPOSIT_MODE_SEGMENT_TRACK_CLASS =
+  "flex w-full rounded-lg bg-[#1E4775]/12 p-0.5 ring-1 ring-[#1E4775]/10";
+
+/** Active thumb for mode switches on the navy-tinted track. */
+export const DEPOSIT_MODE_SEGMENT_ACTIVE_CLASS =
+  "bg-white text-[#1E4775] shadow-sm";
+
+/** Inactive thumb for mode switches. */
+export const DEPOSIT_MODE_SEGMENT_INACTIVE_CLASS =
+  "bg-transparent text-[#1E4775]/55 hover:text-[#1E4775]/80";
 
 /** Active segment thumb — shared by toggles and read-only balance strip. */
 export const DEPOSIT_SEGMENT_ACTIVE_CLASS =

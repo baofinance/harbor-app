@@ -50,6 +50,9 @@ import {
   ANCHOR_MODAL_SCROLL_CLASS,
   ANCHOR_MODAL_SECTION_GAP,
   DEPOSIT_EMBEDDED_CONTENT_CLASS,
+  DEPOSIT_MODE_SEGMENT_ACTIVE_CLASS,
+  DEPOSIT_MODE_SEGMENT_INACTIVE_CLASS,
+  DEPOSIT_MODE_SEGMENT_TRACK_CLASS,
   DEPOSIT_SECTION_LABEL_CLASS,
   DEPOSIT_SEGMENT_STACK_CLASS,
   DEPOSIT_SEGMENT_TRACK_CLASS,
@@ -687,13 +690,15 @@ export function AnchorDepositWithdrawModalView(
                       aria-hidden={activeTab !== "deposit" || flowPage !== 1}
                     >
                     {!isDirectPeggedDeposit || useDepositCollateralSegment ? (
-                      <div className={DEPOSIT_SEGMENT_STACK_CLASS}>
+                      <div className="mb-2.5 space-y-2">
                     {!isDirectPeggedDeposit ? (
-                      <div
-                        className={DEPOSIT_SEGMENT_TRACK_CLASS}
-                        role="tablist"
-                        aria-label="Mint flow"
-                      >
+                      <div className="space-y-1">
+                        <p className={DEPOSIT_SECTION_LABEL_CLASS}>Mode</p>
+                        <div
+                          className={DEPOSIT_MODE_SEGMENT_TRACK_CLASS}
+                          role="tablist"
+                          aria-label="Mint flow"
+                        >
                         {(
                           [
                             { id: "deposit" as const, label: "Deposit" },
@@ -709,25 +714,28 @@ export function AnchorDepositWithdrawModalView(
                               aria-selected={active}
                               disabled={isProcessing}
                               onClick={() => handleBuyFlowModeChange(id)}
-                              className={`flex flex-1 items-center justify-center rounded-md py-1 text-xs font-semibold transition disabled:opacity-50 ${
+                              className={`flex flex-1 items-center justify-center rounded-md py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
                                 active
-                                  ? "bg-white/90 backdrop-blur-sm text-[#1E4775] shadow-sm"
-                                  : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
+                                  ? DEPOSIT_MODE_SEGMENT_ACTIVE_CLASS
+                                  : DEPOSIT_MODE_SEGMENT_INACTIVE_CLASS
                               }`}
                             >
                               {label}
                             </button>
                           );
                         })}
+                        </div>
                       </div>
                     ) : null}
 
                     {useDepositCollateralSegment ? (
-                      <div
-                        className={DEPOSIT_SEGMENT_TRACK_CLASS}
-                        role="tablist"
-                        aria-label="Pay with"
-                      >
+                      <div className="space-y-1">
+                        <p className={DEPOSIT_SECTION_LABEL_CLASS}>Pay with</p>
+                        <div
+                          className={DEPOSIT_SEGMENT_TRACK_CLASS}
+                          role="tablist"
+                          aria-label="Pay with"
+                        >
                         {depositAssetSegmentOptions.map((symbol) => {
                           const active =
                             selectedDepositAsset?.toUpperCase() ===
@@ -756,6 +764,7 @@ export function AnchorDepositWithdrawModalView(
                             </button>
                           );
                         })}
+                        </div>
                       </div>
                     ) : null}
                       </div>
@@ -763,6 +772,7 @@ export function AnchorDepositWithdrawModalView(
 
                     <DepositAmountCard
                       showTokenSelector={!useDepositCollateralSegment}
+                      amountSectionLabel="Amount"
                       tokenSelector={{
                         value: selectedDepositAsset ?? "",
                         onChange: (newAsset) => {
