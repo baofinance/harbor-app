@@ -42,6 +42,11 @@ function formatFee(fee: number | undefined): string {
   return `${fee.toFixed(2)}%`;
 }
 
+const ROUTE_TAG_BASE =
+  "rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide";
+const ROUTE_TAG_PREFERRED = `${ROUTE_TAG_BASE} bg-harbor-coral/15 text-[#D45A4A]`;
+const ROUTE_TAG_BEST = `${ROUTE_TAG_BASE} bg-[#4A9784]/15 text-[#2f6f5f]`;
+
 export function AnchorRedeemRouteStep({
   options,
   selectedMarketId,
@@ -59,10 +64,13 @@ export function AnchorRedeemRouteStep({
     <div className="space-y-2.5">
       <div className="space-y-1">
         <p className={DEPOSIT_SECTION_LABEL_CLASS}>Redeem to</p>
-        <p className="px-0.5 text-[11px] leading-snug text-[#1E4775]/55">
-          Choose which collateral market to redeem into. Auto picks the best
-          available route.
-        </p>
+        <div className="flex flex-wrap items-center gap-1.5 px-0.5">
+          <p className="text-[11px] leading-snug text-[#1E4775]/55">
+            Choose which collateral market to redeem into.
+          </p>
+          <span className={ROUTE_TAG_PREFERRED}>Harbor Route</span>
+          <span className={ROUTE_TAG_BEST}>Best</span>
+        </div>
       </div>
 
       <button
@@ -77,11 +85,14 @@ export function AnchorRedeemRouteStep({
       >
         <div className="min-w-0">
           <p className="text-sm font-semibold text-[#1E4775]">Auto</p>
-          <p className="truncate text-[11px] text-[#1E4775]/55">
-            {recommended
-              ? `Best available · ${recommended.collateralSymbol}`
-              : "Best uncapped route"}
-          </p>
+          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
+            <span className={ROUTE_TAG_PREFERRED}>Harbor Route</span>
+            <span className="truncate text-[11px] text-[#1E4775]/55">
+              {recommended
+                ? recommended.collateralSymbol
+                : "Uncapped route"}
+            </span>
+          </div>
         </div>
         {recommended?.feePercent !== undefined ? (
           <span className="shrink-0 rounded-full bg-[#1E4775]/8 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[#1E4775]/75">
@@ -134,9 +145,7 @@ export function AnchorRedeemRouteStep({
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
                       {option.isBest ? (
-                        <span className="rounded-full bg-[#4A9784]/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#2f6f5f]">
-                          Best
-                        </span>
+                        <span className={ROUTE_TAG_BEST}>Best</span>
                       ) : null}
                       {option.isCapped ? (
                         <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-800">

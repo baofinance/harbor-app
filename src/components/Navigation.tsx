@@ -72,7 +72,7 @@ export default function Example() {
     ) : null}
     <Disclosure<"nav">
       as="nav"
-      className={`app-nav-shell sticky top-0 z-50 w-full max-w-[1300px] shrink-0 ${navBgClass} after:pointer-events-none mx-auto mb-4 after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/20 sm:mb-6`}
+      className={`app-nav-shell sticky top-0 z-[60] w-full max-w-[1300px] shrink-0 ${navBgClass} after:pointer-events-none mx-auto mb-4 after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/20 sm:mb-6`}
     >
       {/* Match index pages: `max-w-[1300px]` + `px-4 sm:px-10` on main */}
       <div className="w-full px-4 sm:px-10">
@@ -217,7 +217,7 @@ export default function Example() {
         </div>
       </div>
 
-      <DisclosurePanel className={`sm:hidden fixed inset-0 z-50 ${navBgClass} overflow-y-auto`} style={{ height: '100dvh', maxHeight: '100dvh' }}>
+      <DisclosurePanel className={`sm:hidden fixed inset-0 z-[60] ${navBgClass} overflow-y-auto`} style={{ height: '100dvh', maxHeight: '100dvh' }}>
         <div className="flex flex-col min-h-full px-6 py-4 pb-24 space-y-2">
           <div className="flex justify-end mb-2 flex-shrink-0">
             <DisclosureButton className={`inline-flex items-center justify-center rounded-full ${HARBOR_NAV_MOBILE_MENU_BUTTON_CLASS}`}>

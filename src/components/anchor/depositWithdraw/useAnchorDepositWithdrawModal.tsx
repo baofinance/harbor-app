@@ -12030,9 +12030,9 @@ export function useAnchorDepositWithdrawModal({
     }
 
     const showSellFee =
-      (isRedeemConfirmFlowPage ||
-        isRedeemRouteFlowPage ||
+      (isRedeemRouteFlowPage ||
         isRedeemReviewFlowPage ||
+        (!needsRedeemRouteStep && isRedeemConfirmFlowPage) ||
         activeTab === "sell") &&
       (activeTab === "sell" || !withdrawOnly);
     const showEarlyFee = !!selectedPoolEarlyWithdrawFee;
@@ -12130,6 +12130,7 @@ export function useAnchorDepositWithdrawModal({
     isRedeemRouteFlowPage,
     isRedeemConfirmFlowPage,
     isRedeemReviewFlowPage,
+    needsRedeemRouteStep,
     withdrawOnly,
     selectedPoolEarlyWithdrawFee,
     redeemInputAmount,
@@ -12322,24 +12323,31 @@ export function useAnchorDepositWithdrawModal({
       const isPoolWithdrawAndRedeem =
         hasPoolSell && isImmediateWithdrawal && !withdrawOnly;
 
-      // Withdraw + redeem: always show both step fees so the split is obvious.
-      if (isPoolWithdrawAndRedeem) {
+      // Withdraw fee is chosen on Confirm (speed / early exit) — keep it on later steps.
+      const showWithdrawFeeInOverview =
+        isPoolWithdrawAndRedeem || !!earlyFee;
+
+      if (showWithdrawFeeInOverview) {
         overviewFees.push({
           label: "Withdraw fee",
-          hint: earlyWithdraw1PctEnabled ? "fast exit" : "pool exit",
+          hint: isPoolWithdrawAndRedeem
+            ? earlyWithdraw1PctEnabled
+              ? "fast exit"
+              : "pool exit"
+            : undefined,
           percentage: earlyFee?.feePercent ?? 0,
-          usd: earlyFeeUsd > 0 ? earlyFeeUsd : undefined,
-        });
-      } else if (earlyFee) {
-        overviewFees.push({
-          label: "Withdraw fee",
-          percentage: earlyFee.feePercent,
           usd: earlyFeeUsd > 0 ? earlyFeeUsd : undefined,
         });
       }
 
+      // Redeem fee depends on collateral route — wait until route is picked (or no choice).
+      const showRedeemFeeInOverview =
+        !needsRedeemRouteStep ||
+        isRedeemRouteFlowPage ||
+        isRedeemReviewFlowPage;
+
       const redeemFeePct = redeemDryRun.feePercentage;
-      if (redeemFeePct !== undefined) {
+      if (showRedeemFeeInOverview && redeemFeePct !== undefined) {
         const sellFeeAmount = Number(formatEther(redeemDryRun.fee));
         const sellFeeUsd = amountToUSD(
           sellFeeAmount,
@@ -12389,6 +12397,7 @@ export function useAnchorDepositWithdrawModal({
       isRedeemRouteFlowPage,
       isRedeemConfirmFlowPage,
       isRedeemReviewFlowPage,
+      needsRedeemRouteStep,
       step,
       withdrawOnly,
       sellRedeemSource,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -116,10 +116,18 @@ export type PegTargetUsdChartProps = {
   className?: string;
 };
 
+/** Need at least two oracle rounds for a meaningful line chart. */
+const MIN_CHART_POINTS = 2;
+
 /** Single-series peg asset vs USD chart (Chainlink round history + live spot). */
 export function PegTargetUsdChart({ asset, className = "" }: PegTargetUsdChartProps) {
   const [timeRange, setTimeRange] = useState<PegTargetChartTimeRange>("1W");
   const pegTargetPrices = usePegTargetPrices();
+
+  // Market switches should always land on 1W (not a sparse EUR 1D view).
+  useEffect(() => {
+    setTimeRange("1W");
+  }, [asset]);
 
   const chartSinceTimestamp = useMemo(
     () => pegChartFetchSinceTimestamp(timeRange),
@@ -148,6 +156,19 @@ export function PegTargetUsdChart({ asset, className = "" }: PegTargetUsdChartPr
     () => filterPegChartPointsByRange(priceHistory, timeRange),
     [priceHistory, timeRange],
   );
+
+  const oneDayPointCount = useMemo(
+    () => filterPegChartPointsByRange(priceHistory, "1D").length,
+    [priceHistory],
+  );
+  const isOneDayDisabled =
+    !isLoading && oneDayPointCount < MIN_CHART_POINTS;
+
+  useEffect(() => {
+    if (isOneDayDisabled && timeRange === "1D") {
+      setTimeRange("1W");
+    }
+  }, [isOneDayDisabled, timeRange]);
 
   const chartData = useMemo<ChartRow[]>(
     () =>
@@ -221,20 +242,29 @@ export function PegTargetUsdChart({ asset, className = "" }: PegTargetUsdChartPr
       <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2">
         <p className="text-[10px] text-[#1E4775]/45">Chainlink oracle history</p>
         <div className="flex flex-wrap justify-end gap-1.5">
-          {PEG_TARGET_CHART_TIME_RANGES.map((range) => (
-            <button
-              key={range}
-              type="button"
-              onClick={() => setTimeRange(range)}
-              className={`rounded-md px-2 py-1 text-xs transition-colors ${
-                timeRange === range
-                  ? SAIL_CHART_TOGGLE_ACTIVE_CLASS
-                  : SAIL_CHART_TOGGLE_IDLE_CLASS
-              }`}
-            >
-              {range}
-            </button>
-          ))}
+          {PEG_TARGET_CHART_TIME_RANGES.map((range) => {
+            const disabled = range === "1D" && isOneDayDisabled;
+            return (
+              <button
+                key={range}
+                type="button"
+                disabled={disabled}
+                title={
+                  disabled
+                    ? "Not enough oracle updates in the last day"
+                    : undefined
+                }
+                onClick={() => setTimeRange(range)}
+                className={`rounded-md px-2 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#1E4775]/15 disabled:hover:bg-white/60 ${
+                  timeRange === range && !disabled
+                    ? SAIL_CHART_TOGGLE_ACTIVE_CLASS
+                    : SAIL_CHART_TOGGLE_IDLE_CLASS
+                }`}
+              >
+                {range}
+              </button>
+            );
+          })}
         </div>
       </div>
 
