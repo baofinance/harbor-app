@@ -11,6 +11,7 @@ export const DEPOSIT_MODAL_STEP = {
   redeemCollateral: "Sell for collateral",
   withdrawCollateralAmount: "Withdraw Collateral & Amount",
   redeemCollateralAmount: "Sell Token & Amount",
+  review: "Review",
 } as const;
 
 export function genesisDepositFlowParts(): string[] {
@@ -29,10 +30,22 @@ export function sailRedeemFlowParts(): string[] {
   return ["Amount"];
 }
 
-/** Simple-mode deposit: mint then deposit (unless mint-only). */
-export function anchorSimpleDepositFlowParts(mintOnly: boolean): string[] {
-  if (mintOnly) return ["Mint"];
-  return ["Mint", DEPOSIT_MODAL_STEP.deposit];
+/**
+ * Simple-mode deposit crumbs.
+ * Mint-only: Mint → Review
+ * Mint + deposit: Mint → Deposit → Review
+ */
+export function anchorSimpleDepositFlowParts(
+  mintOnly: boolean,
+  flowPage: 1 | 2 | 3 = 1,
+): string[] {
+  if (mintOnly) {
+    if (flowPage === 1) return ["Mint"];
+    return ["Mint", DEPOSIT_MODAL_STEP.review];
+  }
+  if (flowPage === 1) return ["Mint"];
+  if (flowPage === 2) return ["Mint", DEPOSIT_MODAL_STEP.deposit];
+  return ["Mint", DEPOSIT_MODAL_STEP.deposit, DEPOSIT_MODAL_STEP.review];
 }
 
 /** Simple-mode withdraw: withdraw then redeem (unless withdraw-only). */
@@ -41,9 +54,12 @@ export function anchorSimpleWithdrawFlowParts(withdrawOnly: boolean): string[] {
   return [DEPOSIT_MODAL_STEP.withdraw, "Redeem"];
 }
 
-/** Position-first Earn redeem crumbs. */
+/**
+ * Position-first Earn redeem crumbs.
+ * Always ends with Review. Optional Redeem to sits between Confirm and Review.
+ */
 export function anchorSimpleRedeemPositionFlowParts(
-  flowPage: 1 | 2 | 3,
+  flowPage: 1 | 2 | 3 | 4,
   options: {
     confirmLabel?: "Redeem" | "Request" | "Confirm";
     includeRouteStep?: boolean;
@@ -54,13 +70,21 @@ export function anchorSimpleRedeemPositionFlowParts(
 
   if (flowPage === 1) return ["Choose position"];
 
-  // Amount / confirm comes before optional multi-market "Redeem to".
   if (includeRouteStep) {
     if (flowPage === 2) return ["Choose position", confirmLabel];
-    return ["Choose position", confirmLabel, "Redeem to"];
+    if (flowPage === 3) {
+      return ["Choose position", confirmLabel, "Redeem to"];
+    }
+    return [
+      "Choose position",
+      confirmLabel,
+      "Redeem to",
+      DEPOSIT_MODAL_STEP.review,
+    ];
   }
 
-  return ["Choose position", confirmLabel];
+  if (flowPage === 2) return ["Choose position", confirmLabel];
+  return ["Choose position", confirmLabel, DEPOSIT_MODAL_STEP.review];
 }
 
 /** Simple-mode redeem-only: wallet redeem. */

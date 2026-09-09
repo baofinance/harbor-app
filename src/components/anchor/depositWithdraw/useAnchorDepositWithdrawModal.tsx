@@ -6,6 +6,7 @@ import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
 import {
   formatTokenAmount18,
   formatUsd18,
+  formatUSD,
 } from "@/utils/formatters";
 import { amountToUSD, getTokenPriceUSD } from "@/utils/tokenPriceToUSD";
 import { REWARD_TOKEN_ADDRESSES } from "@/config/chainlink";
@@ -130,6 +131,7 @@ import {
 import type { DepositPrimaryAction } from "@/utils/depositFormState";
 import {
   mintValidationBlocksSubmit,
+  mintValidationCtaLabel,
   parseMintDryRunResult,
   resolveMintValidation,
 } from "@/utils/anchorMintValidation";
@@ -512,9 +514,9 @@ export function useAnchorDepositWithdrawModal({
     null
   );
 
-  // Step tracking for simple mode deposit: 1 amount, 2 deposit.
-  // Position-first redeem: 1 choose position, 2 redeem route (optional), 2/3 confirm.
-  type FlowPage = 1 | 2 | 3;
+  // Step tracking: mint 1 amount / 2 deposit or review / 3 review;
+  // redeem 1 position / 2 confirm / 3 route or review / 4 review.
+  type FlowPage = 1 | 2 | 3 | 4;
   const [flowPage, setFlowPage] = useState<FlowPage>(1);
   const [selectedRedeemPositionKey, setSelectedRedeemPositionKey] = useState<
     string | null
@@ -4431,8 +4433,8 @@ export function useAnchorDepositWithdrawModal({
   );
 
   const simpleDepositFlowParts = useMemo(
-    () => anchorSimpleDepositFlowParts(mintOnly),
-    [mintOnly],
+    () => anchorSimpleDepositFlowParts(mintOnly, flowPage as 1 | 2 | 3),
+    [mintOnly, flowPage],
   );
 
   const poolSellAmountWei = useMemo(() => {
@@ -5059,9 +5061,14 @@ export function useAnchorDepositWithdrawModal({
     (index: number) => {
       const targetPage = (index + 1) as FlowPage;
       if (targetPage >= flowPage) return;
-      leaveRewardTokenStepToAmount();
+      if (targetPage === 1) {
+        leaveRewardTokenStepToAmount();
+        return;
+      }
+      // Stay on deposit path without clearing amount when returning to page 2.
+      goToFlowPage(targetPage);
     },
-    [flowPage],
+    [flowPage, goToFlowPage],
   );
 
   const handleWithdrawFlowStepClick = useCallback(
@@ -5095,13 +5102,18 @@ export function useAnchorDepositWithdrawModal({
 
   const handleDepositFlowBack = useCallback(() => {
     if (flowPage <= 1) return;
-    leaveRewardTokenStepToAmount();
-  }, [flowPage]);
+    if (flowPage === 2) {
+      leaveRewardTokenStepToAmount();
+      return;
+    }
+    // Review → Deposit (mint+deposit) or amount already handled above for mint-only.
+    goToFlowPage((flowPage - 1) as FlowPage);
+  }, [flowPage, goToFlowPage]);
 
   const handleWithdrawFlowBack = useCallback(() => {
     if (flowPage <= 1) return;
-    if (flowPage === 3) {
-      goToFlowPage(2);
+    if (flowPage > 2) {
+      goToFlowPage((flowPage - 1) as FlowPage);
       return;
     }
     setSelectedRedeemPositionKey(null);
@@ -5909,13 +5921,30 @@ export function useAnchorDepositWithdrawModal({
     simpleMode && !!selectedRedeemPosition && flowPage === 2;
   const isRedeemRouteFlowPage =
     simpleMode && needsRedeemRouteStep && flowPage === 3;
+  const isRedeemReviewFlowPage =
+    simpleMode &&
+    !!selectedRedeemPosition &&
+    (needsRedeemRouteStep ? flowPage === 4 : flowPage === 3);
 
-  // Drop the route page when it is no longer needed (e.g. free request / withdraw-only).
+  const isMintReviewFlowPage =
+    simpleMode &&
+    activeTab === "deposit" &&
+    (mintOnly ? flowPage === 2 : flowPage === 3);
+
+  // Drop the route/review pages when route is no longer needed.
   useEffect(() => {
-    if (!needsRedeemRouteStep && flowPage === 3) {
-      setFlowPage(2);
+    if (!needsRedeemRouteStep && flowPage === 4) {
+      setFlowPage(3);
     }
   }, [needsRedeemRouteStep, flowPage]);
+
+  // Mint-only collapses deposit page; clamp review to page 2.
+  useEffect(() => {
+    if (!simpleMode || activeTab !== "deposit") return;
+    if (mintOnly && flowPage > 2) {
+      setFlowPage(2);
+    }
+  }, [simpleMode, activeTab, mintOnly, flowPage]);
 
   const simpleWithdrawFlowParts = useMemo(() => {
     if (!simpleMode) return anchorSimpleWithdrawFlowParts(withdrawOnly);
@@ -11363,7 +11392,8 @@ export function useAnchorDepositWithdrawModal({
       return;
     }
     if (mintOnly) {
-      handleMint();
+      // Mint-only: amount → Review (page 2)
+      setFlowPage(2);
       return;
     }
     if (rewardTokenOptions.length === 1) {
@@ -11379,7 +11409,6 @@ export function useAnchorDepositWithdrawModal({
     mintValidation,
     mintOnly,
     rewardTokenOptions,
-    handleMint,
     handleAction,
   ]);
 
@@ -11434,8 +11463,22 @@ export function useAnchorDepositWithdrawModal({
     }
     setMintOnly(false);
     setDepositInStabilityPool(true);
-    handleMint();
+    // Deposit page → Review
+    setFlowPage(3);
+    setStep("input");
+    setError(null);
   }, [step, handleMint, mintValidation]);
+
+  const handleContinueToMintReview = useCallback(() => {
+    if (mintValidationBlocksSubmit(mintValidation)) return;
+    if (mintOnly) {
+      setFlowPage(2);
+    } else {
+      setFlowPage(3);
+    }
+    setStep("input");
+    setError(null);
+  }, [mintValidation, mintOnly]);
 
   const hasValidWithdrawSelection = useMemo(() => {
     if (
@@ -11640,39 +11683,64 @@ export function useAnchorDepositWithdrawModal({
     setError(null);
   }, [isRedeemConfirmFlowPage, needsRedeemRouteStep]);
 
+  const handleContinueToRedeemReview = useCallback(() => {
+    if (needsRedeemRouteStep) {
+      if (!isRedeemRouteFlowPage) return;
+      setFlowPage(4);
+    } else {
+      if (!isRedeemConfirmFlowPage) return;
+      setFlowPage(3);
+    }
+    setStep("input");
+    setError(null);
+  }, [
+    needsRedeemRouteStep,
+    isRedeemRouteFlowPage,
+    isRedeemConfirmFlowPage,
+  ]);
+
+  const mintReviewPrimaryAction = useMemo((): DepositPrimaryAction => {
+    if (step === "error") return { kind: "retry" };
+    if (!isConnected) return { kind: "connect" };
+    if (mintValidationBlocksSubmit(mintValidation)) {
+      return {
+        kind: "enter_amount",
+        label: mintValidationCtaLabel(mintValidation) ?? "Mint unavailable",
+      };
+    }
+    if (isDirectPeggedDeposit) {
+      return { kind: "submit", label: "Deposit", variant: "mint" };
+    }
+    if (mintOnly || !selectedStabilityPool) {
+      return { kind: "submit", label: "Mint", variant: "mint" };
+    }
+    return { kind: "submit", label: "Mint & Deposit", variant: "mint" };
+  }, [
+    step,
+    isConnected,
+    mintValidation,
+    isDirectPeggedDeposit,
+    mintOnly,
+    selectedStabilityPool,
+  ]);
+
   const withdrawPrimaryAction = useMemo((): DepositPrimaryAction => {
     if (step === "error") return { kind: "retry" };
     if (!isConnected) return { kind: "connect" };
 
-    // Amount / confirm step — Continue into route when multi-market redeem applies.
-    if (isRedeemConfirmFlowPage) {
+    // Final review — actual submit labels
+    if (isRedeemReviewFlowPage) {
       if (redeemStepActionKind === "request" && !earlyWithdraw1PctEnabled) {
-        const pendingLabel =
-          selectedRedeemPositionDisplay?.kind === "pool" &&
-          selectedRedeemPositionDisplay.requestStatus?.state === "pending"
-            ? selectedRedeemPositionDisplay.requestStatus.label
-            : null;
-        if (pendingLabel) {
-          return { kind: "enter_amount", label: pendingLabel };
-        }
         return {
           kind: "submit",
           label: "Request withdrawal",
           variant: "navy",
         };
       }
-
-      const amountOk =
-        !!redeemStepAmountValue && parseFloat(redeemStepAmountValue) > 0;
-      if (!amountOk) {
-        return { kind: "enter_amount", label: "Select amount" };
-      }
-
-      if (needsRedeemRouteStep) {
-        return { kind: "submit", label: "Continue", variant: "navy" };
-      }
-
-      if (redeemStepActionKind === "withdrawAndRedeem" || earlyWithdraw1PctEnabled) {
+      if (
+        redeemStepActionKind === "withdrawAndRedeem" ||
+        earlyWithdraw1PctEnabled
+      ) {
         if (withdrawOnly) {
           return {
             kind: "submit",
@@ -11690,29 +11758,41 @@ export function useAnchorDepositWithdrawModal({
           variant: "navy",
         };
       }
-
       return { kind: "submit", label: "Redeem", variant: "navy" };
     }
 
-    // Multi-market route picker — final submit after amount is already chosen.
-    if (isRedeemRouteFlowPage) {
+    // Amount / confirm — continue only (never submit)
+    if (isRedeemConfirmFlowPage) {
+      if (redeemStepActionKind === "request" && !earlyWithdraw1PctEnabled) {
+        const pendingLabel =
+          selectedRedeemPositionDisplay?.kind === "pool" &&
+          selectedRedeemPositionDisplay.requestStatus?.state === "pending"
+            ? selectedRedeemPositionDisplay.requestStatus.label
+            : null;
+        if (pendingLabel) {
+          return { kind: "enter_amount", label: pendingLabel };
+        }
+        // Request still goes through Review
+        return { kind: "submit", label: "Continue", variant: "navy" };
+      }
+
       const amountOk =
         !!redeemStepAmountValue && parseFloat(redeemStepAmountValue) > 0;
       if (!amountOk) {
         return { kind: "enter_amount", label: "Select amount" };
       }
 
-      if (redeemStepActionKind === "withdrawAndRedeem" || earlyWithdraw1PctEnabled) {
-        return {
-          kind: "submit",
-          label: earlyWithdraw1PctEnabled
-            ? "Withdraw & Redeem · 1% fee"
-            : "Withdraw & Redeem",
-          variant: "navy",
-        };
-      }
+      return { kind: "submit", label: "Continue", variant: "navy" };
+    }
 
-      return { kind: "submit", label: "Redeem", variant: "navy" };
+    // Route picker — continue to Review
+    if (isRedeemRouteFlowPage) {
+      const amountOk =
+        !!redeemStepAmountValue && parseFloat(redeemStepAmountValue) > 0;
+      if (!amountOk) {
+        return { kind: "enter_amount", label: "Select amount" };
+      }
+      return { kind: "submit", label: "Continue", variant: "navy" };
     }
 
     return resolveAnchorWithdrawPrimaryAction({
@@ -11723,9 +11803,9 @@ export function useAnchorDepositWithdrawModal({
   }, [
     step,
     isConnected,
+    isRedeemReviewFlowPage,
     isRedeemConfirmFlowPage,
     isRedeemRouteFlowPage,
-    needsRedeemRouteStep,
     redeemStepActionKind,
     earlyWithdraw1PctEnabled,
     selectedRedeemPositionDisplay,
@@ -11756,7 +11836,9 @@ export function useAnchorDepositWithdrawModal({
   const showDepositBuyOverview =
     simpleMode &&
     activeTab === "deposit" &&
-    (flowPage === 1 || (flowPage === 2 && !mintOnly));
+    (flowPage === 1 ||
+      (flowPage === 2 && !mintOnly) ||
+      isMintReviewFlowPage);
 
   const depositBuyOverview = useMemo(() => {
     if (!showDepositBuyOverview) return null;
@@ -11948,7 +12030,10 @@ export function useAnchorDepositWithdrawModal({
     }
 
     const showSellFee =
-      (isRedeemConfirmFlowPage || isRedeemRouteFlowPage || activeTab === "sell") &&
+      (isRedeemConfirmFlowPage ||
+        isRedeemRouteFlowPage ||
+        isRedeemReviewFlowPage ||
+        activeTab === "sell") &&
       (activeTab === "sell" || !withdrawOnly);
     const showEarlyFee = !!selectedPoolEarlyWithdrawFee;
 
@@ -12044,6 +12129,7 @@ export function useAnchorDepositWithdrawModal({
     flowPage,
     isRedeemRouteFlowPage,
     isRedeemConfirmFlowPage,
+    isRedeemReviewFlowPage,
     withdrawOnly,
     selectedPoolEarlyWithdrawFee,
     redeemInputAmount,
@@ -12063,7 +12149,8 @@ export function useAnchorDepositWithdrawModal({
       if (flowPage === 1) {
         return null;
       }
-      if (!isRedeemConfirmFlowPage && !isRedeemRouteFlowPage) return null;
+      if (!isRedeemConfirmFlowPage && !isRedeemRouteFlowPage && !isRedeemReviewFlowPage)
+        return null;
       if (step !== "input" && step !== "error") return null;
 
       // Request-only: info box owns the key timing — skip flat overview duplicate
@@ -12301,6 +12388,7 @@ export function useAnchorDepositWithdrawModal({
       flowPage,
       isRedeemRouteFlowPage,
       isRedeemConfirmFlowPage,
+      isRedeemReviewFlowPage,
       step,
       withdrawOnly,
       sellRedeemSource,
@@ -12324,6 +12412,265 @@ export function useAnchorDepositWithdrawModal({
       redeemStepActionKind,
       earlyWithdraw1PctEnabled,
     ]);
+
+  const mintReviewModel = useMemo(() => {
+    const details: Array<{ label: string; value: string; hint?: string }> = [];
+    const steps: string[] = [];
+    const paySym = selectedDepositAsset || collateralSymbol;
+    const payAmt =
+      amount && parseFloat(amount) > 0 ? parseFloat(amount).toFixed(4) : "—";
+    const payUsd =
+      amount && parseFloat(amount) > 0 && depositTokenPriceUSD > 0
+        ? formatUSD(parseFloat(amount) * depositTokenPriceUSD, {
+            compact: false,
+          })
+        : null;
+
+    details.push({
+      label: "You pay",
+      value: `${payAmt} ${paySym}`,
+      hint: payUsd ?? undefined,
+    });
+
+    if (anyTokenDeposit.needsSwap) {
+      const target =
+        anyTokenDeposit.swapTargetToken === "ETH" ? "ETH" : "USDC";
+      steps.push(`Swap ${paySym} → ${target}`);
+      details.push({
+        label: "Swap",
+        value: `${paySym} → ${target} → ${activeWrappedCollateralSymbol || "collateral"}`,
+      });
+    }
+
+    if (!isDirectPeggedDeposit) {
+      steps.push(
+        anyTokenDeposit.needsSwap
+          ? `Mint ${peggedTokenSymbol}`
+          : `Mint ${peggedTokenSymbol} from ${paySym}`,
+      );
+    }
+
+    const receiveAmt =
+      expectedMintOutput && expectedMintOutput > 0n
+        ? Number(formatEther(expectedMintOutput)).toFixed(4)
+        : isDirectPeggedDeposit && amount && parseFloat(amount) > 0
+          ? parseFloat(amount).toFixed(4)
+          : null;
+    const peggedPriceUSD =
+      peggedTokenPriceUsdWei > 0n
+        ? Number(formatUnits(peggedTokenPriceUsdWei, 18))
+        : 0;
+    const receiveUsd =
+      receiveAmt && peggedPriceUSD > 0
+        ? formatUSD(parseFloat(receiveAmt) * peggedPriceUSD, { compact: false })
+        : null;
+
+    details.push({
+      label: "You receive",
+      value: receiveAmt ? `${receiveAmt} ${peggedTokenSymbol}` : "—",
+      hint: receiveUsd ?? undefined,
+    });
+
+    if (mintOnly || !selectedStabilityPool) {
+      details.push({ label: "Destination", value: "Wallet" });
+    } else {
+      const pool = filteredPools.find(
+        (p) =>
+          p.marketId === selectedStabilityPool.marketId &&
+          p.poolType === selectedStabilityPool.poolType,
+      );
+      const poolLabel =
+        selectedStabilityPool.poolType === "collateral"
+          ? `Collateral${selectedRewardToken ? ` · ${selectedRewardToken}` : ""}`
+          : "Sail";
+      const marketName =
+        marketsForToken.find((m) => m.marketId === selectedStabilityPool.marketId)
+          ?.market?.name || selectedStabilityPool.marketId;
+      details.push({
+        label: "Deposit to",
+        value: `${poolLabel} · ${marketName}`,
+        hint:
+          pool?.apr !== undefined && !Number.isNaN(pool.apr)
+            ? `APR ${formatAPR(pool.apr)}`
+            : undefined,
+      });
+      steps.push(
+        selectedStabilityPool.poolType === "sail"
+          ? "Deposit to Sail pool"
+          : "Deposit to Collateral pool",
+      );
+    }
+
+    if (feePercentage !== undefined) {
+      details.push({
+        label: "Mint fee",
+        value: `${feePercentage.toFixed(2)}%`,
+      });
+    }
+
+    // Ensure at least one step label for single-action paths
+    if (steps.length === 0) {
+      steps.push(
+        isDirectPeggedDeposit
+          ? "Deposit to stability pool"
+          : `Mint ${peggedTokenSymbol}`,
+      );
+    }
+
+    return { details, steps };
+  }, [
+    selectedDepositAsset,
+    collateralSymbol,
+    amount,
+    depositTokenPriceUSD,
+    anyTokenDeposit.needsSwap,
+    anyTokenDeposit.swapTargetToken,
+    activeWrappedCollateralSymbol,
+    isDirectPeggedDeposit,
+    peggedTokenSymbol,
+    expectedMintOutput,
+    peggedTokenPriceUsdWei,
+    mintOnly,
+    selectedStabilityPool,
+    filteredPools,
+    selectedRewardToken,
+    marketsForToken,
+    feePercentage,
+  ]);
+
+  const redeemReviewModel = useMemo(() => {
+    const details: Array<{ label: string; value: string; hint?: string }> = [];
+    const steps: string[] = [];
+
+    const fromLabel =
+      selectedRedeemPositionDisplay?.kind === "wallet"
+        ? "Wallet"
+        : selectedRedeemPositionDisplay?.kind === "pool"
+          ? selectedRedeemPositionDisplay.poolType === "collateral"
+            ? "Collateral pool"
+            : "Sail pool"
+          : "Position";
+    const amt =
+      redeemStepAmountValue && parseFloat(redeemStepAmountValue) > 0
+        ? parseFloat(redeemStepAmountValue).toFixed(4)
+        : redeemStepActionKind === "request"
+          ? "Full position"
+          : "—";
+
+    details.push({
+      label: "From",
+      value: `${amt} ${peggedTokenSymbol}`,
+      hint: fromLabel,
+    });
+
+    if (redeemStepActionKind === "request" && !earlyWithdraw1PctEnabled) {
+      details.push({
+        label: "Action",
+        value: "Request withdrawal",
+        hint: "Fee-free window later",
+      });
+      steps.push("Request withdrawal from stability pool");
+      return { details, steps };
+    }
+
+    if (
+      selectedRedeemPositionDisplay?.kind === "pool" &&
+      (redeemStepActionKind === "withdrawAndRedeem" ||
+        earlyWithdraw1PctEnabled)
+    ) {
+      steps.push(
+        earlyWithdraw1PctEnabled
+          ? "Withdraw from pool (1% fee)"
+          : "Withdraw from pool",
+      );
+      if (withdrawOnly) {
+        details.push({
+          label: "Action",
+          value: earlyWithdraw1PctEnabled
+            ? "Withdraw only · 1% fee"
+            : "Withdraw only",
+        });
+        details.push({
+          label: "You receive",
+          value: `${amt} ${peggedTokenSymbol}`,
+          hint: "To wallet",
+        });
+        return { details, steps };
+      }
+    }
+
+    const route =
+      redeemRouteOptions.find((o) => o.marketId === selectedRedeemMarketId) ||
+      redeemRouteOptions.find((o) => o.marketId === recommendedRedeemMarketId) ||
+      redeemRouteOptions[0];
+
+    if (route) {
+      details.push({
+        label: "Redeem to",
+        value: route.collateralSymbol || route.marketName,
+        hint:
+          redeemMarketSelectionMode === "auto"
+            ? `Auto · ${route.marketName}`
+            : route.marketName,
+      });
+    }
+
+    const receiveAmt =
+      withdrawTransactionOverview?.receiveAmount ??
+      (route?.receiveAmount !== undefined
+        ? route.receiveAmount.toFixed(4)
+        : null);
+    const receiveSym =
+      withdrawTransactionOverview?.receiveSymbol ||
+      route?.collateralSymbol ||
+      "collateral";
+    const receiveUsd =
+      withdrawTransactionOverview?.receiveUsd !== undefined
+        ? formatUSD(withdrawTransactionOverview.receiveUsd, { compact: false })
+        : route?.receiveUsd !== undefined
+          ? formatUSD(route.receiveUsd, { compact: false })
+          : null;
+
+    details.push({
+      label: "You receive",
+      value: receiveAmt ? `${receiveAmt} ${receiveSym}` : `— ${receiveSym}`,
+      hint: receiveUsd ?? undefined,
+    });
+
+    if (!withdrawOnly) {
+      steps.push(`Redeem ${peggedTokenSymbol} → ${receiveSym}`);
+    }
+
+    if (earlyWithdraw1PctEnabled) {
+      details.push({ label: "Withdraw fee", value: "1%" });
+    }
+    if (redeemFeePercentage !== undefined && !withdrawOnly) {
+      details.push({
+        label: "Redeem fee",
+        value: `${redeemFeePercentage.toFixed(2)}%`,
+      });
+    }
+
+    if (steps.length === 0) {
+      steps.push(`Redeem ${peggedTokenSymbol}`);
+    }
+
+    return { details, steps };
+  }, [
+    selectedRedeemPositionDisplay,
+    redeemStepAmountValue,
+    peggedTokenSymbol,
+    redeemStepActionKind,
+    earlyWithdraw1PctEnabled,
+    withdrawOnly,
+    redeemRouteOptions,
+    selectedRedeemMarketId,
+    recommendedRedeemMarketId,
+    redeemMarketSelectionMode,
+    withdrawTransactionOverview,
+    redeemFeePercentage,
+  ]);
+
 
   const getButtonText = () => {
     if (activeTab === "deposit") {
@@ -12630,6 +12977,11 @@ export function useAnchorDepositWithdrawModal({
     needsRedeemRouteStep,
     isRedeemRouteFlowPage,
     isRedeemConfirmFlowPage,
+    isRedeemReviewFlowPage,
+    isMintReviewFlowPage,
+    mintReviewModel,
+    redeemReviewModel,
+    mintReviewPrimaryAction,
     handleSelectRedeemPosition,
     handleBackToRedeemPositions,
     enableRedeemEarlyWithdraw,
@@ -12973,6 +13325,7 @@ export function useAnchorDepositWithdrawModal({
     hasValidWithdrawSelection,
     handleContinueToSell,
     handleContinueToRedeemRoute,
+    handleContinueToRedeemReview,
     handleSellRedeemSourceChange,
     handleSellMarketSelectChange,
     depositPagePrimaryAction,

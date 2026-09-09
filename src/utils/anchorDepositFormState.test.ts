@@ -47,12 +47,12 @@ describe("anchorDepositFormState", () => {
     });
   });
 
-  it("returns mint only label", () => {
+  it("returns continue for mint only on amount step", () => {
     const action = resolveAnchorDepositStep1PrimaryAction({
       ...base,
       mintOnly: true,
     });
-    expect(depositPrimaryActionLabel(action)).toBe("Mint");
+    expect(depositPrimaryActionLabel(action)).toBe("Continue →");
   });
 
   it("disables continue when mint validation is blocked", () => {
@@ -145,9 +145,9 @@ describe("resolveAnchorDepositStep3PrimaryAction", () => {
     isDirectPeggedDeposit: false,
   };
 
-  it("returns mint and deposit when pool selected", () => {
+  it("returns continue when pool selected", () => {
     const action = resolveAnchorDepositStep3PrimaryAction(step3Base);
-    expect(depositPrimaryActionLabel(action)).toBe("Mint & Deposit");
+    expect(depositPrimaryActionLabel(action)).toBe("Continue →");
   });
 
   it("returns select pool when reward token chosen but pool missing", () => {

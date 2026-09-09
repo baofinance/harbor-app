@@ -63,6 +63,7 @@ import { useAnchorDepositWithdrawModal } from "./useAnchorDepositWithdrawModal";
 import { AnchorRedeemPositionList } from "./AnchorRedeemPositionList";
 import { AnchorRedeemPositionStep } from "./AnchorRedeemPositionStep";
 import { AnchorRedeemRouteStep } from "./AnchorRedeemRouteStep";
+import { AnchorFlowReviewStep } from "./AnchorFlowReviewStep";
 
 export type AnchorDepositWithdrawViewModel = ReturnType<
   typeof useAnchorDepositWithdrawModal
@@ -199,6 +200,11 @@ export function AnchorDepositWithdrawModalView(
     needsRedeemRouteStep,
     isRedeemRouteFlowPage,
     isRedeemConfirmFlowPage,
+    isRedeemReviewFlowPage,
+    isMintReviewFlowPage,
+    mintReviewModel,
+    redeemReviewModel,
+    mintReviewPrimaryAction,
     handleSelectRedeemPosition,
     handleBackToRedeemPositions,
     enableRedeemEarlyWithdraw,
@@ -541,6 +547,7 @@ export function AnchorDepositWithdrawModalView(
     hasValidWithdrawSelection,
     handleContinueToSell,
     handleContinueToRedeemRoute,
+    handleContinueToRedeemReview,
     handleSellRedeemSourceChange,
     handleSellMarketSelectChange,
     depositPagePrimaryAction,
@@ -1173,6 +1180,20 @@ export function AnchorDepositWithdrawModalView(
                 </div>
                 ) : null}
 
+                {simpleMode &&
+                activeTab === "deposit" &&
+                isMintReviewFlowPage ? (
+                  <div className={DEPOSIT_SEGMENT_STACK_CLASS}>
+                    <AnchorFlowReviewStep
+                      details={mintReviewModel.details}
+                      steps={mintReviewModel.steps}
+                    />
+                    {error ? (
+                      <ErrorBanner message={error} className="mt-2" />
+                    ) : null}
+                  </div>
+                ) : null}
+
                     <div
                       className={
                         (activeTab === "withdraw" || activeTab === "sell") &&
@@ -1196,6 +1217,11 @@ export function AnchorDepositWithdrawModalView(
                             selectedKey={selectedRedeemPositionKey}
                             disabled={isProcessing}
                             onSelect={handleSelectRedeemPosition}
+                          />
+                        ) : isRedeemReviewFlowPage ? (
+                          <AnchorFlowReviewStep
+                            details={redeemReviewModel.details}
+                            steps={redeemReviewModel.steps}
                           />
                         ) : isRedeemRouteFlowPage ? (
                           <AnchorRedeemRouteStep
@@ -1280,7 +1306,9 @@ export function AnchorDepositWithdrawModalView(
                         activeTab === "deposit"
                           ? flowPage === 1
                             ? step1PrimaryAction
-                            : depositPagePrimaryAction
+                            : isMintReviewFlowPage
+                              ? mintReviewPrimaryAction
+                              : depositPagePrimaryAction
                           : flowPage === 1
                             ? withdrawPage1PrimaryAction
                             : withdrawPrimaryAction
@@ -1289,33 +1317,48 @@ export function AnchorDepositWithdrawModalView(
                         activeTab === "deposit"
                           ? flowPage === 1
                             ? handleContinueStep1
-                            : handleContinueDepositPage
+                            : isMintReviewFlowPage
+                              ? handleMint
+                              : handleContinueDepositPage
                           : flowPage === 1
                             ? withdrawOnly
                               ? handleAction
                               : handleContinueToSell
-                            : isRedeemConfirmFlowPage && needsRedeemRouteStep
-                              ? handleContinueToRedeemRoute
-                              : handleAction
+                            : isRedeemReviewFlowPage
+                              ? handleAction
+                              : isRedeemRouteFlowPage
+                                ? handleContinueToRedeemReview
+                                : isRedeemConfirmFlowPage &&
+                                    needsRedeemRouteStep
+                                  ? handleContinueToRedeemRoute
+                                  : handleContinueToRedeemReview
                       }
                       onRetry={
                         activeTab === "deposit"
                           ? flowPage === 1
                             ? handleContinueStep1
-                            : handleContinueDepositPage
+                            : isMintReviewFlowPage
+                              ? handleMint
+                              : handleContinueDepositPage
                           : flowPage === 1
                             ? withdrawOnly
                               ? handleAction
                               : handleContinueToSell
-                            : isRedeemConfirmFlowPage && needsRedeemRouteStep
-                              ? handleContinueToRedeemRoute
-                              : handleAction
+                            : isRedeemReviewFlowPage
+                              ? handleAction
+                              : isRedeemRouteFlowPage
+                                ? handleContinueToRedeemReview
+                                : isRedeemConfirmFlowPage &&
+                                    needsRedeemRouteStep
+                                  ? handleContinueToRedeemRoute
+                                  : handleContinueToRedeemReview
                       }
                       feeFooter={
                         activeTab === "deposit"
                           ? buyFeeFooter
                           : isRedeemConfirmFlowPage ||
                               isRedeemRouteFlowPage ||
+                              isRedeemReviewFlowPage ||
                               (!simpleMode &&
                                 (flowPage === 2 || activeTab === "sell"))
                             ? withdrawFeeFooter
