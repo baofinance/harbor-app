@@ -1505,10 +1505,10 @@ export function AnchorDepositWithdrawModalView(
                     {/* Transaction Overview - Always show on first step of deposit tab */}
                     {activeTab === "deposit" && !simpleMode && (
                       <div className="mt-2 space-y-2">
-                        <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
+                        <label className="mb-1.5 block text-sm font-bold text-[#1E4775]">
                           Transaction Overview
                         </label>
-                        <div className="p-2.5 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
+                        <div className="rounded-md border border-[#1E4775]/12 bg-white p-2.5">
                           <div className="space-y-2 text-sm">
                             {/* You will receive */}
                             {expectedOutput && amount && parseFloat(amount) > 0 ? (
@@ -1728,7 +1728,7 @@ export function AnchorDepositWithdrawModalView(
                       onClick={() =>
                         setWithdrawOverviewExpanded((prev) => !prev)
                       }
-                      className="flex w-full items-center justify-between text-sm font-semibold text-[#1E4775] mb-1"
+                      className="mb-1 flex w-full items-center justify-between text-sm font-bold text-[#1E4775]"
                       aria-expanded={withdrawOverviewExpanded}
                     >
                       <span>Transaction Overview</span>
@@ -1739,11 +1739,11 @@ export function AnchorDepositWithdrawModalView(
                       )}
                     </button>
                     <div
-                      className={`p-3 rounded-lg border ${
+                      className={`rounded-lg border p-3 ${
                         redeemDryRun?.feePercentage !== undefined &&
                         redeemDryRun?.feePercentage > 2
-                          ? "bg-red-50 border-red-300"
-                          : "bg-[#17395F]/5 border-[#1E4775]/10"
+                          ? "border-red-300 bg-red-50"
+                          : "border-[#1E4775]/12 bg-white"
                       }`}
                     >
                       {(!amount || parseFloat(amount || "0") <= 0) &&

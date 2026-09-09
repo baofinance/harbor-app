@@ -362,10 +362,10 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
       />
 
       <div className="space-y-2 mb-4">
-        <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
+        <label className="mb-1.5 block text-sm font-bold text-[#1E4775]">
           Transaction Overview
         </label>
-        <div className="rounded-md border border-[#1E4775]/10 bg-[#17395F]/5 p-2.5">
+        <div className="rounded-md border border-[#1E4775]/12 bg-white p-2.5">
           {hasWithdrawPreview ? (
             <div className="space-y-2 text-sm">
               <div className="flex justify-between items-baseline">

@@ -2178,10 +2178,10 @@ const successFmt = formatTokenAmount(
 
 {/* Transaction Overview */}
 <div className="space-y-2 mb-4">
-  <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
+  <label className="mb-1.5 block text-sm font-bold text-[#1E4775]">
     Transaction Overview
   </label>
-  <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
+  <div className="rounded-md border border-[#1E4775]/12 bg-white p-3">
     {/* Transaction Preview - Always visible */}
     <div className="space-y-2 text-sm">
  

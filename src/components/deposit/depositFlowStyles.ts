@@ -3,9 +3,9 @@ import { HARBOR_BTN_GLASS_OUTLINE_LIGHT } from "@/components/shared/harborButton
 /** Combined amount input card for deposit / trade flows. */
 export const DEPOSIT_AMOUNT_CARD_CLASS = `rounded-xl border border-[#1E4775]/12 bg-white/70 p-2.5 shadow-sm backdrop-blur-sm`;
 
-/** Transaction overview — quieter than the amount card so the form stays primary. */
+/** Transaction overview — white card for contrast on the frosted modal surface. */
 export const DEPOSIT_OVERVIEW_CARD_CLASS =
-  "rounded-lg bg-[#1E4775]/[0.04] px-3 py-2";
+  "rounded-lg border border-[#1E4775]/12 bg-white px-3 py-2";
 
 /** Vertical gap between sections in Anchor simple-mode deposit / withdraw panels. */
 export const ANCHOR_MODAL_SECTION_GAP = "space-y-2";
@@ -86,7 +86,7 @@ export const ANCHOR_TRANSACTION_OVERVIEW_WRAPPER = "shrink-0";
 
 /** Section title above the overview card. */
 export const ANCHOR_TRANSACTION_OVERVIEW_LABEL =
-  "mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/45";
+  "mb-1 block text-[10px] font-bold uppercase tracking-wide text-[#1E4775]";
 
 /** Inner content stack when overview has receive + fees. */
 export const ANCHOR_TRANSACTION_OVERVIEW_INNER = "space-y-1.5";
@@ -120,7 +120,7 @@ export const SAIL_TRADE_PANEL_GRID_CLASS = DEPOSIT_TRADE_PANEL_GRID_CLASS;
 export const ANCHOR_EMBEDDED_PANEL_HEIGHT = DEPOSIT_EMBEDDED_PANEL_HEIGHT;
 
 export const DEPOSIT_SECTION_LABEL_CLASS =
-  "text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/50";
+  "text-[10px] font-bold uppercase tracking-wide text-[#1E4775]";
 
 /** Shared amount input — matches Sail / deposit card styling. */
 export function depositAmountInputClass(hasError = false): string {
