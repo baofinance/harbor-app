@@ -1283,7 +1283,9 @@ export function AnchorDepositWithdrawModalView(
                   </>
                 }
                 overview={
-                  activeTab === "deposit" ? (
+                  isMintReviewFlowPage || isRedeemReviewFlowPage
+                    ? null
+                    : activeTab === "deposit" ? (
                     <AnchorBuyTransactionOverview
                       {...(depositBuyOverview ?? {
                         receiveAmount: null,
@@ -1354,11 +1356,12 @@ export function AnchorDepositWithdrawModalView(
                                   : handleContinueToRedeemReview
                       }
                       feeFooter={
-                        activeTab === "deposit"
+                        isMintReviewFlowPage || isRedeemReviewFlowPage
+                          ? null
+                          : activeTab === "deposit"
                           ? buyFeeFooter
                           : isRedeemConfirmFlowPage ||
                               isRedeemRouteFlowPage ||
-                              isRedeemReviewFlowPage ||
                               (!simpleMode &&
                                 (flowPage === 2 || activeTab === "sell"))
                             ? withdrawFeeFooter

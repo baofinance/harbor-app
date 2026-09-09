@@ -60,44 +60,71 @@ export function AnchorRedeemRouteStep({
     ? options.find((o) => o.marketId === recommendedMarketId)
     : options.find((o) => o.isBest) ?? options[0];
 
+  const autoReceiveLabel = formatReceive(recommended?.receiveAmount);
+  const autoReceiveUsd =
+    recommended?.receiveUsd !== undefined && recommended.receiveUsd > 0
+      ? formatUSD(recommended.receiveUsd, { compact: false })
+      : null;
+
   return (
     <div className="space-y-2.5">
       <div className="space-y-1">
         <p className={DEPOSIT_SECTION_LABEL_CLASS}>Redeem to</p>
-        <div className="flex flex-wrap items-center gap-1.5 px-0.5">
-          <p className="text-[11px] leading-snug text-[#1E4775]/55">
-            Choose which collateral market to redeem into.
-          </p>
-          <span className={ROUTE_TAG_PREFERRED}>Harbor Route</span>
-          <span className={ROUTE_TAG_BEST}>Best</span>
-        </div>
+        <p className="px-0.5 text-[11px] leading-snug text-[#1E4775]/55">
+          Choose which collateral market to redeem into.
+        </p>
       </div>
 
       <button
         type="button"
         disabled={disabled}
         onClick={onSelectAuto}
-        className={`flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
+        className={`flex w-full flex-col gap-1.5 rounded-xl border px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
           autoMode
             ? "border-[#1E4775]/35 bg-white/95 shadow-sm"
             : "border-[#1E4775]/12 bg-white/70 hover:border-[#1E4775]/22 hover:bg-white/85"
         }`}
       >
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#1E4775]">Auto</p>
-          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            {recommended ? (
+              <TokenLogo
+                symbol={recommended.collateralSymbol}
+                size={18}
+                className="shrink-0"
+              />
+            ) : null}
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-[#1E4775]">
+                Auto
+              </p>
+              <p className="truncate text-[10px] text-[#1E4775]/50">
+                {recommended
+                  ? `${recommended.collateralSymbol} · ${recommended.marketName}`
+                  : "Best uncapped route"}
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
             <span className={ROUTE_TAG_PREFERRED}>Harbor Route</span>
-            <span className="truncate text-[11px] text-[#1E4775]/55">
-              {recommended
-                ? recommended.collateralSymbol
-                : "Uncapped route"}
+            <span className={ROUTE_TAG_BEST}>Best</span>
+            <span className="rounded-full bg-[#1E4775]/8 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[#1E4775]/75">
+              {formatFee(recommended?.feePercent)}
             </span>
           </div>
         </div>
-        {recommended?.feePercent !== undefined ? (
-          <span className="shrink-0 rounded-full bg-[#1E4775]/8 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[#1E4775]/75">
-            {formatFee(recommended.feePercent)}
-          </span>
+        {autoReceiveLabel && recommended ? (
+          <div className="flex items-baseline justify-between gap-2 pl-7">
+            <span className="text-[10px] text-[#1E4775]/45">You receive</span>
+            <span className="font-mono text-xs font-semibold tabular-nums text-[#1E4775]">
+              {autoReceiveLabel} {recommended.collateralSymbol}
+              {autoReceiveUsd ? (
+                <span className="ml-1 text-[10px] font-medium text-[#1E4775]/45">
+                  ({autoReceiveUsd})
+                </span>
+              ) : null}
+            </span>
+          </div>
         ) : null}
       </button>
 

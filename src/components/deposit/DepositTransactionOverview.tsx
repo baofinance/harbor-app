@@ -27,6 +27,8 @@ export type DepositTransactionOverviewProps = {
   /** Loading / error / placeholder while receive is not ready */
   statusMessage?: string;
   statusVariant?: "default" | "error";
+  /** Full-precision receive amount for hover when display is truncated. */
+  receiveAmountTitle?: string;
   fees?: TransactionOverviewFee[];
   /** Sum of fee USD values when multiple fees apply (do not add percentages). */
   totalFeeUsd?: number;
@@ -44,6 +46,7 @@ export function DepositTransactionOverview({
   emptyMessage = "Enter an amount to see what you'll receive.",
   statusMessage,
   statusVariant = "default",
+  receiveAmountTitle,
   fees,
   totalFeeUsd,
   bonus,
@@ -86,7 +89,10 @@ export function DepositTransactionOverview({
                 ) : null}
               </div>
               <div className="shrink-0 text-right">
-                <div className="font-mono text-sm font-semibold leading-tight tabular-nums text-[#1E4775]/85">
+                <div
+                  className="font-mono text-sm font-semibold leading-tight tabular-nums text-[#1E4775]/85"
+                  title={receiveAmountTitle}
+                >
                   {receiveAmount} {receiveSymbol}
                 </div>
                 {receiveUsd !== undefined && receiveUsd > 0 ? (

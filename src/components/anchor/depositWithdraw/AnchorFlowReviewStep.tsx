@@ -6,6 +6,8 @@ export type AnchorFlowReviewDetail = {
   label: string;
   value: string;
   hint?: string;
+  /** Full-precision amount for hover when `value` is truncated. */
+  valueTitle?: string;
 };
 
 export type AnchorFlowReviewStepProps = {
@@ -44,7 +46,10 @@ export function AnchorFlowReviewStep({
                 </p>
               ) : null}
             </div>
-            <p className="max-w-[58%] shrink-0 text-right text-xs font-semibold tabular-nums text-[#1E4775]">
+            <p
+              className="max-w-[58%] shrink-0 text-right text-xs font-semibold tabular-nums text-[#1E4775]"
+              title={row.valueTitle}
+            >
               {row.value}
             </p>
           </div>

@@ -7,6 +7,7 @@ import {
   formatTokenAmount18,
   formatUsd18,
   formatUSD,
+  formatUiAmount,
 } from "@/utils/formatters";
 import { amountToUSD, getTokenPriceUSD } from "@/utils/tokenPriceToUSD";
 import { REWARD_TOKEN_ADDRESSES } from "@/config/chainlink";
@@ -11846,11 +11847,14 @@ export function useAnchorDepositWithdrawModal({
     const depositSym = selectedDepositAsset || collateralSymbol;
     const depositAmount =
       amount && parseFloat(amount) > 0 ? parseFloat(amount) : 0;
+    const depositFormatted =
+      depositAmount > 0 ? formatUiAmount(amount || depositAmount) : null;
 
     if (isDirectPeggedDeposit) {
       const receiveUsd = depositAmount * depositTokenPriceUSD;
       return {
-        receiveAmount: depositAmount > 0 ? depositAmount.toFixed(4) : null,
+        receiveAmount: depositFormatted ? depositFormatted.text : null,
+        receiveAmountTitle: depositFormatted?.title,
         receiveSymbol:
           marketForDepositAsset?.peggedToken?.symbol || peggedTokenSymbol,
         receiveUsd: receiveUsd > 0 ? receiveUsd : undefined,
@@ -11863,6 +11867,8 @@ export function useAnchorDepositWithdrawModal({
       expectedMintOutput && expectedMintOutput > 0n
         ? Number(formatEther(expectedMintOutput))
         : 0;
+    const peggedFormatted =
+      peggedAmount > 0 ? formatUiAmount(peggedAmount) : null;
     const peggedPriceUSD =
       peggedTokenPriceUsdWei > 0n
         ? Number(formatUnits(peggedTokenPriceUsdWei, 18))
@@ -11873,15 +11879,15 @@ export function useAnchorDepositWithdrawModal({
         : peggedAmount * peggedPriceUSD;
 
     let sourceLine: string | undefined;
-    if (depositAmount > 0) {
+    if (depositAmount > 0 && depositFormatted) {
       if (flowPage === 2 && selectedStabilityPool) {
         const poolLabel =
           selectedStabilityPool.poolType === "collateral"
             ? `Collateral${selectedRewardToken ? ` (${selectedRewardToken})` : ""}`
             : "Sail";
-        sourceLine = `To ${poolLabel} · ${depositAmount.toFixed(4)} ${depositSym}`;
+        sourceLine = `To ${poolLabel} · ${depositFormatted.text} ${depositSym}`;
       } else {
-        sourceLine = `From ${depositSym} · ${depositAmount.toFixed(4)}`;
+        sourceLine = `From ${depositSym} · ${depositFormatted.text}`;
       }
     }
 
@@ -11889,9 +11895,13 @@ export function useAnchorDepositWithdrawModal({
       receiveAmount:
         mintValidation.status === "blocked" || mintValidation.status === "pending"
           ? null
-          : peggedAmount > 0
-            ? peggedAmount.toFixed(4)
+          : peggedFormatted
+            ? peggedFormatted.text
             : null,
+      receiveAmountTitle:
+        mintValidation.status === "blocked" || mintValidation.status === "pending"
+          ? undefined
+          : peggedFormatted?.title,
       receiveSymbol: peggedTokenSymbol,
       receiveUsd:
         mintValidation.status === "blocked" || mintValidation.status === "pending"
@@ -12210,6 +12220,8 @@ export function useAnchorDepositWithdrawModal({
           netWei = netWei > earlyFee.amount ? netWei - earlyFee.amount : netWei;
         }
         const netAmount = Number(formatEther(netWei));
+        const netFormatted = formatUiAmount(netAmount);
+        const amountFormatted = formatUiAmount(parsedAmount);
         const peggedPriceUSD =
           withdrawRedeemPriceInputs.peggedPriceUSD > 0
             ? withdrawRedeemPriceInputs.peggedPriceUSD
@@ -12221,13 +12233,14 @@ export function useAnchorDepositWithdrawModal({
             : 0;
 
         return {
-          receiveAmount: netAmount.toFixed(4),
+          receiveAmount: netFormatted.text,
+          receiveAmountTitle: netFormatted.title,
           receiveSymbol: peggedTokenSymbol,
           receiveUsd: receiveUsd > 0 ? receiveUsd : undefined,
           receiveLabel,
           sourceLine:
             nextStepLine ??
-            `${poolLabelCompact} · ${parsedAmount.toFixed(4)} ${peggedTokenSymbol}`,
+            `${poolLabelCompact} · ${amountFormatted.text} ${peggedTokenSymbol}`,
           fees: earlyFee
             ? [
                 {
@@ -12299,8 +12312,10 @@ export function useAnchorDepositWithdrawModal({
       }
 
       const receiveWei = redeemDryRun.netCollateralReturned || 0n;
+      const receiveRaw = Number(receiveWei) / 1e18;
+      const receiveFormatted = formatUiAmount(receiveRaw);
       const usdValue = amountToUSD(
-        Number(receiveWei) / 1e18,
+        receiveRaw,
         collateralSym,
         withdrawRedeemPriceInputs,
       );
@@ -12370,7 +12385,8 @@ export function useAnchorDepositWithdrawModal({
       );
 
       return {
-        receiveAmount: Number(formatEther(receiveWei)).toFixed(4),
+        receiveAmount: receiveFormatted.text,
+        receiveAmountTitle: receiveFormatted.title,
         receiveSymbol: collateralSym,
         receiveUsd: usdValue > 0 ? usdValue : undefined,
         receiveLabel: redeemPreview?.isCapped
@@ -12378,8 +12394,8 @@ export function useAnchorDepositWithdrawModal({
           : "You will receive",
         sourceLine:
           sellRedeemSource === "wallet" || !hasPoolSell
-            ? `Wallet · ${Number(formatEther(redeemInputAmount ?? 0n)).toFixed(4)} ${peggedTokenSymbol}`
-            : `${poolLabelCompact} · ${Number(formatEther(redeemInputAmount ?? 0n)).toFixed(4)} ${peggedTokenSymbol}`,
+            ? `Wallet · ${formatUiAmount(Number(formatEther(redeemInputAmount ?? 0n))).text} ${peggedTokenSymbol}`
+            : `${poolLabelCompact} · ${formatUiAmount(Number(formatEther(redeemInputAmount ?? 0n))).text} ${peggedTokenSymbol}`,
         fees: overviewFees.length > 0 ? overviewFees : undefined,
         totalFeeUsd: overviewFees.length > 1 ? totalFeeUsd : undefined,
         bonus:
@@ -12423,11 +12439,18 @@ export function useAnchorDepositWithdrawModal({
     ]);
 
   const mintReviewModel = useMemo(() => {
-    const details: Array<{ label: string; value: string; hint?: string }> = [];
+    const details: Array<{
+      label: string;
+      value: string;
+      hint?: string;
+      valueTitle?: string;
+    }> = [];
     const steps: string[] = [];
     const paySym = selectedDepositAsset || collateralSymbol;
-    const payAmt =
-      amount && parseFloat(amount) > 0 ? parseFloat(amount).toFixed(4) : "—";
+    const payFormatted =
+      amount && parseFloat(amount) > 0
+        ? formatUiAmount(amount)
+        : { text: "—" };
     const payUsd =
       amount && parseFloat(amount) > 0 && depositTokenPriceUSD > 0
         ? formatUSD(parseFloat(amount) * depositTokenPriceUSD, {
@@ -12437,8 +12460,11 @@ export function useAnchorDepositWithdrawModal({
 
     details.push({
       label: "You pay",
-      value: `${payAmt} ${paySym}`,
+      value: `${payFormatted.text} ${paySym}`,
       hint: payUsd ?? undefined,
+      valueTitle: payFormatted.title
+        ? `${payFormatted.title} ${paySym}`
+        : undefined,
     });
 
     if (anyTokenDeposit.needsSwap) {
@@ -12459,25 +12485,33 @@ export function useAnchorDepositWithdrawModal({
       );
     }
 
-    const receiveAmt =
+    const receiveRaw =
       expectedMintOutput && expectedMintOutput > 0n
-        ? Number(formatEther(expectedMintOutput)).toFixed(4)
+        ? Number(formatEther(expectedMintOutput))
         : isDirectPeggedDeposit && amount && parseFloat(amount) > 0
-          ? parseFloat(amount).toFixed(4)
+          ? parseFloat(amount)
           : null;
+    const receiveFormatted =
+      receiveRaw != null ? formatUiAmount(receiveRaw) : { text: "—" };
     const peggedPriceUSD =
       peggedTokenPriceUsdWei > 0n
         ? Number(formatUnits(peggedTokenPriceUsdWei, 18))
         : 0;
     const receiveUsd =
-      receiveAmt && peggedPriceUSD > 0
-        ? formatUSD(parseFloat(receiveAmt) * peggedPriceUSD, { compact: false })
+      receiveRaw != null && peggedPriceUSD > 0
+        ? formatUSD(receiveRaw * peggedPriceUSD, { compact: false })
         : null;
 
     details.push({
       label: "You receive",
-      value: receiveAmt ? `${receiveAmt} ${peggedTokenSymbol}` : "—",
+      value:
+        receiveRaw != null
+          ? `${receiveFormatted.text} ${peggedTokenSymbol}`
+          : "—",
       hint: receiveUsd ?? undefined,
+      valueTitle: receiveFormatted.title
+        ? `${receiveFormatted.title} ${peggedTokenSymbol}`
+        : undefined,
     });
 
     if (mintOnly || !selectedStabilityPool) {
@@ -12488,20 +12522,27 @@ export function useAnchorDepositWithdrawModal({
           p.marketId === selectedStabilityPool.marketId &&
           p.poolType === selectedStabilityPool.poolType,
       );
-      const poolLabel =
-        selectedStabilityPool.poolType === "collateral"
-          ? `Collateral${selectedRewardToken ? ` · ${selectedRewardToken}` : ""}`
-          : "Sail";
-      const marketName =
-        marketsForToken.find((m) => m.marketId === selectedStabilityPool.marketId)
-          ?.market?.name || selectedStabilityPool.marketId;
+      const poolAprHint =
+        pool?.apr !== undefined && !Number.isNaN(pool.apr)
+          ? `APR ${formatAPR(pool.apr)}`
+          : undefined;
       details.push({
         label: "Deposit to",
-        value: `${poolLabel} · ${marketName}`,
-        hint:
-          pool?.apr !== undefined && !Number.isNaN(pool.apr)
-            ? `APR ${formatAPR(pool.apr)}`
-            : undefined,
+        value:
+          selectedStabilityPool.poolType === "sail"
+            ? "Sail pool"
+            : "Collateral pool",
+        hint: poolAprHint,
+      });
+      if (selectedRewardToken) {
+        details.push({
+          label: "Reward asset",
+          value: selectedRewardToken,
+        });
+      }
+      details.push({
+        label: "Market",
+        value: peggedTokenSymbol,
       });
       steps.push(
         selectedStabilityPool.poolType === "sail"
@@ -12543,7 +12584,6 @@ export function useAnchorDepositWithdrawModal({
     selectedStabilityPool,
     filteredPools,
     selectedRewardToken,
-    marketsForToken,
     feePercentage,
   ]);
 
@@ -12559,17 +12599,22 @@ export function useAnchorDepositWithdrawModal({
             ? "Collateral pool"
             : "Sail pool"
           : "Position";
-    const amt =
+    const amtRaw =
       redeemStepAmountValue && parseFloat(redeemStepAmountValue) > 0
-        ? parseFloat(redeemStepAmountValue).toFixed(4)
-        : redeemStepActionKind === "request"
-          ? "Full position"
-          : "—";
+        ? redeemStepAmountValue
+        : null;
+    const amtFormatted = amtRaw ? formatUiAmount(amtRaw) : null;
+    const amt =
+      amtFormatted?.text ??
+      (redeemStepActionKind === "request" ? "Full position" : "—");
 
     details.push({
       label: "From",
       value: `${amt} ${peggedTokenSymbol}`,
       hint: fromLabel,
+      valueTitle: amtFormatted?.title
+        ? `${amtFormatted.title} ${peggedTokenSymbol}`
+        : undefined,
     });
 
     if (redeemStepActionKind === "request" && !earlyWithdraw1PctEnabled) {
@@ -12603,6 +12648,9 @@ export function useAnchorDepositWithdrawModal({
           label: "You receive",
           value: `${amt} ${peggedTokenSymbol}`,
           hint: "To wallet",
+          valueTitle: amtFormatted?.title
+            ? `${amtFormatted.title} ${peggedTokenSymbol}`
+            : undefined,
         });
         return { details, steps };
       }
@@ -12624,11 +12672,13 @@ export function useAnchorDepositWithdrawModal({
       });
     }
 
+    const receiveFromOverview = withdrawTransactionOverview?.receiveAmount;
+    const receiveFromRoute =
+      route?.receiveAmount !== undefined
+        ? formatUiAmount(route.receiveAmount)
+        : null;
     const receiveAmt =
-      withdrawTransactionOverview?.receiveAmount ??
-      (route?.receiveAmount !== undefined
-        ? route.receiveAmount.toFixed(4)
-        : null);
+      receiveFromOverview ?? receiveFromRoute?.text ?? null;
     const receiveSym =
       withdrawTransactionOverview?.receiveSymbol ||
       route?.collateralSymbol ||
@@ -12644,6 +12694,12 @@ export function useAnchorDepositWithdrawModal({
       label: "You receive",
       value: receiveAmt ? `${receiveAmt} ${receiveSym}` : `— ${receiveSym}`,
       hint: receiveUsd ?? undefined,
+      valueTitle:
+        withdrawTransactionOverview?.receiveAmountTitle
+          ? `${withdrawTransactionOverview.receiveAmountTitle} ${receiveSym}`
+          : receiveFromRoute?.title
+            ? `${receiveFromRoute.title} ${receiveSym}`
+            : undefined,
     });
 
     if (!withdrawOnly) {

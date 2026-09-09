@@ -349,3 +349,37 @@ export function formatUsd18(usdWei: bigint): string {
   const maxDecimals = abs >= 1 ? 2 : abs >= 0.01 ? 4 : 6;
   return `$${formatNumber(raw, maxDecimals)}`;
 }
+
+/**
+ * Display amounts at 4–6 decimals; expose full precision via `title` when truncated.
+ */
+export function formatUiAmount(
+  value: string | number | null | undefined,
+): { text: string; title?: string } {
+  if (value == null || value === "") return { text: "—" };
+  const raw =
+    typeof value === "number"
+      ? value.toLocaleString("en-US", {
+          useGrouping: false,
+          maximumFractionDigits: 18,
+        })
+      : String(value).trim();
+  const num = typeof value === "number" ? value : parseFloat(raw);
+  if (!Number.isFinite(num)) return { text: raw || "—", title: raw || undefined };
+
+  const abs = Math.abs(num);
+  if (abs > 0 && abs < 0.0001) {
+    return { text: "<0.0001", title: raw };
+  }
+
+  const maxDecimals = abs >= 1 ? 4 : 6;
+  const text = num.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maxDecimals,
+  });
+  const normalizedRaw = raw.replace(/\.?0+$/, "");
+  const normalizedText = text.replace(/,/g, "").replace(/\.?0+$/, "");
+  const title =
+    normalizedRaw !== normalizedText && raw !== text ? raw : undefined;
+  return title ? { text, title } : { text };
+}
