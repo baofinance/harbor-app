@@ -71,12 +71,7 @@ export function AnchorRedeemRouteStep({
 
   return (
     <div className="space-y-2.5">
-      <div className="space-y-1">
-        <p className={DEPOSIT_SECTION_LABEL_CLASS}>Redeem to</p>
-        <p className="px-0.5 text-[11px] font-bold leading-snug text-[#1E4775]">
-          Choose which collateral market to redeem into.
-        </p>
-      </div>
+      <p className={DEPOSIT_SECTION_LABEL_CLASS}>Redeem to</p>
 
       <button
         type="button"
