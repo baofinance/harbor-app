@@ -11,7 +11,7 @@ import type {
   AnchorRedeemPosition,
   AnchorRedeemStepActionKind,
 } from "@/utils/anchorRedeemPositions";
-import { AnchorRedeemPositionRow } from "./AnchorRedeemPositionRow";
+import { AnchorRedeemSelectedPositionSummary } from "./AnchorRedeemSelectedPositionSummary";
 
 function RequestWithdrawalInfoBox({
   position,
@@ -82,7 +82,7 @@ function RequestWithdrawalInfoBox({
   );
 }
 
-function ModeToggleRow({
+function SpeedToggleRow({
   label,
   tooltip,
   enabled,
@@ -189,29 +189,20 @@ export function AnchorRedeemPositionStep({
 
   return (
     <div className="space-y-2.5">
-      <div className="space-y-1">
-        <div className="flex items-center justify-between gap-2 px-0.5">
-          <p className={DEPOSIT_SECTION_LABEL_CLASS}>Selected position</p>
-          <button
-            type="button"
-            onClick={onChangePosition}
-            disabled={disabled}
-            className="shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold text-[#1E4775]/70 transition hover:bg-[#1E4775]/5 hover:text-[#1E4775] disabled:opacity-50"
-          >
-            Change
-          </button>
-        </div>
-        <AnchorRedeemPositionRow
-          position={position}
-          peggedTokenSymbol={peggedTokenSymbol}
-          selected
-        />
-      </div>
+      <AnchorRedeemSelectedPositionSummary
+        position={position}
+        peggedTokenSymbol={peggedTokenSymbol}
+        disabled={disabled}
+        onChangePosition={onChangePosition}
+        showModeToggle={showWithdrawOnlyToggle}
+        withdrawOnly={withdrawOnly}
+        onWithdrawOnlyChange={onWithdrawOnlyChange}
+      />
 
       {canToggleSpeed ? (
         <div className="space-y-1">
           <p className={DEPOSIT_SECTION_LABEL_CLASS}>Speed</p>
-          <ModeToggleRow
+          <SpeedToggleRow
             label={
               earlyWithdrawEnabled ? "Fast withdrawal" : "Free withdrawal"
             }
@@ -257,24 +248,6 @@ export function AnchorRedeemPositionStep({
           withdrawalDurationLabel={withdrawalDurationLabel}
         />
       )}
-
-      {showWithdrawOnlyToggle && onWithdrawOnlyChange ? (
-        <div className="space-y-1">
-          <p className={DEPOSIT_SECTION_LABEL_CLASS}>Mode</p>
-          <ModeToggleRow
-            label={withdrawOnly ? "Withdraw only" : "Withdraw + redeem"}
-            tooltip={
-              withdrawOnly
-                ? `Receive ${peggedTokenSymbol} in your wallet without redeeming to collateral.`
-                : "Withdraw from the pool and redeem to collateral in one step."
-            }
-            enabled={withdrawOnly}
-            onToggle={() => onWithdrawOnlyChange(!withdrawOnly)}
-            disabled={disabled}
-            ariaLabel="Toggle withdraw only"
-          />
-        </div>
-      ) : null}
     </div>
   );
 }

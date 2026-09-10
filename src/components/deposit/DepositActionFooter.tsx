@@ -8,6 +8,8 @@ import { DEPOSIT_CANCEL_BUTTON_CLASS, ANCHOR_MODAL_FOOTER_CHROME } from "@/compo
 type DepositActionFooterProps = {
   layout?: "embedded" | "modal";
   feeFooter?: ReactNode;
+  /** Quiet line under the primary CTA (e.g. review wallet prompts). */
+  actionHint?: string;
   action: DepositPrimaryAction;
   onSubmit: () => void;
   onRetry: () => void;
@@ -19,6 +21,7 @@ type DepositActionFooterProps = {
 export function DepositActionFooter({
   layout = "modal",
   feeFooter,
+  actionHint,
   action,
   onSubmit,
   onRetry,
@@ -46,6 +49,11 @@ export function DepositActionFooter({
             onRetry={onRetry}
             className="w-full"
           />
+          {actionHint ? (
+            <p className="mt-1.5 text-center text-[10px] leading-snug text-[#1E4775]/45">
+              {actionHint}
+            </p>
+          ) : null}
         </div>
       </div>
     </div>

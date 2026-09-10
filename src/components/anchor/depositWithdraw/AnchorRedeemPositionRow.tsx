@@ -94,20 +94,28 @@ export type AnchorRedeemPositionRowProps = {
   onSelect?: () => void;
   selected?: boolean;
   disabled?: boolean;
+  /**
+   * Compact selected/summary row: icon + pool left, balance right.
+   * List rows stay two-line with APR.
+   */
+  compact?: boolean;
   trailing?: ReactNode;
   className?: string;
 };
 
-/** Two-line position summary shared by choose-position list and request step. */
+/** Position summary shared by choose-position list, request step, and review. */
 export function AnchorRedeemPositionRow({
   position,
   peggedTokenSymbol,
   onSelect,
   selected = false,
   disabled = false,
+  compact: compactProp,
   trailing,
   className = "",
 }: AnchorRedeemPositionRowProps) {
+  // Static summaries (no onSelect) default to the compact selected layout.
+  const compact = compactProp ?? !onSelect;
   const usdLabel =
     position.usdValue !== undefined && position.usdValue > 0
       ? formatUSD(position.usdValue, { compact: false })
@@ -119,29 +127,75 @@ export function AnchorRedeemPositionRow({
     position.kind === "pool" ? position.requestStatus : undefined;
   const tone = requestToneForPosition(position);
   const styles = TONE_STYLES[tone];
+  const title = redeemPositionTitle(position, peggedTokenSymbol);
+  const iconSymbols =
+    rewardTokens.length > 0 ? rewardTokens.slice(0, 2) : [peggedTokenSymbol];
 
-  const content = (
+  const statusBadge =
+    tone === "pending" && requestStatus ? (
+      <span
+        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${styles.badge}`}
+      >
+        {requestStatus.label}
+      </span>
+    ) : tone === "ready" ? (
+      <span
+        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${styles.badge}`}
+      >
+        {requestStatus?.label ?? "Ready"}
+      </span>
+    ) : null;
+
+  const balanceBlock = (
+    <div className="flex shrink-0 items-baseline gap-1.5">
+      <p
+        className={`font-mono text-sm font-semibold tabular-nums ${styles.value}`}
+      >
+        {formatHaBalance(position.balance)}{" "}
+        <span className={`text-[11px] font-semibold ${styles.muted}`}>
+          {peggedTokenSymbol}
+        </span>
+      </p>
+      {usdLabel ? (
+        <p className={`font-mono text-xs tabular-nums ${styles.muted}`}>
+          {usdLabel}
+        </p>
+      ) : null}
+    </div>
+  );
+
+  const content = compact ? (
+    <div className="flex min-w-0 items-center justify-between gap-2">
+      <div className="flex min-w-0 items-center gap-1.5">
+        <span className="flex shrink-0 items-center -space-x-1">
+          {iconSymbols.map((token) => (
+            <TokenLogo
+              key={token}
+              symbol={token}
+              size={16}
+              className="ring-1 ring-white"
+            />
+          ))}
+        </span>
+        <p
+          className={`min-w-0 truncate text-[11px] font-medium leading-tight ${styles.title}`}
+        >
+          {title}
+        </p>
+        {statusBadge}
+      </div>
+      {balanceBlock}
+      {trailing}
+    </div>
+  ) : (
     <>
       <div className="flex min-w-0 items-center justify-between gap-2">
         <p
           className={`min-w-0 truncate text-[11px] font-medium leading-tight ${styles.title}`}
         >
-          {redeemPositionTitle(position, peggedTokenSymbol)}
+          {title}
         </p>
-        {tone === "pending" && requestStatus ? (
-          <span
-            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${styles.badge}`}
-          >
-            {requestStatus.label}
-          </span>
-        ) : null}
-        {tone === "ready" ? (
-          <span
-            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${styles.badge}`}
-          >
-            {requestStatus?.label ?? "Ready"}
-          </span>
-        ) : null}
+        {statusBadge}
       </div>
 
       <div className="flex min-w-0 items-center gap-2">
@@ -170,31 +224,19 @@ export function AnchorRedeemPositionRow({
           </span>
         </div>
 
-        <p
-          className={`shrink-0 font-mono text-sm font-semibold tabular-nums ${styles.value}`}
-        >
-          {formatHaBalance(position.balance)}{" "}
-          <span className={`text-[11px] font-semibold ${styles.muted}`}>
-            {peggedTokenSymbol}
-          </span>
-        </p>
-
-        {usdLabel ? (
-          <p
-            className={`shrink-0 font-mono text-xs tabular-nums ${styles.muted}`}
-          >
-            {usdLabel}
-          </p>
-        ) : null}
-
+        {balanceBlock}
         {trailing}
       </div>
     </>
   );
 
-  const rowClass = `flex w-full flex-col gap-1.5 rounded-xl border px-3 py-2.5 text-left transition ${
-    selected ? styles.rowSelected : styles.row
-  } ${className}`;
+  const rowClass = compact
+    ? `flex w-full items-center rounded-xl border px-3 py-2 text-left transition ${
+        selected ? styles.rowSelected : styles.row
+      } ${className}`
+    : `flex w-full flex-col gap-1.5 rounded-xl border px-3 py-2.5 text-left transition ${
+        selected ? styles.rowSelected : styles.row
+      } ${className}`;
 
   if (onSelect) {
     return (

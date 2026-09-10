@@ -20,6 +20,7 @@ import MintRedeemStatusModal from "./MintRedeemStatusModal";
 import type { Market as MarketCfg } from "../config/markets";
 import { minterABI } from "@/abis/minter";
 import { ERC20_ABI, GENESIS_ABI } from "@/abis/shared";
+import { ERC20_PERMIT_ABI } from "@/abis/permit";
 import { MINTER_ETH_ZAP_V3_ABI, MINTER_ETH_ZAP_V1_ABI, MINTER_USDC_ZAP_V3_ABI } from "@/abis";
 import {
   marketUsesZapV1,
@@ -28,6 +29,7 @@ import {
 import { parseUnits } from "viem";
 import { calculateDeadline } from "@/utils/permit";
 import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
+import { isTxUserRejection } from "@/utils/anchorMintDepositFlow";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import {
   DEFAULT_WRAP_LEG_SLIPPAGE_BPS,
@@ -1153,54 +1155,175 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
           }
           // ETH doesn't need approval (native token)
         } else {
-          // Direct minting - approve wrapped collateral to minter
+          // Direct minting — Harbor minters have no *WithPermit; permit on collateral then plain mint.
+          const collateralAddress = currentMarket.addresses
+            .collateralToken as `0x${string}`;
+          const minterAddress = currentMarket.addresses.minter as `0x${string}`;
           currentAllowanceBigInt =
             (collateralBalance?.[1]?.result as bigint) ?? BigInt(0);
           needsApproval = currentAllowanceBigInt < parsedAmount;
           if (needsApproval) {
             setPendingStep("approval");
-            await writeContractAsync({
-              address: currentMarket.addresses.collateralToken as `0x${string}`,
-              abi: ERC20_ABI,
-              functionName: "approve",
-              args: [
-                currentMarket.addresses.minter as `0x${string}`,
-                parsedAmount,
-              ],
-            });
+            const permitResult = await handlePermitOrApproval(
+              collateralAddress,
+              minterAddress,
+              parsedAmount
+            );
+            let usedPermit =
+              !!permitResult?.usePermit &&
+              !!permitResult?.permitSig &&
+              !!permitResult?.deadline;
+            if (
+              usedPermit &&
+              permitResult?.permitSig &&
+              permitResult?.deadline
+            ) {
+              try {
+                const permitHash = await writeContractAsync({
+                  address: collateralAddress,
+                  abi: ERC20_PERMIT_ABI,
+                  functionName: "permit",
+                  args: [
+                    userAddress as `0x${string}`,
+                    minterAddress,
+                    parsedAmount,
+                    permitResult.deadline,
+                    permitResult.permitSig.v,
+                    permitResult.permitSig.r,
+                    permitResult.permitSig.s,
+                  ],
+                });
+                await publicClient?.waitForTransactionReceipt({
+                  hash: permitHash,
+                });
+              } catch (permitErr) {
+                if (isTxUserRejection(permitErr)) throw permitErr;
+                console.warn(
+                  "[MintRedeemForm] ERC20 permit failed, falling back to approve",
+                  permitErr
+                );
+                usedPermit = false;
+              }
+            }
+            if (!usedPermit) {
+              await writeContractAsync({
+                address: collateralAddress,
+                abi: ERC20_ABI,
+                functionName: "approve",
+                args: [minterAddress, parsedAmount],
+              });
+            }
           }
         }
       } else if (selectedType === "LONG") {
+        const peggedAddress = currentMarket.addresses
+          .peggedToken as `0x${string}`;
+        const minterAddress = currentMarket.addresses.minter as `0x${string}`;
         currentAllowanceBigInt =
           (peggedBalance?.[1]?.result as bigint) ?? BigInt(0);
         needsApproval = currentAllowanceBigInt < parsedAmount;
         if (needsApproval) {
           setPendingStep("approval");
-          await writeContractAsync({
-            address: currentMarket.addresses.peggedToken as `0x${string}`,
-            abi: ERC20_ABI,
-            functionName: "approve",
-            args: [
-              currentMarket.addresses.minter as `0x${string}`,
-              parsedAmount,
-            ],
-          });
+          const permitResult = await handlePermitOrApproval(
+            peggedAddress,
+            minterAddress,
+            parsedAmount
+          );
+          let usedPermit =
+            !!permitResult?.usePermit &&
+            !!permitResult?.permitSig &&
+            !!permitResult?.deadline;
+          if (usedPermit && permitResult?.permitSig && permitResult?.deadline) {
+            try {
+              const permitHash = await writeContractAsync({
+                address: peggedAddress,
+                abi: ERC20_PERMIT_ABI,
+                functionName: "permit",
+                args: [
+                  userAddress as `0x${string}`,
+                  minterAddress,
+                  parsedAmount,
+                  permitResult.deadline,
+                  permitResult.permitSig.v,
+                  permitResult.permitSig.r,
+                  permitResult.permitSig.s,
+                ],
+              });
+              await publicClient?.waitForTransactionReceipt({
+                hash: permitHash,
+              });
+            } catch (permitErr) {
+              if (isTxUserRejection(permitErr)) throw permitErr;
+              console.warn(
+                "[MintRedeemForm] ERC20 permit failed, falling back to approve",
+                permitErr
+              );
+              usedPermit = false;
+            }
+          }
+          if (!usedPermit) {
+            await writeContractAsync({
+              address: peggedAddress,
+              abi: ERC20_ABI,
+              functionName: "approve",
+              args: [minterAddress, parsedAmount],
+            });
+          }
         }
       } else {
+        const leveragedAddress = currentMarket.addresses
+          .leveragedToken as `0x${string}`;
+        const minterAddress = currentMarket.addresses.minter as `0x${string}`;
         currentAllowanceBigInt =
           (leveragedBalance?.[1]?.result as bigint) ?? BigInt(0);
         needsApproval = currentAllowanceBigInt < parsedAmount;
         if (needsApproval) {
           setPendingStep("approval");
-          await writeContractAsync({
-            address: currentMarket.addresses.leveragedToken as `0x${string}`,
-            abi: ERC20_ABI,
-            functionName: "approve",
-            args: [
-              currentMarket.addresses.minter as `0x${string}`,
-              parsedAmount,
-            ],
-          });
+          const permitResult = await handlePermitOrApproval(
+            leveragedAddress,
+            minterAddress,
+            parsedAmount
+          );
+          let usedPermit =
+            !!permitResult?.usePermit &&
+            !!permitResult?.permitSig &&
+            !!permitResult?.deadline;
+          if (usedPermit && permitResult?.permitSig && permitResult?.deadline) {
+            try {
+              const permitHash = await writeContractAsync({
+                address: leveragedAddress,
+                abi: ERC20_PERMIT_ABI,
+                functionName: "permit",
+                args: [
+                  userAddress as `0x${string}`,
+                  minterAddress,
+                  parsedAmount,
+                  permitResult.deadline,
+                  permitResult.permitSig.v,
+                  permitResult.permitSig.r,
+                  permitResult.permitSig.s,
+                ],
+              });
+              await publicClient?.waitForTransactionReceipt({
+                hash: permitHash,
+              });
+            } catch (permitErr) {
+              if (isTxUserRejection(permitErr)) throw permitErr;
+              console.warn(
+                "[MintRedeemForm] ERC20 permit failed, falling back to approve",
+                permitErr
+              );
+              usedPermit = false;
+            }
+          }
+          if (!usedPermit) {
+            await writeContractAsync({
+              address: leveragedAddress,
+              abi: ERC20_ABI,
+              functionName: "approve",
+              args: [minterAddress, parsedAmount],
+            });
+          }
         }
       }
 

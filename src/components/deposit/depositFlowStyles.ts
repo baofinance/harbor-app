@@ -143,6 +143,9 @@ export const DEPOSIT_PRIMARY_MINT_CLASS = `${DEPOSIT_PRIMARY_BASE} bg-[#4A9784] 
 
 export const DEPOSIT_PRIMARY_NAVY_CLASS = `${DEPOSIT_PRIMARY_BASE} bg-[#1E4775] text-white hover:bg-[#17395F] active:scale-[0.99]`;
 
+/** Coral CTA for final redeem / withdraw submit — matches Claim actions. */
+export const DEPOSIT_PRIMARY_CORAL_CLASS = `${DEPOSIT_PRIMARY_BASE} border border-harbor-coral bg-harbor-coral text-white hover:border-[#FF6B5A] hover:bg-[#FF6B5A] active:scale-[0.99]`;
+
 export const DEPOSIT_PRIMARY_RETRY_CLASS = `${DEPOSIT_PRIMARY_BASE} border border-harbor-coral/50 bg-harbor-coral/10 text-harbor-coral hover:bg-harbor-coral/15`;
 
 export const DEPOSIT_PRIMARY_DISABLED_CLASS = `${DEPOSIT_PRIMARY_BASE} cursor-not-allowed border border-[#1E4775]/15 bg-[#1E4775]/8 text-[#1E4775]/55`;

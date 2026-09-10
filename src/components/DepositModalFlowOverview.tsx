@@ -14,7 +14,7 @@ type DepositModalFlowOverviewProps = {
   onBack?: () => void;
 };
 
-/** Centered flow summary under modal tabs (e.g. Buy › Deposit). */
+/** Centered flow breadcrumb under modal tabs (e.g. Choose position › Confirm › Review). */
 export function DepositModalFlowOverview({
   parts,
   activeIndex,
@@ -66,7 +66,10 @@ export function DepositModalFlowOverview({
           return (
             <React.Fragment key={`${index}-${part}`}>
               {index > 0 ? (
-                <span className="font-normal text-[#94a3b8]" aria-hidden>
+                <span
+                  className="px-0.5 font-semibold text-harbor-coral/80"
+                  aria-hidden
+                >
                   ›
                 </span>
               ) : null}
@@ -74,7 +77,7 @@ export function DepositModalFlowOverview({
                 <button
                   type="button"
                   onClick={() => onStepClick?.(index)}
-                  className="rounded-md px-1.5 py-0.5 font-normal text-[#64748b] underline decoration-[#64748b]/35 underline-offset-2 transition hover:bg-[#1E4775]/8 hover:text-[#1E4775] hover:decoration-[#1E4775]/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4775]/25"
+                  className="rounded-md px-1 py-0.5 font-medium text-[#1E4775]/55 transition hover:bg-[#1E4775]/8 hover:text-[#1E4775] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4775]/25"
                 >
                   {part}
                 </button>
@@ -82,10 +85,10 @@ export function DepositModalFlowOverview({
                 <span
                   className={
                     isActive
-                      ? "font-semibold text-[#1E4775]"
+                      ? "px-1 font-bold text-[#1E4775]"
                       : isPast
-                        ? "font-normal text-[#64748b]"
-                        : "font-normal text-[#94a3b8]"
+                        ? "px-1 font-medium text-[#1E4775]/55"
+                        : "px-1 font-medium text-[#1E4775]/35"
                   }
                   aria-current={isActive ? "step" : undefined}
                 >

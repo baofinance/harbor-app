@@ -32,7 +32,6 @@ import {
   STABILITY_POOL_ABI,
   MINTER_PEGGED_ABI,
 } from "@/abis";
-import { REDEEM_PEGGED_WITH_PERMIT_ABI } from "@/abis/redeemPermit";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { ZAP_ABI, USDC_ZAP_ABI, WSTETH_ABI } from "@/abis";
 import { MINTER_ETH_ZAP_V3_ABI, MINTER_ETH_ZAP_V1_ABI } from "@/abis";
@@ -10901,6 +10900,49 @@ export function useAnchorDepositWithdrawModal({
         }
 
         if (needsApproval) {
+          if (
+            usePermitRedeem &&
+            permitRedeemResult?.permitSig &&
+            permitRedeemResult?.deadline
+          ) {
+            setStep("approving");
+            setError(null);
+            setTxHash(null);
+            try {
+              // Harbor minters have no redeem*WithPermit — permit on ha token, then plain redeem.
+              const permitHash = await writeContractAsync({
+                address: targetRedeemPeggedTokenAddress as `0x${string}`,
+                abi: ERC20_PERMIT_ABI,
+                functionName: "permit",
+                args: [
+                  address as `0x${string}`,
+                  targetRedeemMinterAddress as `0x${string}`,
+                  redeemAmount,
+                  permitRedeemResult.deadline,
+                  permitRedeemResult.permitSig.v,
+                  permitRedeemResult.permitSig.r,
+                  permitRedeemResult.permitSig.s,
+                ],
+              });
+              setTxHash(permitHash);
+              setTxHashes((prev) => ({ ...prev, approveRedeem: permitHash }));
+              await client.waitForTransactionReceipt({ hash: permitHash });
+              await new Promise((resolve) => setTimeout(resolve, 500));
+            } catch (permitErr) {
+              if (isTxUserRejection(permitErr)) throw permitErr;
+              console.warn(
+                "[handleWithdrawExecution] ERC20 permit failed, falling back to approve",
+                permitErr
+              );
+              usePermitRedeem = false;
+              setProgressConfig((prev) => ({
+                ...prev,
+                includePermitRedeem: false,
+                includeApproveRedeem: true,
+              }));
+            }
+          }
+
           if (!usePermitRedeem) {
             setStep("approving");
             setError(null);
@@ -10940,73 +10982,24 @@ export function useAnchorDepositWithdrawModal({
           } catch {}
 
         let redeemHash: `0x${string}` | undefined;
-        if (
-          usePermitRedeem &&
-          permitRedeemResult?.permitSig &&
-          permitRedeemResult?.deadline
-        ) {
-          try {
-            redeemHash = await writeContractAsync({
-              address: targetRedeemMinterAddress as `0x${string}`,
-              abi: REDEEM_PEGGED_WITH_PERMIT_ABI,
-              functionName: "redeemPeggedTokenWithPermit",
-              args: [
-                redeemAmount,
-                address as `0x${string}`,
-                minCollateralOut,
-                permitRedeemResult.deadline,
-                permitRedeemResult.permitSig.v,
-                permitRedeemResult.permitSig.r,
-                permitRedeemResult.permitSig.s,
-              ],
-            });
-          } catch (permitRedeemErr) {
-            if (isTxUserRejection(permitRedeemErr)) throw permitRedeemErr;
-            console.warn(
-              "[handleWithdrawExecution] redeemPeggedTokenWithPermit failed, falling back to approve+redeem",
-              permitRedeemErr
-            );
-            setProgressConfig((prev) => ({
-              ...prev,
-              includePermitRedeem: false,
-              includeApproveRedeem: true,
-            }));
-            setStep("approving");
-            const approveHash = await writeContractAsync({
-              address: targetRedeemPeggedTokenAddress as `0x${string}`,
-              abi: ERC20_ABI,
-              functionName: "approve",
-              args: [targetRedeemMinterAddress as `0x${string}`, redeemAmount],
-            });
-            setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
-            await client.waitForTransactionReceipt({ hash: approveHash });
-            redeemHash = await writeContractAsync({
-              address: targetRedeemMinterAddress as `0x${string}`,
-              abi: MINTER_PEGGED_ABI,
-              functionName: "redeemPeggedToken",
+        try {
+          redeemHash = await writeContractAsync({
+            address: targetRedeemMinterAddress as `0x${string}`,
+            abi: MINTER_PEGGED_ABI,
+            functionName: "redeemPeggedToken",
               args: [redeemAmount, address as `0x${string}`, minCollateralOut],
-            });
-          }
-        } else {
-          try {
-            redeemHash = await writeContractAsync({
-              address: targetRedeemMinterAddress as `0x${string}`,
-              abi: MINTER_PEGGED_ABI,
-              functionName: "redeemPeggedToken",
-                args: [redeemAmount, address as `0x${string}`, minCollateralOut],
-            });
-          } catch (redeemErr: any) {
-            console.warn(
-              "[handleWithdrawExecution] redeemPeggedToken reverted with minCollateralOut, retrying with 0",
-              redeemErr
-            );
-            redeemHash = await writeContractAsync({
-              address: targetRedeemMinterAddress as `0x${string}`,
-              abi: MINTER_PEGGED_ABI,
-              functionName: "redeemPeggedToken",
-                args: [redeemAmount, address as `0x${string}`, 0n],
-            });
-          }
+          });
+        } catch (redeemErr: any) {
+          console.warn(
+            "[handleWithdrawExecution] redeemPeggedToken reverted with minCollateralOut, retrying with 0",
+            redeemErr
+          );
+          redeemHash = await writeContractAsync({
+            address: targetRedeemMinterAddress as `0x${string}`,
+            abi: MINTER_PEGGED_ABI,
+            functionName: "redeemPeggedToken",
+              args: [redeemAmount, address as `0x${string}`, 0n],
+          });
         }
 
         setTxHash(redeemHash);
@@ -11188,32 +11181,79 @@ export function useAnchorDepositWithdrawModal({
         }
       }
 
-      // Step 1: Approve pegged token for minter (if needed)
-      if (needsApproval && !usePermitRedeem) {
-        setStep("approving");
-        setError(null);
-        setTxHash(null);
-
-        if (process.env.NODE_ENV === "development") {
-          console.log("[handleRedeem] Approving pegged token for minter:", {
-            peggedTokenAddress: targetPeggedTokenAddress,
-            minterAddress: targetMinterAddress,
-            amount: redeemAmount.toString(),
-          });
+      // Step 1: ERC20 permit (spender = minter) or classic approve.
+      // Harbor minters have no redeem*WithPermit — permit on ha token, then plain redeem.
+      if (needsApproval) {
+        if (
+          usePermitRedeem &&
+          permitRedeemResult?.permitSig &&
+          permitRedeemResult?.deadline
+        ) {
+          setStep("approving");
+          setError(null);
+          setTxHash(null);
+          try {
+            const permitHash = await writeContractAsync({
+              address: targetPeggedTokenAddress as `0x${string}`,
+              abi: ERC20_PERMIT_ABI,
+              functionName: "permit",
+              args: [
+                address as `0x${string}`,
+                targetMinterAddress as `0x${string}`,
+                redeemAmount,
+                permitRedeemResult.deadline,
+                permitRedeemResult.permitSig.v,
+                permitRedeemResult.permitSig.r,
+                permitRedeemResult.permitSig.s,
+              ],
+            });
+            setTxHash(permitHash);
+            setTxHashes((prev) => ({ ...prev, approveRedeem: permitHash }));
+            await publicClient?.waitForTransactionReceipt({ hash: permitHash });
+            await refetchPeggedTokenMinterAllowance();
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            await refetchPeggedTokenMinterAllowance();
+          } catch (permitErr) {
+            if (isTxUserRejection(permitErr)) throw permitErr;
+            console.warn(
+              "[handleRedeem] ERC20 permit failed, falling back to approve",
+              permitErr
+            );
+            usePermitRedeem = false;
+            setProgressConfig((prev) => ({
+              ...prev,
+              includePermitRedeem: false,
+              includeApproveRedeem: true,
+            }));
+          }
         }
 
-        const approveHash = await writeContractAsync({
-          address: targetPeggedTokenAddress as `0x${string}`,
-          abi: ERC20_ABI,
-          functionName: "approve",
-          args: [targetMinterAddress as `0x${string}`, redeemAmount],
-        });
-        setTxHash(approveHash);
-        setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
-        await publicClient?.waitForTransactionReceipt({ hash: approveHash });
-        await refetchPeggedTokenMinterAllowance();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        await refetchPeggedTokenMinterAllowance();
+        if (!usePermitRedeem) {
+          setStep("approving");
+          setError(null);
+          setTxHash(null);
+
+          if (process.env.NODE_ENV === "development") {
+            console.log("[handleRedeem] Approving pegged token for minter:", {
+              peggedTokenAddress: targetPeggedTokenAddress,
+              minterAddress: targetMinterAddress,
+              amount: redeemAmount.toString(),
+            });
+          }
+
+          const approveHash = await writeContractAsync({
+            address: targetPeggedTokenAddress as `0x${string}`,
+            abi: ERC20_ABI,
+            functionName: "approve",
+            args: [targetMinterAddress as `0x${string}`, redeemAmount],
+          });
+          setTxHash(approveHash);
+          setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
+          await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+          await refetchPeggedTokenMinterAllowance();
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await refetchPeggedTokenMinterAllowance();
+        }
       }
 
       // Step 2: Redeem pegged token
@@ -11234,80 +11274,30 @@ export function useAnchorDepositWithdrawModal({
       }
 
       let redeemHash: `0x${string}` | undefined;
-      if (
-        usePermitRedeem &&
-        permitRedeemResult?.permitSig &&
-        permitRedeemResult?.deadline
-      ) {
-        try {
-          redeemHash = await writeContractAsync({
-            address: targetMinterAddress as `0x${string}`,
-            abi: REDEEM_PEGGED_WITH_PERMIT_ABI,
-            functionName: "redeemPeggedTokenWithPermit",
-            args: [
-              redeemAmount,
-              address as `0x${string}`,
-              minCollateralOut,
-              permitRedeemResult.deadline,
-              permitRedeemResult.permitSig.v,
-              permitRedeemResult.permitSig.r,
-              permitRedeemResult.permitSig.s,
-            ],
-          });
-        } catch (permitRedeemErr) {
-          if (isTxUserRejection(permitRedeemErr)) throw permitRedeemErr;
-          console.warn(
-            "[handleRedeem] redeemPeggedTokenWithPermit failed, falling back to approve+redeem",
-            permitRedeemErr
-          );
-          setProgressConfig((prev) => ({
-            ...prev,
-            includePermitRedeem: false,
-            includeApproveRedeem: true,
-          }));
-          setStep("approving");
-          const approveHash = await writeContractAsync({
-            address: targetPeggedTokenAddress as `0x${string}`,
-            abi: ERC20_ABI,
-            functionName: "approve",
-            args: [targetMinterAddress as `0x${string}`, redeemAmount],
-          });
-          setTxHash(approveHash);
-          setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
-          await publicClient?.waitForTransactionReceipt({ hash: approveHash });
-          redeemHash = await writeContractAsync({
-            address: targetMinterAddress as `0x${string}`,
-            abi: MINTER_PEGGED_ABI,
-            functionName: "redeemPeggedToken",
-            args: [redeemAmount, address as `0x${string}`, minCollateralOut],
-          });
-        }
-      } else {
-        try {
-          redeemHash = await writeContractAsync({
-            address: targetMinterAddress as `0x${string}`,
-            abi: MINTER_PEGGED_ABI,
-            functionName: "redeemPeggedToken",
-            args: [redeemAmount, address as `0x${string}`, minCollateralOut],
-          });
-        } catch (callErr: any) {
-          // Retry once with minCollateralOut=0 to bypass slippage floor and surface real issues.
-          if (minCollateralOut > 0n) {
-            if (process.env.NODE_ENV === "development") {
-              console.warn(
-                "[handleRedeem] redeemPeggedToken reverted with minCollateralOut, retrying with 0",
-                callErr
-              );
-            }
-            redeemHash = await writeContractAsync({
-              address: targetMinterAddress as `0x${string}`,
-              abi: MINTER_PEGGED_ABI,
-              functionName: "redeemPeggedToken",
-              args: [redeemAmount, address as `0x${string}`, 0n],
-            });
-          } else {
-            throw callErr;
+      try {
+        redeemHash = await writeContractAsync({
+          address: targetMinterAddress as `0x${string}`,
+          abi: MINTER_PEGGED_ABI,
+          functionName: "redeemPeggedToken",
+          args: [redeemAmount, address as `0x${string}`, minCollateralOut],
+        });
+      } catch (callErr: any) {
+        // Retry once with minCollateralOut=0 to bypass slippage floor and surface real issues.
+        if (minCollateralOut > 0n) {
+          if (process.env.NODE_ENV === "development") {
+            console.warn(
+              "[handleRedeem] redeemPeggedToken reverted with minCollateralOut, retrying with 0",
+              callErr
+            );
           }
+          redeemHash = await writeContractAsync({
+            address: targetMinterAddress as `0x${string}`,
+            abi: MINTER_PEGGED_ABI,
+            functionName: "redeemPeggedToken",
+            args: [redeemAmount, address as `0x${string}`, 0n],
+          });
+        } else {
+          throw callErr;
         }
       }
       setTxHash(redeemHash);
@@ -11735,7 +11725,7 @@ export function useAnchorDepositWithdrawModal({
         return {
           kind: "submit",
           label: "Request withdrawal",
-          variant: "navy",
+          variant: "coral",
         };
       }
       if (
@@ -11748,7 +11738,7 @@ export function useAnchorDepositWithdrawModal({
             label: earlyWithdraw1PctEnabled
               ? "Withdraw · 1% fee"
               : "Withdraw",
-            variant: "navy",
+            variant: "coral",
           };
         }
         return {
@@ -11756,10 +11746,10 @@ export function useAnchorDepositWithdrawModal({
           label: earlyWithdraw1PctEnabled
             ? "Withdraw & Redeem · 1% fee"
             : "Withdraw & Redeem",
-          variant: "navy",
+          variant: "coral",
         };
       }
-      return { kind: "submit", label: "Redeem", variant: "navy" };
+      return { kind: "submit", label: "Redeem", variant: "coral" };
     }
 
     // Amount / confirm — continue only (never submit)
@@ -12439,13 +12429,28 @@ export function useAnchorDepositWithdrawModal({
     ]);
 
   const mintReviewModel = useMemo(() => {
-    const details: Array<{
+    const bands: Array<{
+      role: "from" | "route" | "receive" | "meta";
+      label: string;
+      primary?: string;
+      secondary?: string;
+      value: string;
+      valueTitle?: string;
+      chip?: string;
+      iconSymbol?: string;
+    }> = [];
+    const fees: Array<{
       label: string;
       value: string;
-      hint?: string;
-      valueTitle?: string;
+      tone: "coral" | "mint" | "neutral";
     }> = [];
-    const steps: string[] = [];
+    const steps: Array<{
+      title: string;
+      detail?: string;
+      feeLabel?: string;
+      feeTone?: "coral" | "mint" | "neutral";
+    }> = [];
+
     const paySym = selectedDepositAsset || collateralSymbol;
     const payFormatted =
       amount && parseFloat(amount) > 0
@@ -12458,31 +12463,48 @@ export function useAnchorDepositWithdrawModal({
           })
         : null;
 
-    details.push({
+    bands.push({
+      role: "from",
       label: "You pay",
+      primary: paySym,
+      secondary: payUsd ?? undefined,
       value: `${payFormatted.text} ${paySym}`,
-      hint: payUsd ?? undefined,
       valueTitle: payFormatted.title
         ? `${payFormatted.title} ${paySym}`
         : undefined,
+      iconSymbol: paySym,
     });
 
     if (anyTokenDeposit.needsSwap) {
       const target =
         anyTokenDeposit.swapTargetToken === "ETH" ? "ETH" : "USDC";
-      steps.push(`Swap ${paySym} → ${target}`);
-      details.push({
-        label: "Swap",
-        value: `${paySym} → ${target} → ${activeWrappedCollateralSymbol || "collateral"}`,
+      steps.push({
+        title: `Swap ${paySym} → ${target}`,
+        detail: "Route via Velora before minting.",
+      });
+      bands.push({
+        role: "route",
+        label: "Route",
+        primary: `${paySym} → ${target}`,
+        secondary: `Then mint ${peggedTokenSymbol}`,
+        value: activeWrappedCollateralSymbol || "collateral",
+        chip: activeWrappedCollateralSymbol || undefined,
       });
     }
 
     if (!isDirectPeggedDeposit) {
-      steps.push(
-        anyTokenDeposit.needsSwap
+      steps.push({
+        title: anyTokenDeposit.needsSwap
           ? `Mint ${peggedTokenSymbol}`
           : `Mint ${peggedTokenSymbol} from ${paySym}`,
-      );
+        detail: `Create ${peggedTokenSymbol} from wrapped collateral.`,
+        feeLabel:
+          feePercentage !== undefined
+            ? `${feePercentage.toFixed(2)}% fee`
+            : undefined,
+        feeTone:
+          feePercentage !== undefined && feePercentage > 0 ? "coral" : "mint",
+      });
     }
 
     const receiveRaw =
@@ -12502,72 +12524,88 @@ export function useAnchorDepositWithdrawModal({
         ? formatUSD(receiveRaw * peggedPriceUSD, { compact: false })
         : null;
 
-    details.push({
+    bands.push({
+      role: "receive",
       label: "You receive",
+      secondary: receiveUsd ?? undefined,
       value:
         receiveRaw != null
           ? `${receiveFormatted.text} ${peggedTokenSymbol}`
           : "—",
-      hint: receiveUsd ?? undefined,
       valueTitle: receiveFormatted.title
         ? `${receiveFormatted.title} ${peggedTokenSymbol}`
         : undefined,
     });
 
     if (mintOnly || !selectedStabilityPool) {
-      details.push({ label: "Destination", value: "Wallet" });
+      bands.push({
+        role: "route",
+        label: "Destination",
+        primary: "Wallet",
+        value: "Wallet",
+      });
     } else {
       const pool = filteredPools.find(
         (p) =>
           p.marketId === selectedStabilityPool.marketId &&
           p.poolType === selectedStabilityPool.poolType,
       );
+      const poolLabel =
+        selectedStabilityPool.poolType === "sail"
+          ? "Sail pool"
+          : "Collateral pool";
       const poolAprHint =
         pool?.apr !== undefined && !Number.isNaN(pool.apr)
           ? `APR ${formatAPR(pool.apr)}`
           : undefined;
-      details.push({
+      bands.push({
+        role: "route",
         label: "Deposit to",
-        value:
+        primary: poolLabel,
+        secondary: [
+          selectedRewardToken ? `Reward ${selectedRewardToken}` : null,
+          poolAprHint,
+          peggedTokenSymbol,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+        value: poolLabel,
+        chip: selectedRewardToken || peggedTokenSymbol,
+      });
+      steps.push({
+        title:
           selectedStabilityPool.poolType === "sail"
-            ? "Sail pool"
-            : "Collateral pool",
-        hint: poolAprHint,
+            ? "Deposit to Sail pool"
+            : "Deposit to Collateral pool",
+        detail: `${peggedTokenSymbol} enters the ${poolLabel.toLowerCase()}.`,
       });
-      if (selectedRewardToken) {
-        details.push({
-          label: "Reward asset",
-          value: selectedRewardToken,
-        });
-      }
-      details.push({
-        label: "Market",
-        value: peggedTokenSymbol,
-      });
-      steps.push(
-        selectedStabilityPool.poolType === "sail"
-          ? "Deposit to Sail pool"
-          : "Deposit to Collateral pool",
-      );
     }
 
     if (feePercentage !== undefined) {
-      details.push({
+      fees.push({
         label: "Mint fee",
         value: `${feePercentage.toFixed(2)}%`,
+        tone: feePercentage > 0 ? "coral" : "mint",
       });
     }
 
-    // Ensure at least one step label for single-action paths
     if (steps.length === 0) {
-      steps.push(
-        isDirectPeggedDeposit
+      steps.push({
+        title: isDirectPeggedDeposit
           ? "Deposit to stability pool"
           : `Mint ${peggedTokenSymbol}`,
-      );
+      });
     }
 
-    return { details, steps };
+    return {
+      bands,
+      fees,
+      steps,
+      footerHint:
+        steps.length > 1
+          ? `${steps.length} on-chain steps · review wallet prompts.`
+          : "Review wallet prompts before confirming.",
+    };
   }, [
     selectedDepositAsset,
     collateralSymbol,
@@ -12588,8 +12626,27 @@ export function useAnchorDepositWithdrawModal({
   ]);
 
   const redeemReviewModel = useMemo(() => {
-    const details: Array<{ label: string; value: string; hint?: string }> = [];
-    const steps: string[] = [];
+    const bands: Array<{
+      role: "from" | "route" | "receive" | "meta";
+      label: string;
+      primary?: string;
+      secondary?: string;
+      value: string;
+      valueTitle?: string;
+      chip?: string;
+      iconSymbol?: string;
+    }> = [];
+    const fees: Array<{
+      label: string;
+      value: string;
+      tone: "coral" | "mint" | "neutral";
+    }> = [];
+    const steps: Array<{
+      title: string;
+      detail?: string;
+      feeLabel?: string;
+      feeTone?: "coral" | "mint" | "neutral";
+    }> = [];
 
     const fromLabel =
       selectedRedeemPositionDisplay?.kind === "wallet"
@@ -12608,23 +12665,35 @@ export function useAnchorDepositWithdrawModal({
       amtFormatted?.text ??
       (redeemStepActionKind === "request" ? "Full position" : "—");
 
-    details.push({
+    bands.push({
+      role: "from",
       label: "From",
+      primary: fromLabel,
       value: `${amt} ${peggedTokenSymbol}`,
-      hint: fromLabel,
       valueTitle: amtFormatted?.title
         ? `${amtFormatted.title} ${peggedTokenSymbol}`
         : undefined,
+      iconSymbol: peggedTokenSymbol,
     });
 
     if (redeemStepActionKind === "request" && !earlyWithdraw1PctEnabled) {
-      details.push({
+      bands.push({
+        role: "route",
         label: "Action",
-        value: "Request withdrawal",
-        hint: "Fee-free window later",
+        primary: "Request withdrawal",
+        secondary: "Fee-free window later",
+        value: "Request",
       });
-      steps.push("Request withdrawal from stability pool");
-      return { details, steps };
+      steps.push({
+        title: "Request withdrawal from stability pool",
+        detail: "Start the fee-free withdrawal window.",
+      });
+      return {
+        bands,
+        fees,
+        steps,
+        footerHint: "One on-chain step · review wallet prompts.",
+      };
     }
 
     if (
@@ -12632,27 +12701,31 @@ export function useAnchorDepositWithdrawModal({
       (redeemStepActionKind === "withdrawAndRedeem" ||
         earlyWithdraw1PctEnabled)
     ) {
-      steps.push(
-        earlyWithdraw1PctEnabled
-          ? "Withdraw from pool (1% fee)"
-          : "Withdraw from pool",
-      );
+      steps.push({
+        title: "Withdraw from pool",
+        detail: `${peggedTokenSymbol} leaves the ${fromLabel.toLowerCase()}.`,
+        feeLabel: earlyWithdraw1PctEnabled ? "1% fee" : "0% fee",
+        feeTone: earlyWithdraw1PctEnabled ? "coral" : "mint",
+      });
       if (withdrawOnly) {
-        details.push({
-          label: "Action",
-          value: earlyWithdraw1PctEnabled
-            ? "Withdraw only · 1% fee"
-            : "Withdraw only",
-        });
-        details.push({
+        bands.push({
+          role: "receive",
           label: "You receive",
+          secondary: "To wallet",
           value: `${amt} ${peggedTokenSymbol}`,
-          hint: "To wallet",
           valueTitle: amtFormatted?.title
             ? `${amtFormatted.title} ${peggedTokenSymbol}`
             : undefined,
         });
-        return { details, steps };
+        if (earlyWithdraw1PctEnabled) {
+          fees.push({ label: "Withdraw fee", value: "1%", tone: "coral" });
+        }
+        return {
+          bands,
+          fees,
+          steps,
+          footerHint: "One on-chain step · review wallet prompts.",
+        };
       }
     }
 
@@ -12662,13 +12735,16 @@ export function useAnchorDepositWithdrawModal({
       redeemRouteOptions[0];
 
     if (route) {
-      details.push({
+      bands.push({
+        role: "route",
         label: "Redeem to",
-        value: route.collateralSymbol || route.marketName,
-        hint:
+        primary:
           redeemMarketSelectionMode === "auto"
             ? `Auto · ${route.marketName}`
             : route.marketName,
+        value: route.collateralSymbol || route.marketName,
+        chip: route.collateralSymbol || undefined,
+        iconSymbol: route.collateralSymbol,
       });
     }
 
@@ -12690,10 +12766,11 @@ export function useAnchorDepositWithdrawModal({
           ? formatUSD(route.receiveUsd, { compact: false })
           : null;
 
-    details.push({
+    bands.push({
+      role: "receive",
       label: "You receive",
+      secondary: receiveUsd ?? undefined,
       value: receiveAmt ? `${receiveAmt} ${receiveSym}` : `— ${receiveSym}`,
-      hint: receiveUsd ?? undefined,
       valueTitle:
         withdrawTransactionOverview?.receiveAmountTitle
           ? `${withdrawTransactionOverview.receiveAmountTitle} ${receiveSym}`
@@ -12703,24 +12780,45 @@ export function useAnchorDepositWithdrawModal({
     });
 
     if (!withdrawOnly) {
-      steps.push(`Redeem ${peggedTokenSymbol} → ${receiveSym}`);
+      const redeemFeeLabel =
+        redeemFeePercentage !== undefined
+          ? `${redeemFeePercentage.toFixed(2)}% fee`
+          : undefined;
+      steps.push({
+        title: `Redeem ${peggedTokenSymbol} → ${receiveSym}`,
+        detail: `Convert into ${receiveSym}.`,
+        feeLabel: redeemFeeLabel,
+        feeTone:
+          redeemFeePercentage !== undefined && redeemFeePercentage > 0
+            ? "coral"
+            : "mint",
+      });
     }
 
     if (earlyWithdraw1PctEnabled) {
-      details.push({ label: "Withdraw fee", value: "1%" });
+      fees.push({ label: "Withdraw fee", value: "1%", tone: "coral" });
     }
     if (redeemFeePercentage !== undefined && !withdrawOnly) {
-      details.push({
+      fees.push({
         label: "Redeem fee",
         value: `${redeemFeePercentage.toFixed(2)}%`,
+        tone: redeemFeePercentage > 0 ? "coral" : "mint",
       });
     }
 
     if (steps.length === 0) {
-      steps.push(`Redeem ${peggedTokenSymbol}`);
+      steps.push({ title: `Redeem ${peggedTokenSymbol}` });
     }
 
-    return { details, steps };
+    return {
+      bands,
+      fees,
+      steps,
+      footerHint:
+        steps.length > 1
+          ? `${steps.length} on-chain steps · review wallet prompts.`
+          : "Review wallet prompts before confirming.",
+    };
   }, [
     selectedRedeemPositionDisplay,
     redeemStepAmountValue,

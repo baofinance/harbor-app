@@ -15,7 +15,7 @@ import {
 } from "wagmi";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
-import { REDEEM_LEVERAGED_WITH_PERMIT_ABI } from "@/abis/redeemPermit";
+import { ERC20_PERMIT_ABI } from "@/abis/permit";
 import { WSTETH_ABI } from "@/abis";
 import { MINTER_ETH_ZAP_V3_ABI, MINTER_ETH_ZAP_V1_ABI } from "@/abis";
 import { MINTER_USDC_ZAP_V3_ABI } from "@/abis";
@@ -928,9 +928,15 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
      ? ((depositAssetAllowance as bigint) || 0n) < parsedAmount
      : false;
  const needsApproval = needsZapApproval || needsDirectApproval;
- // When permit is enabled for zap flows (stETH, USDC, fxUSD), we skip the approve step—permit is used inside the mint step
+ // Zap: permit is embedded in zap*WithPermit. Direct minter: ERC20 permit then plain mint.
  const willUsePermitForZap =
    permitEnabled && (useETHZap || useUSDCZap) && !includeSwap && !isNativeETH;
+ const willUsePermitForDirect =
+   permitEnabled &&
+   isPermitCapable &&
+   !useZap &&
+   !includeSwap &&
+   needsDirectApproval;
 
  // Swap approvals
  const needsSwapApproval =
@@ -982,7 +988,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
      details: "Approve USDC for deposit via zap",
    });
  }
- if (needsApproval && !willUsePermitForZap) {
+ if (needsApproval && !willUsePermitForZap && !willUsePermitForDirect) {
    const approveLabel = useZap && zapAssetName
      ? `Approve ${zapAssetName} for deposit`
      : `Approve ${selectedDepositAsset || collateralSymbol} for deposit`;
@@ -999,6 +1005,13 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
      label: `Sign permit for ${zapAssetName} (no gas)`,
      status: "pending",
      details: "Sign EIP-2612 permit to authorize deposit (no gas fee)",
+   });
+ } else if (willUsePermitForDirect) {
+   steps.push({
+     id: "signPermit",
+     label: `Sign permit for ${selectedDepositAsset || collateralSymbol} (no gas)`,
+     status: "pending",
+     details: "Sign EIP-2612 permit for the minter (no gas fee)",
    });
  }
  const buyLabel = useZap && zapAssetName
@@ -1084,12 +1097,116 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
      });
    }
 
-   // Step 2: Approve (if needed, no-swap path)
-   // Skip when willUsePermitForZap: permit is used inside the mint step instead
-   // If using zap (ETH zap or USDC zap), approve to zapAddress
-   // Only direct mints (wstETH, fxSAVE) approve to minterAddress
-   // Note: useETHZap and useUSDCZap already check for zapAddress via useZap, so if they're true, zapAddress must exist
-   if (needsApproval && !willUsePermitForZap && depositAssetAddress) {
+   // Step 2: Approve or submit ERC20 permit (direct mint / non-permit zap)
+   // Zap WithPermit: skip here — signature is used inside the mint step.
+   // Direct minter: Harbor has no mint*WithPermit — permit on the token, then plain mint.
+   let usePermitDirect = false;
+   if (
+     willUsePermitForDirect &&
+     depositAssetAddress &&
+     minterAddress &&
+     needsDirectApproval
+   ) {
+     updateProgressStep("signPermit", { status: "in_progress" });
+     const directPermit = await handlePermitOrApproval(
+       depositAssetAddress,
+       minterAddress,
+       parsedAmount
+     );
+     usePermitDirect =
+       !!directPermit?.usePermit &&
+       !!directPermit?.permitSig &&
+       !!directPermit?.deadline;
+     if (usePermitDirect && directPermit?.permitSig && directPermit?.deadline) {
+       updateProgressStep("signPermit", { status: "completed" });
+       progress.setSteps((prev) => {
+         if (prev.some((s) => s.id === "approve")) return prev;
+         const mintIdx = prev.findIndex((s) => s.id === "mint");
+         const next = [...prev];
+         next.splice(mintIdx >= 0 ? mintIdx : next.length, 0, {
+           id: "approve",
+           label: `Permit ${selectedDepositAsset || collateralSymbol}`,
+           status: "pending",
+           details: "Submit EIP-2612 permit on-chain",
+         });
+         return {
+           steps: next,
+           currentStepIndex: next.findIndex((s) => s.id === "approve"),
+         };
+       });
+       updateProgressStep("approve", { status: "in_progress" });
+       try {
+         const permitHash = await writeContractAsync({
+           address: depositAssetAddress,
+           abi: ERC20_PERMIT_ABI,
+           functionName: "permit",
+           args: [
+             address as `0x${string}`,
+             minterAddress,
+             parsedAmount,
+             directPermit.deadline,
+             directPermit.permitSig.v,
+             directPermit.permitSig.r,
+             directPermit.permitSig.s,
+           ],
+           chainId: marketChainId,
+         });
+         await publicClient?.waitForTransactionReceipt({ hash: permitHash });
+         updateProgressStep("approve", {
+           status: "completed",
+           txHash: permitHash,
+         });
+       } catch (permitErr) {
+         if (isTxUserRejection(permitErr)) throw permitErr;
+         console.warn(
+           "[SailManage] ERC20 permit failed, falling back to approve",
+           permitErr
+         );
+         usePermitDirect = false;
+         progress.setSteps((prev) => ({
+           steps: prev.map((s) =>
+             s.id === "approve"
+               ? {
+                   ...s,
+                   label: `Approve ${selectedDepositAsset || collateralSymbol} for deposit`,
+                   details: "Approve token for deposit",
+                 }
+               : s
+           ),
+           currentStepIndex: prev.findIndex((s) => s.id === "approve"),
+         }));
+       }
+     } else {
+       progress.setSteps((prev) => {
+         const withoutSign = prev.filter((s) => s.id !== "signPermit");
+         if (withoutSign.some((s) => s.id === "approve")) {
+           return {
+             steps: withoutSign,
+             currentStepIndex: withoutSign.findIndex((s) => s.id === "approve"),
+           };
+         }
+         const mintIdx = withoutSign.findIndex((s) => s.id === "mint");
+         const next = [...withoutSign];
+         next.splice(mintIdx >= 0 ? mintIdx : next.length, 0, {
+           id: "approve",
+           label: `Approve ${selectedDepositAsset || collateralSymbol} for deposit`,
+           status: "pending",
+           details: "Approve token for deposit",
+         });
+         return {
+           steps: next,
+           currentStepIndex: next.findIndex((s) => s.id === "approve"),
+         };
+       });
+     }
+   }
+
+   if (
+     needsApproval &&
+     !willUsePermitForZap &&
+     !usePermitDirect &&
+     depositAssetAddress
+   ) {
      updateProgressStep("approve", { status:"in_progress" });
      const approveTarget = useETHZap || useUSDCZap
        ? zapAddress!
@@ -1620,68 +1737,74 @@ if (canAttemptPermitRedeem) {
   }
 }
 
-// Step 1: Approve (if needed and permit not used)
-if (needsApproval && !usePermitRedeem) {
- updateProgressStep("approve", { status:"in_progress" });
- const approveHash = await writeContractAsync({
- address: leveragedTokenAddress,
- abi: ERC20_ABI,
- functionName:"approve",
- args: [minterAddress, parsedAmount],
- chainId: marketChainId,
- });
- await publicClient?.waitForTransactionReceipt({ hash: approveHash });
- updateProgressStep("approve", {
- status:"completed",
- txHash: approveHash,
- });
- }
-
- // Step 2: Redeem
- updateProgressStep("redeem", { status:"in_progress" });
- const minOutput = expectedRedeemOutput
- ? (expectedRedeemOutput * 99n) / 100n
- : 0n;
-
-let redeemHash: `0x${string}`;
-if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
-  try {
-    redeemHash = await writeContractAsync({
-      address: minterAddress,
-      abi: REDEEM_LEVERAGED_WITH_PERMIT_ABI,
-      functionName: "redeemLeveragedTokenWithPermit",
-      args: [
-        parsedAmount,
-        address,
-        minOutput,
-        permitResult.deadline,
-        permitResult.permitSig.v,
-        permitResult.permitSig.r,
-        permitResult.permitSig.s,
-      ],
-      chainId: marketChainId,
-    });
-  } catch (permitRedeemErr) {
-    if (isTxUserRejection(permitRedeemErr)) throw permitRedeemErr;
-    console.warn(
-      "[SailManage] redeemLeveragedTokenWithPermit failed, falling back to approve+redeem",
-      permitRedeemErr
-    );
+// Step 1: ERC20 permit (spender = minter) or classic approve.
+// Harbor minters have no redeem*WithPermit — submit permit on the hs token, then plain redeem.
+if (needsApproval) {
+  if (
+    usePermitRedeem &&
+    permitResult?.permitSig &&
+    permitResult?.deadline
+  ) {
     progress.setSteps((prev) => {
       if (prev.some((s) => s.id === "approve")) return prev;
       const redeemIdx = prev.findIndex((s) => s.id === "redeem");
       const next = [...prev];
       next.splice(redeemIdx >= 0 ? redeemIdx : next.length, 0, {
         id: "approve",
-        label: `Approve ${leveragedTokenSymbol} for sale`,
+        label: `Permit ${leveragedTokenSymbol}`,
         status: "pending",
-        details: "Approve token for sale",
+        details: "Submit EIP-2612 permit on-chain",
       });
       return {
         steps: next,
         currentStepIndex: next.findIndex((s) => s.id === "approve"),
       };
     });
+    updateProgressStep("approve", { status: "in_progress" });
+    try {
+      const permitHash = await writeContractAsync({
+        address: leveragedTokenAddress,
+        abi: ERC20_PERMIT_ABI,
+        functionName: "permit",
+        args: [
+          address as `0x${string}`,
+          minterAddress,
+          parsedAmount,
+          permitResult.deadline,
+          permitResult.permitSig.v,
+          permitResult.permitSig.r,
+          permitResult.permitSig.s,
+        ],
+        chainId: marketChainId,
+      });
+      await publicClient?.waitForTransactionReceipt({ hash: permitHash });
+      updateProgressStep("approve", {
+        status: "completed",
+        txHash: permitHash,
+      });
+    } catch (permitErr) {
+      if (isTxUserRejection(permitErr)) throw permitErr;
+      console.warn(
+        "[SailManage] ERC20 permit failed, falling back to approve",
+        permitErr
+      );
+      usePermitRedeem = false;
+      progress.setSteps((prev) => ({
+        steps: prev.map((s) =>
+          s.id === "approve"
+            ? {
+                ...s,
+                label: `Approve ${leveragedTokenSymbol} for sale`,
+                details: "Approve token for sale",
+              }
+            : s
+        ),
+        currentStepIndex: prev.findIndex((s) => s.id === "approve"),
+      }));
+    }
+  }
+
+  if (!usePermitRedeem) {
     updateProgressStep("approve", { status: "in_progress" });
     const approveHash = await writeContractAsync({
       address: leveragedTokenAddress,
@@ -1695,23 +1818,22 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
       status: "completed",
       txHash: approveHash,
     });
-    redeemHash = await writeContractAsync({
-      address: minterAddress,
-      abi: MINTER_ABI,
-      functionName: "redeemLeveragedToken",
-      args: [parsedAmount, address, minOutput],
-      chainId: marketChainId,
-    });
   }
-} else {
-  redeemHash = await writeContractAsync({
-    address: minterAddress,
-    abi: MINTER_ABI,
-    functionName:"redeemLeveragedToken",
-    args: [parsedAmount, address, minOutput],
-    chainId: marketChainId,
-  });
 }
+
+ // Step 2: Redeem (plain minter call — no *WithPermit on Harbor minters)
+ updateProgressStep("redeem", { status:"in_progress" });
+ const minOutput = expectedRedeemOutput
+ ? (expectedRedeemOutput * 99n) / 100n
+ : 0n;
+
+const redeemHash = await writeContractAsync({
+  address: minterAddress,
+  abi: MINTER_ABI,
+  functionName: "redeemLeveragedToken",
+  args: [parsedAmount, address, minOutput],
+  chainId: marketChainId,
+});
  await publicClient?.waitForTransactionReceipt({ hash: redeemHash });
  updateProgressStep("redeem", { status:"completed", txHash: redeemHash });
 
