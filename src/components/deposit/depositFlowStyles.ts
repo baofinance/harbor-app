@@ -102,13 +102,13 @@ export const ANCHOR_MODAL_FOOTER_WRAPPER = "shrink-0";
 export const ANCHOR_MODAL_FOOTER_CHROME =
   "shrink-0 space-y-2 border-t border-[#1E4775]/8 pt-2";
 
-/** Embedded trade panel height — matches chart column on lg (`650px`). */
+/** Embedded trade panel height — matches chart column on lg (`700px`). */
 export const DEPOSIT_EMBEDDED_PANEL_HEIGHT =
-  "flex min-h-[22rem] flex-col overflow-hidden sm:min-h-[26rem] lg:h-full lg:min-h-[650px] lg:max-h-[650px]";
+  "flex min-h-[22rem] flex-col overflow-hidden sm:min-h-[26rem] lg:h-full lg:min-h-[700px] lg:max-h-[700px]";
 
 /** Embedded trade column width on Earn / Leverage layout (lg). */
 export const DEPOSIT_TRADE_PANEL_GRID_CLASS =
-  "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-start lg:min-h-[650px]";
+  "grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:items-start lg:min-h-[700px]";
 
 /** @deprecated Use DEPOSIT_TRADE_PANEL_GRID_CLASS */
 export const ANCHOR_TRADE_PANEL_GRID_CLASS = DEPOSIT_TRADE_PANEL_GRID_CLASS;

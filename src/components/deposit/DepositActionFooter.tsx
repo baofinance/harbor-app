@@ -32,6 +32,11 @@ export function DepositActionFooter({
   return (
     <div className={ANCHOR_MODAL_FOOTER_CHROME}>
       {feeFooter}
+      {actionHint ? (
+        <p className="text-center text-[10px] leading-snug text-[#1E4775]/45">
+          {actionHint}
+        </p>
+      ) : null}
       <div className={layout === "modal" ? "flex gap-3" : "w-full"}>
         {showCancel && onCancel ? (
           <button
@@ -49,11 +54,6 @@ export function DepositActionFooter({
             onRetry={onRetry}
             className="w-full"
           />
-          {actionHint ? (
-            <p className="mt-1.5 text-center text-[10px] leading-snug text-[#1E4775]/45">
-              {actionHint}
-            </p>
-          ) : null}
         </div>
       </div>
     </div>

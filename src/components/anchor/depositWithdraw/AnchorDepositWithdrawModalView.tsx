@@ -1187,8 +1187,8 @@ export function AnchorDepositWithdrawModalView(
                   <div className={DEPOSIT_SEGMENT_STACK_CLASS}>
                     <AnchorFlowReviewStep
                       bands={mintReviewModel.bands}
-                      fees={mintReviewModel.fees}
                       steps={mintReviewModel.steps}
+                      stepsFooterHint={mintReviewModel.footerHint}
                     />
                     {error ? (
                       <ErrorBanner message={error} className="mt-2" />
@@ -1222,56 +1222,26 @@ export function AnchorDepositWithdrawModalView(
                           />
                         ) : isRedeemReviewFlowPage ? (
                           <div className="space-y-2.5">
-                            <AnchorRedeemSelectedPositionSummary
-                              position={selectedRedeemPositionDisplay}
-                              peggedTokenSymbol={peggedTokenSymbol}
-                              disabled={isProcessing}
-                              onChangePosition={handleBackToRedeemPositions}
-                              showModeToggle={
-                                selectedRedeemPositionDisplay.kind === "pool" &&
-                                redeemStepShowAmount &&
-                                (selectedRedeemPositionDisplay.windowOpen ||
-                                  earlyWithdraw1PctEnabled)
-                              }
-                              withdrawOnly={withdrawOnly}
-                              onWithdrawOnlyChange={setWithdrawOnly}
-                            />
                             <AnchorFlowReviewStep
                               bands={redeemReviewModel.bands}
-                              fees={redeemReviewModel.fees}
                               steps={redeemReviewModel.steps}
+                              stepsFooterHint={redeemReviewModel.footerHint}
                             />
                           </div>
                         ) : isRedeemRouteFlowPage ? (
-                          <div className="space-y-2.5">
-                            <AnchorRedeemSelectedPositionSummary
-                              position={selectedRedeemPositionDisplay}
-                              peggedTokenSymbol={peggedTokenSymbol}
-                              disabled={isProcessing}
-                              onChangePosition={handleBackToRedeemPositions}
-                              showModeToggle={
-                                selectedRedeemPositionDisplay.kind === "pool" &&
-                                redeemStepShowAmount &&
-                                (selectedRedeemPositionDisplay.windowOpen ||
-                                  earlyWithdraw1PctEnabled)
-                              }
-                              withdrawOnly={withdrawOnly}
-                              onWithdrawOnlyChange={setWithdrawOnly}
-                            />
-                            <AnchorRedeemRouteStep
-                              options={redeemRouteOptions}
-                              selectedMarketId={selectedRedeemMarketId || null}
-                              autoMode={redeemMarketSelectionMode === "auto"}
-                              recommendedMarketId={recommendedRedeemMarketId}
-                              disabled={isProcessing}
-                              onSelectAuto={() =>
-                                handleSellMarketSelectChange("auto")
-                              }
-                              onSelectMarket={(marketId) =>
-                                handleSellMarketSelectChange(marketId)
-                              }
-                            />
-                          </div>
+                          <AnchorRedeemRouteStep
+                            options={redeemRouteOptions}
+                            selectedMarketId={selectedRedeemMarketId || null}
+                            autoMode={redeemMarketSelectionMode === "auto"}
+                            recommendedMarketId={recommendedRedeemMarketId}
+                            disabled={isProcessing}
+                            onSelectAuto={() =>
+                              handleSellMarketSelectChange("auto")
+                            }
+                            onSelectMarket={(marketId) =>
+                              handleSellMarketSelectChange(marketId)
+                            }
+                          />
                         ) : (
                           <AnchorRedeemPositionStep
                             position={selectedRedeemPositionDisplay}
@@ -1390,20 +1360,12 @@ export function AnchorDepositWithdrawModalView(
                                   ? handleContinueToRedeemRoute
                                   : handleContinueToRedeemReview
                       }
-                      actionHint={
-                        isMintReviewFlowPage
-                          ? mintReviewModel.footerHint
-                          : isRedeemReviewFlowPage
-                            ? redeemReviewModel.footerHint
-                            : undefined
-                      }
                       feeFooter={
-                        isMintReviewFlowPage || isRedeemReviewFlowPage
-                          ? null
-                          : activeTab === "deposit"
+                        activeTab === "deposit"
                           ? buyFeeFooter
                           : isRedeemConfirmFlowPage ||
                               isRedeemRouteFlowPage ||
+                              isRedeemReviewFlowPage ||
                               (!simpleMode &&
                                 (flowPage === 2 || activeTab === "sell"))
                             ? withdrawFeeFooter

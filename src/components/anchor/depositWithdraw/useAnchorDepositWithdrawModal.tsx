@@ -12017,25 +12017,36 @@ export function useAnchorDepositWithdrawModal({
     if ((activeTab !== "withdraw" && activeTab !== "sell") || !simpleMode) {
       return null;
     }
-    // Position-first: fees on amount + route steps (not list)
+    // Choose position: no fees.
     if (flowPage === 1) return null;
-    // Request / early-withdraw / withdraw-only: fee story lives in overview + CTA
-    if (
-      isRedeemConfirmFlowPage &&
-      (redeemStepActionKind === "request" ||
-        earlyWithdraw1PctEnabled ||
-        withdrawOnly)
-    ) {
-      return null;
-    }
+
+    const isMultiMarket = marketsForToken.length > 1;
+
+    // Fast-exit withdraw fee on Confirm / Route / Review when enabled.
+    const showEarlyFee =
+      !!selectedPoolEarlyWithdrawFee &&
+      selectedPoolEarlyWithdrawFee.percent > 0 &&
+      earlyWithdraw1PctEnabled &&
+      (isRedeemConfirmFlowPage ||
+        isRedeemRouteFlowPage ||
+        isRedeemReviewFlowPage);
+
+    // Redeem fee:
+    // - Redeem to + Review: when redeeming
+    // - Confirm single-market: when this path redeems (not request-only / withdraw-only)
+    // - Confirm multi-market: wait for Redeem to
+    const willRedeemOnConfirm =
+      !withdrawOnly &&
+      (redeemStepActionKind === "withdrawAndRedeem" ||
+        redeemStepActionKind === "redeem" ||
+        earlyWithdraw1PctEnabled);
 
     const showSellFee =
+      !withdrawOnly &&
       (isRedeemRouteFlowPage ||
         isRedeemReviewFlowPage ||
-        (!needsRedeemRouteStep && isRedeemConfirmFlowPage) ||
-        activeTab === "sell") &&
-      (activeTab === "sell" || !withdrawOnly);
-    const showEarlyFee = !!selectedPoolEarlyWithdrawFee;
+        (isRedeemConfirmFlowPage && !isMultiMarket && willRedeemOnConfirm) ||
+        (activeTab === "sell" && !isRedeemConfirmFlowPage));
 
     if (!showSellFee && !showEarlyFee) return null;
 
@@ -12044,7 +12055,7 @@ export function useAnchorDepositWithdrawModal({
       redeemInputAmount > 0n &&
       redeemFeePercentage !== undefined
         ? "Redeem fee"
-        : sellFeeRange?.hasRange && marketsForToken.length > 1
+        : sellFeeRange?.hasRange && isMultiMarket
           ? "Fee range"
           : "Redeem fee";
 
@@ -12059,7 +12070,7 @@ export function useAnchorDepositWithdrawModal({
       }
       if (
         sellFeeRange?.hasRange &&
-        marketsForToken.length > 1 &&
+        isMultiMarket &&
         !(redeemInputAmount && redeemInputAmount > 0n)
       ) {
         return `${sellFeeRange.min.toFixed(2)}% – ${sellFeeRange.max.toFixed(2)}%`;
@@ -12130,7 +12141,6 @@ export function useAnchorDepositWithdrawModal({
     isRedeemRouteFlowPage,
     isRedeemConfirmFlowPage,
     isRedeemReviewFlowPage,
-    needsRedeemRouteStep,
     withdrawOnly,
     selectedPoolEarlyWithdrawFee,
     redeemInputAmount,
