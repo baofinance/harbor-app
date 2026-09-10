@@ -6,6 +6,7 @@ import { DepositAmountCard } from "@/components/deposit/DepositAmountCard";
 import {
   DEPOSIT_MODE_TOGGLE_ROW_CLASS,
   DEPOSIT_SECTION_LABEL_CLASS,
+  DEPOSIT_TAG_CORAL_CLASS,
 } from "@/components/deposit/depositFlowStyles";
 import type {
   AnchorRedeemPosition,
@@ -104,9 +105,7 @@ function SpeedToggleRow({
       <div className="flex min-w-0 items-center gap-1.5">
         <p className="text-xs font-semibold text-[#1E4775]">{label}</p>
         {badge ? (
-          <span className="shrink-0 rounded-full border border-harbor-coral/35 bg-harbor-coral/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#b45309]">
-            {badge}
-          </span>
+          <span className={`shrink-0 ${DEPOSIT_TAG_CORAL_CLASS}`}>{badge}</span>
         ) : null}
         <SimpleTooltip label={tooltip} side="top" maxWidth={240}>
           <span className="inline-flex h-4 w-4 cursor-help items-center justify-center text-[#1E4775]/50 hover:text-[#1E4775]">
@@ -206,10 +205,10 @@ export function AnchorRedeemPositionStep({
             label={
               earlyWithdrawEnabled ? "Fast withdrawal" : "Free withdrawal"
             }
-            badge={earlyWithdrawEnabled ? "1% fee" : undefined}
+            badge={earlyWithdrawEnabled ? "1.00% fee" : undefined}
             tooltip={
               earlyWithdrawEnabled
-                ? "Withdraw immediately with a 1% fee."
+                ? "Withdraw immediately with a 1.00% fee."
                 : `Request now for free. Window opens after ~${withdrawalDelayLabel} and lasts ~${withdrawalDurationLabel}.`
             }
             enabled={earlyWithdrawEnabled}

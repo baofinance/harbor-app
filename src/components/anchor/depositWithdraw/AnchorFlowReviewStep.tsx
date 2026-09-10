@@ -1,7 +1,12 @@
 "use client";
 
 import { TokenLogo } from "@/components/shared";
-import { DEPOSIT_SECTION_LABEL_CLASS } from "@/components/deposit/depositFlowStyles";
+import {
+  DEPOSIT_SECTION_LABEL_CLASS,
+  DEPOSIT_TAG_CORAL_CLASS,
+  DEPOSIT_TAG_MINT_CLASS,
+  DEPOSIT_TAG_NEUTRAL_CLASS,
+} from "@/components/deposit/depositFlowStyles";
 
 export type AnchorFlowReviewBand = {
   /** Semantic role for layout (receive gets mint wash + larger type). */
@@ -41,19 +46,11 @@ export type AnchorFlowReviewStepProps = {
   stepsFooterHint?: string;
 };
 
-function feeChipClass(tone: AnchorFlowReviewFee["tone"]): string {
-  if (tone === "coral") {
-    return "border-harbor-coral/45 bg-harbor-coral/15 text-[#D45A4A]";
-  }
-  if (tone === "mint") {
-    return "border-[#2A7A5E]/25 bg-harbor-mint/45 text-[#1A5C45]";
-  }
-  return "border-[#1E4775]/15 bg-[#1E4775]/8 text-[#1E4775]/75";
+function reviewTagClass(tone: AnchorFlowReviewFee["tone"]): string {
+  if (tone === "coral") return DEPOSIT_TAG_CORAL_CLASS;
+  if (tone === "mint") return DEPOSIT_TAG_MINT_CLASS;
+  return DEPOSIT_TAG_NEUTRAL_CLASS;
 }
-
-/** Shared compact tag — fees, route chips, etc. */
-const REVIEW_TAG_CLASS =
-  "rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide";
 
 export function AnchorFlowReviewStep({
   title = "Review",
@@ -101,11 +98,7 @@ export function AnchorFlowReviewStep({
                   <TokenLogo symbol={band.iconSymbol} size={16} />
                 ) : null}
                 {band.chip ? (
-                  <span
-                    className={`${REVIEW_TAG_CLASS} ${feeChipClass("mint")}`}
-                  >
-                    {band.chip}
-                  </span>
+                  <span className={reviewTagClass("mint")}>{band.chip}</span>
                 ) : (
                   <p
                     className="text-right text-xs font-semibold tabular-nums text-[#1E4775]"
@@ -187,7 +180,7 @@ export function AnchorFlowReviewStep({
                       </div>
                       {step.feeLabel ? (
                         <span
-                          className={`shrink-0 ${REVIEW_TAG_CLASS} ${feeChipClass(step.feeTone ?? "neutral")}`}
+                          className={`shrink-0 ${reviewTagClass(step.feeTone ?? "neutral")}`}
                         >
                           {step.feeLabel}
                         </span>

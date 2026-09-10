@@ -12196,6 +12196,16 @@ export function useAnchorDepositWithdrawModal({
           ? earlyWithdrawalFees.find((f) => f.poolType === poolType)
           : undefined;
 
+      // Same source as the footer fee tag — don't rely only on amount-based earlyFee
+      // (that can be missing when on-chain fee params are still loading).
+      const withdrawFeePercent = earlyWithdraw1PctEnabled
+        ? (earlyFee?.feePercent ??
+          (selectedPoolEarlyWithdrawFee?.percent &&
+          selectedPoolEarlyWithdrawFee.percent > 0
+            ? selectedPoolEarlyWithdrawFee.percent
+            : 1))
+        : (earlyFee?.feePercent ?? selectedPoolEarlyWithdrawFee?.percent ?? 0);
+
       const buildPoolWithdrawPreview = (
         receiveLabel: string,
         nextStepLine?: string,
@@ -12218,6 +12228,11 @@ export function useAnchorDepositWithdrawModal({
         let netWei = parseEther(amountStr);
         if (earlyFee) {
           netWei = netWei > earlyFee.amount ? netWei - earlyFee.amount : netWei;
+        } else if (earlyWithdraw1PctEnabled && withdrawFeePercent > 0) {
+          const feeWei =
+            (netWei * BigInt(Math.round(withdrawFeePercent * 1e16))) /
+            parseEther("1");
+          netWei = netWei > feeWei ? netWei - feeWei : 0n;
         }
         const netAmount = Number(formatEther(netWei));
         const netFormatted = formatUiAmount(netAmount);
@@ -12230,7 +12245,11 @@ export function useAnchorDepositWithdrawModal({
         const earlyFeeUsd =
           earlyFee && peggedPriceUSD > 0
             ? (Number(earlyFee.amount) / 1e18) * peggedPriceUSD
-            : 0;
+            : earlyWithdraw1PctEnabled &&
+                withdrawFeePercent > 0 &&
+                peggedPriceUSD > 0
+              ? parsedAmount * (withdrawFeePercent / 100) * peggedPriceUSD
+              : 0;
 
         return {
           receiveAmount: netFormatted.text,
@@ -12241,15 +12260,16 @@ export function useAnchorDepositWithdrawModal({
           sourceLine:
             nextStepLine ??
             `${poolLabelCompact} · ${amountFormatted.text} ${peggedTokenSymbol}`,
-          fees: earlyFee
-            ? [
-                {
-                  label: "Early withdraw fee",
-                  percentage: earlyFee.feePercent,
-                  usd: earlyFeeUsd > 0 ? earlyFeeUsd : undefined,
-                },
-              ]
-            : undefined,
+          fees:
+            earlyFee || (earlyWithdraw1PctEnabled && withdrawFeePercent > 0)
+              ? [
+                  {
+                    label: "Early withdraw fee",
+                    percentage: withdrawFeePercent,
+                    usd: earlyFeeUsd > 0 ? earlyFeeUsd : undefined,
+                  },
+                ]
+              : undefined,
         };
       };
 
@@ -12326,7 +12346,14 @@ export function useAnchorDepositWithdrawModal({
       const earlyFeeUsd =
         earlyFee && peggedPriceUSD > 0
           ? (Number(earlyFee.amount) / 1e18) * peggedPriceUSD
-          : 0;
+          : earlyWithdraw1PctEnabled &&
+              withdrawFeePercent > 0 &&
+              peggedPriceUSD > 0 &&
+              redeemInputAmount
+            ? (Number(redeemInputAmount) / 1e18) *
+              (withdrawFeePercent / 100) *
+              peggedPriceUSD
+            : 0;
 
       const overviewFees: Array<{
         label: string;
@@ -12340,7 +12367,7 @@ export function useAnchorDepositWithdrawModal({
 
       // Withdraw fee is chosen on Confirm (speed / early exit) — keep it on later steps.
       const showWithdrawFeeInOverview =
-        isPoolWithdrawAndRedeem || !!earlyFee;
+        isPoolWithdrawAndRedeem || !!earlyFee || earlyWithdraw1PctEnabled;
 
       if (showWithdrawFeeInOverview) {
         overviewFees.push({
@@ -12349,8 +12376,10 @@ export function useAnchorDepositWithdrawModal({
             ? earlyWithdraw1PctEnabled
               ? "fast exit"
               : "pool exit"
-            : undefined,
-          percentage: earlyFee?.feePercent ?? 0,
+            : earlyWithdraw1PctEnabled
+              ? "fast exit"
+              : undefined,
+          percentage: withdrawFeePercent,
           usd: earlyFeeUsd > 0 ? earlyFeeUsd : undefined,
         });
       }
@@ -12423,6 +12452,7 @@ export function useAnchorDepositWithdrawModal({
       withdrawalMethods.collateralPool,
       withdrawalMethods.sailPool,
       earlyWithdrawalFees,
+      selectedPoolEarlyWithdrawFee,
       positionAmounts.collateralPool,
       positionAmounts.sailPool,
       positionAmounts.wallet,
@@ -12711,11 +12741,19 @@ export function useAnchorDepositWithdrawModal({
       (redeemStepActionKind === "withdrawAndRedeem" ||
         earlyWithdraw1PctEnabled)
     ) {
+      const earlyFeePct =
+        selectedPoolEarlyWithdrawFee?.percent &&
+        selectedPoolEarlyWithdrawFee.percent > 0
+          ? selectedPoolEarlyWithdrawFee.percent
+          : earlyWithdraw1PctEnabled
+            ? 1
+            : 0;
+      const earlyFeeLabel = `${earlyFeePct.toFixed(2)}% fee`;
       steps.push({
         title: "Withdraw from pool",
         detail: `${peggedTokenSymbol} leaves the ${fromLabel.toLowerCase()}.`,
-        feeLabel: earlyWithdraw1PctEnabled ? "1% fee" : "0% fee",
-        feeTone: earlyWithdraw1PctEnabled ? "coral" : "mint",
+        feeLabel: earlyFeeLabel,
+        feeTone: earlyFeePct > 0 ? "coral" : "mint",
       });
       if (withdrawOnly) {
         bands.push({
@@ -12727,8 +12765,12 @@ export function useAnchorDepositWithdrawModal({
             ? `${amtFormatted.title} ${peggedTokenSymbol}`
             : undefined,
         });
-        if (earlyWithdraw1PctEnabled) {
-          fees.push({ label: "Withdraw fee", value: "1%", tone: "coral" });
+        if (earlyFeePct > 0) {
+          fees.push({
+            label: "Withdraw fee",
+            value: `${earlyFeePct.toFixed(2)}%`,
+            tone: "coral",
+          });
         }
         return {
           bands,
@@ -12806,7 +12848,16 @@ export function useAnchorDepositWithdrawModal({
     }
 
     if (earlyWithdraw1PctEnabled) {
-      fees.push({ label: "Withdraw fee", value: "1%", tone: "coral" });
+      const earlyFeePct =
+        selectedPoolEarlyWithdrawFee?.percent &&
+        selectedPoolEarlyWithdrawFee.percent > 0
+          ? selectedPoolEarlyWithdrawFee.percent
+          : 1;
+      fees.push({
+        label: "Withdraw fee",
+        value: `${earlyFeePct.toFixed(2)}%`,
+        tone: "coral",
+      });
     }
     if (redeemFeePercentage !== undefined && !withdrawOnly) {
       fees.push({
@@ -12835,6 +12886,7 @@ export function useAnchorDepositWithdrawModal({
     peggedTokenSymbol,
     redeemStepActionKind,
     earlyWithdraw1PctEnabled,
+    selectedPoolEarlyWithdrawFee,
     withdrawOnly,
     redeemRouteOptions,
     selectedRedeemMarketId,

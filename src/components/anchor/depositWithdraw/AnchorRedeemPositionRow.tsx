@@ -6,6 +6,10 @@ import { TokenLogo } from "@/components/shared";
 import { formatUSD } from "@/utils/formatters";
 import type { AnchorRedeemPosition } from "@/utils/anchorRedeemPositions";
 import { redeemPositionTitle } from "@/utils/anchorRedeemPositions";
+import {
+  DEPOSIT_TAG_AMBER_CLASS,
+  DEPOSIT_TAG_MINT_CLASS,
+} from "@/components/deposit/depositFlowStyles";
 
 function formatHaBalance(balance: bigint): string {
   const n = Number(formatEther(balance));
@@ -70,8 +74,7 @@ const TONE_STYLES: Record<
     rowSelected: "border-amber-400 bg-amber-50 shadow-sm",
     rowHover: "hover:border-amber-400 hover:bg-amber-50",
     title: "text-amber-900/70",
-    badge:
-      "bg-amber-200/70 text-amber-900 ring-1 ring-amber-300/60",
+    badge: DEPOSIT_TAG_AMBER_CLASS,
     value: "text-amber-950",
     muted: "text-amber-900/55",
   },
@@ -80,8 +83,7 @@ const TONE_STYLES: Record<
     rowSelected: "border-[#4A9784]/55 bg-[#4A9784]/15 shadow-sm",
     rowHover: "hover:border-[#4A9784]/45 hover:bg-[#4A9784]/14",
     title: "text-[#2f6f5f]/80",
-    badge:
-      "bg-[#4A9784]/20 text-[#2f6f5f] ring-1 ring-[#4A9784]/30",
+    badge: DEPOSIT_TAG_MINT_CLASS,
     value: "text-[#1f4f44]",
     muted: "text-[#2f6f5f]/65",
   },
@@ -133,15 +135,9 @@ export function AnchorRedeemPositionRow({
 
   const statusBadge =
     tone === "pending" && requestStatus ? (
-      <span
-        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${styles.badge}`}
-      >
-        {requestStatus.label}
-      </span>
+      <span className={`shrink-0 ${styles.badge}`}>{requestStatus.label}</span>
     ) : tone === "ready" ? (
-      <span
-        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${styles.badge}`}
-      >
+      <span className={`shrink-0 ${styles.badge}`}>
         {requestStatus?.label ?? "Ready"}
       </span>
     ) : null;

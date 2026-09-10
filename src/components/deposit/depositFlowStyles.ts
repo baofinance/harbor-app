@@ -122,6 +122,24 @@ export const ANCHOR_EMBEDDED_PANEL_HEIGHT = DEPOSIT_EMBEDDED_PANEL_HEIGHT;
 export const DEPOSIT_SECTION_LABEL_CLASS =
   "text-[10px] font-bold uppercase tracking-wide text-[#1E4775]";
 
+/**
+ * Compact bordered tags for Earn / Sail trade modals — fees, route chips,
+ * Harbor Route / Best / Limited, request status. Prefer these over rounded-full pills.
+ */
+export const DEPOSIT_TAG_BASE_CLASS =
+  "rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide";
+
+export const DEPOSIT_TAG_CORAL_CLASS = `${DEPOSIT_TAG_BASE_CLASS} border-harbor-coral/45 bg-harbor-coral/15 text-[#D45A4A]`;
+
+export const DEPOSIT_TAG_MINT_CLASS = `${DEPOSIT_TAG_BASE_CLASS} border-[#2A7A5E]/25 bg-harbor-mint/45 text-[#1A5C45]`;
+
+export const DEPOSIT_TAG_NEUTRAL_CLASS = `${DEPOSIT_TAG_BASE_CLASS} border-[#1E4775]/15 bg-[#1E4775]/8 text-[#1E4775]/75`;
+
+export const DEPOSIT_TAG_AMBER_CLASS = `${DEPOSIT_TAG_BASE_CLASS} border-amber-300/70 bg-amber-100 text-amber-900`;
+
+/** Blocked / unavailable fee tier in trade modals. */
+export const DEPOSIT_TAG_BLOCKED_CLASS = `${DEPOSIT_TAG_BASE_CLASS} border-[#10141A]/35 bg-[#D8DADF] text-[#10141A]`;
+
 /** Shared amount input — matches Sail / deposit card styling. */
 export function depositAmountInputClass(hasError = false): string {
   return `w-full rounded-lg border bg-white/90 px-3 pr-20 py-3 font-mono text-2xl text-[#1E4775] transition-all focus:border-[#1E4775] focus:outline-none focus:ring-2 focus:ring-[#1E4775]/20 ${

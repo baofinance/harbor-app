@@ -6,6 +6,7 @@ import { SailFeeRatioCell } from "@/components/sail/SailFeeRatioCell";
 import { SailFeeBandBadge } from "@/components/sail/SailFeeBandBadge";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { Info } from "lucide-react";
+import { DEPOSIT_TAG_NEUTRAL_CLASS } from "@/components/deposit/depositFlowStyles";
 
 export type DepositTradeMarketFees = {
   buyFeeRatio: bigint | undefined;
@@ -55,6 +56,7 @@ function FeeValueCell({
         ratio={ratio}
         isMintSail={isMintSail}
         activeBand={activeBand}
+        variant="modal"
       />
     );
   }
@@ -69,25 +71,24 @@ function FeeValueCell({
           lowerBound={activeBand?.lowerBound ?? 0n}
           upperBound={activeBand?.upperBound}
           omitFeeSuffix
+          variant="modal"
         />
       );
     }
 
     return (
-      <span className="font-mono text-[10px] font-semibold tabular-nums text-[#1E4775]/70">
+      <span className={`${DEPOSIT_TAG_NEUTRAL_CLASS} tabular-nums`}>
         {displayValue}
       </span>
     );
   }
 
   return (
-    <span className="font-mono text-[10px] font-semibold tabular-nums text-[#1E4775]/70">
-      —
-    </span>
+    <span className={`${DEPOSIT_TAG_NEUTRAL_CLASS} tabular-nums`}>—</span>
   );
 }
 
-/** Shared buy/sell fee row — colored band pills above modal primary actions. */
+/** Shared buy/sell fee row — modal tags above primary actions. */
 export function DepositTradeFeeFooter({
   heading,
   items,

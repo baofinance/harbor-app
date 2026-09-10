@@ -2,7 +2,12 @@
 
 import { TokenLogo } from "@/components/shared";
 import { formatUSD } from "@/utils/formatters";
-import { DEPOSIT_SECTION_LABEL_CLASS } from "@/components/deposit/depositFlowStyles";
+import {
+  DEPOSIT_SECTION_LABEL_CLASS,
+  DEPOSIT_TAG_AMBER_CLASS,
+  DEPOSIT_TAG_CORAL_CLASS,
+  DEPOSIT_TAG_MINT_CLASS,
+} from "@/components/deposit/depositFlowStyles";
 
 export type AnchorRedeemRouteOption = {
   marketId: string;
@@ -51,10 +56,12 @@ function formatAutoRouteLabel(
   return peg ? `${collateralSymbol} - ${peg}` : collateralSymbol;
 }
 
-const ROUTE_TAG_BASE =
-  "rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide";
-const ROUTE_TAG_PREFERRED = `${ROUTE_TAG_BASE} bg-harbor-coral/15 text-[#D45A4A]`;
-const ROUTE_TAG_BEST = `${ROUTE_TAG_BASE} bg-[#4A9784]/15 text-[#2f6f5f]`;
+function feeTagClass(fee: number | undefined): string {
+  if (fee === undefined || !Number.isFinite(fee) || fee <= 0) {
+    return `${DEPOSIT_TAG_MINT_CLASS} tabular-nums`;
+  }
+  return `${DEPOSIT_TAG_CORAL_CLASS} tabular-nums`;
+}
 
 export function AnchorRedeemRouteStep({
   options,
@@ -106,9 +113,9 @@ export function AnchorRedeemRouteStep({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          <span className={ROUTE_TAG_PREFERRED}>Harbor Route</span>
-          <span className={ROUTE_TAG_BEST}>Best</span>
-          <span className="rounded-full bg-[#1E4775]/8 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[#1E4775]/75">
+          <span className={DEPOSIT_TAG_CORAL_CLASS}>Harbor Route</span>
+          <span className={DEPOSIT_TAG_MINT_CLASS}>Best</span>
+          <span className={feeTagClass(recommended?.feePercent)}>
             {formatFee(recommended?.feePercent)}
           </span>
         </div>
@@ -158,14 +165,12 @@ export function AnchorRedeemRouteStep({
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
                       {option.isBest ? (
-                        <span className={ROUTE_TAG_BEST}>Best</span>
+                        <span className={DEPOSIT_TAG_MINT_CLASS}>Best</span>
                       ) : null}
                       {option.isCapped ? (
-                        <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-800">
-                          Limited
-                        </span>
+                        <span className={DEPOSIT_TAG_AMBER_CLASS}>Limited</span>
                       ) : null}
-                      <span className="rounded-full bg-[#1E4775]/8 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[#1E4775]/75">
+                      <span className={feeTagClass(option.feePercent)}>
                         {formatFee(option.feePercent)}
                       </span>
                     </div>
