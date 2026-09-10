@@ -84,7 +84,7 @@ export function GenesisVoyageStatsStrip({
     <div className="min-w-0">
       <p className={`mb-1 ${SAIL_ADVANCED_LABEL}`}>This voyage</p>
       <div
-        className={`${SAIL_ADVANCED_HEADER_STRIP_SHELL} ${SAIL_ADVANCED_HEADER_STRIP_DIVIDE} grid grid-cols-2 sm:grid-cols-4`}
+        className={`${SAIL_ADVANCED_HEADER_STRIP_SHELL} grid grid-cols-2 ${SAIL_ADVANCED_HEADER_STRIP_DIVIDE} sm:grid-cols-4 sm:divide-y-0`}
       >
         <StatCell label="Stage" value={stage} />
         <StatCell label="Capacity" value={capacity} />

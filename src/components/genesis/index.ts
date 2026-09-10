@@ -60,6 +60,7 @@ export type { GenesisFeaturedCompletedVoyagesProps } from "./GenesisFeaturedComp
 export { GenesisOtherVoyagesSection } from "./GenesisOtherVoyagesSection";
 export type { GenesisOtherVoyagesSectionProps } from "./GenesisOtherVoyagesSection";
 export { GenesisVoyageFooterNotice } from "./GenesisVoyageFooterNotice";
+export { GenesisVoyageCompletedNotice } from "./GenesisVoyageCompletedNotice";
 export { GenesisVoyageStatusBadge } from "./GenesisVoyageStatusBadge";
 export { GenesisActiveVoyageMetrics } from "./GenesisActiveVoyageMetrics";
 export { GenesisVoyageProgressMilestones } from "./GenesisVoyageProgressMilestones";

@@ -2,6 +2,7 @@
 
 import { DepositModalShell } from "@/components/DepositModalShell";
 import { DepositModalTabHeader } from "@/components/DepositModalTabHeader";
+import { DepositModalLayout } from "@/components/deposit/DepositModalLayout";
 import { GenesisHowItWorksContent } from "./GenesisHowItWorksContent";
 
 export type GenesisHowItWorksModalProps = {
@@ -9,7 +10,7 @@ export type GenesisHowItWorksModalProps = {
   onClose: () => void;
 };
 
-/** Product-modal chrome for How it works (same overlay as deposit manage). */
+/** Product-modal chrome for How it works (same Anchor/Sail overlay shell). */
 export function GenesisHowItWorksModal({
   isOpen,
   onClose,
@@ -18,7 +19,7 @@ export function GenesisHowItWorksModal({
     <DepositModalShell
       isOpen={isOpen}
       onClose={onClose}
-      title="How it works"
+      title="Genesis · How it works"
       tabs={
         <DepositModalTabHeader
           tabs={[{ value: "how", label: "Voyage steps" }]}
@@ -27,9 +28,9 @@ export function GenesisHowItWorksModal({
         />
       }
     >
-      <div className="px-1 py-2 sm:px-0.5">
-        <GenesisHowItWorksContent />
-      </div>
+      <DepositModalLayout
+        scroll={<GenesisHowItWorksContent />}
+      />
     </DepositModalShell>
   );
 }

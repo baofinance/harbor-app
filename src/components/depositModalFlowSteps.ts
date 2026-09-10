@@ -15,11 +15,11 @@ export const DEPOSIT_MODAL_STEP = {
 } as const;
 
 export function genesisDepositFlowParts(): string[] {
-  return [DEPOSIT_MODAL_STEP.depositCollateralAmount];
+  return ["Amount"];
 }
 
 export function genesisWithdrawFlowParts(): string[] {
-  return [DEPOSIT_MODAL_STEP.withdrawCollateralAmount];
+  return ["Amount"];
 }
 
 export function sailMintFlowParts(): string[] {

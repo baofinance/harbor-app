@@ -14,4 +14,5 @@ export type { GenesisVoyageActionPanelProps } from "./GenesisVoyageActionPanel";
 export { GenesisHowItWorksContent } from "./GenesisHowItWorksContent";
 export { GenesisHowItWorksModal } from "./GenesisHowItWorksModal";
 export type { GenesisHowItWorksModalProps } from "./GenesisHowItWorksModal";
+export { GenesisVoyageInfoFooter } from "./GenesisVoyageInfoFooter";
 export { GENESIS_TRADE_PANEL_ID } from "./genesisAdvancedStyles";

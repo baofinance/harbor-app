@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { flushSync } from "react-dom";
 import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
-import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import {
  useAccount,
   useBalance,
@@ -48,26 +47,23 @@ import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useUserTokens, getTokenAddress, getTokenInfo, useTokenDecimals } from "@/hooks/useUserTokens";
 import { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
-import { TokenAmountSection } from "@/components/TokenAmountSection";
 import { usePermitFlow } from "@/hooks/usePermitFlow";
 import { useTransactionProgress } from "@/hooks/useTransactionProgress";
 import SimpleTooltip from "@/components/SimpleTooltip";
-import { InfoCallout } from "@/components/InfoCallout";
-import { ModalNotificationsPanel } from "@/components/ModalNotificationsPanel";
 import { isMarketArchived } from "@/config/markets";
 import { DepositModalShell } from "@/components/DepositModalShell";
 import { DepositModalFlowOverview } from "@/components/DepositModalFlowOverview";
+import { DepositModalTitle } from "@/components/DepositModalTitle";
+import { DepositModalTabHeader } from "@/components/DepositModalTabHeader";
+import { DepositModalLayout } from "@/components/deposit/DepositModalLayout";
+import { DepositActionFooter } from "@/components/deposit/DepositActionFooter";
+import { DepositAmountCard } from "@/components/deposit/DepositAmountCard";
+import { DepositPermitToggle } from "@/components/deposit/DepositPermitToggle";
+import { GenesisDepositTransactionOverview } from "@/components/genesis/GenesisDepositTransactionOverview";
+import type { DepositPrimaryAction } from "@/utils/depositFormState";
 import { genesisDepositFlowParts } from "@/components/depositModalFlowSteps";
 import {
-  depositModalNotificationBadgeClass,
-  pickHeaviestDepositModalNotificationBadge,
-} from "@/components/depositModalNotificationStyles";
-import {
   AlertOctagon,
-  Banknote,
-  Bell,
-  Info,
-  RefreshCw,
 } from "lucide-react";
 
 interface GenesisDepositModalProps {
@@ -101,6 +97,8 @@ priceOracle?: string;
  };
  onSuccess?: () => void;
  embedded?: boolean;
+ /** Optional chrome above the form (e.g. Deposit|Withdraw tabs) when embedded. */
+ panelHeader?: React.ReactNode;
 }
 
 // formatTokenAmount is now imported from utils/formatters
@@ -123,6 +121,7 @@ export const GenesisDepositModal = ({
  market,
  onSuccess,
  embedded = false,
+ panelHeader,
 }: GenesisDepositModalProps) => {
  const { address } = useAccount();
  const wagmiPublicClient = usePublicClient();
@@ -147,7 +146,6 @@ export const GenesisDepositModal = ({
     enabled: isOpen && !!address,
     depositAssetSymbol: selectedAsset,
   });
-  const [showNotifications, setShowNotifications] = useState(false);
  const [step, setStep] = useState<ModalStep>("input");
  const [error, setError] = useState<string | null>(null);
  const [txHash, setTxHash] = useState<string | null>(null);
@@ -2008,12 +2006,27 @@ const successFmt = formatTokenAmount(
 
  if (!isOpen && !progress.isOpen) return null;
 
-  // Deposit form content
+  const primaryAction: DepositPrimaryAction = (() => {
+    if (step === "error") return { kind: "retry" };
+    if (step === "approving" || step === "depositing") {
+      return { kind: "enter_amount", label: getButtonText() };
+    }
+    if (!amount || parseFloat(amount) <= 0 || depositsBlocked) {
+      return { kind: "enter_amount", label: getButtonText() };
+    }
+    return { kind: "submit", label: getButtonText(), variant: "mint" };
+  })();
+
+  // Deposit form content — Anchor-style layout (flow · scroll · pinned footer)
   const formContent = (
-    <div className="space-y-4 sm:space-y-6">
-      {!embedded ? (
+    <DepositModalLayout
+      header={embedded ? panelHeader : undefined}
+      className={embedded ? "h-full pt-2.5 sm:pt-3" : undefined}
+      flowOverview={
         <DepositModalFlowOverview parts={genesisDepositFlowParts()} />
-      ) : null}
+      }
+      scroll={
+        <>
  {/* Genesis Status Warning */}
  {genesisEnded && (
  <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm">
@@ -2026,7 +2039,7 @@ const successFmt = formatTokenAmount(
  </div>
  )}
 
- <TokenAmountSection
+ <DepositAmountCard
    tokenSelector={{
      value: selectedAsset === "custom" ? "" : selectedAsset,
      onChange: (newValue) => {
@@ -2042,8 +2055,7 @@ const successFmt = formatTokenAmount(
        isMegaEth,
        nativeTokenLabel,
      }),
-     label: "Select Deposit Token",
-     placeholder: "Select Deposit Asset",
+     placeholder: "Select token",
      disabled: step === "approving" || step === "depositing" || depositsBlocked,
      showCustomOption: !collateralOnly,
      onCustomOptionClick: () => {
@@ -2051,6 +2063,7 @@ const successFmt = formatTokenAmount(
        setSelectedAsset("custom");
        resetGenesisDepositUiKeepAsset();
      },
+     customOptionLabel: "+ Add Custom Token Address",
    }}
    customToken={showCustomTokenInput ? {
      value: customTokenAddress,
@@ -2060,321 +2073,47 @@ const successFmt = formatTokenAmount(
      validTokenInfo: isCustomToken && customTokenSymbol ? `${customTokenName || customTokenSymbol} (${customTokenSymbol})` : null,
    } : undefined}
    betweenTokenAndAmount={
-     embedded ? undefined : (
-     <ModalNotificationsPanel
-       expanded={showNotifications}
-       onToggle={() => setShowNotifications((prev) => !prev)}
-       className="mt-2 space-y-2"
-       badge={(() => {
-         const severities: Array<"navy" | "green" | "coral"> = ["navy"];
-         if (!needsSwap && !collateralOnly) severities.push("green");
-         if (isNonCollateralAsset) severities.push("coral");
-         const notificationCount = severities.length;
-         const badgeSeverity = pickHeaviestDepositModalNotificationBadge(severities);
-         return (
-           <span
-             className={`flex items-center gap-1 px-2 py-0.5 text-xs ${depositModalNotificationBadgeClass[badgeSeverity]}`}
-           >
-             <Bell className="h-3 w-3" />
-             {notificationCount}
-           </span>
-         );
-       })()}
-     >
-      {!needsSwap && !collateralOnly && (
-        <InfoCallout tone="success" title="Tip:" icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}>
-          You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
-        </InfoCallout>
-      )}
-       <InfoCallout title="Info:" icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}>
-         For large deposits, Harbor recommends using wstETH or fxSAVE instead of the built-in swap and zaps.
-       </InfoCallout>
-       {isNonCollateralAsset && (
-         <InfoCallout tone="pearl" icon={<Banknote className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#D57A3D]" />}>
-           <span className="font-semibold">Deposit:</span> Your tokens will be converted to {wrappedCollateralSymbol || collateralSymbol} on deposit. Withdrawals will be in {wrappedCollateralSymbol || collateralSymbol} only.
-         </InfoCallout>
-       )}
-     </ModalNotificationsPanel>
-     )
+     needsSwap ? (
+       <div className="text-xs text-[#1E4775]/70">
+         {isLoadingSwapQuote
+           ? "Fetching swap quote..."
+           : swapQuoteError
+             ? "Swap quote unavailable (try a smaller amount or a different token)."
+             : swapQuote
+               ? `Will swap via Velora before depositing.`
+               : null}
+       </div>
+     ) : null
    }
    amount={{
      value: amount,
      setValue: setAmount,
      balance: selectedAssetBalance,
      decimals: selectedTokenDecimals,
-     label: "Enter Amount",
      disabled: step === "approving" || step === "depositing" || depositsBlocked,
      error,
      isNativeETH,
      capAtBalance: true,
      onErrorClear: () => setError(null),
-     balanceContent: (
-       <>
-         Balance:{" "}
-         {isNativeETH ? (
-           isEthBalanceError ? (
-             <span className="text-red-500">Error loading balance</span>
-           ) : isEthBalanceLoading ? (
-             <span className="text-[#1E4775]/50">Loading...</span>
-           ) : (
-             formatBalance(balance, selectedAsset, 4, selectedTokenDecimals)
-           )
-         ) : balancesError ? (
-           <span className="text-red-500" title={balancesError.message}>Error loading balance</span>
-         ) : !mounted ? (
-           <span className="text-[#1E4775]/50">Loading...</span>
-         ) : (
-           formatBalance(balance, selectedAsset, 4, selectedTokenDecimals)
-         )}
-       </>
-     ),
+     balanceSymbol:
+       selectedAsset === "custom"
+         ? customTokenSymbol || "TOKEN"
+         : selectedAsset || collateralSymbol,
+     balanceMaxDecimals: 4,
    }}
    afterAmount={
      showPermitToggle ? (
-   <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
-     <div className="text-[#1E4775]/80">
-       Use permit (gasless approval) for this deposit
-     </div>
-     {disableReason ? (
-       <SimpleTooltip label={disableReason}>
-         <span className="flex items-center gap-2 text-[#1E4775]/80 cursor-not-allowed opacity-70">
-           <span className="text-[#1E4775]/60">Off</span>
-           <button
-             type="button"
-             disabled
-             className="relative inline-flex h-5 w-9 items-center rounded-full bg-[#1E4775]/30 cursor-not-allowed"
-             aria-label="Permit disabled"
-           >
-             <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-1" />
-           </button>
-         </span>
-       </SimpleTooltip>
-     ) : (
-       <label className="flex items-center gap-2 text-[#1E4775]/80 cursor-pointer">
-         <span className={permitEnabled ? "text-[#1E4775]" : "text-[#1E4775]/60"}>
-           {permitEnabled ? "On" : "Off"}
-         </span>
-         <button
-           type="button"
-           onClick={() => setPermitEnabled((prev) => !prev)}
-           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-             permitEnabled ? "bg-[#1E4775]" : "bg-[#1E4775]/30"
-           }`}
-           aria-pressed={permitEnabled}
-           aria-label="Toggle permit usage"
-         >
-           <span
-             className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-               permitEnabled ? "translate-x-4" : "translate-x-1"
-             }`}
-           />
-         </button>
-       </label>
-     )}
-  </div>
+       <DepositPermitToggle
+         mode="deposit"
+         enabled={permitEnabled}
+         onToggle={() => setPermitEnabled((prev) => !prev)}
+         disabled={step === "approving" || step === "depositing" || depositsBlocked}
+         disableReason={disableReason}
+       />
      ) : null
    }
+   disabled={step === "approving" || step === "depositing" || depositsBlocked}
  />
-
-{/* Transaction Overview */}
-<div className="space-y-2 mb-4">
-  <label className="mb-1.5 block text-sm font-bold text-[#1E4775]">
-    Transaction Overview
-  </label>
-  <div className="rounded-md border border-[#1E4775]/12 bg-white p-3">
-    {/* Transaction Preview - Always visible */}
-    <div className="space-y-2 text-sm">
- 
- {/* Swap details - show when swapping */}
- {needsSwap && swapQuote && swapQuote.toAmount > 0n && (() => {
-   const targetToken = isFxSAVEMarket ? "USDC" : nativeTokenLabel;
-   const targetDecimals = isFxSAVEMarket ? 6 : 18;
-   return (
-   <div className="p-2 rounded-md bg-blue-50 border border-blue-200 space-y-1 text-xs">
-     <div className="flex items-center justify-between">
-       <span className="text-blue-700">Swap via Velora:</span>
-       <span className="font-mono text-blue-900">{formatUnits(swapQuote.toAmount, targetDecimals)} {targetToken}</span>
-     </div>
-     <div className="flex items-center justify-between">
-       <span className="text-blue-700">Slippage Tolerance:</span>
-       {showSlippageInput ? (
-         <div className="flex items-center gap-1">
-           <input
-             type="text"
-             value={slippageInputValue}
-             onChange={(e) => {
-               const input = e.target.value;
-               // Allow empty, numbers, and decimal point
-               if (input === "" || /^\d*\.?\d*$/.test(input)) {
-                 setSlippageInputValue(input);
-               }
-             }}
-             onBlur={() => {
-               const val = parseFloat(slippageInputValue);
-               if (!isNaN(val) && val >= 0.1 && val <= 50) {
-                 setSlippageTolerance(val);
-               } else {
-                 // Reset to current valid value if invalid
-                 setSlippageInputValue(slippageTolerance.toFixed(1));
-               }
-               setShowSlippageInput(false);
-             }}
-             onKeyDown={(e) => {
-               if (e.key === 'Enter') {
-                 const val = parseFloat(slippageInputValue);
-                 if (!isNaN(val) && val >= 0.1 && val <= 50) {
-                   setSlippageTolerance(val);
-                 } else {
-                   setSlippageInputValue(slippageTolerance.toFixed(1));
-                 }
-                 setShowSlippageInput(false);
-               } else if (e.key === 'Escape') {
-                 setSlippageInputValue(slippageTolerance.toFixed(1));
-                 setShowSlippageInput(false);
-               }
-             }}
-             autoFocus
-             className="w-16 px-1 py-0.5 text-right font-mono text-blue-900 border border-blue-300 focus:outline-none focus:border-blue-500"
-           />
-           <span className="text-blue-900">%</span>
-         </div>
-       ) : (
-         <button
-           onClick={() => {
-             setSlippageInputValue(slippageTolerance.toFixed(1));
-             setShowSlippageInput(true);
-           }}
-           className="font-mono text-blue-900 hover:text-blue-600 underline decoration-dotted cursor-pointer"
-         >
-           {slippageTolerance.toFixed(1)}%
-         </button>
-       )}
-     </div>
-     <div className="flex items-center justify-between">
-       <span className="text-blue-700">Velora Fee:</span>
-       <span className="font-mono text-blue-700">
-         {swapQuote.fee.toFixed(2)}%
-       </span>
-     </div>
-   </div>
-   );
- })()}
- 
-{(() => {
-  const displaySymbol = wrappedCollateralSymbol || collateralSymbol;
-  const currentFmt = formatTokenAmount(userCurrentDeposit, displaySymbol, collateralPriceUSD);
-  return (
-    <div className="flex justify-between items-baseline">
- <span className="text-[#1E4775]/70">Current Deposit:</span>
- <span className="text-[#1E4775]">
-        {currentFmt.display}
-        {currentFmt.usd && <span className="text-[#1E4775]/50 ml-1">({currentFmt.usd})</span>}
- </span>
- </div>
-  );
-})()}
- {amount && parseFloat(amount) > 0 ? (
- <>
-{(() => {
-  // Always use actualCollateralDeposit - this is the canonical value that represents what will actually be deposited
-  // For direct deposits (wstETH, fxSAVE), actualCollateralDeposit = amountBigInt
-  // For converted deposits (ETH→wstETH, USDC→fxSAVE), actualCollateralDeposit = converted amount
-  // For swapped deposits, actualCollateralDeposit = amount after swap and conversion
-  const depositAmt = actualCollateralDeposit;
-  // For deposit display, show the amount being deposited
-  // Display in wrapped collateral symbol since that's what gets stored
-  // Use wrapped token price (collateralPriceUSD) since depositAmt is in wrapped collateral tokens
-  const displaySymbol = wrappedCollateralSymbol || collateralSymbol;
-  
-  // Don't show deposit amount if we're still loading token decimals (to avoid showing incorrect values)
-  // For USDC and ETH, we know the decimals, so no loading check needed
-  const isCalculating = !hasValidDecimals && amount && parseFloat(amount) > 0;
-  
-  const depositFmt = formatTokenAmount(depositAmt, displaySymbol, collateralPriceUSD);
-  return (
-    <div className="flex justify-between items-baseline">
-      <span className="text-[#1E4775]/70">+ Deposit Amount:</span>
- <span className="text-[#1E4775]">
-        {isCalculating ? (
-          "Calculating..."
-        ) : depositAmt > 0n ? (
-          <>
-            +{depositFmt.display}
-            {depositFmt.usd && <span className="text-[#1E4775]/50 ml-1">(+{depositFmt.usd})</span>}
-          </>
-        ) : (
-          "Calculating..."
-        )}
- </span>
- </div>
-  );
-})()}
-{((isNativeETH || isStETH || isUSDC || isFXUSD || needsSwap) && actualCollateralDeposit > 0n) && (
-<div className="text-xs text-[#1E4775]/50 italic text-right">
-{needsSwap && swapQuote && swapQuote.toAmount > 0n ? (
-  <>
-    {parseFloat(amount).toFixed(6)} {selectedAsset} → {formatUnits(swapQuote.toAmount, 6)} USDC → {formatTokenAmount(actualCollateralDeposit, wrappedCollateralSymbol || collateralSymbol, undefined, 6, 18).display}
-  </>
-) : needsSwap && isLoadingSwapQuote ? (
-  <>
-    {parseFloat(amount).toFixed(6)} {selectedAsset} → Calculating swap... → {formatTokenAmount(actualCollateralDeposit, wrappedCollateralSymbol || collateralSymbol, undefined, 6, 18).display}
-  </>
-) : (
-  <>
-    ({isUSDC ? parseFloat(amount).toFixed(2) : parseFloat(amount).toFixed(6)} {selectedAsset} ≈ {formatTokenAmount(actualCollateralDeposit, wrappedCollateralSymbol || collateralSymbol, undefined, 6, 18).display})
-  </>
-)}
-</div>
-)}
- <div className="border-t border-[#1E4775]/30 pt-2">
-{(() => {
-  // For total deposit, we need to calculate the USD value correctly
-  // Both current deposit and new deposit are in wrapped collateral tokens (fxSAVE, wstETH)
-  const displaySymbol = wrappedCollateralSymbol || collateralSymbol;
-  const currentDepositUSD = amountToUSD(Number(userCurrentDeposit) / 1e18, displaySymbol, {
-    collateralPriceUSD: collateralPriceUSD || 0,
-    fxSAVEPrice: collateralPriceUSD || 1.08,
-    wstETHPrice: collateralPriceUSD || 0,
-  });
-  const depositAmt = actualCollateralDeposit;
-  const newDepositUSD = amountToUSD(Number(depositAmt) / 1e18, displaySymbol, {
-    collateralPriceUSD: collateralPriceUSD || 0,
-    fxSAVEPrice: collateralPriceUSD || 1.08,
-    wstETHPrice: collateralPriceUSD || 0,
-  });
-  const totalUSD = currentDepositUSD + newDepositUSD;
-  const totalFmt = formatTokenAmount(newTotalDepositActual, displaySymbol);
-  const totalUSDFormatted = totalUSD > 0 ? formatUSD(totalUSD) : null;
-  
-  return (
-    <>
-      {/* Total deposits */}
-      <div className="flex justify-between items-center">
-        <span className="text-sm font-medium text-[#1E4775]/70">Total deposits:</span>
-        <div className="text-right">
-          <div className="text-lg font-bold text-[#1E4775] font-mono">
-            {totalFmt.display}
-          </div>
-          {totalUSDFormatted && (
-            <div className="text-xs text-[#1E4775]/50 font-mono">
-              {totalUSDFormatted}
-            </div>
-          )}
-        </div>
-      </div>
-    </>
-  );
-})()}
-  </div>
- </>
- ) : (
- <div className="text-xs text-[#1E4775]/50 italic">
- Enter an amount to see deposit preview
- </div>
- )}
-    </div>
-  </div>
-</div>
 
  {/* Error */}
  {error && (
@@ -2443,29 +2182,38 @@ const successFmt = formatTokenAmount(
  </a>
  </div>
  )}
-
-      {/* Submit Buttons */}
-      <div className="flex flex-col-reverse gap-2 sm:flex-row">
-        <button
-          onClick={handleClose}
-          disabled={step === "approving" || step === "depositing"}
-          className="flex-1 rounded-md py-3 px-4 bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleMainButtonClick}
-          disabled={isButtonDisabled()}
-          className={`flex-1 rounded-md py-3 px-4 font-semibold transition-colors ${
-            step === "success"
-              ? "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
-              : "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
-          }`}
-        >
-          {getButtonText()}
-        </button>
-      </div>
-    </div>
+        </>
+      }
+      overview={
+        <GenesisDepositTransactionOverview
+          amount={amount}
+          selectedAsset={selectedAsset === "custom" ? (customTokenSymbol || "TOKEN") : selectedAsset}
+          displaySymbol={wrappedCollateralSymbol || collateralSymbol}
+          actualCollateralDeposit={actualCollateralDeposit}
+          userCurrentDeposit={userCurrentDeposit}
+          newTotalDeposit={newTotalDepositActual}
+          collateralPriceUSD={collateralPriceUSD || 0}
+          hasValidDecimals={hasValidDecimals}
+          needsSwap={!!needsSwap}
+          isLoadingSwapQuote={isLoadingSwapQuote}
+          swapQuote={swapQuote}
+          swapQuoteError={!!swapQuoteError}
+          nativeTokenLabel={nativeTokenLabel}
+          isFxSAVEMarket={isFxSAVEMarket}
+        />
+      }
+            footer={
+        <DepositActionFooter
+          layout={embedded ? "embedded" : "modal"}
+          showCancel={!embedded}
+          cancelLabel="Cancel"
+          onCancel={handleClose}
+          action={primaryAction}
+          onSubmit={handleMainButtonClick}
+          onRetry={handleMainButtonClick}
+        />
+      }
+    />
   );
 
   // If embedded, return just the content + progress modal
@@ -2485,7 +2233,9 @@ const successFmt = formatTokenAmount(
             renderSuccessContent={renderSuccessContent}
           />
         )}
-        {!progress.isOpen && formContent}
+        {!progress.isOpen && (
+          <div className="flex h-full min-h-0 flex-col">{formContent}</div>
+        )}
       </>
     );
   }
@@ -2511,29 +2261,23 @@ const successFmt = formatTokenAmount(
         <DepositModalShell
           isOpen={isOpen}
           onClose={handleClose}
-          header={
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <h2 className="text-lg sm:text-2xl font-bold text-[#1E4775]">
-                  Deposit — Maiden voyage
-                </h2>
-                <span className="rounded px-1.5 py-0.5 text-xs font-bold font-mono bg-[#1E4775] text-white border border-[#1E4775]">
-                  2.0
-                </span>
-                <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold uppercase tracking-wide">
-                  <ArrowPathIcon className="w-3 h-3" />
-                  <span>Any Token</span>
-                </div>
-              </div>
-              <p className="text-xs text-[#1E4775]/70">
-                Deposit any ERC20 token via Velora integration
-              </p>
-            </div>
+          title={
+            <DepositModalTitle
+              protocolName="Genesis"
+              tokenSymbol={peggedTokenSymbol || collateralSymbol}
+              actionLabel="Deposit"
+            />
           }
-          closeDisabled={step === "approving" || step === "depositing" || isWritePending}
-          panelClassName="max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col"
-          headerClassName="p-3 sm:p-4 lg:p-6"
-          contentClassName="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6"
+          tabs={
+            <DepositModalTabHeader
+              tabs={[{ value: "deposit", label: "Deposit" }]}
+              activeTab="deposit"
+              onTabChange={() => {}}
+            />
+          }
+          closeDisabled={
+            step === "approving" || step === "depositing" || isWritePending
+          }
         >
           {formContent}
         </DepositModalShell>

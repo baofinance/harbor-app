@@ -1,12 +1,15 @@
 "use client";
 
 import type { GenesisMarketConfig } from "@/types/genesisMarket";
+import type { ActiveVoyageStatus } from "@/utils/activeVoyageStatus";
+import type { GenesisVoyageCapDisplay } from "@/utils/genesisVoyageCapDisplay";
 import { MV_ACCENT_GRADIENT } from "@/components/genesis/maidenVoyageLayoutStyles";
 import { getGenesisMarketTypeLabel } from "@/config/maidenVoyageFeatured";
 import {
   GenesisChainVoyageSelectors,
   type GenesisVoyageOption,
 } from "./GenesisChainVoyageSelectors";
+import { GenesisVoyageStatsStrip } from "./GenesisVoyageStatsStrip";
 
 const TAGLINE_CLASS =
   "min-w-0 text-center text-xl font-bold leading-snug text-white/90 sm:text-2xl lg:text-left lg:text-3xl";
@@ -24,6 +27,11 @@ export type GenesisVoyageHeaderProps = {
   selectedMarket: GenesisMarketConfig | null;
   yieldRevSharePct?: number | null;
   onSelectMarket: (marketId: string) => void;
+  voyageStatus?: ActiveVoyageStatus | null;
+  capDisplay?: GenesisVoyageCapDisplay | null;
+  capLoading?: boolean;
+  genesisAddress?: string;
+  userDepositUsd?: number | null;
 };
 
 export function GenesisVoyageHeader({
@@ -32,6 +40,11 @@ export function GenesisVoyageHeader({
   selectedMarket,
   yieldRevSharePct = null,
   onSelectMarket,
+  voyageStatus = null,
+  capDisplay = null,
+  capLoading = false,
+  genesisAddress,
+  userDepositUsd = null,
 }: GenesisVoyageHeaderProps) {
   const pegLabel =
     selectedMarket?.pegTarget?.toUpperCase() ||
@@ -84,6 +97,15 @@ export function GenesisVoyageHeader({
           </div>
         </div>
       </div>
+
+      <GenesisVoyageStatsStrip
+        voyageStatus={voyageStatus}
+        capDisplay={capDisplay}
+        capLoading={capLoading}
+        yieldRevSharePct={yieldRevSharePct}
+        genesisAddress={genesisAddress}
+        userDepositUsd={userDepositUsd}
+      />
     </header>
   );
 }

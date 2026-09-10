@@ -34,6 +34,13 @@ export type DepositTransactionOverviewProps = {
   totalFeeUsd?: number;
   bonus?: { percentage: number };
   bannerMessage?: string;
+  /** Extra summary rows under fees (e.g. Genesis voyage totals). */
+  trailingRows?: Array<{
+    label: string;
+    value: string;
+    secondary?: string;
+    emphasize?: boolean;
+  }>;
 };
 
 /** Compact buy / sell summary card — pinned above the action footer. */
@@ -51,9 +58,15 @@ export function DepositTransactionOverview({
   totalFeeUsd,
   bonus,
   bannerMessage,
+  trailingRows,
 }: DepositTransactionOverviewProps) {
   const hasReceive =
     receiveAmount !== null && receiveAmount !== "..." && receiveAmount.length > 0;
+  const hasFeeBlock =
+    !!fees?.length ||
+    !!bonus ||
+    (totalFeeUsd !== undefined && totalFeeUsd > 0) ||
+    !!trailingRows?.length;
 
   return (
     <div className={ANCHOR_TRANSACTION_OVERVIEW_WRAPPER}>
@@ -107,11 +120,11 @@ export function DepositTransactionOverview({
               </div>
             </div>
 
-            {(fees?.length || bonus || (totalFeeUsd !== undefined && totalFeeUsd > 0)) && (
+            {hasFeeBlock ? (
               <div className={ANCHOR_TRANSACTION_OVERVIEW_FEE_DIVIDER}>
                 {fees?.map((fee) => (
                   <div
-                    key={fee.label}
+                    key={`${fee.label}-${fee.hint ?? ""}`}
                     className="flex items-center justify-between gap-2"
                   >
                     <span className="text-[#1E4775]/50">
@@ -139,9 +152,13 @@ export function DepositTransactionOverview({
                     </span>
                   </div>
                 ))}
-                {totalFeeUsd !== undefined && totalFeeUsd > 0 && (fees?.length ?? 0) > 1 ? (
+                {totalFeeUsd !== undefined &&
+                totalFeeUsd > 0 &&
+                (fees?.length ?? 0) > 1 ? (
                   <div className="mt-0.5 flex items-center justify-between gap-2 border-t border-[#1E4775]/8 pt-1.5">
-                    <span className="font-medium text-[#1E4775]/55">Total fees</span>
+                    <span className="font-medium text-[#1E4775]/55">
+                      Total fees
+                    </span>
                     <span className="font-mono font-medium tabular-nums text-[#1E4775]/75">
                       $
                       {totalFeeUsd.toLocaleString(undefined, {
@@ -159,8 +176,53 @@ export function DepositTransactionOverview({
                     </span>
                   </div>
                 ) : null}
+                {trailingRows?.map((row, index) => {
+                  const hasRowsAbove =
+                    (fees?.length ?? 0) > 0 ||
+                    !!bonus ||
+                    (totalFeeUsd !== undefined &&
+                      totalFeeUsd > 0 &&
+                      (fees?.length ?? 0) > 1);
+                  const showRowDivider = index > 0 || hasRowsAbove;
+                  return (
+                  <div
+                    key={row.label}
+                    className={`flex items-start justify-between gap-2${
+                      showRowDivider
+                        ? " border-t border-[#1E4775]/8 pt-1.5"
+                        : ""
+                    }`}
+                  >
+                    <span
+                      className={
+                        row.emphasize
+                          ? "font-medium text-[#1E4775]/70"
+                          : "text-[#1E4775]/50"
+                      }
+                    >
+                      {row.label}
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span
+                        className={`font-mono tabular-nums ${
+                          row.emphasize
+                            ? "font-semibold text-[#1E4775]"
+                            : "font-medium text-[#1E4775]/70"
+                        }`}
+                      >
+                        {row.value}
+                      </span>
+                      {row.secondary ? (
+                        <span className="mt-0.5 block font-mono text-[10px] text-[#1E4775]/45">
+                          {row.secondary}
+                        </span>
+                      ) : null}
+                    </span>
+                  </div>
+                  );
+                })}
               </div>
-            )}
+            ) : null}
           </div>
         )}
       </div>

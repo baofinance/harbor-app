@@ -21,6 +21,7 @@ import type { MaidenVoyageStatsBarData } from "@/utils/maidenVoyageStatsBar";
 import { INDEX_CORAL_INFO_TAG_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
 import { HARBOR_LEARN_MORE_DARK_LINK_CLASS } from "@/components/market-cards/harborBasicMarketTokens";
 import { GenesisActiveVoyageMetrics } from "./GenesisActiveVoyageMetrics";
+import { GenesisVoyageCompletedNotice } from "./GenesisVoyageCompletedNotice";
 import { FeaturedVoyageChainMark } from "./GenesisMarketSharedRowCells";
 import {
   GenesisMaidenVoyageStageLabel,
@@ -29,6 +30,7 @@ import {
 import { getMaidenVoyageLeveragedFlowLabel } from "@/utils/genesisDisplay";
 import { GenesisVoyageStatusBadge } from "./GenesisVoyageStatusBadge";
 import { HARBOR_BTN_GLASS_ICON_DARK } from "@/components/shared/harborButtonStyles";
+import { GENESIS_VOYAGE_CARD_FOOTER_HEIGHT } from "./advanced/genesisAdvancedStyles";
 import {
   MV_CARD_INNER_GRADIENT,
   MV_MAIN_CARD_SHELL,
@@ -135,7 +137,7 @@ export function GenesisActiveVoyageCard({
       ) : null}
 
       <div
-        className={`shrink-0 px-4 py-3 sm:px-5 ${previewSoon ? MV_PREVIEW_SOON_CONTENT_DIM_CLASS : ""}`}
+        className={`flex min-h-0 flex-1 flex-col px-4 py-3 sm:px-5 ${previewSoon ? MV_PREVIEW_SOON_CONTENT_DIM_CLASS : ""}`}
       >
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/15 pb-3">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
@@ -198,7 +200,7 @@ export function GenesisActiveVoyageCard({
           </div>
         </div>
 
-        <div className="pt-3">
+        <div className="flex min-h-0 flex-1 flex-col pt-3">
           <GenesisActiveVoyageMetrics
             capDisplay={capDisplay}
             isLoading={capLoading}
@@ -208,9 +210,13 @@ export function GenesisActiveVoyageCard({
             genesisAddress={genesisAddress}
             userDepositUsd={userDepositUsd}
           />
+
+          <div className="mt-3 border-t border-white/10 pt-3">
+            <GenesisVoyageCompletedNotice compact />
+          </div>
         </div>
 
-        <div className="mt-3 border-t border-white/10 pt-3">
+        <div className="mt-auto border-t border-white/10 pt-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
             <button
               type="button"
@@ -259,7 +265,7 @@ export function GenesisActiveVoyageCard({
       </div>
 
       <footer
-        className={`${MV_FOOTER_PANEL} flex min-h-0 flex-1 flex-col justify-center px-4 py-3 sm:px-5 ${previewSoon ? MV_PREVIEW_SOON_CONTENT_DIM_CLASS : ""}`}
+        className={`${MV_FOOTER_PANEL} ${GENESIS_VOYAGE_CARD_FOOTER_HEIGHT} px-4 sm:px-5 ${previewSoon ? MV_PREVIEW_SOON_CONTENT_DIM_CLASS : ""}`}
       >
         <GenesisMaidenVoyageStageStrip status={voyageStatus} showHeading={false} />
       </footer>

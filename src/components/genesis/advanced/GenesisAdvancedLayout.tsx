@@ -4,16 +4,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { GenesisMarketConfig } from "@/types/genesisMarket";
 import type { GenesisActiveVoyageCardProps } from "@/components/genesis/GenesisActiveVoyageCard";
 import { GenesisActiveVoyageCard } from "@/components/genesis/GenesisActiveVoyageCard";
-import { GenesisMaidenVoyageWhyJoinCard } from "@/components/genesis/GenesisMaidenVoyageWhyJoinCard";
-import { GenesisVoyageRewardsCard } from "@/components/genesis/GenesisVoyageRewardsCard";
 import { GenesisRevenueShareCalculator } from "@/components/genesis/GenesisRevenueShareCalculator";
 import { resolveRevenueShareCalculatorProps } from "@/utils/maidenVoyageYieldShareEstimate";
 import { GenesisVoyageHeader } from "./GenesisVoyageHeader";
-import { GenesisVoyageStatsStrip } from "./GenesisVoyageStatsStrip";
 import { GenesisVoyageActionPanel } from "./GenesisVoyageActionPanel";
-import { GenesisHowItWorksModal } from "./GenesisHowItWorksModal";
+import { GenesisVoyageInfoFooter } from "./GenesisVoyageInfoFooter";
 import type { GenesisVoyageOption } from "./GenesisChainVoyageSelectors";
-import { SAIL_ADVANCED_MAIN_GRID_CLASS, GENESIS_TRADE_PANEL_ID } from "./genesisAdvancedStyles";
+import {
+  GENESIS_TRADE_PANEL_GRID_CLASS,
+  GENESIS_TRADE_PANEL_ID,
+  GENESIS_VOYAGE_CARD_HEIGHT,
+} from "./genesisAdvancedStyles";
 
 export type GenesisAdvancedLayoutProps = {
   voyageOptions: readonly GenesisVoyageOption[];
@@ -35,8 +36,7 @@ export function GenesisAdvancedLayout({
   onOpenDepositModal,
   children,
 }: GenesisAdvancedLayoutProps) {
-  const [panelTab, setPanelTab] = useState<"deposit" | "how">("deposit");
-  const [howItWorksOpen, setHowItWorksOpen] = useState(false);
+  const [panelTab, setPanelTab] = useState<"deposit" | "withdraw">("deposit");
 
   useEffect(() => {
     setPanelTab("deposit");
@@ -61,8 +61,6 @@ export function GenesisAdvancedLayout({
   }, [onOpenDepositModal, scrollToTradePanel]);
 
   const handleCardDeposit = useCallback(() => {
-    // Deposit Now → panel (desktop) or manage modal (mobile).
-    // Claim still uses activeCard.onClaim via the card CTA switch.
     focusDepositPanel();
   }, [focusDepositPanel]);
 
@@ -92,7 +90,8 @@ export function GenesisAdvancedLayout({
     ? {
         ...activeCard,
         onDeposit: handleCardDeposit,
-        onHowItWorks: () => setHowItWorksOpen(true),
+        // Docs fallback on the card — How it works lives in the info footer now.
+        onHowItWorks: undefined,
       }
     : null;
 
@@ -104,29 +103,27 @@ export function GenesisAdvancedLayout({
         selectedMarket={selectedMarket}
         yieldRevSharePct={activeCard?.yieldRevSharePct ?? null}
         onSelectMarket={onSelectMarket}
-      />
-
-      <GenesisVoyageStatsStrip
         voyageStatus={activeCard?.voyageStatus ?? null}
         capDisplay={activeCard?.capDisplay ?? null}
         capLoading={activeCard?.capLoading}
-        yieldRevSharePct={activeCard?.yieldRevSharePct ?? null}
         genesisAddress={activeCard?.genesisAddress}
         userDepositUsd={activeCard?.userDepositUsd}
       />
 
       <div
         id="maiden-voyage-active"
-        className={`${SAIL_ADVANCED_MAIN_GRID_CLASS} scroll-mt-24`}
+        className={`${GENESIS_TRADE_PANEL_GRID_CLASS} scroll-mt-24`}
       >
-        <div className="min-w-0 lg:h-full">
+        <div className={`min-w-0 ${GENESIS_VOYAGE_CARD_HEIGHT}`}>
           {resolvedCard ? (
             <GenesisActiveVoyageCard
               {...resolvedCard}
-              className="h-full w-full"
+              className={`h-full w-full ${GENESIS_VOYAGE_CARD_HEIGHT}`}
             />
           ) : (
-            <div className="flex min-h-[22rem] items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 text-center text-sm text-white/60">
+            <div
+              className={`flex ${GENESIS_VOYAGE_CARD_HEIGHT} items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 text-center text-sm text-white/60`}
+            >
               No active Maiden Voyage to feature right now.
             </div>
           )}
@@ -143,14 +140,6 @@ export function GenesisAdvancedLayout({
         ) : null}
       </div>
 
-      <section
-        className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch"
-        aria-label="Why join and what you receive"
-      >
-        <GenesisMaidenVoyageWhyJoinCard className="h-full" />
-        <GenesisVoyageRewardsCard className="h-full" />
-      </section>
-
       {calculatorProps ? (
         <GenesisRevenueShareCalculator
           capUsd={calculatorProps.capUsd}
@@ -159,12 +148,9 @@ export function GenesisAdvancedLayout({
         />
       ) : null}
 
-      {children}
+      <GenesisVoyageInfoFooter />
 
-      <GenesisHowItWorksModal
-        isOpen={howItWorksOpen}
-        onClose={() => setHowItWorksOpen(false)}
-      />
+      {children}
     </div>
   );
 }

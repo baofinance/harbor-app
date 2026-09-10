@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   MAIDEN_VOYAGE_DOCS_LINKS,
   MAIDEN_VOYAGE_FAQ_ITEMS,
@@ -68,6 +69,16 @@ export function GenesisMaidenVoyageFaq() {
       >
         Read full Maiden Voyage guide
       </a>
+      <p className="mt-6 text-center text-xs text-white/40">
+        Maiden Voyage 2.0 is part of the{" "}
+        <Link
+          href="/"
+          className="font-semibold text-[#FF8A7A]/90 hover:text-[#ffb4a8]"
+        >
+          Harbor
+        </Link>{" "}
+        protocol.
+      </p>
     </section>
   );
 }
