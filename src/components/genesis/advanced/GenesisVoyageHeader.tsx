@@ -12,10 +12,10 @@ import {
 import { GenesisVoyageStatsStrip } from "./GenesisVoyageStatsStrip";
 
 const TAGLINE_CLASS =
-  "min-w-0 text-center text-xl font-bold leading-snug text-white/90 sm:text-2xl lg:text-left lg:text-3xl";
+  "min-w-0 text-center text-xl font-bold leading-snug text-white/90 sm:text-2xl lg:text-3xl";
 const PEG_CLASS = "font-extrabold text-[#B8EBD5]";
 const PERKS_CLASS =
-  "mb-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[11px] font-medium tracking-wide text-white/70 sm:gap-x-0 sm:text-xs lg:justify-start";
+  "mb-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[11px] font-medium tracking-wide text-white/70 sm:gap-x-0 sm:text-xs";
 const PERK_ITEM_CLASS = "inline-flex items-center gap-1.5 text-white/75";
 const PERK_RULE_CLASS =
   "mx-2.5 hidden h-3 w-px shrink-0 bg-white/20 sm:mx-3 sm:inline-block";
@@ -73,7 +73,7 @@ export function GenesisVoyageHeader({
             selectedMarketId={selectedMarketId}
             onSelectMarket={onSelectMarket}
           />
-          <div className="flex w-full min-w-0 flex-col items-center justify-center gap-1.5 text-center lg:items-start lg:text-left">
+          <div className="flex w-full min-w-0 flex-col items-center justify-center gap-1.5 text-center">
             <ul className={PERKS_CLASS}>
               {perks.map((label, index) => (
                 <li key={label} className="inline-flex items-center">

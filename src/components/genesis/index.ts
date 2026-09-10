@@ -59,7 +59,7 @@ export { GenesisFeaturedCompletedVoyages } from "./GenesisFeaturedCompletedVoyag
 export type { GenesisFeaturedCompletedVoyagesProps } from "./GenesisFeaturedCompletedVoyages";
 export { GenesisOtherVoyagesSection } from "./GenesisOtherVoyagesSection";
 export type { GenesisOtherVoyagesSectionProps } from "./GenesisOtherVoyagesSection";
-export { GenesisVoyageFooterNotice } from "./GenesisVoyageFooterNotice";
+export { GenesisVoyageFooterNotice, GenesisMaidenVoyageHarborAttribution } from "./GenesisVoyageFooterNotice";
 export { GenesisVoyageCompletedNotice } from "./GenesisVoyageCompletedNotice";
 export { GenesisVoyageStatusBadge } from "./GenesisVoyageStatusBadge";
 export { GenesisActiveVoyageMetrics } from "./GenesisActiveVoyageMetrics";

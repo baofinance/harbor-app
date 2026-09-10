@@ -7,10 +7,14 @@ import {
   ChartBarIcon,
   CheckCircleIcon,
   CurrencyDollarIcon,
+  SparklesIcon,
   UserGroupIcon,
   WalletIcon,
 } from "@heroicons/react/24/outline";
-import { MAIDEN_VOYAGE_WHY_JOIN_BULLETS } from "@/config/maidenVoyageEducation";
+import {
+  MAIDEN_VOYAGE_LIFECYCLE_STEPS,
+  MAIDEN_VOYAGE_WHY_JOIN_BULLETS,
+} from "@/config/maidenVoyageEducation";
 import {
   SAIL_ADVANCED_FROSTED_CARD,
   SAIL_ADVANCED_LIGHT_BODY,
@@ -18,22 +22,11 @@ import {
   SAIL_ADVANCED_SHELL,
 } from "./genesisAdvancedStyles";
 
-const HOW_IT_WORKS_STEPS = [
-  {
-    icon: WalletIcon,
-    title: "Deposit",
-    body: "Add assets while capacity lasts.",
-  },
-  {
-    icon: ChartBarIcon,
-    title: "Market Launch",
-    body: "Once the cap is reached, the market goes live.",
-  },
-  {
-    icon: ArrowPathIcon,
-    title: "Claim & Earn",
-    body: "Claim tokens and earn revenue share.",
-  },
+const LIFECYCLE_ICONS = [
+  WalletIcon,
+  ChartBarIcon,
+  SparklesIcon,
+  CurrencyDollarIcon,
 ] as const;
 
 const WHAT_YOU_RECEIVE = [
@@ -64,30 +57,37 @@ export function GenesisVoyageInfoFooter() {
   return (
     <footer className={`${SAIL_ADVANCED_SHELL} px-3 py-3 sm:px-4`}>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        {/* Card 1 — How it works steps */}
+        {/* Card 1 — How it works (lifecycle) */}
         <div className={`${SAIL_ADVANCED_FROSTED_CARD} p-4 sm:p-5`}>
           <h3 className={`mb-3 ${SAIL_ADVANCED_LIGHT_SECTION_TITLE}`}>
             How it works
           </h3>
           <ol className="space-y-3">
-            {HOW_IT_WORKS_STEPS.map(({ icon: Icon, title, body }, index) => (
-              <li key={title} className="flex items-start gap-2.5">
-                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1E4775]/10 text-[#1E4775]">
-                  <Icon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-[#1E4775]">
-                    <span className="mr-1.5 text-[#1E4775]/40">{index + 1}.</span>
-                    {title}
-                  </p>
-                  <p className={`mt-0.5 ${SAIL_ADVANCED_LIGHT_BODY}`}>{body}</p>
-                </div>
-              </li>
-            ))}
+            {MAIDEN_VOYAGE_LIFECYCLE_STEPS.map(({ step, title, body }, index) => {
+              const Icon = LIFECYCLE_ICONS[index] ?? WalletIcon;
+              return (
+                <li key={title} className="flex items-start gap-2.5">
+                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1E4775]/10 text-[#1E4775]">
+                    <Icon
+                      className="h-3.5 w-3.5"
+                      strokeWidth={1.75}
+                      aria-hidden
+                    />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-[#1E4775]">
+                      <span className="mr-1.5 text-[#1E4775]/40">{step}.</span>
+                      {title}
+                    </p>
+                    <p className={`mt-0.5 ${SAIL_ADVANCED_LIGHT_BODY}`}>{body}</p>
+                  </div>
+                </li>
+              );
+            })}
           </ol>
         </div>
 
-        {/* Card 2 — Why join */}
+        {/* Card 2 — Why join (benefits + revenue rules) */}
         <div className={`${SAIL_ADVANCED_FROSTED_CARD} p-4 sm:p-5`}>
           <h3 className={`mb-3 ${SAIL_ADVANCED_LIGHT_SECTION_TITLE}`}>
             Why join a Maiden Voyage?

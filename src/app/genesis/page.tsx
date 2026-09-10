@@ -13,9 +13,8 @@ import {
   GenesisMaidenVoyageComingSoon,
   GenesisMaidenVoyageExplorer,
   GenesisMaidenVoyageFaq,
-  GenesisMaidenVoyageLifecycle,
   GenesisRevenueShareSection,
-  GenesisVoyageFooterNotice,
+  GenesisMaidenVoyageHarborAttribution,
   GenesisYieldShareRulesCard,
 } from "@/components/genesis";
 import { GenesisAdvancedLayout } from "@/components/genesis/advanced";
@@ -630,24 +629,14 @@ export default function GenesisIndexPage() {
             defaultArchivedExpanded={hasArchivedUserDeposit}
           />
 
-          <GenesisVoyageFooterNotice />
-
           <section
             id="maiden-voyage-learn"
-            className="mt-10 border-t border-white/10 pt-8"
+            className="mt-6 border-t border-white/10 pt-6"
             aria-label="Learn more"
           >
             <h2 className="mb-6 text-xs font-medium uppercase tracking-wider text-white/50">
               Learn more
             </h2>
-            <details className={`mb-4 ${MV_DETAILS_PANEL} px-4 py-3`}>
-              <summary className="cursor-pointer text-sm font-semibold text-white/90">
-                How a voyage works
-              </summary>
-              <div className="mt-4">
-                <GenesisMaidenVoyageLifecycle />
-              </div>
-            </details>
             <details className={`mb-4 ${MV_DETAILS_PANEL} px-4 py-3`}>
               <summary className="cursor-pointer text-sm font-semibold text-white/90">
                 Revenue &amp; rules
@@ -667,6 +656,7 @@ export default function GenesisIndexPage() {
                 <GenesisMaidenVoyageFaq />
               </div>
             </details>
+            <GenesisMaidenVoyageHarborAttribution className="mt-6" />
           </section>
         </GenesisAdvancedLayout>
     </HarborPageShell>
