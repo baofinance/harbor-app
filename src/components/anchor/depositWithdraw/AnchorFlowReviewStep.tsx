@@ -27,7 +27,7 @@ export type AnchorFlowReviewBand = {
 export type AnchorFlowReviewFee = {
   label: string;
   value: string;
-  tone: "coral" | "mint" | "neutral";
+  tone?: "coral" | "mint" | "neutral";
 };
 
 export type AnchorFlowReviewActionStep = {
@@ -41,12 +41,14 @@ export type AnchorFlowReviewStepProps = {
   title?: string;
   subtitle?: string;
   bands: readonly AnchorFlowReviewBand[];
+  /** Plain-text fee rows (no tags) under the summary card. */
+  fees?: readonly AnchorFlowReviewFee[];
   steps: readonly AnchorFlowReviewActionStep[];
   /** Quiet line under the transaction steps (e.g. wallet prompt hint). */
   stepsFooterHint?: string;
 };
 
-function reviewTagClass(tone: AnchorFlowReviewFee["tone"]): string {
+function reviewTagClass(tone: NonNullable<AnchorFlowReviewFee["tone"]>): string {
   if (tone === "coral") return DEPOSIT_TAG_CORAL_CLASS;
   if (tone === "mint") return DEPOSIT_TAG_MINT_CLASS;
   return DEPOSIT_TAG_NEUTRAL_CLASS;
@@ -56,6 +58,7 @@ export function AnchorFlowReviewStep({
   title = "Review",
   subtitle = "Confirm the details below before submitting.",
   bands,
+  fees = [],
   steps,
   stepsFooterHint,
 }: AnchorFlowReviewStepProps) {
@@ -133,6 +136,25 @@ export function AnchorFlowReviewStep({
           ) : null}
         </div>
       </div>
+
+      {fees.length > 0 ? (
+        <div className="space-y-1">
+          <p className={DEPOSIT_SECTION_LABEL_CLASS}>Fees</p>
+          <div className="space-y-1 px-0.5">
+            {fees.map((fee) => (
+              <div
+                key={`${fee.label}-${fee.value}`}
+                className="flex items-baseline justify-between gap-3 text-[11px] leading-snug"
+              >
+                <span className="text-[#1E4775]/55">{fee.label}</span>
+                <span className="shrink-0 tabular-nums font-medium text-[#1E4775]">
+                  {fee.value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {steps.length > 0 ? (
         <div className="space-y-1.5">

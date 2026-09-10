@@ -7,6 +7,8 @@ import { getGraphUrl, getGraphHeaders, getSailPriceGraphUrlOptional } from "@/co
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import { useMarketPositions } from "@/hooks/useMarketPositions";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
+import { useContractReads } from "@/hooks/useContractReads";
+import { ERC20_ABI } from "@/abis/shared";
 import { buildDashboardAddressIndex } from "@/utils/dashboardPositionLabels";
 import { buildTokenPriceInput } from "@/utils/tokenPriceInput";
 import {
@@ -26,6 +28,8 @@ import {
 } from "@/components/dashboard/dashboardRowPresentation";
 
 const USD_EPS = 0.005;
+/** Ignore dust leftover hs balances (~1e-6 tokens). */
+const SAIL_ONCHAIN_DUST_WEI = 10n ** 12n;
 
 type MarketTokenCfg = {
   collateral?: { symbol?: string };
@@ -473,6 +477,82 @@ export function useDashboardPositions() {
     retry: 1,
   });
 
+  // On-chain hs balances — Sail page source of truth. Indexers can lag after close.
+  const sailLevBalanceContracts = useMemo(() => {
+    if (!address) return [] as Array<{
+      token: string;
+      contract: {
+        address: `0x${string}`;
+        abi: typeof ERC20_ABI;
+        functionName: "balanceOf";
+        args: [`0x${string}`];
+        chainId: number;
+      };
+    }>;
+
+    const seen = new Set<string>();
+    const items: Array<{
+      token: string;
+      contract: {
+        address: `0x${string}`;
+        abi: typeof ERC20_ABI;
+        functionName: "balanceOf";
+        args: [`0x${string}`];
+        chainId: number;
+      };
+    }> = [];
+
+    for (const [, m] of Object.entries(markets)) {
+      const addrs = (m as { addresses?: { leveragedToken?: string }; chainId?: number })
+        .addresses;
+      const lev = addrs?.leveragedToken;
+      if (!lev || typeof lev !== "string" || !lev.startsWith("0x") || lev.length !== 42) {
+        continue;
+      }
+      const tok = lev.toLowerCase();
+      if (seen.has(tok)) continue;
+      seen.add(tok);
+      items.push({
+        token: tok,
+        contract: {
+          address: lev as `0x${string}`,
+          abi: ERC20_ABI,
+          functionName: "balanceOf",
+          args: [address as `0x${string}`],
+          chainId: (m as { chainId?: number }).chainId ?? 1,
+        },
+      });
+    }
+    return items;
+  }, [address]);
+
+  const {
+    data: sailLevBalanceReads,
+    isFetched: sailLevBalancesFetched,
+  } = useContractReads({
+    contracts: sailLevBalanceContracts.map((c) => c.contract),
+    query: {
+      enabled:
+        isConnected && !!address && sailLevBalanceContracts.length > 0,
+      refetchInterval: 30_000,
+      staleTime: 10_000,
+      allowFailure: true,
+    },
+  });
+
+  const onChainSailBalanceByToken = useMemo(() => {
+    const map = new Map<string, bigint>();
+    sailLevBalanceContracts.forEach(({ token }, i) => {
+      const read = sailLevBalanceReads?.[i];
+      if (!read || read.status !== "success") return;
+      const bal = read.result as bigint | undefined;
+      if (typeof bal === "bigint") {
+        map.set(token, bal);
+      }
+    });
+    return map;
+  }, [sailLevBalanceContracts, sailLevBalanceReads]);
+
   const { maidenVoyageRows, archivedMaidenVoyageRows } = useMemo(() => {
     const raw = (mvData?.userHarborMarks ?? []) as Array<{
       id: string;
@@ -779,6 +859,15 @@ export function useDashboardPositions() {
       if (!nonZeroBalanceToken(s.balance)) continue;
       const tok = s.tokenAddress.toLowerCase();
 
+      // Prefer on-chain hs balance (Sail page does the same). Stale marks/Sail
+      // subgraph rows otherwise keep closed fxUSD/BTC positions on the dashboard.
+      if (sailLevBalancesFetched) {
+        const onChain = onChainSailBalanceByToken.get(tok);
+        if (onChain !== undefined && onChain <= SAIL_ONCHAIN_DUST_WEI) {
+          continue;
+        }
+      }
+
       const levMeta = index.leveragedTokenByAddressLower.get(tok);
       const haMeta = index.haTokenByAddressLower.get(tok);
       const meta = levMeta ?? haMeta;
@@ -828,6 +917,13 @@ export function useDashboardPositions() {
     for (const [tok, p] of costByToken) {
       if (tokensEmitted.has(tok)) continue;
 
+      if (sailLevBalancesFetched) {
+        const onChain = onChainSailBalanceByToken.get(tok);
+        if (onChain !== undefined && onChain <= SAIL_ONCHAIN_DUST_WEI) {
+          continue;
+        }
+      }
+
       const meta = index.leveragedTokenByAddressLower.get(tok);
       const marketLabel = meta?.displayName ?? "Sail";
       const levSym =
@@ -874,7 +970,14 @@ export function useDashboardPositions() {
     }
 
     return rows.sort((a, b) => b.usd - a.usd);
-  }, [sailData, sailBalances, index, tokenPricesByMarket]);
+  }, [
+    sailData,
+    sailBalances,
+    index,
+    tokenPricesByMarket,
+    onChainSailBalanceByToken,
+    sailLevBalancesFetched,
+  ]);
 
   const anchorErrorStr = anchorError ? String(anchorError) : null;
   const mvErrorStr = mvError ? (mvError as Error).message : null;
@@ -893,7 +996,11 @@ export function useDashboardPositions() {
       leverage:
         (sailLoading && !!sailGraphUrl) ||
         anchorLoading ||
-        onChainPositionsLoading,
+        onChainPositionsLoading ||
+        (isConnected &&
+          !!address &&
+          sailLevBalanceContracts.length > 0 &&
+          !sailLevBalancesFetched),
     },
     errors: {
       anchor: anchorErrorStr,

@@ -11735,17 +11735,13 @@ export function useAnchorDepositWithdrawModal({
         if (withdrawOnly) {
           return {
             kind: "submit",
-            label: earlyWithdraw1PctEnabled
-              ? "Withdraw · 1% fee"
-              : "Withdraw",
+            label: "Withdraw",
             variant: "coral",
           };
         }
         return {
           kind: "submit",
-          label: earlyWithdraw1PctEnabled
-            ? "Withdraw & Redeem · 1% fee"
-            : "Withdraw & Redeem",
+          label: "Withdraw & Redeem",
           variant: "coral",
         };
       }

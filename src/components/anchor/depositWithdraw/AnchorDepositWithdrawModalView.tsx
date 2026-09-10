@@ -1187,6 +1187,7 @@ export function AnchorDepositWithdrawModalView(
                   <div className={DEPOSIT_SEGMENT_STACK_CLASS}>
                     <AnchorFlowReviewStep
                       bands={mintReviewModel.bands}
+                      fees={mintReviewModel.fees}
                       steps={mintReviewModel.steps}
                       stepsFooterHint={mintReviewModel.footerHint}
                     />
@@ -1224,6 +1225,7 @@ export function AnchorDepositWithdrawModalView(
                           <div className="space-y-2.5">
                             <AnchorFlowReviewStep
                               bands={redeemReviewModel.bands}
+                              fees={redeemReviewModel.fees}
                               steps={redeemReviewModel.steps}
                               stepsFooterHint={redeemReviewModel.footerHint}
                             />

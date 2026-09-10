@@ -57,6 +57,8 @@ export type GenesisActiveVoyageCardProps = {
   isClaiming: boolean;
   onDeposit: () => void;
   onClaim: () => void;
+  /** Opens How it works modal (product overlay). Falls back to docs link if omitted. */
+  onHowItWorks?: () => void;
   /** Cycles featured hero among active campaigns (e.g. ETH → MegaETH). */
   onNextMarket?: () => void;
   /** @deprecated Card always renders with shell; kept for call-site compatibility. */
@@ -81,6 +83,7 @@ export function GenesisActiveVoyageCard({
   isClaiming,
   onDeposit,
   onClaim,
+  onHowItWorks,
   onNextMarket,
   className = "",
 }: GenesisActiveVoyageCardProps) {
@@ -225,15 +228,26 @@ export function GenesisActiveVoyageCard({
                   ? "Claiming..."
                   : cta.label}
             </button>
-            <a
-              href={MAIDEN_VOYAGE_DOCS_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`${HARBOR_LEARN_MORE_DARK_LINK_CLASS} min-h-[44px] items-center sm:shrink-0 sm:px-3`}
-            >
-              How it works
-              <ArrowRightIcon className="h-3.5 w-3.5 shrink-0" />
-            </a>
+            {onHowItWorks ? (
+              <button
+                type="button"
+                onClick={onHowItWorks}
+                className={`${HARBOR_LEARN_MORE_DARK_LINK_CLASS} min-h-[44px] items-center sm:shrink-0 sm:px-3`}
+              >
+                How it works
+                <ArrowRightIcon className="h-3.5 w-3.5 shrink-0" />
+              </button>
+            ) : (
+              <a
+                href={MAIDEN_VOYAGE_DOCS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${HARBOR_LEARN_MORE_DARK_LINK_CLASS} min-h-[44px] items-center sm:shrink-0 sm:px-3`}
+              >
+                How it works
+                <ArrowRightIcon className="h-3.5 w-3.5 shrink-0" />
+              </a>
+            )}
           </div>
 
           {footnote ? (

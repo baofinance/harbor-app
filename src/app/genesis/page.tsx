@@ -13,13 +13,13 @@ import {
   GenesisMaidenVoyageComingSoon,
   GenesisMaidenVoyageExplorer,
   GenesisMaidenVoyageFaq,
-  GenesisMaidenVoyageFeaturedSection,
   GenesisMaidenVoyageLifecycle,
-  GenesisMaidenVoyageStatsBar,
   GenesisRevenueShareSection,
   GenesisVoyageFooterNotice,
   GenesisYieldShareRulesCard,
 } from "@/components/genesis";
+import { GenesisAdvancedLayout } from "@/components/genesis/advanced";
+import type { GenesisVoyageOption } from "@/components/genesis/advanced";
 import { MV_DETAILS_PANEL } from "@/components/genesis/maidenVoyageLayoutStyles";
 import { computeMaidenVoyageConfidenceStats } from "@/utils/maidenVoyageConfidenceStats";
 import { computeMaidenVoyageStatsBarData } from "@/utils/maidenVoyageStatsBar";
@@ -251,27 +251,27 @@ export default function GenesisIndexPage() {
   );
 
   useEffect(() => {
-    if (featuredActiveMarketIds.length === 0) return;
-    if (!featuredActiveMarketIds.includes(featuredMarketId as (typeof featuredActiveMarketIds)[number])) {
-      setFeaturedMarketId(featuredActiveMarketIds[0]!);
-    }
-  }, [featuredActiveMarketIds, featuredMarketId]);
+    if (genesisMarkets.length === 0) return;
+    const stillValid = genesisMarkets.some(([id]) => id === featuredMarketId);
+    if (stillValid) return;
+    setFeaturedMarketId(
+      featuredActiveMarketIds[0] ?? genesisMarkets[0]![0],
+    );
+  }, [genesisMarkets, featuredMarketId, featuredActiveMarketIds]);
 
   const activeMarketEntry = useMemo((): [string, GenesisMarketConfig] | null => {
-    const resolvedId =
-      featuredActiveMarketIds.includes(
-        featuredMarketId as (typeof featuredActiveMarketIds)[number],
-      )
-        ? featuredMarketId
-        : featuredActiveMarketIds[0] ?? FEATURED_ACTIVE_MARKET_ID;
+    const fromSelected = genesisMarkets.find(([id]) => id === featuredMarketId);
+    if (fromSelected) return fromSelected as [string, GenesisMarketConfig];
 
-    const fromList = genesisMarkets.find(([id]) => id === resolvedId);
+    const fallbackId =
+      featuredActiveMarketIds[0] ?? FEATURED_ACTIVE_MARKET_ID;
+    const fromList = genesisMarkets.find(([id]) => id === fallbackId);
     if (fromList) return fromList as [string, GenesisMarketConfig];
-    const mkt = markets[resolvedId as keyof typeof markets] as
+    const mkt = markets[fallbackId as keyof typeof markets] as
       | GenesisMarketConfig
       | undefined;
     if (mkt?.addresses?.genesis) {
-      return [resolvedId, mkt];
+      return [fallbackId, mkt];
     }
     return null;
   }, [genesisMarkets, featuredMarketId, featuredActiveMarketIds]);
@@ -460,6 +460,49 @@ export default function GenesisIndexPage() {
     ],
   );
 
+  const voyageOptions = useMemo((): GenesisVoyageOption[] => {
+    return (genesisMarkets as Array<[string, GenesisMarketConfig]>).map(
+      ([marketId, mkt], marketIndex) => {
+        const baseOffset = marketIndex * (isConnected ? 3 : 1);
+        const onChainEnded =
+          readContractRowResult<boolean>(reads, baseOffset) ?? false;
+        const genesisStatus = getGenesisStatus(mkt as Market, onChainEnded);
+        const genesisPhase = genesisStatus.phase as GenesisPhase;
+        const claimableResult = isConnected
+          ? readContractRowResult<[bigint, bigint]>(reads, baseOffset + 2)
+          : undefined;
+        const hasClaimable =
+          (claimableResult?.[0] || 0n) > 0n ||
+          (claimableResult?.[1] || 0n) > 0n;
+
+        // Cap display for dropdown phase only — full resolve for featured voyage stays in activeMarketData.
+        const voyageStatus =
+          marketId === activeMarketData?.marketId && activeMarketData
+            ? activeMarketData.voyageStatus
+            : deriveActiveVoyageStatus({
+                market: mkt,
+                onChainEnded,
+                hasClaimable,
+                genesisPhase,
+                capDisplay: null,
+              });
+
+        return {
+          marketId,
+          market: mkt,
+          voyageStatus,
+          phaseLabel: genesisStatus.phase,
+        };
+      },
+    );
+  }, [
+    genesisMarkets,
+    reads,
+    isConnected,
+    activeMarketData?.marketId,
+    activeMarketData?.voyageStatus,
+  ]);
+
   const buildShareMessage = (
     marketName: string,
     peggedSymbolNoPrefix: string,
@@ -515,10 +558,19 @@ export default function GenesisIndexPage() {
           </div>
         ) : null}
 
-        <GenesisMaidenVoyageStatsBar stats={statsBarData} />
-
-        <GenesisMaidenVoyageFeaturedSection
-          yieldRevSharePct={activeMarketData?.yieldRevSharePct ?? null}
+        <GenesisAdvancedLayout
+          voyageOptions={voyageOptions}
+          selectedMarketId={activeMarketData?.marketId ?? featuredMarketId}
+          onSelectMarket={setFeaturedMarketId}
+          onManageSuccess={onGenesisManageSuccess}
+          onOpenDepositModal={() => {
+            if (!activeMarketData) return;
+            void handleOpenManageModal(
+              activeMarketData.marketId,
+              activeMarketData.mkt,
+              "deposit",
+            );
+          }}
           activeCard={
             activeMarketData
               ? {
@@ -556,65 +608,67 @@ export default function GenesisIndexPage() {
                 }
               : null
           }
-        />
-
-        <GenesisMaidenVoyageExplorer
-          genesisMarkets={genesisMarkets as Array<[string, GenesisMarketConfig]>}
-          comingSoonMarkets={
-            comingSoonMarkets as Array<[string, GenesisMarketConfig]>
-          }
-          reads={reads}
-          totalDepositsReads={totalDepositsReads}
-          isConnected={isConnected}
-          address={address}
-          claimingMarket={claimingMarket}
-          collateralPricesMap={collateralPricesMap}
-          coinGeckoPrices={coinGeckoPrices}
-          coinGeckoLoading={coinGeckoLoading}
-          chainlinkBtcPrice={null}
-          onClaim={claimMarket}
-          onManage={handleOpenManageModal}
-          defaultArchivedExpanded={hasArchivedUserDeposit}
-        />
-
-        <GenesisVoyageFooterNotice />
-
-        <section
-          id="maiden-voyage-learn"
-          className="mt-10 border-t border-white/10 pt-8"
-          aria-label="Learn more"
         >
-          <h2 className="mb-6 text-xs font-medium uppercase tracking-wider text-white/50">
-            Learn more
-          </h2>
-          <details className={`mb-4 ${MV_DETAILS_PANEL} px-4 py-3`}>
-            <summary className="cursor-pointer text-sm font-semibold text-white/90">
-              How a voyage works
-            </summary>
-            <div className="mt-4">
-              <GenesisMaidenVoyageLifecycle />
-            </div>
-          </details>
-          <details className={`mb-4 ${MV_DETAILS_PANEL} px-4 py-3`}>
-            <summary className="cursor-pointer text-sm font-semibold text-white/90">
-              Revenue &amp; rules
-            </summary>
-            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <GenesisRevenueShareSection />
-              <GenesisYieldShareRulesCard
-                yieldRevSharePct={activeMarketData?.yieldRevSharePct ?? null}
-              />
-            </div>
-          </details>
-          <details className={`${MV_DETAILS_PANEL} px-4 py-3`}>
-            <summary className="cursor-pointer text-sm font-semibold text-white/90">
-              FAQ
-            </summary>
-            <div className="mt-4">
-              <GenesisMaidenVoyageFaq />
-            </div>
-          </details>
-        </section>
+          <GenesisMaidenVoyageExplorer
+            genesisMarkets={
+              genesisMarkets as Array<[string, GenesisMarketConfig]>
+            }
+            comingSoonMarkets={
+              comingSoonMarkets as Array<[string, GenesisMarketConfig]>
+            }
+            reads={reads}
+            totalDepositsReads={totalDepositsReads}
+            isConnected={isConnected}
+            address={address}
+            claimingMarket={claimingMarket}
+            collateralPricesMap={collateralPricesMap}
+            coinGeckoPrices={coinGeckoPrices}
+            coinGeckoLoading={coinGeckoLoading}
+            chainlinkBtcPrice={null}
+            onClaim={claimMarket}
+            onManage={handleOpenManageModal}
+            defaultArchivedExpanded={hasArchivedUserDeposit}
+          />
+
+          <GenesisVoyageFooterNotice />
+
+          <section
+            id="maiden-voyage-learn"
+            className="mt-10 border-t border-white/10 pt-8"
+            aria-label="Learn more"
+          >
+            <h2 className="mb-6 text-xs font-medium uppercase tracking-wider text-white/50">
+              Learn more
+            </h2>
+            <details className={`mb-4 ${MV_DETAILS_PANEL} px-4 py-3`}>
+              <summary className="cursor-pointer text-sm font-semibold text-white/90">
+                How a voyage works
+              </summary>
+              <div className="mt-4">
+                <GenesisMaidenVoyageLifecycle />
+              </div>
+            </details>
+            <details className={`mb-4 ${MV_DETAILS_PANEL} px-4 py-3`}>
+              <summary className="cursor-pointer text-sm font-semibold text-white/90">
+                Revenue &amp; rules
+              </summary>
+              <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <GenesisRevenueShareSection />
+                <GenesisYieldShareRulesCard
+                  yieldRevSharePct={activeMarketData?.yieldRevSharePct ?? null}
+                />
+              </div>
+            </details>
+            <details className={`${MV_DETAILS_PANEL} px-4 py-3`}>
+              <summary className="cursor-pointer text-sm font-semibold text-white/90">
+                FAQ
+              </summary>
+              <div className="mt-4">
+                <GenesisMaidenVoyageFaq />
+              </div>
+            </details>
+          </section>
+        </GenesisAdvancedLayout>
     </HarborPageShell>
 
       {manageModal ? (
