@@ -210,10 +210,6 @@ export function GenesisActiveVoyageCard({
             genesisAddress={genesisAddress}
             userDepositUsd={userDepositUsd}
           />
-
-          <div className="mt-3 border-t border-white/10 pt-3">
-            <GenesisVoyageCompletedNotice compact />
-          </div>
         </div>
 
         <div className="mt-auto border-t border-white/10 pt-3">
@@ -261,6 +257,10 @@ export function GenesisActiveVoyageCard({
               {footnote}
             </p>
           ) : null}
+        </div>
+
+        <div className="mt-3 border-t border-white/10 pt-3">
+          <GenesisVoyageCompletedNotice compact />
         </div>
       </div>
 
