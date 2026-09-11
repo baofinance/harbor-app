@@ -5,6 +5,7 @@ import { useAccount, useContractRead } from "wagmi";
 import { AlertTriangle, Info, RefreshCw } from "lucide-react";
 import { GenesisDepositModal } from "@/components/GenesisDepositModal";
 import { GenesisWithdrawModal } from "@/components/GenesisWithdrawModal";
+import { GenesisClaimPanel } from "@/components/genesis/GenesisClaimPanel";
 import { DepositModalTabHeader } from "@/components/DepositModalTabHeader";
 import { InfoCallout } from "@/components/InfoCallout";
 import { useRegisterAppNotifications } from "@/contexts/AppNotificationsContext";
@@ -29,6 +30,8 @@ export type GenesisVoyageActionPanelProps = {
   onTabChange?: (tab: "deposit" | "withdraw") => void;
   onSuccess?: () => void;
   depositsBlocked?: boolean;
+  isClaiming?: boolean;
+  onClaim?: () => void;
 };
 
 /** Embedded Deposit | Withdraw panel — Sail Buy/Sell chrome, Genesis actions. */
@@ -39,6 +42,8 @@ export function GenesisVoyageActionPanel({
   onTabChange,
   onSuccess,
   depositsBlocked: depositsBlockedProp,
+  isClaiming = false,
+  onClaim,
 }: GenesisVoyageActionPanelProps) {
   const { address } = useAccount();
   const [internalTab, setInternalTab] = useState<"deposit" | "withdraw">(
@@ -93,7 +98,8 @@ export function GenesisVoyageActionPanel({
   });
 
   const hasDeposit = !!userDeposit && userDeposit > 0n;
-  const depositsBlocked = depositsBlockedProp ?? (!!isEnded || archived);
+  const voyageEnded = !!isEnded;
+  const depositsBlocked = depositsBlockedProp ?? (voyageEnded || archived);
 
   useEffect(() => {
     if (controlledTab == null) {
@@ -194,6 +200,12 @@ export function GenesisVoyageActionPanel({
               </p>
             </div>
           </div>
+        ) : voyageEnded && onClaim ? (
+          <GenesisClaimPanel
+            market={market}
+            isClaiming={isClaiming}
+            onClaim={onClaim}
+          />
         ) : activeTab === "withdraw" && hasDeposit && genesisAddress ? (
           <GenesisWithdrawModal
             isOpen

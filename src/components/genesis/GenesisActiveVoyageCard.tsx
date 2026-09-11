@@ -40,6 +40,9 @@ import {
   MV_PREVIEW_SOON_CONTENT_DIM_CLASS,
   MV_PREVIEW_SOON_VEIL_CLASS,
   MV_PREVIEW_SOON_BADGE_CLASS,
+  MV_PREVIEW_COMPLETED_CONTENT_DIM_CLASS,
+  MV_PREVIEW_COMPLETED_VEIL_CLASS,
+  MV_PREVIEW_COMPLETED_BADGE_CLASS,
 } from "./maidenVoyageLayoutStyles";
 
 export type GenesisActiveVoyageCardProps = {
@@ -120,6 +123,14 @@ export function GenesisActiveVoyageCard({
   const chainName = market.chain?.name ?? "Ethereum";
   const chainLogo = market.chain?.logo ?? "icons/eth.png";
   const previewSoon = isGenesisSoonUi(market);
+  const previewCompleted =
+    !previewSoon &&
+    (voyageStatus === "launch_complete" || voyageStatus === "claim_available");
+  const contentDimClass = previewSoon
+    ? MV_PREVIEW_SOON_CONTENT_DIM_CLASS
+    : previewCompleted
+      ? MV_PREVIEW_COMPLETED_CONTENT_DIM_CLASS
+      : "";
 
   return (
     <section
@@ -134,24 +145,31 @@ export function GenesisActiveVoyageCard({
             <span className={MV_PREVIEW_SOON_BADGE_CLASS}>COMING SOON</span>
           </div>
         </>
+      ) : previewCompleted ? (
+        <>
+          <div aria-hidden className={MV_PREVIEW_COMPLETED_VEIL_CLASS} />
+          <div className="pointer-events-none absolute inset-x-0 top-[36%] z-[6] flex justify-center px-4">
+            <span className={MV_PREVIEW_COMPLETED_BADGE_CLASS}>COMPLETED</span>
+          </div>
+        </>
       ) : null}
 
       <div
-        className={`flex min-h-0 flex-1 flex-col px-4 py-3 sm:px-5 ${previewSoon ? MV_PREVIEW_SOON_CONTENT_DIM_CLASS : ""}`}
+        className={`flex min-h-0 flex-1 flex-col px-4 py-3 sm:px-5 ${contentDimClass}`}
       >
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/15 pb-3">
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        <div className="flex flex-col gap-2 border-b border-white/15 pb-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
             <FeaturedVoyageChainMark chainName={chainName} chainLogo={chainLogo} />
             <GenesisVoyageStatusBadge status={voyageStatus} />
-            <span className="shrink-0 text-sm font-semibold text-white/95">
+            <span className="min-w-0 text-sm font-semibold text-white/95">
               Maiden Voyage #{voyageNumber}
             </span>
             <GenesisMaidenVoyageStageLabel
               status={voyageStatus}
-              className="shrink-0"
+              className="w-full sm:w-auto sm:shrink-0"
             />
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2 self-start sm:self-auto">
             <span className={INDEX_CORAL_INFO_TAG_CLASS}>{marketTypeLabel}</span>
             {onNextMarket ? (
               <button
@@ -166,8 +184,8 @@ export function GenesisActiveVoyageCard({
           </div>
         </div>
 
-        <div className="flex min-h-[52px] w-full items-stretch border-b border-white/15 py-3 sm:py-3.5">
-          <div className="flex min-w-[6.5rem] flex-1 items-center justify-center px-3 sm:min-w-[7rem] sm:px-4">
+        <div className="flex flex-col gap-3 border-b border-white/15 py-3 sm:min-h-[52px] sm:flex-row sm:items-stretch sm:gap-0 sm:py-3.5">
+          <div className="flex min-w-0 flex-1 items-center justify-center px-1 sm:min-w-[6.5rem] sm:px-3 lg:min-w-[7rem] lg:px-4">
             {isConnected && depositStatusLabel ? (
               <HarborBasicMarketStatusRow
                 theme="dark"
@@ -184,10 +202,10 @@ export function GenesisActiveVoyageCard({
             )}
           </div>
           <div
-            className="w-px shrink-0 self-stretch bg-white/15"
+            className="hidden w-px shrink-0 self-stretch bg-white/15 sm:block"
             aria-hidden
           />
-          <div className="flex min-w-0 flex-[1.2] items-center justify-center px-2 sm:px-3">
+          <div className="flex min-w-0 flex-1 items-center justify-center border-t border-white/10 pt-3 sm:flex-[1.2] sm:border-t-0 sm:px-2 sm:pt-0 lg:px-3">
             <HarborMarketTokenFlowStrip
               theme="dark"
               variant="inline"
@@ -217,7 +235,8 @@ export function GenesisActiveVoyageCard({
             <button
               type="button"
               className={
-                previewSoon
+                previewSoon ||
+                (previewCompleted && voyageStatus === "launch_complete")
                   ? `${HARBOR_COMING_SOON_CTA_SURFACE_CLASS} min-h-[44px] sm:flex-1`
                   : `${MV_PRIMARY_CTA} min-h-[44px] sm:flex-1`
               }
@@ -226,9 +245,11 @@ export function GenesisActiveVoyageCard({
             >
               {previewSoon
                 ? "Coming soon"
-                : cta.action === "claim" && isClaiming
-                  ? "Claiming..."
-                  : cta.label}
+                : previewCompleted && voyageStatus === "launch_complete"
+                  ? "Completed"
+                  : cta.action === "claim" && isClaiming
+                    ? "Claiming..."
+                    : cta.label}
             </button>
             {onHowItWorks ? (
               <button
@@ -265,7 +286,7 @@ export function GenesisActiveVoyageCard({
       </div>
 
       <footer
-        className={`${MV_FOOTER_PANEL} ${GENESIS_VOYAGE_CARD_FOOTER_HEIGHT} px-4 sm:px-5 ${previewSoon ? MV_PREVIEW_SOON_CONTENT_DIM_CLASS : ""}`}
+        className={`${MV_FOOTER_PANEL} ${GENESIS_VOYAGE_CARD_FOOTER_HEIGHT} px-4 sm:px-5 ${contentDimClass}`}
       >
         <GenesisMaidenVoyageStageStrip status={voyageStatus} showHeading={false} />
       </footer>

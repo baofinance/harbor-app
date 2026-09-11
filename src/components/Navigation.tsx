@@ -118,12 +118,12 @@ export default function Example() {
             </Link>
             <Link
               href="/genesis"
-              className={`${linkClass("/genesis")} inline-flex min-w-0 shrink-0 items-center justify-center gap-1`}
+              className={`${linkClass("/genesis")} flex shrink-0 items-center justify-center gap-1`}
               aria-current={isActive("/genesis") ? "page" : undefined}
             >
-              <span>Maiden Voyage</span>
+              Maiden Voyage
               <span
-                className={`shrink-0 rounded border px-1 py-0.5 text-[10px] font-bold leading-none font-mono ${
+                className={`inline-flex h-4 shrink-0 items-center rounded border px-1 text-[10px] font-bold font-mono leading-none ${
                   isActive("/genesis")
                     ? "border-[#1E4775]/25 bg-[#1E4775]/10 text-[#1E4775]"
                     : "border-white/40 bg-white/10 text-white"
@@ -282,10 +282,10 @@ export default function Example() {
               }`}
               aria-current={isActive("/genesis") ? "page" : undefined}
             >
-              <span className="inline-flex items-center justify-center gap-2">
+              <span className="inline-flex items-center justify-center gap-1.5 leading-none">
                 <span>Maiden Voyage</span>
                 <span
-                  className={`rounded border px-1.5 py-0.5 text-xs font-bold font-mono ${
+                  className={`inline-flex h-4 shrink-0 items-center rounded border px-1 text-[10px] font-bold font-mono leading-none ${
                     isActive("/genesis")
                       ? "border-[#1E4775]/25 bg-[#1E4775]/10 text-[#1E4775]"
                       : "border-white/40 bg-white/10 text-white"

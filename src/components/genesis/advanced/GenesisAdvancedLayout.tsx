@@ -64,6 +64,10 @@ export function GenesisAdvancedLayout({
     focusDepositPanel();
   }, [focusDepositPanel]);
 
+  const handleCardClaim = useCallback(() => {
+    requestAnimationFrame(() => scrollToTradePanel());
+  }, [scrollToTradePanel]);
+
   const selectedMarket = useMemo((): GenesisMarketConfig | null => {
     const opt =
       voyageOptions.find((o) => o.marketId === selectedMarketId) ??
@@ -90,6 +94,7 @@ export function GenesisAdvancedLayout({
     ? {
         ...activeCard,
         onDeposit: handleCardDeposit,
+        onClaim: handleCardClaim,
         // Docs fallback on the card — How it works lives in the info footer now.
         onHowItWorks: undefined,
       }
@@ -122,7 +127,7 @@ export function GenesisAdvancedLayout({
             />
           ) : (
             <div
-              className={`flex ${GENESIS_VOYAGE_CARD_HEIGHT} items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 text-center text-sm text-white/60`}
+              className={`flex min-h-[16rem] ${GENESIS_VOYAGE_CARD_HEIGHT} items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 text-center text-sm text-white/60`}
             >
               No active Maiden Voyage to feature right now.
             </div>
@@ -136,6 +141,8 @@ export function GenesisAdvancedLayout({
             activeTab={panelTab}
             onTabChange={setPanelTab}
             onSuccess={onManageSuccess}
+            isClaiming={activeCard?.isClaiming}
+            onClaim={activeCard?.onClaim}
           />
         ) : null}
       </div>
