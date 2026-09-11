@@ -16,6 +16,7 @@ import { SailMarketInfoFooter } from "./SailMarketInfoFooter";
 import { SailMarketMetricsCollapsible } from "./SailMarketMetricsCollapsible";
 import { SailMobileTradeBar } from "./SailMobileTradeBar";
 import type { SailWalletStatsStripProps } from "./SailWalletStatsStrip";
+import type { SailDropdownPositionTone } from "@/utils/sailMarketDropdownPosition";
 import {
   SAIL_ADVANCED_FROSTED_LIGHT_PANEL,
   SAIL_ADVANCED_MAIN_GRID_CLASS,
@@ -37,6 +38,11 @@ export type SailAdvancedLayoutProps = {
   tokenPricesByMarket: Record<
     string,
     { leveragedPriceUSD?: number } | undefined
+  >;
+  marketDropdownPnLToneByMarketId?: Record<string, SailDropdownPositionTone>;
+  marketDropdownPositionByMarketId?: Record<
+    string,
+    { label?: string; tone: SailDropdownPositionTone }
   >;
   userDeposit?: bigint;
   currentValueUSD?: number;
@@ -60,6 +66,8 @@ export function SailAdvancedLayout({
   isConnected,
   userDepositMap,
   tokenPricesByMarket,
+  marketDropdownPnLToneByMarketId = {},
+  marketDropdownPositionByMarketId = {},
   userDeposit,
   currentValueUSD,
   onManageSuccess,
@@ -109,6 +117,9 @@ export function SailAdvancedLayout({
           isConnected && globalIndex !== undefined
             ? userDepositMap.get(globalIndex)
             : undefined;
+        const positionDisplay = isConnected
+          ? marketDropdownPositionByMarketId[marketId]
+          : undefined;
         const position = isConnected
           ? buildSailUserPositionLabel(
               market,
@@ -123,7 +134,14 @@ export function SailAdvancedLayout({
           market,
           leverageRatio,
           hasPosition: position.hasPosition,
-          positionLabel: position.hasPosition ? position.label : undefined,
+          positionLabel: positionDisplay?.label ?? (
+            position.hasPosition ? position.label?.replace(/^Your position ·\s*/, "") : undefined
+          ),
+          positionTone: position.hasPosition
+            ? positionDisplay?.tone ??
+              marketDropdownPnLToneByMarketId[marketId] ??
+              "pending"
+            : undefined,
           isComingSoon: comingSoon,
           isDepositsPaused:
             !comingSoon && isSailDepositsPausedByLeverage(leverageRatio),
@@ -137,6 +155,8 @@ export function SailAdvancedLayout({
       sailMarketIdToIndex,
       userDepositMap,
       tokenPricesByMarket,
+      marketDropdownPnLToneByMarketId,
+      marketDropdownPositionByMarketId,
     ],
   );
 
@@ -198,7 +218,7 @@ export function SailAdvancedLayout({
 
           <div
             id={SAIL_TRADE_PANEL_ID}
-            className="order-2 flex min-h-0 flex-col scroll-mt-20 lg:order-none lg:h-full"
+            className="order-2 flex min-h-0 flex-col scroll-mt-20 lg:order-none lg:h-full lg:self-stretch"
           >
             <SailMarketActionPanel
               marketId={selectedMarketId}

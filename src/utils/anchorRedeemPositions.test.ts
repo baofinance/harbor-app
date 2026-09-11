@@ -1,0 +1,229 @@
+import { describe, expect, it } from "vitest";
+import type { DefinedMarket } from "@/config/markets";
+import {
+  buildAnchorRedeemPositions,
+  deriveRedeemRequestStatus,
+  enrichAnchorRedeemPositions,
+  formatWithdrawalWindowTiming,
+  redeemPositionTitle,
+} from "./anchorRedeemPositions";
+
+const marketA = {
+  name: "fxUSD - ETH",
+  collateral: { symbol: "fxSAVE" },
+} as DefinedMarket;
+
+const marketB = {
+  name: "stETH - ETH",
+  collateral: { symbol: "wstETH" },
+} as DefinedMarket;
+
+describe("buildAnchorRedeemPositions", () => {
+  it("includes wallet and non-zero pools only", () => {
+    const positions = buildAnchorRedeemPositions({
+      peggedBalance: 5n * 10n ** 18n,
+      poolRows: [
+        {
+          key: "a-collateral",
+          marketId: "a",
+          market: marketA,
+          poolType: "collateral",
+          poolAddress: "0xaaa",
+          balance: 2n * 10n ** 18n,
+        },
+        {
+          key: "a-sail",
+          marketId: "a",
+          market: marketA,
+          poolType: "sail",
+          poolAddress: "0xbbb",
+          balance: 0n,
+        },
+        {
+          key: "b-collateral",
+          marketId: "b",
+          market: marketB,
+          poolType: "collateral",
+          poolAddress: "0xccc",
+          balance: 1n * 10n ** 18n,
+        },
+      ],
+    });
+
+    expect(positions.map((p) => p.key)).toEqual([
+      "wallet",
+      "a-collateral",
+      "b-collateral",
+    ]);
+  });
+
+  it("places window-open pools after idle positions", () => {
+    const windowOpenByPoolAddress = new Map([
+      ["0xccc", true],
+      ["0xaaa", false],
+    ]);
+    const positions = buildAnchorRedeemPositions({
+      peggedBalance: 0n,
+      poolRows: [
+        {
+          key: "a-collateral",
+          marketId: "a",
+          market: marketA,
+          poolType: "collateral",
+          poolAddress: "0xaaa",
+          balance: 2n * 10n ** 18n,
+        },
+        {
+          key: "b-collateral",
+          marketId: "b",
+          market: marketB,
+          poolType: "collateral",
+          poolAddress: "0xccc",
+          balance: 1n * 10n ** 18n,
+        },
+      ],
+      windowOpenByPoolAddress,
+    });
+
+    expect(positions.map((p) => p.key)).toEqual([
+      "a-collateral",
+      "b-collateral",
+    ]);
+    expect(positions[1]?.kind === "pool" && positions[1].windowOpen).toBe(true);
+  });
+
+  it("attaches pending request countdown and sorts requested after idle", () => {
+    const now = 1_700_000_000;
+    const pending = deriveRedeemRequestStatus(
+      [BigInt(now + 600), BigInt(now + 600 + 86_400)],
+      now,
+    );
+    const requestStatusByPoolAddress = new Map([
+      ["0xaaa", pending],
+    ]);
+    const positions = buildAnchorRedeemPositions({
+      peggedBalance: 0n,
+      poolRows: [
+        {
+          key: "idle",
+          marketId: "b",
+          market: marketB,
+          poolType: "collateral",
+          poolAddress: "0xccc",
+          balance: 1n * 10n ** 18n,
+        },
+        {
+          key: "pending",
+          marketId: "a",
+          market: marketA,
+          poolType: "collateral",
+          poolAddress: "0xaaa",
+          balance: 2n * 10n ** 18n,
+        },
+      ],
+      requestStatusByPoolAddress,
+    });
+    expect(positions.map((p) => p.key)).toEqual(["idle", "pending"]);
+    expect(
+      positions[1]?.kind === "pool" && positions[1].requestStatus?.label,
+    ).toMatch(/^Opens in /);
+  });
+});
+
+describe("deriveRedeemRequestStatus", () => {
+  it("returns pending, open, or undefined from request window", () => {
+    const now = 1_000;
+    expect(deriveRedeemRequestStatus(undefined, now)).toBeUndefined();
+    expect(deriveRedeemRequestStatus([0n, 0n], now)).toBeUndefined();
+    expect(deriveRedeemRequestStatus([1_200n, 2_000n], now)?.state).toBe(
+      "pending",
+    );
+    expect(deriveRedeemRequestStatus([1_200n, 2_000n], now)?.label).toBe(
+      "Opens in 4m",
+    );
+    expect(deriveRedeemRequestStatus([900n, 1_500n], now)?.state).toBe("open");
+    expect(deriveRedeemRequestStatus([900n, 1_500n], now)?.label).toBe(
+      "9m left",
+    );
+    expect(deriveRedeemRequestStatus([100n, 200n], now)).toBeUndefined();
+  });
+});
+
+describe("formatWithdrawalWindowTiming", () => {
+  it("formats delay and duration from getWithdrawalWindow", () => {
+    expect(formatWithdrawalWindowTiming(undefined)).toEqual({
+      delayLabel: "1 hour",
+      durationLabel: "24 hours",
+    });
+    expect(formatWithdrawalWindowTiming([3600n, 86_400n])).toEqual({
+      delayLabel: "1 hour",
+      durationLabel: "24 hours",
+    });
+  });
+});
+
+describe("redeemPositionTitle", () => {
+  it("labels wallet and market + pool type on one line", () => {
+    expect(
+      redeemPositionTitle(
+        { key: "wallet", kind: "wallet", balance: 1n },
+        "haETH",
+      ),
+    ).toBe("Wallet");
+    expect(
+      redeemPositionTitle(
+        {
+          key: "a-sail",
+          kind: "pool",
+          marketId: "a",
+          market: marketA,
+          poolType: "sail",
+          poolAddress: "0xbbb",
+          balance: 1n,
+        },
+        "haETH",
+      ),
+    ).toBe("fxUSD - ETH sail pool");
+    expect(
+      redeemPositionTitle(
+        {
+          key: "a-collateral",
+          kind: "pool",
+          marketId: "a",
+          market: marketA,
+          poolType: "collateral",
+          poolAddress: "0xaaa",
+          balance: 1n,
+        },
+        "haETH",
+      ),
+    ).toBe("fxUSD - ETH collateral pool");
+  });
+});
+
+describe("enrichAnchorRedeemPositions", () => {
+  it("adds usd value and pool apr", () => {
+    const aprByPoolAddress = new Map<string, number | undefined>([
+      ["0xaaa", 12.5],
+    ]);
+    const enriched = enrichAnchorRedeemPositions(
+      [
+        { key: "wallet", kind: "wallet", balance: 10n ** 18n },
+        {
+          key: "a-collateral",
+          kind: "pool",
+          marketId: "a",
+          market: marketA,
+          poolType: "collateral",
+          poolAddress: "0xaaa",
+          balance: 2n * 10n ** 18n,
+        },
+      ],
+      { peggedPriceUSD: 100, aprByPoolAddress },
+    );
+    expect(enriched[0]?.usdValue).toBeCloseTo(100);
+    expect(enriched[0]?.kind === "wallet" && enriched[0].apr).toBeUndefined();
+    expect(enriched[1]?.usdValue).toBeCloseTo(200);
+    expect(enriched[1]?.kind === "pool" && enriched[1].apr).toBe(12.5);
+  });
+});

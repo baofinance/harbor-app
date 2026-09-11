@@ -11,10 +11,28 @@ export function ErrorBanner({
 }) {
   return (
     <div
-      className={`p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm text-center flex items-center justify-center gap-2 ${className}`.trim()}
+      className={`flex items-start gap-2 rounded-md border border-red-500/30 bg-red-50 p-2.5 text-left text-xs text-red-700 ${className}`.trim()}
     >
-      <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
-      {message}
+      <AlertOctagon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+      <span>{message}</span>
+    </div>
+  );
+}
+
+/** Keeps a small slot when an error appears so the footer does not jump. */
+export function ReservedErrorSlot({
+  message,
+  className = "",
+}: {
+  message?: string | null;
+  className?: string;
+}) {
+  if (!message) {
+    return className ? <div className={className} aria-hidden /> : null;
+  }
+  return (
+    <div className={className.trim()} aria-live="polite">
+      <ErrorBanner message={message} />
     </div>
   );
 }

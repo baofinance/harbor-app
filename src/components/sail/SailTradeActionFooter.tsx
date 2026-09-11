@@ -11,9 +11,6 @@ type SailTradeActionFooterProps = {
   layout: "embedded" | "modal";
   marketFees?: SailTradeMarketFees;
   activeTab: "mint" | "redeem";
-  buyFeeEstimatePct?: number;
-  sellFeeEstimatePct?: number;
-  showEstimates?: boolean;
   action: DepositPrimaryAction;
   onSubmit: () => void;
   onRetry: () => void;
@@ -25,9 +22,6 @@ export function SailTradeActionFooter({
   layout,
   marketFees,
   activeTab,
-  buyFeeEstimatePct,
-  sellFeeEstimatePct,
-  showEstimates,
   action,
   onSubmit,
   onRetry,
@@ -46,9 +40,6 @@ export function SailTradeActionFooter({
         <SailTradeFeeFooter
           marketFees={marketFees}
           activeTab={activeTab}
-          buyFeeEstimatePct={buyFeeEstimatePct}
-          sellFeeEstimatePct={sellFeeEstimatePct}
-          showEstimates={showEstimates}
           mode="activeTab"
         />
       }

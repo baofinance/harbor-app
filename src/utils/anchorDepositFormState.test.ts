@@ -38,29 +38,58 @@ describe("anchorDepositFormState", () => {
     expect(isDepositPrimaryActionDisabled(action)).toBe(true);
   });
 
-  it("returns continue to step 2 by default", () => {
+  it("returns continue to deposit by default", () => {
     const action = resolveAnchorDepositStep1PrimaryAction(base);
     expect(action).toEqual({
       kind: "submit",
-      label: "Continue to Step 2 →",
-      variant: "navy",
+      label: "Continue to Deposit →",
+      variant: "mint",
     });
   });
 
-  it("returns mint only label", () => {
+  it("returns continue for mint only on amount step", () => {
     const action = resolveAnchorDepositStep1PrimaryAction({
       ...base,
       mintOnly: true,
     });
-    expect(depositPrimaryActionLabel(action)).toBe("Mint");
+    expect(depositPrimaryActionLabel(action)).toBe("Continue →");
   });
 
-  it("returns stability pool when skipping reward step", () => {
+  it("disables continue when mint validation is blocked", () => {
+    const action = resolveAnchorDepositStep1PrimaryAction({
+      ...base,
+      mintOnly: true,
+      mintValidation: {
+        status: "blocked",
+        message: "This size can't be minted right now.",
+        isDisallowed: true,
+      },
+    });
+    expect(action).toEqual({
+      kind: "enter_amount",
+      label: "Mint unavailable",
+    });
+    expect(isDepositPrimaryActionDisabled(action)).toBe(true);
+  });
+
+  it("disables continue while mint validation is pending", () => {
+    const action = resolveAnchorDepositStep1PrimaryAction({
+      ...base,
+      mintValidation: {
+        status: "pending",
+        message: "Checking…",
+      },
+    });
+    expect(depositPrimaryActionLabel(action)).toBe("Checking mint…");
+    expect(isDepositPrimaryActionDisabled(action)).toBe(true);
+  });
+
+  it("returns continue to deposit when skipping reward step", () => {
     const action = resolveAnchorDepositStep1PrimaryAction({
       ...base,
       skipRewardStep: true,
     });
-    expect(depositPrimaryActionLabel(action)).toBe("Continue to Stability Pool →");
+    expect(depositPrimaryActionLabel(action)).toBe("Continue to Deposit →");
   });
 });
 
@@ -81,7 +110,7 @@ describe("resolveAnchorDepositStep2PrimaryAction", () => {
     expect(action).toEqual({
       kind: "submit",
       label: "Continue to Stability Pool →",
-      variant: "navy",
+      variant: "mint",
     });
   });
 
@@ -116,9 +145,9 @@ describe("resolveAnchorDepositStep3PrimaryAction", () => {
     isDirectPeggedDeposit: false,
   };
 
-  it("returns mint and deposit when pool selected", () => {
+  it("returns continue when pool selected", () => {
     const action = resolveAnchorDepositStep3PrimaryAction(step3Base);
-    expect(depositPrimaryActionLabel(action)).toBe("Mint & Deposit");
+    expect(depositPrimaryActionLabel(action)).toBe("Continue →");
   });
 
   it("returns select pool when reward token chosen but pool missing", () => {

@@ -7,6 +7,8 @@ import { getGraphUrl, getGraphHeaders, getSailPriceGraphUrlOptional } from "@/co
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import { useMarketPositions } from "@/hooks/useMarketPositions";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
+import { useContractReads } from "@/hooks/useContractReads";
+import { ERC20_ABI } from "@/abis/shared";
 import { buildDashboardAddressIndex } from "@/utils/dashboardPositionLabels";
 import { buildTokenPriceInput } from "@/utils/tokenPriceInput";
 import {
@@ -26,6 +28,8 @@ import {
 } from "@/components/dashboard/dashboardRowPresentation";
 
 const USD_EPS = 0.005;
+/** Ignore dust leftover hs balances (~1e-6 tokens). */
+const SAIL_ONCHAIN_DUST_WEI = 10n ** 12n;
 
 type MarketTokenCfg = {
   collateral?: { symbol?: string };
@@ -69,6 +73,7 @@ const SAIL_POSITIONS_QUERY = `
     ) {
       id
       tokenAddress
+      balance
       balanceUSD
       totalCostBasisUSD
       realizedPnLUSD
@@ -472,6 +477,82 @@ export function useDashboardPositions() {
     retry: 1,
   });
 
+  // On-chain hs balances — Sail page source of truth. Indexers can lag after close.
+  const sailLevBalanceContracts = useMemo(() => {
+    if (!address) return [] as Array<{
+      token: string;
+      contract: {
+        address: `0x${string}`;
+        abi: typeof ERC20_ABI;
+        functionName: "balanceOf";
+        args: [`0x${string}`];
+        chainId: number;
+      };
+    }>;
+
+    const seen = new Set<string>();
+    const items: Array<{
+      token: string;
+      contract: {
+        address: `0x${string}`;
+        abi: typeof ERC20_ABI;
+        functionName: "balanceOf";
+        args: [`0x${string}`];
+        chainId: number;
+      };
+    }> = [];
+
+    for (const [, m] of Object.entries(markets)) {
+      const addrs = (m as { addresses?: { leveragedToken?: string }; chainId?: number })
+        .addresses;
+      const lev = addrs?.leveragedToken;
+      if (!lev || typeof lev !== "string" || !lev.startsWith("0x") || lev.length !== 42) {
+        continue;
+      }
+      const tok = lev.toLowerCase();
+      if (seen.has(tok)) continue;
+      seen.add(tok);
+      items.push({
+        token: tok,
+        contract: {
+          address: lev as `0x${string}`,
+          abi: ERC20_ABI,
+          functionName: "balanceOf",
+          args: [address as `0x${string}`],
+          chainId: (m as { chainId?: number }).chainId ?? 1,
+        },
+      });
+    }
+    return items;
+  }, [address]);
+
+  const {
+    data: sailLevBalanceReads,
+    isFetched: sailLevBalancesFetched,
+  } = useContractReads({
+    contracts: sailLevBalanceContracts.map((c) => c.contract),
+    query: {
+      enabled:
+        isConnected && !!address && sailLevBalanceContracts.length > 0,
+      refetchInterval: 30_000,
+      staleTime: 10_000,
+      allowFailure: true,
+    },
+  });
+
+  const onChainSailBalanceByToken = useMemo(() => {
+    const map = new Map<string, bigint>();
+    sailLevBalanceContracts.forEach(({ token }, i) => {
+      const read = sailLevBalanceReads?.[i];
+      if (!read || read.status !== "success") return;
+      const bal = read.result as bigint | undefined;
+      if (typeof bal === "bigint") {
+        map.set(token, bal);
+      }
+    });
+    return map;
+  }, [sailLevBalanceContracts, sailLevBalanceReads]);
+
   const { maidenVoyageRows, archivedMaidenVoyageRows } = useMemo(() => {
     const raw = (mvData?.userHarborMarks ?? []) as Array<{
       id: string;
@@ -743,22 +824,132 @@ export function useDashboardPositions() {
     const raw = (sailData?.userSailPositions ?? []) as Array<{
       id: string;
       tokenAddress: string;
-      balanceUSD?: string;
-      totalCostBasisUSD?: string;
+      balance?: string;
+      balanceUSD?: string | number;
+      totalCostBasisUSD?: string | number;
     }>;
-    const rows: DashboardPositionRow[] = [];
-    const tokensFromSailSubgraphRow = new Set<string>();
 
+    // Cost basis by token — independent of indexer balanceUSD (Sail page does the same).
+    const costByToken = new Map<
+      string,
+      {
+        id: string;
+        balance?: string;
+        balanceUSD: number;
+        totalCostBasisUSD?: string | number;
+      }
+    >();
     for (const p of raw) {
-      const usd = parseFloat(p.balanceUSD || "0");
-      if (!nonZeroUsd(usd)) continue;
       const tok = String(p.tokenAddress || "").toLowerCase();
+      if (!tok) continue;
+      costByToken.set(tok, {
+        id: p.id,
+        balance: p.balance,
+        balanceUSD: parseFloat(String(p.balanceUSD ?? "0")) || 0,
+        totalCostBasisUSD: p.totalCostBasisUSD,
+      });
+    }
+
+    const rows: DashboardPositionRow[] = [];
+    const tokensEmitted = new Set<string>();
+
+    // Prefer marks ledger balances for display USD (same source as portfolio totals),
+    // then attach Sail-subgraph cost basis so PnL matches the Sail page formula.
+    for (const s of sailBalances) {
+      if (!nonZeroBalanceToken(s.balance)) continue;
+      const tok = s.tokenAddress.toLowerCase();
+
+      // Prefer on-chain hs balance (Sail page does the same). Stale marks/Sail
+      // subgraph rows otherwise keep closed fxUSD/BTC positions on the dashboard.
+      if (sailLevBalancesFetched) {
+        const onChain = onChainSailBalanceByToken.get(tok);
+        if (onChain !== undefined && onChain <= SAIL_ONCHAIN_DUST_WEI) {
+          continue;
+        }
+      }
+
+      const levMeta = index.leveragedTokenByAddressLower.get(tok);
+      const haMeta = index.haTokenByAddressLower.get(tok);
+      const meta = levMeta ?? haMeta;
+      const marketId = meta?.marketId;
+      const balanceTokens = parseFloat(s.balance);
+      const priceUsd = marketId
+        ? tokenPricesByMarket[marketId]?.leveragedPriceUSD
+        : undefined;
+      const { usd, usdUnpriced } = resolveUsdValue(
+        s.balanceUSD,
+        balanceTokens,
+        priceUsd,
+      );
+      if (!shouldShowPositionRow(balanceTokens, usd, usdUnpriced)) continue;
+
+      const marketLabel = meta?.displayName ?? "Sail";
+      const levSymFromMarks =
+        levMeta && marketCfg(levMeta.marketId)?.leveragedToken?.symbol;
+      const cost = costByToken.get(tok);
+      const hasCostBasis = cost != null;
+
+      rows.push(
+        withChain({
+          id: hasCostBasis ? `lev-${cost!.id}` : `sailbal-${s.id}`,
+          category: "leverage",
+          marketId: meta?.marketId,
+          marketLabel,
+          detail: hasCostBasis
+            ? `${levSymFromMarks ?? "Leveraged"} · position`
+            : "Sail token · marks",
+          iconSymbol:
+            levSymFromMarks || iconSymbolFromMarketLabel(marketLabel),
+          statusTone: "neutral",
+          statusLabel: hasCostBasis ? "Position" : "Marks",
+          usd,
+          usdUnpriced,
+          ...(hasCostBasis
+            ? sailUnrealizedPnL(usd, cost!.totalCostBasisUSD)
+            : {}),
+          href: buildSailMarketPageHref(meta?.marketId),
+        }),
+      );
+      tokensEmitted.add(tok);
+    }
+
+    // Subgraph-only leftovers (token not in marks ledger).
+    for (const [tok, p] of costByToken) {
+      if (tokensEmitted.has(tok)) continue;
+
+      if (sailLevBalancesFetched) {
+        const onChain = onChainSailBalanceByToken.get(tok);
+        if (onChain !== undefined && onChain <= SAIL_ONCHAIN_DUST_WEI) {
+          continue;
+        }
+      }
+
       const meta = index.leveragedTokenByAddressLower.get(tok);
       const marketLabel = meta?.displayName ?? "Sail";
       const levSym =
         meta &&
-        (markets as Record<string, { leveragedToken?: { symbol?: string } }>)[meta.marketId]
-          ?.leveragedToken?.symbol;
+        (markets as Record<string, { leveragedToken?: { symbol?: string } }>)[
+          meta.marketId
+        ]?.leveragedToken?.symbol;
+
+      let balanceTokens = 0;
+      if (p.balance) {
+        try {
+          balanceTokens = Number(BigInt(p.balance)) / 1e18;
+        } catch {
+          balanceTokens = parseFloat(p.balance) || 0;
+        }
+      }
+      const priceUsd = meta?.marketId
+        ? tokenPricesByMarket[meta.marketId]?.leveragedPriceUSD
+        : undefined;
+      const { usd, usdUnpriced } = resolveUsdValue(
+        p.balanceUSD,
+        balanceTokens,
+        priceUsd,
+      );
+      if (!shouldShowPositionRow(balanceTokens, usd, usdUnpriced)) continue;
+
       rows.push(
         withChain({
           id: `lev-${p.id}`,
@@ -770,56 +961,23 @@ export function useDashboardPositions() {
           statusTone: "neutral",
           statusLabel: "Position",
           usd,
+          usdUnpriced,
           ...sailUnrealizedPnL(usd, p.totalCostBasisUSD),
           href: buildSailMarketPageHref(meta?.marketId),
-        })
+        }),
       );
-      tokensFromSailSubgraphRow.add(tok);
-    }
-
-    // Sail hs-token balances from marks ledger (same source as Genesis); show under Sail, not Earn.
-    // Skip when the Sail price subgraph already lists the same token (avoid duplicate lines / totals).
-    for (const s of sailBalances) {
-      if (!nonZeroBalanceToken(s.balance)) continue;
-      const tok = s.tokenAddress.toLowerCase();
-      if (tokensFromSailSubgraphRow.has(tok)) continue;
-
-      const levMeta = index.leveragedTokenByAddressLower.get(tok);
-      const haMeta = index.haTokenByAddressLower.get(tok);
-      const meta = levMeta ?? haMeta;
-      const marketId = meta?.marketId;
-      const balanceTokens = parseFloat(s.balance);
-      const priceUsd = marketId
-        ? tokenPricesByMarket[marketId]?.leveragedPriceUSD
-        : undefined;
-      const { usd, usdUnpriced } = resolveUsdValue(s.balanceUSD, balanceTokens, priceUsd);
-      if (!shouldShowPositionRow(balanceTokens, usd, usdUnpriced)) continue;
-
-      const marketLabel = meta?.displayName ?? "Sail";
-      const levSymFromMarks =
-        levMeta &&
-        marketCfg(levMeta.marketId)?.leveragedToken?.symbol;
-      rows.push(
-        withChain({
-          id: `sailbal-${s.id}`,
-          category: "leverage",
-          marketId: meta?.marketId,
-          marketLabel,
-          detail: "Sail token · marks",
-          iconSymbol:
-            levSymFromMarks ||
-            iconSymbolFromMarketLabel(marketLabel),
-          statusTone: "neutral",
-          statusLabel: "Marks",
-          usd,
-          usdUnpriced,
-          href: buildSailMarketPageHref(meta?.marketId),
-        })
-      );
+      tokensEmitted.add(tok);
     }
 
     return rows.sort((a, b) => b.usd - a.usd);
-  }, [sailData, sailBalances, index, tokenPricesByMarket]);
+  }, [
+    sailData,
+    sailBalances,
+    index,
+    tokenPricesByMarket,
+    onChainSailBalanceByToken,
+    sailLevBalancesFetched,
+  ]);
 
   const anchorErrorStr = anchorError ? String(anchorError) : null;
   const mvErrorStr = mvError ? (mvError as Error).message : null;
@@ -838,7 +996,11 @@ export function useDashboardPositions() {
       leverage:
         (sailLoading && !!sailGraphUrl) ||
         anchorLoading ||
-        onChainPositionsLoading,
+        onChainPositionsLoading ||
+        (isConnected &&
+          !!address &&
+          sailLevBalanceContracts.length > 0 &&
+          !sailLevBalancesFetched),
     },
     errors: {
       anchor: anchorErrorStr,

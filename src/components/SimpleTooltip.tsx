@@ -50,6 +50,15 @@ function computeAnchoredCoords(
   }
 }
 
+function samePoint(
+  a: { x: number; y: number } | { top: number; left: number },
+  b: { x: number; y: number } | { top: number; left: number }
+) {
+  if ("x" in a && "x" in b) return a.x === b.x && a.y === b.y;
+  if ("top" in a && "top" in b) return a.top === b.top && a.left === b.left;
+  return false;
+}
+
 export default function SimpleTooltip({
   label,
   children,
@@ -102,21 +111,22 @@ export default function SimpleTooltip({
   /** Anchored to trigger + viewport clamp (not used when `followMouse`). */
   useLayoutEffect(() => {
     if (!isVisible) {
-      setClamp({ x: 0, y: 0 });
+      setClamp((prev) => (prev.x === 0 && prev.y === 0 ? prev : { x: 0, y: 0 }));
       return;
     }
 
-    setClamp({ x: 0, y: 0 });
+    setClamp((prev) => (prev.x === 0 && prev.y === 0 ? prev : { x: 0, y: 0 }));
 
     if (
       centerOnMobile &&
       typeof window !== "undefined" &&
       window.innerWidth < 1024
     ) {
-      setPosition({
+      const next = {
         top: window.innerHeight / 2,
         left: window.innerWidth / 2,
-      });
+      };
+      setPosition((prev) => (samePoint(prev, next) ? prev : next));
       setIsMobileCentered(true);
       return;
     }
@@ -127,9 +137,8 @@ export default function SimpleTooltip({
 
     const trig = triggerRef.current;
     if (trig) {
-      setPosition(
-        computeAnchoredCoords(side, trig.getBoundingClientRect())
-      );
+      const next = computeAnchoredCoords(side, trig.getBoundingClientRect());
+      setPosition((prev) => (samePoint(prev, next) ? prev : next));
     }
 
     requestAnimationFrame(() => {
@@ -151,28 +160,25 @@ export default function SimpleTooltip({
         oy += VIEW_PADDING - (tb.top + oy);
       }
       if (ox !== 0 || oy !== 0) {
-        setClamp({ x: ox, y: oy });
+        setClamp((prev) =>
+          prev.x === ox && prev.y === oy ? prev : { x: ox, y: oy }
+        );
       }
     });
-  }, [
-    isVisible,
-    side,
-    centerOnMobile,
-    followMouse,
-    label,
-    maxHeight,
-    maxWidth,
-  ]);
+    // Intentionally omit `label` — inline JSX from parents changes every render
+    // and would re-fire this effect into a setState loop.
+  }, [isVisible, side, centerOnMobile, followMouse, maxHeight, maxWidth]);
 
   /** Cursor-following overlays: update each move without coupling anchored tooltips. */
   useLayoutEffect(() => {
     if (!isVisible || !followMouse) return;
-    setClamp({ x: 0, y: 0 });
+    setClamp((prev) => (prev.x === 0 && prev.y === 0 ? prev : { x: 0, y: 0 }));
     setIsMobileCentered(false);
-    setPosition({
+    const next = {
       top: mousePosition.y + TRIGGER_GAP,
       left: mousePosition.x + TRIGGER_GAP,
-    });
+    };
+    setPosition((prev) => (samePoint(prev, next) ? prev : next));
   }, [isVisible, followMouse, mousePosition.x, mousePosition.y]);
 
   const handleMouseMove = (e: React.MouseEvent) => {

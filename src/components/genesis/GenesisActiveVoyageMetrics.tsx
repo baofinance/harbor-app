@@ -80,8 +80,8 @@ export function GenesisActiveVoyageMetrics({
     userDepositUsd,
   });
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.5fr)_minmax(0,0.75fr)_minmax(0,0.75fr)] md:items-center md:gap-0">
-      <div className="min-w-0 md:pr-4">
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.75fr)_minmax(0,0.75fr)] lg:items-center lg:gap-0">
+      <div className="min-w-0 lg:pr-4">
         <p className={MV_SECTION_LABEL}>Voyage Capacity</p>
         <p className="mt-0.5 font-mono text-2xl font-bold tabular-nums leading-none sm:text-3xl">
           <span className={MV_ACCENT_GRADIENT}>{filledPct.toFixed(0)}%</span>{" "}
@@ -123,7 +123,7 @@ export function GenesisActiveVoyageMetrics({
       </div>
 
       <div
-        className={`min-w-0 border-t border-white/10 pt-3 md:border-l md:border-t-0 md:px-4 md:pt-0 ${MV_METRIC_STAT_COLUMN}`}
+        className={`min-w-0 border-t border-white/10 pt-3 lg:border-l lg:border-t-0 lg:px-4 lg:pt-0 ${MV_METRIC_STAT_COLUMN}`}
       >
         <p className={MV_SECTION_LABEL}>Est. Your Share</p>
         <p className="mt-0.5 font-mono text-2xl font-bold tabular-nums text-white/95 sm:text-3xl">
@@ -133,7 +133,7 @@ export function GenesisActiveVoyageMetrics({
       </div>
 
       <div
-        className={`min-w-0 border-t border-white/10 pt-3 md:border-l md:border-t-0 md:pl-4 md:pt-0 ${MV_METRIC_STAT_COLUMN}`}
+        className={`min-w-0 border-t border-white/10 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 ${MV_METRIC_STAT_COLUMN}`}
       >
         <p className={MV_SECTION_LABEL}>Revenue Share</p>
         <p className="mt-0.5 font-mono text-2xl font-bold tabular-nums text-white/95 sm:text-3xl">

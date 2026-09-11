@@ -8,6 +8,7 @@ import {
 } from "@/utils/depositFormState";
 import { HarborConnectWalletCta } from "@/components/sail/HarborConnectWalletCta";
 import {
+  DEPOSIT_PRIMARY_CORAL_CLASS,
   DEPOSIT_PRIMARY_DISABLED_CLASS,
   DEPOSIT_PRIMARY_MINT_CLASS,
   DEPOSIT_PRIMARY_NAVY_CLASS,
@@ -42,10 +43,13 @@ export function DepositPrimaryButton({
 
   let buttonClass = DEPOSIT_PRIMARY_DISABLED_CLASS;
   if (action.kind === "submit") {
+    const variant = depositPrimaryActionVariant(action);
     buttonClass =
-      depositPrimaryActionVariant(action) === "navy"
+      variant === "navy"
         ? DEPOSIT_PRIMARY_NAVY_CLASS
-        : DEPOSIT_PRIMARY_MINT_CLASS;
+        : variant === "coral"
+          ? DEPOSIT_PRIMARY_CORAL_CLASS
+          : DEPOSIT_PRIMARY_MINT_CLASS;
   } else if (action.kind === "retry") {
     buttonClass = DEPOSIT_PRIMARY_RETRY_CLASS;
   }

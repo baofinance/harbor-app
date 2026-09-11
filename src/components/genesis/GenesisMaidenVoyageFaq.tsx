@@ -13,7 +13,7 @@ export function GenesisMaidenVoyageFaq() {
   const [openId, setOpenId] = useState<string | null>(null);
 
   return (
-    <section className="mb-8" aria-labelledby="maiden-voyage-faq-title">
+    <section aria-labelledby="maiden-voyage-faq-title">
       <h2
         id="maiden-voyage-faq-title"
         className="mb-4 text-xs font-medium uppercase tracking-wider text-white/50"

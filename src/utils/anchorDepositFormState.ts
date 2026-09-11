@@ -1,4 +1,9 @@
 import type { DepositPrimaryAction } from "@/utils/depositFormState";
+import type { MintValidation } from "@/utils/anchorMintValidation";
+import {
+  mintValidationBlocksSubmit,
+  mintValidationCtaLabel,
+} from "@/utils/anchorMintValidation";
 
 export type AnchorDepositModalStep =
   | "input"
@@ -19,20 +24,17 @@ export type ResolveAnchorDepositStep1ActionInput = {
   isDirectPeggedDeposit: boolean;
   skipRewardStep: boolean;
   rewardTokenOptionsCount: number;
+  mintValidation?: MintValidation | null;
 };
 
 function continueLabel(input: ResolveAnchorDepositStep1ActionInput): string {
   if (input.mintOnly) {
-    return "Mint";
+    return "Continue →";
   }
   if (input.isDirectPeggedDeposit) {
-    return input.rewardTokenOptionsCount > 1 && !input.skipRewardStep
-      ? "Continue to Step 2 →"
-      : "Continue to Stability Pool →";
+    return "Continue to Deposit →";
   }
-  return input.skipRewardStep
-    ? "Continue to Stability Pool →"
-    : "Continue to Step 2 →";
+  return "Continue to Deposit →";
 }
 
 export function resolveAnchorDepositStep1PrimaryAction(
@@ -45,6 +47,7 @@ export function resolveAnchorDepositStep1PrimaryAction(
     currentBalance,
     selectedDepositAsset,
     step,
+    mintValidation,
   } = input;
 
   if (step === "error") {
@@ -71,10 +74,17 @@ export function resolveAnchorDepositStep1PrimaryAction(
     return { kind: "exceeds_balance" };
   }
 
+  if (mintValidationBlocksSubmit(mintValidation)) {
+    return {
+      kind: "enter_amount",
+      label: mintValidationCtaLabel(mintValidation) ?? "Mint unavailable",
+    };
+  }
+
   return {
     kind: "submit",
     label: continueLabel(input),
-    variant: "navy",
+    variant: "mint",
   };
 }
 
@@ -111,14 +121,14 @@ export function resolveAnchorDepositStep2PrimaryAction(
     return {
       kind: "submit",
       label: "Continue to Stability Pool →",
-      variant: "navy",
+      variant: "mint",
     };
   }
 
   return {
     kind: "submit",
     label: "Mint (no stability pool deposit)",
-    variant: "navy",
+    variant: "mint",
   };
 }
 
@@ -133,6 +143,7 @@ export type ResolveAnchorDepositStep3ActionInput = {
     poolType: "collateral" | "sail";
   } | null;
   isDirectPeggedDeposit: boolean;
+  mintValidation?: MintValidation | null;
 };
 
 export function resolveAnchorDepositStep3PrimaryAction(
@@ -146,6 +157,7 @@ export function resolveAnchorDepositStep3PrimaryAction(
     selectedRewardToken,
     selectedStabilityPool,
     isDirectPeggedDeposit,
+    mintValidation,
   } = input;
 
   if (step === "error") {
@@ -167,15 +179,26 @@ export function resolveAnchorDepositStep3PrimaryAction(
     return { kind: "enter_amount", label: "Select a stability pool" };
   }
 
+  // Direct ha deposit skips mint dry-run; otherwise gate on mint capacity.
+  if (
+    !isDirectPeggedDeposit &&
+    mintValidationBlocksSubmit(mintValidation)
+  ) {
+    return {
+      kind: "enter_amount",
+      label: mintValidationCtaLabel(mintValidation) ?? "Mint unavailable",
+    };
+  }
+
   if (isDirectPeggedDeposit && selectedStabilityPool) {
-    return { kind: "submit", label: "Deposit", variant: "navy" };
+    return { kind: "submit", label: "Continue →", variant: "mint" };
   }
 
   if (selectedStabilityPool) {
-    return { kind: "submit", label: "Mint & Deposit", variant: "navy" };
+    return { kind: "submit", label: "Continue →", variant: "mint" };
   }
 
-  return { kind: "submit", label: "Mint", variant: "navy" };
+  return { kind: "submit", label: "Continue →", variant: "mint" };
 }
 
 export type ResolveAnchorWithdrawPrimaryActionInput = {

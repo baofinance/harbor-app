@@ -26,8 +26,8 @@ export const PAYABLE_TOKENS = ["eth"] as const;
 
 /**
  * Check if a token supports permit when using a smart contract / delegated wallet.
- * Returns true only for tokens in the allowlist (USDC, FXUSD, FXSAVE).
- * stETH, wstETH and unknown tokens return false.
+ * Allowlist: USDC, FXUSD, FXSAVE, and Harbor pegged (ha*) / leveraged (hs*) tokens.
+ * stETH and wstETH return false.
  */
 export function tokenPermitOnSmartWallet(symbol: string | null | undefined): boolean {
   if (!symbol || !symbol.trim()) return false;
@@ -35,5 +35,12 @@ export function tokenPermitOnSmartWallet(symbol: string | null | undefined): boo
   if (NO_PERMIT_ON_SMART_WALLET_TOKENS.includes(s as (typeof NO_PERMIT_ON_SMART_WALLET_TOKENS)[number])) {
     return false;
   }
-  return PERMIT_ON_SMART_WALLET_TOKENS.includes(s as (typeof PERMIT_ON_SMART_WALLET_TOKENS)[number]);
+  if (PERMIT_ON_SMART_WALLET_TOKENS.includes(s as (typeof PERMIT_ON_SMART_WALLET_TOKENS)[number])) {
+    return true;
+  }
+  // Harbor pegged + leveraged tokens implement EIP-2612 permit.
+  if (s.startsWith("hs") || s.startsWith("ha")) {
+    return true;
+  }
+  return false;
 }

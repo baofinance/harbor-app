@@ -20,10 +20,16 @@ import {
 import { useTransactionProgress } from "@/hooks/useTransactionProgress";
 import { formatTokenAmount } from "@/utils/formatters";
 import { useWrappedCollateralPrice } from "@/hooks/useWrappedCollateralPrice";
-import { TokenAmountSection } from "@/components/TokenAmountSection";
 import { ModalNotificationsPanel } from "@/components/ModalNotificationsPanel";
 import { DepositModalShell } from "@/components/DepositModalShell";
 import { DepositModalFlowOverview } from "@/components/DepositModalFlowOverview";
+import { DepositModalTitle } from "@/components/DepositModalTitle";
+import { DepositModalTabHeader } from "@/components/DepositModalTabHeader";
+import { DepositModalLayout } from "@/components/deposit/DepositModalLayout";
+import { GenesisWithdrawTransactionOverview } from "@/components/genesis/GenesisWithdrawTransactionOverview";
+import { DepositAmountCard } from "@/components/deposit/DepositAmountCard";
+import { DepositActionFooter } from "@/components/deposit/DepositActionFooter";
+import type { DepositPrimaryAction } from "@/utils/depositFormState";
 import { genesisWithdrawFlowParts } from "@/components/depositModalFlowSteps";
 import { depositModalNotificationBadgeClass } from "@/components/depositModalNotificationStyles";
 import { InfoCallout } from "@/components/InfoCallout";
@@ -40,6 +46,8 @@ interface GenesisWithdrawalModalProps {
  chainId?: number;
  onSuccess?: () => void;
  embedded?: boolean;
+ /** Optional chrome above the form (e.g. Deposit|Withdraw tabs) when embedded. */
+ panelHeader?: React.ReactNode;
 }
 
 // formatTokenAmount is now imported from utils/formatters
@@ -58,6 +66,7 @@ export const GenesisWithdrawModal = ({
  chainId = mainnet.id,
  onSuccess,
  embedded = false,
+ panelHeader,
 }: GenesisWithdrawalModalProps) => {
  const { address } = useAccount();
  const [amount, setAmount] = useState("");
@@ -291,13 +300,27 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
         userDeposit === 0n ||
         !!simulateError;
 
-  // Withdraw form content (aligned with Sail redeem / Genesis deposit manage modals)
-  const formContent = (
-    <div className="space-y-4">
-      {!embedded ? (
-        <DepositModalFlowOverview parts={genesisWithdrawFlowParts()} />
-      ) : null}
+  // Withdraw form content (Anchor-style layout)
+  const primaryAction: DepositPrimaryAction = (() => {
+    if (step === "error") return { kind: "retry" };
+    if (isProcessing) {
+      return { kind: "enter_amount", label: "Withdrawing..." };
+    }
+    if (withdrawDisabled) {
+      return { kind: "enter_amount", label: "Withdraw" };
+    }
+    return { kind: "submit", label: "Withdraw", variant: "navy" };
+  })();
 
+  const formContent = (
+    <DepositModalLayout
+      header={embedded ? panelHeader : undefined}
+      className={embedded ? "h-full pt-2.5 sm:pt-3" : undefined}
+      flowOverview={
+        <DepositModalFlowOverview parts={genesisWithdrawFlowParts()} />
+      }
+      scroll={
+        <>
       {!embedded ? (
         <ModalNotificationsPanel
           expanded={showNotifications}
@@ -325,13 +348,13 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
         </ModalNotificationsPanel>
       ) : null}
 
-      <TokenAmountSection
+      <DepositAmountCard
+        showTokenSelector={false}
         amount={{
           value: amount,
           setValue: setAmount,
           balance: userDeposit,
           decimals: 18,
-          label: "Enter Amount",
           disabled: isProcessing,
           error,
           capAtBalance: false,
@@ -340,110 +363,16 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
           balanceMaxDecimals: 6,
           customHandleChange: handleAmountChange,
           customHandleMax: handleMaxClick,
-          balanceContent: (
-            <>
-              Available: {formatTokenAmount(userDeposit, collateralSymbol).display}
-            </>
-          ),
         }}
         betweenTokenAndAmount={
-          <div className="rounded-md border border-[#1E4775]/10 bg-[#17395F]/5 px-3 py-2 text-sm">
-            <span className="text-[#1E4775]/70">Your deposit: </span>
-            <span className="font-medium font-mono text-[#1E4775]">
-              {depositFmt.display}
-              {depositFmt.usd ? (
-                <span className="font-sans font-normal text-[#1E4775]/50 ml-1">
-                  ({depositFmt.usd})
-                </span>
-              ) : null}
-            </span>
+          <div className="text-xs text-[#1E4775]/70">
+            Your deposit: {depositFmt.display}
+            {depositFmt.usd ? ` (${depositFmt.usd})` : ""}
           </div>
         }
+        disabled={isProcessing}
       />
-
-      <div className="space-y-2 mb-4">
-        <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
-          Transaction Overview
-        </label>
-        <div className="rounded-md border border-[#1E4775]/10 bg-[#17395F]/5 p-2.5">
-          {hasWithdrawPreview ? (
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between items-baseline">
-                <span className="text-[#1E4775]/70">Current deposit:</span>
-                <span className="font-mono text-[#1E4775]">
-                  {depositFmt.display}
-                  {depositFmt.usd ? (
-                    <span className="font-sans text-[#1E4775]/50 ml-1">
-                      ({depositFmt.usd})
-                    </span>
-                  ) : null}
-                </span>
-              </div>
-              {(() => {
-                const withdrawAmt = isMaxWithdrawal ? userDeposit : amountBigInt;
-                const withdrawFmt = formatTokenAmount(
-                  withdrawAmt,
-                  collateralSymbol,
-                  collateralPriceUSD
-                );
-                return (
-                  <div className="flex justify-between items-baseline">
-                    <span className="text-[#1E4775]/70">You will receive:</span>
-                    <span className="font-mono font-semibold text-[#1E4775]">
-                      {withdrawFmt.display}
-                      {withdrawFmt.usd ? (
-                        <span className="font-sans font-normal text-[#1E4775]/50 ml-1">
-                          ({withdrawFmt.usd})
-                        </span>
-                      ) : null}
-                    </span>
-                  </div>
-                );
-              })()}
-              <div className="border-t border-[#1E4775]/20 pt-2">
-                {(() => {
-                  const remainingFmt = formatTokenAmount(
-                    remainingDeposit,
-                    collateralSymbol,
-                    collateralPriceUSD
-                  );
-                  return (
-                    <div className="flex justify-between items-baseline">
-                      <span className="font-medium text-[#1E4775]/70">
-                        Remaining deposit:
-                      </span>
-                      <span
-                        className={`font-mono font-semibold ${
-                          remainingDeposit === 0n ? "text-orange-600" : "text-[#1E4775]"
-                        }`}
-                      >
-                        {remainingFmt.display}
-                        {remainingFmt.usd ? (
-                          <span
-                            className={`font-sans font-normal ml-1 ${
-                              remainingDeposit === 0n
-                                ? "text-orange-400"
-                                : "text-[#1E4775]/50"
-                            }`}
-                          >
-                            ({remainingFmt.usd})
-                          </span>
-                        ) : null}
-                      </span>
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-          ) : (
-            <p className="text-xs text-[#1E4775]/50 italic">
-              Enter an amount to see withdrawal preview
-            </p>
-          )}
-        </div>
-      </div>
-
-      {error ? (
+{error ? (
         <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm text-center flex items-center justify-center gap-2">
           <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
           {error}
@@ -456,27 +385,33 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
           <p className="mt-2 text-sm text-[#1E4775]">Withdrawing collateral...</p>
         </div>
       ) : null}
-
-      {!isProcessing ? (
-        <div className="flex flex-col-reverse gap-2 sm:flex-row mt-4">
-          <button
-            type="button"
-            onClick={handleClose}
-            className="flex-1 rounded-md py-3 px-4 bg-white/85 backdrop-blur-sm text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleWithdraw}
-            disabled={withdrawDisabled}
-            className="flex-1 rounded-md py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
-          >
-            {step === "error" ? "Try Again" : "Withdraw"}
-          </button>
-        </div>
-      ) : null}
-    </div>
+        </>
+      }
+      overview={
+        <GenesisWithdrawTransactionOverview
+          amount={amount}
+          collateralSymbol={collateralSymbol}
+          userDeposit={userDeposit}
+          withdrawAmount={isMaxWithdrawal ? userDeposit : amountBigInt}
+          remainingDeposit={remainingDeposit}
+          collateralPriceUSD={collateralPriceUSD}
+          hasPreview={hasWithdrawPreview}
+        />
+      }
+            footer={
+        isProcessing ? undefined : (
+          <DepositActionFooter
+            layout={embedded ? "embedded" : "modal"}
+            showCancel={!embedded}
+            cancelLabel="Cancel"
+            onCancel={handleClose}
+            action={primaryAction}
+            onSubmit={handleWithdraw}
+            onRetry={handleWithdraw}
+          />
+        )
+      }
+    />
   );
 
   // If embedded, return just the content + progress modal
@@ -496,7 +431,9 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
             renderSuccessContent={renderSuccessContent}
           />
         )}
-        {!progress.isOpen && formContent}
+        {!progress.isOpen && (
+          <div className="flex h-full min-h-0 flex-col">{formContent}</div>
+        )}
       </>
     );
   }
@@ -522,17 +459,20 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
         <DepositModalShell
           isOpen={isOpen}
           onClose={handleClose}
-          header={
-            <h2 className="text-lg sm:text-2xl font-bold text-[#1E4775] flex flex-wrap items-center gap-2">
-              <span>Withdraw — Maiden voyage</span>
-              <span className="rounded px-1.5 py-0.5 text-sm font-bold font-mono bg-[#1E4775] text-white border border-[#1E4775]">
-                2.0
-              </span>
-            </h2>
+          title={
+            <DepositModalTitle
+              protocolName="Genesis"
+              tokenSymbol={collateralSymbol}
+              actionLabel="Withdraw"
+            />
           }
-          panelClassName="max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col"
-          headerClassName="p-3 sm:p-4 lg:p-6"
-          contentClassName="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6"
+          tabs={
+            <DepositModalTabHeader
+              tabs={[{ value: "withdraw", label: "Withdraw" }]}
+              activeTab="withdraw"
+              onTabChange={() => {}}
+            />
+          }
         >
           {formContent}
         </DepositModalShell>

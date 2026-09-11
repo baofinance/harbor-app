@@ -38,7 +38,7 @@ function StatCell({
   valueClassName?: string;
 }) {
   return (
-    <div className="flex min-w-0 flex-col items-center justify-center px-3 py-2.5 text-center">
+    <div className="flex min-w-0 flex-col items-center justify-center px-2 py-2.5 text-center sm:px-4">
       <span className={SAIL_POSITION_STAT_LABEL}>{label}</span>
       <span className={valueClassName} title={value}>
         {value}
