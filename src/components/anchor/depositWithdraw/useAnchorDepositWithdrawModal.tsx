@@ -32,6 +32,7 @@ import {
   STABILITY_POOL_ABI,
   MINTER_PEGGED_ABI,
 } from "@/abis";
+import { MINTER_ABI } from "@/abis/shared";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { ZAP_ABI, USDC_ZAP_ABI, WSTETH_ABI } from "@/abis";
 import { MINTER_ETH_ZAP_V3_ABI, MINTER_ETH_ZAP_V1_ABI } from "@/abis";
@@ -44,7 +45,6 @@ import Image from "next/image";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import {
   Banknote,
-  AlertOctagon,
   AlertTriangle,
   ChevronDown,
   ChevronUp,
@@ -88,7 +88,7 @@ import {
 import { DepositModalTitle } from "@/components/DepositModalTitle";
 import { InfoCallout } from "@/components/InfoCallout";
 import { ErrorBanner, ReservedErrorSlot } from "@/components/anchor/ErrorBanner";
-import { useRegisterAppNotifications } from "@/contexts/AppNotificationsContext";
+import { useRegisterAppNotifications, useAppNotificationsOptional } from "@/contexts/AppNotificationsContext";
 import {
   attemptCombinedPoolZap,
   buildCollateralMintProgressFields,
@@ -97,6 +97,15 @@ import {
   permitToApproveCombinedPoolPatch,
   separatePoolProgressPatch,
 } from "@/utils/anchorMintDepositFlow";
+import {
+  MARKET_HEALTH_MINT_PROBE_WEI,
+  MAX_UINT256,
+  classifyMarketHealthStatus,
+  classifyMarketLiquidityStatus,
+  isSaturatedCollateralRatio,
+  maxMintableWrappedToDepositAmount,
+} from "@/utils/anchorMarketHealth";
+import { resolveMinCollateralRatio } from "@/utils/sailMarketMetrics";
 import { DepositPermitToggle } from "@/components/deposit/DepositPermitToggle";
 import {
   DepositTradeFeeFooter,
@@ -4417,16 +4426,6 @@ export function useAnchorDepositWithdrawModal({
     isDirectPeggedDeposit,
   ]);
 
-  useRegisterAppNotifications(
-    "anchor-embedded-deposit",
-    {
-      count: anchorModalNotificationCount,
-      badgeSeverities: anchorModalNotificationSeverities,
-      body: anchorModalNotificationsBody,
-    },
-    embedded && isActive
-  );
-
   const depositFlowParts = useMemo(
     () => anchorDepositFlowParts({ mintOnly, skipRewardStep }),
     [mintOnly, skipRewardStep]
@@ -4570,6 +4569,70 @@ export function useAnchorDepositWithdrawModal({
     typeof feeMinterAddress === "string" &&
     feeMinterAddress.startsWith("0x") &&
     feeMinterAddress.length === 42;
+
+  const marketHealthReadsEnabled =
+    !!isValidFeeMinterAddress &&
+    isActive &&
+    activeTab === "deposit" &&
+    !isDirectPeggedDeposit;
+
+  const {
+    data: marketHealthCollateralRatio,
+    isFetching: marketHealthCrFetching,
+  } = useContractRead({
+    address: feeMinterAddress as `0x${string}`,
+    // Same ABI Transparency / Earn market cards use — MINTER_PEGGED_ABI lacks collateralRatio.
+    abi: MINTER_ABI,
+    functionName: "collateralRatio",
+    query: {
+      enabled: marketHealthReadsEnabled,
+      retry: 2,
+    },
+  });
+
+  const { data: marketHealthMinterConfig } = useContractRead({
+    address: feeMinterAddress as `0x${string}`,
+    abi: MINTER_ABI,
+    functionName: "config",
+    query: {
+      enabled: marketHealthReadsEnabled,
+      retry: 2,
+    },
+  });
+
+  const { data: marketHealthPeggedBalance } = useContractRead({
+    address: feeMinterAddress as `0x${string}`,
+    abi: MINTER_ABI,
+    functionName: "peggedTokenBalance",
+    query: {
+      enabled: marketHealthReadsEnabled,
+      retry: 1,
+    },
+  });
+
+  const { data: marketHealthCollateralBalance } = useContractRead({
+    address: feeMinterAddress as `0x${string}`,
+    abi: MINTER_ABI,
+    functionName: "collateralTokenBalance",
+    query: {
+      enabled: marketHealthReadsEnabled,
+      retry: 1,
+    },
+  });
+
+  const {
+    data: marketHealthCapacityDryRun,
+    isFetching: marketHealthCapacityFetching,
+  } = useContractRead({
+    address: feeMinterAddress as `0x${string}`,
+    abi: MINTER_PEGGED_ABI,
+    functionName: "mintPeggedTokenDryRun",
+    args: [MARKET_HEALTH_MINT_PROBE_WEI],
+    query: {
+      enabled: marketHealthReadsEnabled,
+      retry: 1,
+    },
+  });
 
   // Parse amount to BigInt, converting to wrapped collateral (fxSAVE) if needed
   // Use debounced amount to reduce unnecessary contract calls
@@ -4951,11 +5014,88 @@ export function useAnchorDepositWithdrawModal({
     dryRunError,
   ]);
 
+  const showMintCapNavNotice =
+    activeTab === "deposit" &&
+    !isDirectPeggedDeposit &&
+    !!mintValidation.message &&
+    (mintValidation.status === "capped" ||
+      mintValidation.status === "blocked");
+
+  const anchorModalNotificationCountWithMint = useMemo(
+    () =>
+      anchorModalNotificationCount + (showMintCapNavNotice ? 1 : 0),
+    [anchorModalNotificationCount, showMintCapNavNotice],
+  );
+
+  const anchorModalNotificationSeveritiesWithMint = useMemo((): Array<
+    "navy" | "green" | "amber" | "coral"
+  > => {
+    if (!showMintCapNavNotice) return anchorModalNotificationSeverities;
+    return ["coral", ...anchorModalNotificationSeverities];
+  }, [showMintCapNavNotice, anchorModalNotificationSeverities]);
+
+  const anchorModalNotificationsBodyWithMint = useMemo(() => {
+    if (!showMintCapNavNotice || !mintValidation.message) {
+      return anchorModalNotificationsBody;
+    }
+    return (
+      <>
+        <ErrorBanner message={mintValidation.message} />
+        {anchorModalNotificationsBody}
+      </>
+    );
+  }, [
+    showMintCapNavNotice,
+    mintValidation.message,
+    anchorModalNotificationsBody,
+  ]);
+
+  useRegisterAppNotifications(
+    "anchor-embedded-deposit",
+    {
+      count: anchorModalNotificationCountWithMint,
+      badgeSeverities: anchorModalNotificationSeveritiesWithMint,
+      body: anchorModalNotificationsBodyWithMint,
+    },
+    embedded && isActive,
+  );
+
+  const appNotifications = useAppNotificationsOptional();
+  const setAppNotificationsExpanded = appNotifications?.setExpanded;
+  /** Only auto-open after the mint warning has persisted (avoids flash open/close). */
+  const [persistedMintNavNotice, setPersistedMintNavNotice] = useState(false);
+  useEffect(() => {
+    if (!showMintCapNavNotice) {
+      setPersistedMintNavNotice(false);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setPersistedMintNavNotice(true);
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [showMintCapNavNotice, mintValidation.message]);
+
+  useEffect(() => {
+    if (!persistedMintNavNotice) return;
+    if (embedded && isActive) {
+      setAppNotificationsExpanded?.(true);
+    }
+    setShowNotifications(true);
+  }, [
+    persistedMintNavNotice,
+    embedded,
+    isActive,
+    setAppNotificationsExpanded,
+  ]);
+
   // Auto-adjust amount when minter refuses full deposit
   const [depositLimitWarning, setDepositLimitWarning] = useState<string | null>(null);
   const [tempMaxWarning, setTempMaxWarning] = useState<string | null>(null);
   const tempWarningTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastAdjustedAmountRef = useRef<string | null>(null);
+  /** Latest market max mintable in deposit-asset units (for MAX button capping). */
+  const maxMintableDepositAmountRef = useRef<number | undefined>(undefined);
+
 
   /** Simple-mode deposit: clear amount, tx/progress, pool/reward picks; keep selected deposit token. */
   const resetSimpleDepositFlowKeepToken = () => {
@@ -6778,26 +6918,52 @@ export function useAnchorDepositWithdrawModal({
   const handleMaxClick = () => {
     if (activeTab === "deposit") {
       if (simpleMode && selectedAssetBalance !== null) {
-        // Use correct decimals for the selected asset
         const decimals = anyTokenDeposit.tokenDecimals || 18;
-        const balanceAmount = formatUnits(selectedAssetBalance, decimals);
-        
-        // Simply set the amount to balance
-        // The useEffect will adjust it to the calculated max once the dry run completes with this amount
-        setAmount(balanceAmount);
-        anyTokenDeposit.setAmount(balanceAmount); // Sync with hook
-        
-        if (process.env.NODE_ENV === "development") {
-          console.log("[handleMaxClick] Set amount to balance:", balanceAmount, "useEffect will adjust if needed");
+        let balanceAmount = Number(
+          formatUnits(selectedAssetBalance, decimals),
+        );
+
+        // Cap at market max mintable when balance exceeds capacity.
+        const maxDeposit = maxMintableDepositAmountRef.current;
+        if (
+          maxDeposit != null &&
+          Number.isFinite(maxDeposit) &&
+          maxDeposit >= 0 &&
+          balanceAmount > maxDeposit
+        ) {
+          balanceAmount = maxDeposit;
         }
-        setAmount(isUSDC ? formatUnits(selectedAssetBalance, 6) : formatEther(selectedAssetBalance));
+
+        const formatted =
+          decimals === 6
+            ? balanceAmount.toFixed(6).replace(/\.?0+$/, "")
+            : balanceAmount.toFixed(8).replace(/\.?0+$/, "");
+
+        setAmount(formatted);
+        anyTokenDeposit.setAmount(formatted);
+
+        if (process.env.NODE_ENV === "development") {
+          console.log("[handleMaxClick] Set amount:", formatted, {
+            balance: Number(formatUnits(selectedAssetBalance, decimals)),
+            maxDeposit,
+          });
+        }
       } else if (isDirectPeggedDeposit && directPeggedBalance) {
         setAmount(formatEther(directPeggedBalance));
       } else if (collateralBalance) {
-        setAmount(formatEther(collateralBalance));
+        let amountNum = Number(formatEther(collateralBalance));
+        const maxDeposit = maxMintableDepositAmountRef.current;
+        if (
+          maxDeposit != null &&
+          Number.isFinite(maxDeposit) &&
+          maxDeposit >= 0 &&
+          amountNum > maxDeposit
+        ) {
+          amountNum = maxDeposit;
+        }
+        const formatted = amountNum.toFixed(8).replace(/\.?0+$/, "");
+        setAmount(formatted);
       }
-    } else if (activeTab === "deposit" && peggedBalance) {
-      setAmount(formatEther(peggedBalance));
     } else if (activeTab === "withdraw") {
       const total = getAvailableBalance();
       if (total > 0n) {
@@ -11820,6 +11986,110 @@ export function useAnchorDepositWithdrawModal({
     peggedTokenPriceUsdWei,
   ]);
 
+  const wrappedCollateralPriceUSD = useMemo(() => {
+    const sym = (activeWrappedCollateralSymbol || "").toLowerCase();
+    if (sym === "fxsave") return fxSAVEPrice || 0;
+    if (sym === "wsteth") return wstETHPrice || 0;
+    if (sym === "fxusd" || sym === "usdc") return 1.0;
+    if (sym === "eth" || sym === "weth") return ethPrice || 0;
+    return depositTokenPriceUSD;
+  }, [
+    activeWrappedCollateralSymbol,
+    fxSAVEPrice,
+    wstETHPrice,
+    ethPrice,
+    depositTokenPriceUSD,
+  ]);
+
+  const marketHealth = useMemo(() => {
+    if (!marketHealthReadsEnabled) return null;
+
+    const rawCr = marketHealthCollateralRatio as bigint | undefined;
+    const pegBal = marketHealthPeggedBalance as bigint | undefined;
+    const collBal = marketHealthCollateralBalance as bigint | undefined;
+    // Match Earn market-card fallback: CR = collateral / debt when the view fails.
+    let cr: bigint | undefined = rawCr;
+    if (cr === undefined && collBal !== undefined && pegBal !== undefined) {
+      if (pegBal === 0n) {
+        cr = MAX_UINT256;
+      } else if (pegBal > 0n) {
+        cr = (collBal * 10n ** 18n) / pegBal;
+      }
+    } else if (cr === undefined && pegBal === 0n) {
+      cr = MAX_UINT256;
+    }
+    const minCr = resolveMinCollateralRatio(
+      undefined,
+      marketHealthMinterConfig,
+    );
+
+    let maxMintableUsd: number | undefined;
+    let maxMintableHa: number | undefined;
+    let maxMintableWrappedWei: bigint | undefined;
+    let maxMintableDepositAmount: number | undefined;
+    const haSymbol =
+      activeMarketForFees?.peggedToken?.symbol || peggedTokenSymbol || "ha";
+
+    const parsedCapacity = parseMintDryRunResult(marketHealthCapacityDryRun);
+    if (parsedCapacity) {
+      const wrappedTaken = parsedCapacity.wrappedCollateralTaken;
+      const peggedMinted = parsedCapacity.peggedMinted;
+      maxMintableWrappedWei = wrappedTaken;
+      maxMintableHa = Number(formatEther(peggedMinted));
+
+      if (wrappedTaken > 0n && wrappedCollateralPriceUSD > 0) {
+        maxMintableUsd =
+          Number(formatEther(wrappedTaken)) * wrappedCollateralPriceUSD;
+      } else if (wrappedTaken === 0n) {
+        maxMintableUsd = 0;
+      }
+
+      maxMintableDepositAmount = maxMintableWrappedToDepositAmount({
+        wrappedTaken,
+        depositAsset: selectedDepositAsset || activeCollateralSymbol,
+        wrappedCollateralSymbol:
+          activeMarketForFees?.collateral?.symbol ||
+          activeWrappedCollateralSymbol,
+        underlyingCollateralSymbol:
+          activeMarketForFees?.collateral?.underlyingSymbol,
+        wrappedRate: activeMarketForFees?.wrappedRate as bigint | undefined,
+      });
+    }
+
+    return {
+      collateralRatio: cr,
+      maxMintableUsd,
+      maxMintableHa,
+      maxMintableHaSymbol: haSymbol,
+      maxMintableDepositAmount,
+      maxMintableWrappedWei,
+      healthStatus: classifyMarketHealthStatus(cr, minCr, maxMintableUsd),
+      liquidityStatus: classifyMarketLiquidityStatus(maxMintableUsd),
+      isLoading:
+        (marketHealthCrFetching && cr === undefined) ||
+        (marketHealthCapacityFetching && maxMintableUsd === undefined),
+      isSaturatedCr: isSaturatedCollateralRatio(cr),
+    };
+  }, [
+    marketHealthReadsEnabled,
+    marketHealthCollateralRatio,
+    marketHealthPeggedBalance,
+    marketHealthCollateralBalance,
+    marketHealthMinterConfig,
+    marketHealthCapacityDryRun,
+    wrappedCollateralPriceUSD,
+    marketHealthCrFetching,
+    marketHealthCapacityFetching,
+    activeMarketForFees,
+    peggedTokenSymbol,
+    selectedDepositAsset,
+    activeCollateralSymbol,
+    activeWrappedCollateralSymbol,
+  ]);
+
+  maxMintableDepositAmountRef.current =
+    marketHealth?.maxMintableDepositAmount;
+
   const showDepositBuyOverview =
     simpleMode &&
     activeTab === "deposit" &&
@@ -11901,19 +12171,11 @@ export function useAnchorDepositWithdrawModal({
           ? "Select a pool to see what you'll receive."
           : "Enter an amount to see what you'll receive.",
       statusMessage:
-        mintValidation.status === "pending" || mintValidation.status === "blocked"
+        mintValidation.status === "pending"
           ? mintValidation.message ?? undefined
           : undefined,
-      statusVariant:
-        mintValidation.status === "blocked"
-          ? ("error" as const)
-          : undefined,
-      bannerMessage:
-        mintValidation.status === "capped"
-          ? mintValidation.message ?? undefined
-          : mintValidation.status === "blocked"
-            ? mintValidation.message ?? undefined
-            : undefined,
+      statusVariant: undefined,
+      bannerMessage: undefined,
       fee:
         depositAmount > 0 &&
         feePercentage !== undefined &&
@@ -13403,9 +13665,10 @@ export function useAnchorDepositWithdrawModal({
     showWithdrawCrossMarketNotice,
     withdrawNotificationCount,
     depositNotificationCount,
-    anchorModalNotificationCount,
-    anchorModalNotificationSeverities,
-    anchorModalNotificationsBody,
+    anchorModalNotificationCount: anchorModalNotificationCountWithMint,
+    anchorModalNotificationSeverities:
+      anchorModalNotificationSeveritiesWithMint,
+    anchorModalNotificationsBody: anchorModalNotificationsBodyWithMint,
     depositFlowParts,
     simpleDepositFlowParts,
     simpleWithdrawFlowParts,
@@ -13555,6 +13818,7 @@ export function useAnchorDepositWithdrawModal({
     depositTokenPriceUSD,
     showDepositBuyOverview,
     depositBuyOverview,
+    marketHealth,
     buyFeeFooter,
     withdrawFeeFooter,
     withdrawTransactionOverview,

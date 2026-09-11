@@ -37,6 +37,7 @@ import { ErrorBanner, ReservedErrorSlot } from "@/components/anchor/ErrorBanner"
 import { DepositPermitToggle } from "@/components/deposit/DepositPermitToggle";
 import { DepositModalLayout } from "@/components/deposit/DepositModalLayout";
 import { AnchorBuyTransactionOverview } from "@/components/anchor/AnchorBuyTransactionOverview";
+import { AnchorMarketHealthStrip } from "@/components/anchor/AnchorMarketHealthStrip";
 import { AnchorTransactionOverview } from "@/components/anchor/AnchorTransactionOverview";
 import { DepositAmountCard } from "@/components/deposit/DepositAmountCard";
 import { DepositBalanceStrip } from "@/components/deposit/DepositBalanceStrip";
@@ -557,6 +558,7 @@ export function AnchorDepositWithdrawModalView(
     depositTokenPriceUSD,
     showDepositBuyOverview,
     depositBuyOverview,
+    marketHealth,
     buyFeeFooter,
     withdrawFeeFooter,
     withdrawTransactionOverview,
@@ -889,18 +891,8 @@ export function AnchorDepositWithdrawModalView(
                           ) : null}
                           {!isDirectPeggedDeposit &&
                           mintValidation.message &&
-                          (mintValidation.status === "blocked" ||
-                            mintValidation.status === "pending" ||
-                            mintValidation.status === "capped") ? (
-                            <div
-                              className={`mt-2 rounded-lg border px-2.5 py-2 text-xs leading-snug ${
-                                mintValidation.status === "blocked"
-                                  ? "border-red-300 bg-red-50 text-red-800"
-                                  : mintValidation.status === "capped"
-                                    ? "border-amber-300 bg-amber-50 text-amber-900"
-                                    : "border-[#1E4775]/15 bg-white/80 text-[#1E4775]/70"
-                              }`}
-                            >
+                          mintValidation.status === "pending" ? (
+                            <div className="mt-2 rounded-lg border border-[#1E4775]/15 bg-white/80 px-2.5 py-2 text-xs leading-snug text-[#1E4775]/70">
                               {mintValidation.message}
                             </div>
                           ) : null}
@@ -1128,22 +1120,6 @@ export function AnchorDepositWithdrawModalView(
                           </div>
                         )}
 
-                        {!depositLimitWarning &&
-                          !isDirectPeggedDeposit &&
-                          mintValidation.message &&
-                          (mintValidation.status === "blocked" ||
-                            mintValidation.status === "capped") && (
-                            <div
-                              className={`mt-2 p-2 border text-xs ${
-                                mintValidation.status === "blocked"
-                                  ? "bg-red-50 border-red-300 text-red-800"
-                                  : "bg-yellow-50 border-yellow-300 text-yellow-800"
-                              }`}
-                            >
-                              {mintValidation.message}
-                            </div>
-                          )}
-
                         {/* Fee Warning */}
                         {!depositLimitWarning &&
                           mintValidation.status !== "blocked" &&
@@ -1293,14 +1269,27 @@ export function AnchorDepositWithdrawModalView(
                   isMintReviewFlowPage || isRedeemReviewFlowPage
                     ? null
                     : activeTab === "deposit" ? (
-                    <AnchorBuyTransactionOverview
-                      {...(depositBuyOverview ?? {
-                        receiveAmount: null,
-                        receiveSymbol: peggedTokenSymbol,
-                        emptyMessage:
-                          "Enter an amount to see what you'll receive.",
-                      })}
-                    />
+                    <div className="flex flex-col gap-1.5">
+                      {marketHealth ? (
+                        <AnchorMarketHealthStrip
+                          collateralRatio={marketHealth.collateralRatio}
+                          maxMintableUsd={marketHealth.maxMintableUsd}
+                          maxMintableHa={marketHealth.maxMintableHa}
+                          maxMintableHaSymbol={marketHealth.maxMintableHaSymbol}
+                          healthStatus={marketHealth.healthStatus}
+                          liquidityStatus={marketHealth.liquidityStatus}
+                          isLoading={marketHealth.isLoading}
+                        />
+                      ) : null}
+                      <AnchorBuyTransactionOverview
+                        {...(depositBuyOverview ?? {
+                          receiveAmount: null,
+                          receiveSymbol: peggedTokenSymbol,
+                          emptyMessage:
+                            "Enter an amount to see what you'll receive.",
+                        })}
+                      />
+                    </div>
                   ) : withdrawTransactionOverview ? (
                     <AnchorTransactionOverview
                       {...withdrawTransactionOverview}

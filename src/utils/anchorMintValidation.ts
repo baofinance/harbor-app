@@ -137,7 +137,7 @@ export function resolveMintValidation(
     return {
       status: "blocked",
       message:
-        "This size can't be minted right now — market collateral ratio is too low.",
+        "This size can't be minted right now, market collateral ratio is too low.",
       isDisallowed: true,
       takenRatio,
     };
@@ -152,7 +152,7 @@ export function resolveMintValidation(
     return {
       status: "blocked",
       message:
-        "This size can't be minted right now — market collateral ratio is too low.",
+        "This size can't be minted right now, market collateral ratio is too low.",
       feePercentage,
       takenRatio,
     };
