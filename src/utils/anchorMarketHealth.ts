@@ -6,7 +6,12 @@
 
 import { formatEther } from "viem";
 
-export type MarketHealthStatus = "healthy" | "watch" | "stressed" | "unknown";
+export type MarketHealthStatus =
+  | "healthy"
+  | "watch"
+  | "stressed"
+  | "inconclusive"
+  | "unknown";
 export type MarketLiquidityStatus = "liquid" | "low_liquid" | "unknown";
 
 /** Below this USD capacity → Low liquid (high CR can still be thin). */
@@ -18,8 +23,11 @@ export const MARKET_HEALTH_MINT_PROBE_WEI = 10n ** 24n; // 1,000,000 wrapped uni
 /** On-chain sentinel when pegged supply is 0 (no debt → infinite CR). */
 export const MAX_UINT256 = (1n << 256n) - 1n;
 
-/** Match Transparency: treat extreme CR as ∞ (≥ 10,000%). */
+/** Match Transparency: treat extreme CR as saturated (≥ 10,000%). */
 export const MARKET_CR_INFINITY_THRESHOLD_PERCENT = 10_000;
+
+/** Shown when CR is saturated / inconclusive due to thin mint capacity. */
+export const MARKET_CR_INCONCLUSIVE_FLOOR_PERCENT = 1_000;
 
 /** Default min CR floor (100%) when minter config bands are missing. */
 const DEFAULT_MIN_CR_WAD = 10n ** 18n;
@@ -34,11 +42,19 @@ export function isSaturatedCollateralRatio(
   return Number.isFinite(pct) && pct >= MARKET_CR_INFINITY_THRESHOLD_PERCENT;
 }
 
-export function formatMarketCrPercent(ratio: bigint | undefined): string {
+export function formatMarketCrPercent(
+  ratio: bigint | undefined,
+  opts?: { inconclusive?: boolean },
+): string {
   if (ratio === undefined || ratio === null) return "—";
-  if (isSaturatedCollateralRatio(ratio)) return "∞";
+  // Extreme / thin-market CR isn't a meaningful point estimate → floor display.
+  if (isSaturatedCollateralRatio(ratio) || opts?.inconclusive) {
+    return `>${MARKET_CR_INCONCLUSIVE_FLOOR_PERCENT.toLocaleString("en-US")}%`;
+  }
   const pct = Number(ratio) / 1e16;
-  if (!Number.isFinite(pct)) return "∞";
+  if (!Number.isFinite(pct)) {
+    return `>${MARKET_CR_INCONCLUSIVE_FLOOR_PERCENT.toLocaleString("en-US")}%`;
+  }
   return `${Math.round(pct).toLocaleString("en-US")}%`;
 }
 
@@ -138,7 +154,8 @@ export function classifyMarketHealthStatus(
       Number.isFinite(maxMintableUsd) &&
       maxMintableUsd < MARKET_LOW_LIQUID_USD_THRESHOLD
     ) {
-      return "watch";
+      // Extreme CR with thin mint capacity → CR reading isn't actionable.
+      return "inconclusive";
     }
     return "healthy";
   }
@@ -152,13 +169,13 @@ export function classifyMarketHealthStatus(
   // Within 20% above minimum CR
   if (collateralRatio < (minCr * 120n) / 100n) return "watch";
 
-  // Thin capacity with a safe CR → Watch, not Healthy.
+  // Safe CR but thin capacity → inconclusive, not "healthy".
   if (
     maxMintableUsd != null &&
     Number.isFinite(maxMintableUsd) &&
     maxMintableUsd < MARKET_LOW_LIQUID_USD_THRESHOLD
   ) {
-    return "watch";
+    return "inconclusive";
   }
 
   return "healthy";
@@ -181,6 +198,8 @@ export function marketHealthStatusLabel(status: MarketHealthStatus): string {
       return "Stressed";
     case "watch":
       return "Watch";
+    case "inconclusive":
+      return "Inconclusive";
     case "unknown":
       return "Unavailable";
     default:

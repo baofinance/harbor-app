@@ -30,7 +30,13 @@ export type AnchorMarketHealthStripProps = {
 
 function healthTagClass(status: MarketHealthStatus): string {
   if (status === "stressed") return DEPOSIT_TAG_CORAL_CLASS;
-  if (status === "watch" || status === "unknown") return DEPOSIT_TAG_NEUTRAL_CLASS;
+  if (
+    status === "watch" ||
+    status === "inconclusive" ||
+    status === "unknown"
+  ) {
+    return DEPOSIT_TAG_NEUTRAL_CLASS;
+  }
   return DEPOSIT_TAG_MINT_CLASS;
 }
 
@@ -57,7 +63,12 @@ export function AnchorMarketHealthStrip({
       <div className={`${DEPOSIT_OVERVIEW_CARD_CLASS} space-y-2`}>
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="font-mono text-sm font-bold tabular-nums text-[#1E4775]">
-            CR {isLoading ? "…" : formatMarketCrPercent(collateralRatio)}
+            CR{" "}
+            {isLoading
+              ? "…"
+              : formatMarketCrPercent(collateralRatio, {
+                  inconclusive: healthStatus === "inconclusive",
+                })}
           </span>
           <span className={healthTagClass(healthStatus)}>
             {marketHealthStatusLabel(healthStatus)}

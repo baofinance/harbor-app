@@ -14,8 +14,11 @@ describe("anchorMarketHealth", () => {
     expect(formatMarketCrPercent(10n ** 18n * 10n)).toBe("1,000%");
   });
 
-  it("formats saturated CR as infinity", () => {
-    expect(formatMarketCrPercent(MAX_UINT256)).toBe("∞");
+  it("formats saturated / inconclusive CR as >1,000%", () => {
+    expect(formatMarketCrPercent(MAX_UINT256)).toBe(">1,000%");
+    expect(
+      formatMarketCrPercent(10n ** 18n * 2n, { inconclusive: true }),
+    ).toBe(">1,000%");
   });
 
   it("formats max mintable as whole dollars", () => {
@@ -42,20 +45,20 @@ describe("anchorMarketHealth", () => {
     expect(classifyMarketHealthStatus(cr, undefined, 100000)).toBe("healthy");
   });
 
-  it("treats saturated CR as healthy when liquid", () => {
+  it("treats saturated CR as inconclusive when low liquid", () => {
     expect(classifyMarketHealthStatus(MAX_UINT256, undefined, 100000)).toBe(
       "healthy",
     );
     expect(classifyMarketHealthStatus(MAX_UINT256, undefined, 10)).toBe(
-      "watch",
+      "inconclusive",
     );
   });
 
-  it("does not call thin or empty capacity healthy", () => {
+  it("marks thin capacity with safe CR as inconclusive", () => {
     const min = 10n ** 18n; // 100%
     const highCr = (min * 15n) / 10n;
     expect(classifyMarketHealthStatus(highCr, min, 0)).toBe("stressed");
-    expect(classifyMarketHealthStatus(highCr, min, 10)).toBe("watch");
+    expect(classifyMarketHealthStatus(highCr, min, 10)).toBe("inconclusive");
     expect(classifyMarketHealthStatus(highCr, min, 100000)).toBe("healthy");
   });
 });
