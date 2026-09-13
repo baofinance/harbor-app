@@ -2,7 +2,6 @@
 
 import { useAccount, useContractRead } from "wagmi";
 import { TokenLogo } from "@/components/shared";
-import { DepositModalTabHeader } from "@/components/DepositModalTabHeader";
 import { HarborConnectWalletCta } from "@/components/sail/HarborConnectWalletCta";
 import {
   ANCHOR_MODAL_FOOTER_CHROME,
@@ -77,11 +76,9 @@ export function GenesisClaimPanel({
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden pt-2.5 sm:pt-3">
       <div className="shrink-0 px-4 sm:px-5">
-        <DepositModalTabHeader
-          tabs={[{ value: "claim", label: "Claim" }]}
-          activeTab="claim"
-          onTabChange={() => {}}
-        />
+        <div className="flex w-full items-center justify-center rounded-md bg-[#1E4775] px-3 py-1.5 sm:py-2">
+          <span className="text-xs font-medium text-white sm:text-sm">Claim</span>
+        </div>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-3 pt-3 sm:px-5">
@@ -151,7 +148,7 @@ export function GenesisClaimPanel({
           </div>
         </div>
 
-        <p className={SAIL_ADVANCED_LIGHT_BODY}>
+        <p className={`${SAIL_ADVANCED_LIGHT_BODY} text-center`}>
           {hasClaimable
             ? "One on-chain claim · review wallet prompts."
             : isConnected
@@ -160,7 +157,7 @@ export function GenesisClaimPanel({
         </p>
       </div>
 
-      <div className={ANCHOR_MODAL_FOOTER_CHROME}>
+      <div className={`${ANCHOR_MODAL_FOOTER_CHROME} px-4 pb-3 sm:px-5`}>
         {!isConnected ? (
           <HarborConnectWalletCta
             className={`${DEPOSIT_PRIMARY_MINT_CLASS} w-full`}
