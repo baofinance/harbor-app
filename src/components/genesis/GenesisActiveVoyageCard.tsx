@@ -15,12 +15,14 @@ import type { ActiveVoyageStatus } from "@/utils/activeVoyageStatus";
 import {
   getActiveVoyageCta,
   getActiveVoyageFootnote,
+  getActiveVoyageZeroStateCopy,
 } from "@/utils/activeVoyageStatus";
 import type { GenesisVoyageCapDisplay } from "@/utils/genesisVoyageCapDisplay";
 import type { MaidenVoyageStatsBarData } from "@/utils/maidenVoyageStatsBar";
+import { formatUSD } from "@/utils/formatters";
+import { resolveMaidenVoyageYieldShareLabel } from "@/utils/maidenVoyageYieldShareEstimate";
 import { INDEX_CORAL_INFO_TAG_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
 import { HARBOR_LEARN_MORE_DARK_LINK_CLASS } from "@/components/market-cards/harborBasicMarketTokens";
-import { GenesisActiveVoyageMetrics } from "./GenesisActiveVoyageMetrics";
 import { GenesisVoyageCompletedNotice } from "./GenesisVoyageCompletedNotice";
 import { FeaturedVoyageChainMark } from "./GenesisMarketSharedRowCells";
 import {
@@ -32,11 +34,19 @@ import { GenesisVoyageStatusBadge } from "./GenesisVoyageStatusBadge";
 import { HARBOR_BTN_GLASS_ICON_DARK } from "@/components/shared/harborButtonStyles";
 import { GENESIS_VOYAGE_CARD_FOOTER_HEIGHT } from "./advanced/genesisAdvancedStyles";
 import {
+  MV_ACCENT_GRADIENT,
+  MV_CAPTION_TEXT,
   MV_CARD_INNER_GRADIENT,
   MV_MAIN_CARD_SHELL,
   MV_FOOTER_PANEL,
+  MV_METRIC_STAT_COLUMN,
   MV_META_TEXT,
   MV_PRIMARY_CTA,
+  MV_PROGRESS_FILL,
+  MV_PROGRESS_FILL_COMPLETE,
+  MV_PROGRESS_TRACK,
+  MV_SECTION_LABEL,
+  MV_TEXT_ON_GLASS,
   MV_PREVIEW_SOON_CONTENT_DIM_CLASS,
   MV_PREVIEW_SOON_VEIL_CLASS,
   MV_PREVIEW_SOON_BADGE_CLASS,
@@ -44,6 +54,142 @@ import {
   MV_PREVIEW_COMPLETED_VEIL_CLASS,
   MV_PREVIEW_COMPLETED_BADGE_CLASS,
 } from "./maidenVoyageLayoutStyles";
+
+function stripLabel(symbol: string): string {
+  const s = symbol.trim();
+  const lower = s.toLowerCase();
+  if (lower === "wsteth") return "wstETH";
+  if (lower === "steth") return "stETH";
+  if (lower === "hausd") return "haUSD";
+  if (lower.startsWith("hs")) return `hs${s.slice(2)}`;
+  if (lower.startsWith("ha")) return `ha${s.slice(2)}`;
+  return s;
+}
+
+function formatRemainingToken(amount: number): string {
+  if (!Number.isFinite(amount) || amount <= 0) return "0";
+  if (amount >= 1000) return amount.toFixed(0);
+  if (amount >= 1) return amount.toFixed(2);
+  return amount.toFixed(4);
+}
+
+type ActiveVoyageMetricsProps = {
+  capDisplay: GenesisVoyageCapDisplay | null;
+  isLoading: boolean;
+  isUnavailable: boolean;
+  voyageStatus: ActiveVoyageStatus;
+  yieldRevSharePct?: number | null;
+  genesisAddress?: string;
+  userDepositUsd?: number | null;
+};
+
+function ActiveVoyageMetrics({
+  capDisplay,
+  isLoading,
+  isUnavailable,
+  voyageStatus,
+  yieldRevSharePct = null,
+  genesisAddress,
+  userDepositUsd = null,
+}: ActiveVoyageMetricsProps) {
+  if (isLoading) {
+    return (
+      <div
+        className="h-20 animate-pulse rounded-xl bg-white/[0.08]"
+        aria-label="Loading capacity"
+      />
+    );
+  }
+
+  if (isUnavailable || !capDisplay) {
+    return (
+      <p className="text-sm text-white/60">Capacity data unavailable</p>
+    );
+  }
+
+  const { filledPct, capFilled } = capDisplay;
+  const progressWidth = `${Math.min(100, Math.max(0, filledPct))}%`;
+
+  const capacityFractionLabel = capDisplay.useTokenCap
+    ? `${capDisplay.capCurrent.toFixed(2)} / ${capDisplay.capTotal.toFixed(0)} ${stripLabel(capDisplay.collateralSymbol)}`
+    : `${formatUSD(capDisplay.capCurrentUsd)} / ${formatUSD(capDisplay.capTotalUsd)}`;
+
+  const remainingLabel = capDisplay.useTokenCap
+    ? `${formatRemainingToken(capDisplay.remaining)} ${stripLabel(capDisplay.collateralSymbol)} remaining`
+    : `${formatUSD(capDisplay.remainingUsd)} remaining`;
+
+  const zeroState = getActiveVoyageZeroStateCopy(voyageStatus, filledPct);
+  const ownership = resolveMaidenVoyageYieldShareLabel({
+    capDisplay,
+    genesisAddress,
+    yieldRevSharePct,
+    userDepositUsd,
+  });
+  return (
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.75fr)_minmax(0,0.75fr)] lg:items-center lg:gap-0">
+      <div className="min-w-0 lg:pr-4">
+        <p className={MV_SECTION_LABEL}>Voyage Capacity</p>
+        <p className="mt-0.5 font-mono text-2xl font-bold tabular-nums leading-none sm:text-3xl">
+          <span className={MV_ACCENT_GRADIENT}>{filledPct.toFixed(0)}%</span>{" "}
+          <span className="text-lg font-bold uppercase text-white/90 sm:text-xl">
+            filled
+          </span>
+        </p>
+
+        <div
+          className={`mt-2 h-3 ${MV_PROGRESS_TRACK}`}
+          role="progressbar"
+          aria-valuenow={Math.round(filledPct)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Deposit cap progress"
+        >
+          <div
+            className={capFilled ? MV_PROGRESS_FILL_COMPLETE : MV_PROGRESS_FILL}
+            style={{ width: progressWidth }}
+          />
+        </div>
+
+        <div
+          className={`mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 ${MV_CAPTION_TEXT} ${MV_TEXT_ON_GLASS}`}
+        >
+          <span className="font-mono font-semibold tabular-nums text-white/80">
+            {capacityFractionLabel}
+          </span>
+          <span className="font-mono font-semibold tabular-nums text-[#FF8A7A]">
+            {remainingLabel}
+          </span>
+        </div>
+
+        {zeroState ? (
+          <p className={`mt-1.5 ${MV_CAPTION_TEXT} text-[#B8EBD5]`}>
+            {zeroState.line1}
+          </p>
+        ) : null}
+      </div>
+
+      <div
+        className={`min-w-0 border-t border-white/10 pt-3 lg:border-l lg:border-t-0 lg:px-4 lg:pt-0 ${MV_METRIC_STAT_COLUMN}`}
+      >
+        <p className={MV_SECTION_LABEL}>Est. Your Share</p>
+        <p className="mt-0.5 font-mono text-2xl font-bold tabular-nums text-white/95 sm:text-3xl">
+          {ownership.label}
+        </p>
+        <p className={`mt-0.5 ${MV_CAPTION_TEXT}`}>{ownership.caption}</p>
+      </div>
+
+      <div
+        className={`min-w-0 border-t border-white/10 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 ${MV_METRIC_STAT_COLUMN}`}
+      >
+        <p className={MV_SECTION_LABEL}>Revenue Share</p>
+        <p className="mt-0.5 font-mono text-2xl font-bold tabular-nums text-white/95 sm:text-3xl">
+          {yieldRevSharePct != null ? `${yieldRevSharePct}%` : "—"}
+        </p>
+        <p className={`mt-0.5 ${MV_CAPTION_TEXT}`}>Eligible pool share</p>
+      </div>
+    </div>
+  );
+}
 
 export type GenesisActiveVoyageCardProps = {
   market: GenesisMarketConfig;
@@ -219,7 +365,7 @@ export function GenesisActiveVoyageCard({
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col pt-3">
-          <GenesisActiveVoyageMetrics
+          <ActiveVoyageMetrics
             capDisplay={capDisplay}
             isLoading={capLoading}
             isUnavailable={capUnavailable}

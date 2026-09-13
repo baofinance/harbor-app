@@ -32,7 +32,6 @@ import {
   STABILITY_POOL_ABI,
   MINTER_PEGGED_ABI,
 } from "@/abis";
-import { MINTER_ABI } from "@/abis/shared";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { ZAP_ABI, USDC_ZAP_ABI, WSTETH_ABI } from "@/abis";
 import { MINTER_ETH_ZAP_V3_ABI, MINTER_ETH_ZAP_V1_ABI } from "@/abis";
@@ -43,14 +42,7 @@ import {
 } from "@/utils/zapApiVersion";
 import Image from "next/image";
 import SimpleTooltip from "@/components/SimpleTooltip";
-import {
-  Banknote,
-  AlertTriangle,
-  ChevronDown,
-  ChevronUp,
-  Info,
-  RefreshCw,
-} from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
 import { getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
@@ -59,10 +51,7 @@ import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { usePegTargetPrices } from "@/hooks/usePegTargetPrices";
 import { usePermitFlow } from "@/hooks/usePermitFlow";
 import { useTransactionProgress } from "@/hooks/useTransactionProgress";
-import {
-  TransactionProgressModal,
-  TransactionStep,
-} from "@/components/TransactionProgressModal";
+import { TransactionStep } from "@/components/TransactionProgressModal";
 import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
 import TokenIconClient from "@/components/TokenIconClient";
 import { TokenAmountSection } from "@/components/TokenAmountSection";
@@ -72,23 +61,14 @@ import { DepositModalFlowOverview } from "@/components/DepositModalFlowOverview"
 import {
   anchorDepositFlowParts,
   anchorSimpleDepositFlowParts,
-  anchorSimpleRedeemPositionFlowParts,
-  anchorSimpleSellFlowParts,
-  anchorSimpleWithdrawFlowParts,
 } from "@/components/depositModalFlowSteps";
 import type { AnchorRedeemStepActionKind } from "@/utils/anchorRedeemPositions";
 import {
-  buildAnchorRedeemPositions,
-  deriveRedeemRequestStatus,
   enrichAnchorRedeemPositions,
   formatWithdrawalWindowTiming,
   type AnchorRedeemPosition,
-  type AnchorRedeemRequestStatus,
 } from "@/utils/anchorRedeemPositions";
 import { DepositModalTitle } from "@/components/DepositModalTitle";
-import { InfoCallout } from "@/components/InfoCallout";
-import { ErrorBanner, ReservedErrorSlot } from "@/components/anchor/ErrorBanner";
-import { useRegisterAppNotifications, useAppNotificationsOptional } from "@/contexts/AppNotificationsContext";
 import {
   attemptCombinedPoolZap,
   buildCollateralMintProgressFields,
@@ -97,27 +77,16 @@ import {
   permitToApproveCombinedPoolPatch,
   separatePoolProgressPatch,
 } from "@/utils/anchorMintDepositFlow";
-import {
-  MARKET_HEALTH_MINT_PROBE_WEI,
-  MAX_UINT256,
-  classifyMarketHealthStatus,
-  classifyMarketLiquidityStatus,
-  isSaturatedCollateralRatio,
-  maxMintableWrappedToDepositAmount,
-} from "@/utils/anchorMarketHealth";
-import { resolveMinCollateralRatio } from "@/utils/sailMarketMetrics";
 import { DepositPermitToggle } from "@/components/deposit/DepositPermitToggle";
 import {
-  DepositTradeFeeFooter,
-  type DepositTradeFeeItem,
-  pctToDepositFeeRatio,
-} from "@/components/deposit/DepositTradeFeeFooter";
+  AnchorMintFeeFooter,
+  AnchorWithdrawFeeFooter,
+} from "@/components/anchor/AnchorTradeFeeFooter";
 import { DepositModalLayout } from "@/components/deposit/DepositModalLayout";
 import { AnchorBuyTransactionOverview } from "@/components/anchor/AnchorBuyTransactionOverview";
 import {
-  AnchorTransactionOverview,
-  type AnchorTransactionOverviewProps,
-} from "@/components/anchor/AnchorTransactionOverview";
+  type DepositTransactionOverviewProps,
+} from "@/components/deposit/DepositTransactionOverview";
 import { DepositAmountCard } from "@/components/deposit/DepositAmountCard";
 import { DepositReceivePreview } from "@/components/deposit/DepositReceivePreview";
 import { DepositActionFooter } from "@/components/deposit/DepositActionFooter";
@@ -141,8 +110,6 @@ import type { DepositPrimaryAction } from "@/utils/depositFormState";
 import {
   mintValidationBlocksSubmit,
   mintValidationCtaLabel,
-  parseMintDryRunResult,
-  resolveMintValidation,
 } from "@/utils/anchorMintValidation";
 import { DepositStabilityPoolCard } from "@/components/deposit/DepositStabilityPoolCard";
 import { TokenLogo } from "@/components/shared";
@@ -161,11 +128,7 @@ import { getAcceptedDepositAssets } from "@/utils/anchor";
 import { buildDepositTokenDropdownGroups } from "@/utils/depositTokenDropdownOptions";
 import type { AnchorDepositWithdrawModalProps } from "./types";
 import { debugTx } from "./debugTx";
-import {
-  isRedeemAmountCapped,
-  parseRedeemDryRunTuple,
-  parseRedeemFeePercentage,
-} from "./redeemDryRunParsing";
+import { parseRedeemFeePercentage } from "./redeemDryRunParsing";
 import type {
   AnchorDepositWithdrawInitialTab,
   AnchorDepositWithdrawStep,
@@ -174,12 +137,18 @@ import type {
   AnchorRedeemFlowMode,
   AnchorTopTab,
 } from "./types";
+import { useDepositAmountCap } from "./useDepositAmountCap";
+import { useMarketHealth } from "./useMarketHealth";
+import { useMintDryRunAndValidation } from "./useMintDryRunAndValidation";
+import { useModalNotifications } from "./useModalNotifications";
+import { useRedeemPositionFlow } from "./useRedeemPositionFlow";
+import { useRedeemRouteAndPreview } from "./useRedeemRouteAndPreview";
+import { useStabilityPoolCollateralRatio } from "./useStabilityPoolCollateralRatio";
 
 type TabType = AnchorDepositWithdrawTab;
 type InitialTabInput = AnchorDepositWithdrawInitialTab;
 type ModalStep = AnchorDepositWithdrawStep;
 type TransactionStatus = AnchorDepositWithdrawTransactionStatus;
-
 
 export function useAnchorDepositWithdrawModal({
   isOpen,
@@ -3734,697 +3703,63 @@ export function useAnchorDepositWithdrawModal({
     },
   });
 
-  // Calculate expected redeem output - need to check if withdrawing from stability pool or ha tokens
-  // If from stability pool, we need to withdraw first to get pegged tokens, then redeem
-  // If from ha tokens, we can redeem directly
-  // Get minter address for selected redeem asset
-  const selectedRedeemMarket = useMemo(() => {
-    if (selectedRedeemMarketId) {
-      const fromRedeem = marketsForToken.find(
-        (m) => m.marketId === selectedRedeemMarketId
-      );
-      if (fromRedeem) return fromRedeem;
-    }
-
-    const fromPool = marketsForToken.find(
-      (m) => m.marketId === selectedMarketId
-    );
-    if (fromPool) return fromPool;
-
-    const assetSymbol = selectedRedeemAsset || collateralSymbol;
-    return marketsForToken.find(
-      ({ market: m }) => m?.collateral?.symbol === assetSymbol
-    );
-  }, [
-    selectedRedeemMarketId,
-    selectedMarketId,
-    selectedRedeemAsset,
-    collateralSymbol,
-    marketsForToken,
-  ]);
-
-  const redeemCollateralSymbol =
-    selectedRedeemMarket?.market?.collateral?.symbol || collateralSymbol;
-
-  const redeemMinterAddress = selectedRedeemMarket?.market?.addresses?.minter;
-  const isValidRedeemMinterAddress =
-    redeemMinterAddress &&
-    typeof redeemMinterAddress === "string" &&
-    redeemMinterAddress.startsWith("0x") &&
-    redeemMinterAddress.length === 42;
-
-  // Check allowance for pegged token to the redeem minter (uses the redeem market)
-  const redeemAllowancePeggedTokenAddress =
-    selectedRedeemMarket?.market?.addresses?.peggedToken || peggedTokenAddress;
-  const redeemAllowanceMinterAddress =
-    selectedRedeemMarket?.market?.addresses?.minter || minterAddress;
-
+  // Redeem routing: which market the redemption goes through, its dry run, and the
+  // per-market previews that drive the route step.
   const {
-    data: peggedTokenMinterAllowanceData,
-    refetch: refetchPeggedTokenMinterAllowance,
-  } = useContractRead({
-    address: redeemAllowancePeggedTokenAddress as `0x${string}`,
-    abi: ERC20_ABI,
-    functionName: "allowance",
-    args:
-      address && redeemAllowanceMinterAddress
-        ? [address, redeemAllowanceMinterAddress as `0x${string}`]
-        : undefined,
-    query: {
-      enabled:
-        !!address &&
-        !!redeemAllowancePeggedTokenAddress &&
-        !!redeemAllowanceMinterAddress &&
-        isActive &&
-        activeTab === "withdraw",
-      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
-      retry: 1,
-      allowFailure: true,
-    },
-  });
-
-  // Calculate total amount for redeem output calculation (from position amounts or single amount)
-  const redeemInputAmount = useMemo(() => {
-    let total = 0n;
-
-    if (
-      (activeTab === "withdraw" || activeTab === "sell") &&
-      (positionAmounts.wallet ||
-        positionAmounts.collateralPool ||
-        positionAmounts.sailPool)
-    ) {
-      if (positionAmounts.wallet && parseFloat(positionAmounts.wallet) > 0) {
-        total += parseEther(positionAmounts.wallet);
-      }
-      if (
-        positionAmounts.collateralPool &&
-        parseFloat(positionAmounts.collateralPool) > 0
-      ) {
-        total += parseEther(positionAmounts.collateralPool);
-      }
-      if (
-        positionAmounts.sailPool &&
-        parseFloat(positionAmounts.sailPool) > 0
-      ) {
-        total += parseEther(positionAmounts.sailPool);
-      }
-    } else if (amount && parseFloat(amount) > 0) {
-      total = parseEther(amount);
-    }
-
-    if (simpleMode && activeTab === "sell") {
-      if (positionAmounts.wallet && parseFloat(positionAmounts.wallet) > 0) {
-        return parseEther(positionAmounts.wallet);
-      }
-      return undefined;
-    }
-
-    if (
-      simpleMode &&
-      activeTab === "withdraw" &&
-      (flowPage === 2 || flowPage === 3) &&
-      !withdrawOnly
-    ) {
-      let poolTotal = 0n;
-      if (
-        positionAmounts.collateralPool &&
-        parseFloat(positionAmounts.collateralPool) > 0
-      ) {
-        poolTotal += parseEther(positionAmounts.collateralPool);
-      }
-      if (
-        positionAmounts.sailPool &&
-        parseFloat(positionAmounts.sailPool) > 0
-      ) {
-        poolTotal += parseEther(positionAmounts.sailPool);
-      }
-
-      if (sellRedeemSource === "wallet" || poolTotal === 0n) {
-        if (positionAmounts.wallet && parseFloat(positionAmounts.wallet) > 0) {
-          return parseEther(positionAmounts.wallet);
-        }
-        return undefined;
-      }
-
-      return poolTotal > 0n ? poolTotal : undefined;
-    }
-
-    return total > 0n ? total : undefined;
-  }, [
+    selectedRedeemMarket,
+    redeemCollateralSymbol,
+    redeemMinterAddress,
+    isValidRedeemMinterAddress,
+    redeemAllowancePeggedTokenAddress,
+    redeemAllowanceMinterAddress,
+    peggedTokenMinterAllowanceData,
+    refetchPeggedTokenMinterAllowance,
+    redeemInputAmount,
+    redeemDryRunAddress,
+    redeemDryRunEnabled,
+    anvilRedeemDryRunData,
+    anvilRedeemDryRunError,
+    regularRedeemDryRunData,
+    regularRedeemDryRunError,
+    redeemDryRunData,
+    redeemDryRunError,
+    redeemDryRunLoading,
+    redeemDryRun,
+    redeemPreview,
+    redeemMarketPreviewContracts,
+    redeemMarketPreviewIndexMap,
+    redeemMarketPreviewReads,
+    redeemMarketPreviews,
+    recommendedRedeemMarketId,
+    redeemRouteOptions,
+    isCrossMarketRedeem,
+  } = useRedeemRouteAndPreview({
+    isActive,
     activeTab,
-    positionAmounts,
-    amount,
     simpleMode,
+    address,
+    marketsForToken,
+    selectedMarketId,
+    collateralSymbol,
+    peggedTokenAddress,
+    minterAddress,
+    isValidMinterAddress: !!isValidMinterAddress,
+    shouldUseAnvilHook,
+    amount,
+    positionAmounts,
     flowPage,
     withdrawOnly,
     sellRedeemSource,
-  ]);
-
-  // Dry-run redeem to fetch fee/discount and output before user confirms
-  const redeemDryRunAddress = isValidRedeemMinterAddress
-    ? (redeemMinterAddress as `0x${string}`)
-    : isValidMinterAddress
-    ? (minterAddress as `0x${string}`)
-    : undefined;
-
-  const redeemDryRunEnabled =
-    !!redeemDryRunAddress &&
-    !!redeemInputAmount &&
-    redeemInputAmount > 0n &&
-    isActive &&
-    ((activeTab === "withdraw" && !withdrawOnly) || activeTab === "sell");
-
-  // Prefer the anvil hook on local dev (matches mint-fee flow)
-  const { data: anvilRedeemDryRunData, error: anvilRedeemDryRunError } =
-    useContractRead({
-      address: redeemDryRunAddress,
-      abi: MINTER_PEGGED_ABI,
-      functionName: "redeemPeggedTokenDryRun",
-      args: redeemInputAmount && redeemInputAmount > 0n ? [redeemInputAmount] : undefined,
-      enabled: shouldUseAnvilHook && redeemDryRunEnabled && !!redeemInputAmount && redeemInputAmount > 0n,
-    });
-
-  const { data: regularRedeemDryRunData, error: regularRedeemDryRunError } =
-    useContractRead({
-      address: redeemDryRunAddress,
-      abi: MINTER_PEGGED_ABI,
-      functionName: "redeemPeggedTokenDryRun",
-      args: redeemInputAmount && redeemInputAmount > 0n ? [redeemInputAmount] : undefined,
-      query: {
-        enabled: !shouldUseAnvilHook && redeemDryRunEnabled && !!redeemInputAmount && redeemInputAmount > 0n,
-        retry: 1,
-        allowFailure: true,
-      },
-    });
-
-  const redeemDryRunData = shouldUseAnvilHook
-    ? anvilRedeemDryRunData
-    : regularRedeemDryRunData;
-  const redeemDryRunError = shouldUseAnvilHook
-    ? anvilRedeemDryRunError
-    : regularRedeemDryRunError;
-  const redeemDryRunLoading =
-    redeemDryRunEnabled && !redeemDryRunError && redeemDryRunData === undefined;
-
-  const redeemDryRun = useMemo(() => {
-    if (!redeemDryRunData || !Array.isArray(redeemDryRunData)) return null;
-    const [
-      incentiveRatio,
-      fee,
-      discount,
-      peggedRedeemed,
-      wrappedCollateralReturned,
-      price,
-      rate,
-    ] = redeemDryRunData as unknown as [
-      bigint,
-      bigint,
-      bigint,
-      bigint,
-      bigint,
-      bigint,
-      bigint
-    ];
-
-    const incentiveRatioBN = BigInt(incentiveRatio);
-    const isDisallowed = incentiveRatioBN === 1000000000000000000n; // 1e18
-
-    let feePercentage = 0;
-    let discountPercentage = 0;
-    if (incentiveRatioBN > 0n) {
-      feePercentage = Number(incentiveRatioBN) / 1e16; // convert to percent
-    } else if (incentiveRatioBN < 0n) {
-      discountPercentage = Number(-incentiveRatioBN) / 1e16;
-    }
-
-    return {
-      incentiveRatio: incentiveRatioBN,
-      fee,
-      discount,
-      peggedRedeemed,
-      wrappedCollateralReturned,
-      price,
-      rate,
-      feePercentage,
-      discountPercentage,
-      isDisallowed,
-      netCollateralReturned: wrappedCollateralReturned,
-    };
-  }, [redeemDryRunData]);
-
-  /** When collateral ratio limits redemption, dry-run caps peggedRedeemed below the requested amount. */
-  const redeemPreview = useMemo(() => {
-    if (!redeemDryRun || !redeemInputAmount || redeemInputAmount === 0n) {
-      return null;
-    }
-    const peggedRedeemed = redeemDryRun.peggedRedeemed ?? 0n;
-    const wrappedOut = redeemDryRun.wrappedCollateralReturned ?? 0n;
-    const isCapped = isRedeemAmountCapped(redeemInputAmount, peggedRedeemed);
-    const estimatedTotalWrapped =
-      isCapped && peggedRedeemed > 0n
-        ? (wrappedOut * redeemInputAmount) / peggedRedeemed
-        : wrappedOut;
-    return {
-      isCapped,
-      peggedRedeemed,
-      wrappedOut,
-      estimatedTotalWrapped,
-    };
-  }, [redeemDryRun, redeemInputAmount]);
-
-  const { contracts: redeemMarketPreviewContracts, indexMap: redeemMarketPreviewIndexMap } =
-    useMemo(() => {
-      const contracts: Array<{
-        address: `0x${string}`;
-        abi: typeof MINTER_PEGGED_ABI;
-        functionName: "peggedTokenBalance" | "redeemPeggedTokenDryRun";
-        args?: readonly [bigint];
-      }> = [];
-      const indexMap = new Map<
-        number,
-        { marketId: string; kind: "supply" | "dryRun" }
-      >();
-
-      if (
-        !isActive ||
-        (activeTab !== "withdraw" && activeTab !== "sell") ||
-        withdrawOnly ||
-        !redeemInputAmount ||
-        redeemInputAmount === 0n ||
-        marketsForToken.length <= 1
-      ) {
-        return { contracts, indexMap };
-      }
-
-      for (const { marketId, market: m } of marketsForToken) {
-        const minter = m?.addresses?.minter;
-        if (
-          !minter ||
-          typeof minter !== "string" ||
-          !minter.startsWith("0x") ||
-          minter.length !== 42
-        ) {
-          continue;
-        }
-        const addr = minter as `0x${string}`;
-        indexMap.set(contracts.length, { marketId, kind: "supply" });
-        contracts.push({
-          address: addr,
-          abi: MINTER_PEGGED_ABI,
-          functionName: "peggedTokenBalance",
-        });
-        indexMap.set(contracts.length, { marketId, kind: "dryRun" });
-        contracts.push({
-          address: addr,
-          abi: MINTER_PEGGED_ABI,
-          functionName: "redeemPeggedTokenDryRun",
-          args: [redeemInputAmount],
-        });
-      }
-
-      return { contracts, indexMap };
-    }, [
-      isActive,
-      activeTab,
-      withdrawOnly,
-      redeemInputAmount,
-      marketsForToken,
-    ]);
-
-  const { data: redeemMarketPreviewReads } = useContractReads({
-    contracts: redeemMarketPreviewContracts,
-    query: {
-      enabled: redeemMarketPreviewContracts.length > 0,
-      refetchInterval: isActive ? 15000 : false,
-      retry: 1,
-      allowFailure: true,
-    },
-  });
-
-  const redeemMarketPreviews = useMemo(() => {
-    const previews = new Map<
-      string,
-      {
-        peggedSupply: bigint;
-        wrappedOut: bigint;
-        peggedRedeemed: bigint;
-        isCapped: boolean;
-        collateralSymbol: string;
-        marketName: string;
-      }
-    >();
-
-    if (!redeemMarketPreviewReads || !redeemInputAmount || redeemInputAmount === 0n) {
-      return previews;
-    }
-
-    for (const { marketId, market: m } of marketsForToken) {
-      previews.set(marketId, {
-        peggedSupply: 0n,
-        wrappedOut: 0n,
-        peggedRedeemed: 0n,
-        isCapped: false,
-        collateralSymbol: m?.collateral?.symbol || "",
-        marketName: m?.name || marketId,
-      });
-    }
-
-    redeemMarketPreviewReads.forEach((res, idx) => {
-      const meta = redeemMarketPreviewIndexMap.get(idx);
-      if (!meta) return;
-      const prev = previews.get(meta.marketId);
-      if (!prev) return;
-
-      if (meta.kind === "supply" && res?.status === "success" && res.result != null) {
-        prev.peggedSupply = res.result as bigint;
-        return;
-      }
-
-      if (meta.kind === "dryRun" && res?.status === "success") {
-        const parsed = parseRedeemDryRunTuple(res.result);
-        if (!parsed) return;
-        prev.peggedRedeemed = parsed.peggedRedeemed;
-        prev.wrappedOut = parsed.wrappedCollateralReturned;
-        prev.isCapped = isRedeemAmountCapped(
-          redeemInputAmount,
-          parsed.peggedRedeemed
-        );
-      }
-    });
-
-    return previews;
-  }, [
-    redeemMarketPreviewReads,
-    redeemMarketPreviewIndexMap,
-    marketsForToken,
-    redeemInputAmount,
-  ]);
-
-  const recommendedRedeemMarketId = useMemo(() => {
-    if (marketsForToken.length <= 1) return null;
-
-    let bestId: string | null = null;
-    let bestScore = -1n;
-
-    for (const { marketId } of marketsForToken) {
-      const preview = redeemMarketPreviews.get(marketId);
-      // Never recommend a capped path — partial redeems need extra txs.
-      if (!preview || preview.wrappedOut === 0n || preview.isCapped) continue;
-
-      if (preview.wrappedOut > bestScore) {
-        bestScore = preview.wrappedOut;
-        bestId = marketId;
-      }
-    }
-
-    return bestId;
-  }, [marketsForToken, redeemMarketPreviews]);
-
-  const redeemRouteOptions = useMemo(() => {
-    return marketsForToken.map(({ marketId, market: m }) => {
-      const preview = redeemMarketPreviews.get(marketId);
-      const feePercent = redeemMarketFeesMap.get(marketId);
-      const collateralSymbol = m?.collateral?.symbol || "";
-      const receiveAmount =
-        preview && preview.wrappedOut > 0n
-          ? Number(formatEther(preview.wrappedOut))
-          : undefined;
-      const priceUsd =
-        collateralSymbol === "fxSAVE"
-          ? fxSAVEPrice
-          : collateralSymbol === "wstETH" || collateralSymbol === "stETH"
-            ? (collateralSymbol === "wstETH" ? wstETHPrice : stETHPrice)
-            : undefined;
-      const receiveUsd =
-        receiveAmount !== undefined &&
-        priceUsd !== undefined &&
-        priceUsd > 0
-          ? receiveAmount * priceUsd
-          : undefined;
-
-      return {
-        marketId,
-        marketName: m?.name || marketId,
-        collateralSymbol,
-        feePercent,
-        receiveAmount:
-          receiveAmount !== undefined && Number.isFinite(receiveAmount)
-            ? receiveAmount
-            : undefined,
-        receiveUsd,
-        isCapped: preview?.isCapped,
-        isBest: !!recommendedRedeemMarketId && marketId === recommendedRedeemMarketId,
-      };
-    });
-  }, [
-    marketsForToken,
-    redeemMarketPreviews,
+    selectedRedeemAsset,
+    setSelectedRedeemAsset,
+    selectedRedeemMarketId,
+    setSelectedRedeemMarketId,
+    redeemMarketSelectionMode,
     redeemMarketFeesMap,
-    recommendedRedeemMarketId,
     fxSAVEPrice,
     wstETHPrice,
     stETHPrice,
-  ]);
-
-  const isCrossMarketRedeem =
-    !!selectedRedeemMarketId &&
-    !!selectedMarketId &&
-    selectedRedeemMarketId !== selectedMarketId;
-
-  // Auto mode: follow the recommended (uncapped) redeem market.
-  useEffect(() => {
-    if (redeemMarketSelectionMode !== "auto" || !recommendedRedeemMarketId) {
-      return;
-    }
-    const recommended = marketsForToken.find(
-      (m) => m.marketId === recommendedRedeemMarketId
-    );
-    if (!recommended) return;
-    setSelectedRedeemMarketId(recommendedRedeemMarketId);
-    const sym = recommended.market?.collateral?.symbol;
-    if (sym) setSelectedRedeemAsset(sym);
-  }, [
-    redeemMarketSelectionMode,
-    recommendedRedeemMarketId,
-    marketsForToken,
-  ]);
-
-  const showWithdrawRedemptionCapNotice =
-    !withdrawOnly &&
-    !!redeemInputAmount &&
-    redeemInputAmount > 0n &&
-    !!redeemPreview?.isCapped;
-
-  const showWithdrawCrossMarketNotice =
-    !withdrawOnly &&
-    marketsForToken.length > 1 &&
-    isCrossMarketRedeem;
-
-  const withdrawNotificationCount = useMemo(() => {
-    let count = 1;
-    if (showWithdrawRedemptionCapNotice) count += 1;
-    if (showWithdrawCrossMarketNotice) count += 1;
-    return count;
-  }, [showWithdrawRedemptionCapNotice, showWithdrawCrossMarketNotice]);
-
-  const depositNotificationCount = useMemo(() => {
-    if (activeTab !== "deposit") return 0;
-    let count = 1;
-    if (mintOnly && !isDirectPeggedDeposit) count += 1;
-    if (!isCollateralOnlyChain && !anyTokenDeposit.needsSwap) count += 1;
-    if (
-      selectedDepositAsset &&
-      !anyTokenDeposit.needsSwap &&
-      selectedDepositAsset !== activeCollateralSymbol &&
-      selectedDepositAsset !== activeWrappedCollateralSymbol &&
-      !isDirectPeggedDeposit
-    ) {
-      count += 1;
-    }
-    return count;
-  }, [
-    activeTab,
-    mintOnly,
-    isDirectPeggedDeposit,
-    isCollateralOnlyChain,
-    anyTokenDeposit.needsSwap,
-    selectedDepositAsset,
-    activeCollateralSymbol,
-    activeWrappedCollateralSymbol,
-  ]);
-
-  const anchorModalNotificationCount = useMemo(() => {
-    const base =
-      activeTab === "withdraw"
-        ? withdrawNotificationCount
-        : depositNotificationCount;
-    return transactionNotificationError ? base + 1 : base;
-  }, [
-    activeTab,
-    withdrawNotificationCount,
-    depositNotificationCount,
-    transactionNotificationError,
-  ]);
-
-  const anchorModalNotificationSeverities = useMemo((): Array<
-    "navy" | "green" | "amber" | "coral"
-  > => {
-    const severities: Array<"navy" | "green" | "amber" | "coral"> = [];
-    if (transactionNotificationError) severities.push("coral");
-    if (activeTab === "withdraw") {
-      severities.push("navy");
-      if (showWithdrawRedemptionCapNotice) severities.push("amber");
-      if (showWithdrawCrossMarketNotice) severities.push("amber");
-      return severities;
-    }
-    severities.push("navy");
-    if (mintOnly && !isDirectPeggedDeposit) severities.push("navy");
-    if (!isCollateralOnlyChain && !anyTokenDeposit.needsSwap) {
-      severities.push("green");
-    }
-    if (
-      selectedDepositAsset &&
-      !anyTokenDeposit.needsSwap &&
-      selectedDepositAsset !== activeCollateralSymbol &&
-      selectedDepositAsset !== activeWrappedCollateralSymbol &&
-      !isDirectPeggedDeposit
-    ) {
-      severities.push("coral");
-    }
-    return severities;
-  }, [
-    activeTab,
-    transactionNotificationError,
-    showWithdrawRedemptionCapNotice,
-    showWithdrawCrossMarketNotice,
-    isCollateralOnlyChain,
-    anyTokenDeposit.needsSwap,
-    selectedDepositAsset,
-    activeCollateralSymbol,
-    activeWrappedCollateralSymbol,
-    isDirectPeggedDeposit,
-  ]);
-
-  const anchorModalNotificationsBody = useMemo(() => {
-    const transactionErrorCallout = transactionNotificationError ? (
-      <ErrorBanner message={transactionNotificationError} />
-    ) : null;
-
-    if (activeTab === "withdraw") {
-      return (
-        <>
-          {transactionErrorCallout}
-          <InfoCallout
-            tone="info"
-            title="Info:"
-            icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
-          >
-            Select positions to withdraw. If you include wallet tokens and/or do
-            immediate pool withdrawals, we will automatically redeem the resulting
-            anchor tokens to collateral.
-          </InfoCallout>
-          {showWithdrawRedemptionCapNotice && redeemPreview && (
-            <InfoCallout
-              tone="warning"
-              title="Warning:"
-              icon={
-                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
-              }
-            >
-              Redemption is limited by the market collateral ratio. One transaction
-              redeems about{" "}
-              {Number(formatEther(redeemPreview.peggedRedeemed)).toFixed(6)}{" "}
-              {peggedTokenSymbol} of your{" "}
-              {Number(formatEther(redeemInputAmount || 0n)).toFixed(6)}{" "}
-              {peggedTokenSymbol}. You may need multiple redeem transactions for the
-              full amount.
-            </InfoCallout>
-          )}
-          {showWithdrawCrossMarketNotice && (
-            <InfoCallout
-              tone="warning"
-              title="Warning:"
-              icon={
-                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
-              }
-            >
-              Cross-market: pool is {selectedMarket?.name || selectedMarketId},
-              redeem via{" "}
-              {selectedRedeemMarket?.market?.name || selectedRedeemMarketId}. You
-              receive {redeemCollateralSymbol}, not{" "}
-              {selectedMarket?.collateral?.symbol || "pool collateral"}.
-            </InfoCallout>
-          )}
-        </>
-      );
-    }
-
-    return (
-      <>
-        {transactionErrorCallout}
-        {mintOnly && !isDirectPeggedDeposit && (
-          <InfoCallout
-            tone="info"
-            title="Info:"
-            icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
-          >
-            You&apos;ll receive anchor tokens directly to your wallet. No stability
-            pool deposit required.
-          </InfoCallout>
-        )}
-        {!isCollateralOnlyChain && !anyTokenDeposit.needsSwap && (
-          <InfoCallout
-            tone="success"
-            title="Tip:"
-            icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}
-          >
-            You can deposit any ERC20 token! Non-collateral tokens will be
-            automatically swapped via Velora.
-          </InfoCallout>
-        )}
-        <InfoCallout
-          title="Info:"
-          icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
-        >
-          For large deposits, Harbor recommends using wstETH or fxSAVE instead of
-          the built-in swap and zaps.
-        </InfoCallout>
-        {selectedDepositAsset &&
-          !anyTokenDeposit.needsSwap &&
-          selectedDepositAsset !== activeCollateralSymbol &&
-          selectedDepositAsset !== activeWrappedCollateralSymbol &&
-          !isDirectPeggedDeposit && (
-            <InfoCallout
-              tone="pearl"
-              icon={<Banknote className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#D57A3D]" />}
-            >
-              <span className="font-semibold">Deposit:</span> Your tokens will be
-              converted to {activeWrappedCollateralSymbol} on deposit. Withdrawals
-              will be in {activeWrappedCollateralSymbol} only.
-            </InfoCallout>
-          )}
-      </>
-    );
-  }, [
-    activeTab,
-    transactionNotificationError,
-    showWithdrawRedemptionCapNotice,
-    redeemPreview,
-    peggedTokenSymbol,
-    redeemInputAmount,
-    showWithdrawCrossMarketNotice,
-    selectedMarket,
-    selectedMarketId,
-    selectedRedeemMarket,
-    selectedRedeemMarketId,
-    redeemCollateralSymbol,
-    isCollateralOnlyChain,
-    anyTokenDeposit.needsSwap,
-    selectedDepositAsset,
-    activeCollateralSymbol,
-    activeWrappedCollateralSymbol,
-    isDirectPeggedDeposit,
-  ]);
+  });
 
   const depositFlowParts = useMemo(
     () => anchorDepositFlowParts({ mintOnly, skipRewardStep }),
@@ -4570,532 +3905,126 @@ export function useAnchorDepositWithdrawModal({
     feeMinterAddress.startsWith("0x") &&
     feeMinterAddress.length === 42;
 
-  const marketHealthReadsEnabled =
-    !!isValidFeeMinterAddress &&
-    isActive &&
-    activeTab === "deposit" &&
-    !isDirectPeggedDeposit;
-
+  // Mint amount parsing, mint dry runs, fee percentage and the submit validation gate.
   const {
-    data: marketHealthCollateralRatio,
-    isFetching: marketHealthCrFetching,
-  } = useContractRead({
-    address: feeMinterAddress as `0x${string}`,
-    // Same ABI Transparency / Earn market cards use — MINTER_PEGGED_ABI lacks collateralRatio.
-    abi: MINTER_ABI,
-    functionName: "collateralRatio",
-    query: {
-      enabled: marketHealthReadsEnabled,
-      retry: 2,
-    },
-  });
-
-  const { data: marketHealthMinterConfig } = useContractRead({
-    address: feeMinterAddress as `0x${string}`,
-    abi: MINTER_ABI,
-    functionName: "config",
-    query: {
-      enabled: marketHealthReadsEnabled,
-      retry: 2,
-    },
-  });
-
-  const { data: marketHealthPeggedBalance } = useContractRead({
-    address: feeMinterAddress as `0x${string}`,
-    abi: MINTER_ABI,
-    functionName: "peggedTokenBalance",
-    query: {
-      enabled: marketHealthReadsEnabled,
-      retry: 1,
-    },
-  });
-
-  const { data: marketHealthCollateralBalance } = useContractRead({
-    address: feeMinterAddress as `0x${string}`,
-    abi: MINTER_ABI,
-    functionName: "collateralTokenBalance",
-    query: {
-      enabled: marketHealthReadsEnabled,
-      retry: 1,
-    },
-  });
-
-  const {
-    data: marketHealthCapacityDryRun,
-    isFetching: marketHealthCapacityFetching,
-  } = useContractRead({
-    address: feeMinterAddress as `0x${string}`,
-    abi: MINTER_PEGGED_ABI,
-    functionName: "mintPeggedTokenDryRun",
-    args: [MARKET_HEALTH_MINT_PROBE_WEI],
-    query: {
-      enabled: marketHealthReadsEnabled,
-      retry: 1,
-    },
-  });
-
-  // Parse amount to BigInt, converting to wrapped collateral (fxSAVE) if needed
-  // Use debounced amount to reduce unnecessary contract calls
-  const parsedAmount = useMemo(() => {
-    if (!debouncedAmount || parseFloat(debouncedAmount) <= 0) return undefined;
-    
-    // Skip dry run for very small amounts (< 0.0001) to reduce calls
-    if (parseFloat(debouncedAmount) < 0.0001) return undefined;
-    
-    try {
-      const inputAmount = parseEther(debouncedAmount);
-      
-      // Use marketForDepositAsset in simple mode, selectedMarket in advanced mode
-      const relevantMarket = marketForDepositAsset || selectedMarket;
-      
-      // If user selected wrapped collateral (fxSAVE, wstETH), use amount as-is
-      const wrappedCollateralSymbol = relevantMarket?.collateral?.symbol || "";
-      const underlyingCollateralSymbol = relevantMarket?.collateral?.underlyingSymbol || "";
-      
-      if (selectedDepositAsset?.toLowerCase() === wrappedCollateralSymbol.toLowerCase()) {
-        // User selected fxSAVE or wstETH directly
-        return inputAmount;
-      } else if (selectedDepositAsset?.toLowerCase() === underlyingCollateralSymbol.toLowerCase()) {
-        // User selected fxUSD or stETH - need to convert to wrapped collateral for dry run
-        // fxSAVE = fxUSD / rate (where rate is fxSAVE:fxUSD ratio, e.g., 1.07 means 1 fxSAVE = 1.07 fxUSD)
-        // wstETH = stETH / rate
-        const wrappedRate = relevantMarket?.wrappedRate;
-        if (wrappedRate && wrappedRate > 0n) {
-          // Convert: amountInWrapped = amountInUnderlying * 1e18 / rate
-          const amountInWrapped = (inputAmount * BigInt(1e18)) / wrappedRate;
-          return amountInWrapped;
-        }
-        // Fallback: 1:1 if no rate available
-        return inputAmount;
-      } else {
-        // For other assets (USDC, ETH, etc.), use amount as-is
-        // The actual conversion will happen in the contract
-        return inputAmount;
-      }
-    } catch (error) {
-      return undefined;
-    }
-  }, [debouncedAmount, selectedDepositAsset, marketForDepositAsset, selectedMarket]);
-
-  const dryRunEnabled =
-    !!isValidFeeMinterAddress &&
-    !!parsedAmount &&
-    isActive &&
-    activeTab === "deposit" &&
-    !isDirectPeggedDeposit; // Only run for collateral deposits
-
-  if (process.env.NODE_ENV === "development" && activeTab === "deposit") {
-    console.log("[Dry Run Enabled Check]", {
-      dryRunEnabled,
-      isValidFeeMinterAddress,
-      parsedAmount: parsedAmount?.toString(),
-      isActive,
-      activeTab,
-      isDirectPeggedDeposit,
-      feeMinterAddress,
-    });
-  }
-
-  // Dry run query using Anvil hook for local development
-  // For ETH/stETH deposits, use accurate wstETH amount for fee calculation dry run
-  const amountForFeeDryRun = useMemo(() => {
-    // If we have accurate wstETH amount from contract, use it
-    if (wstETHAmountFromContract) {
-      return wstETHAmountFromContract as bigint;
-    }
-    // Otherwise use parsedAmount (for direct wstETH deposits or other assets)
-    return parsedAmount;
-  }, [wstETHAmountFromContract, parsedAmount]);
-
-  const {
-    data: anvilDryRunData,
-    error: anvilDryRunError,
-    isFetching: anvilDryRunFetching,
-  } = useContractRead({
-    address: feeMinterAddress as `0x${string}`,
-    abi: MINTER_PEGGED_ABI,
-    functionName: "mintPeggedTokenDryRun",
-    args: amountForFeeDryRun ? [amountForFeeDryRun] : undefined,
-    enabled: shouldUseAnvilHook && dryRunEnabled && !!amountForFeeDryRun,
-  });
-
-  // Dry run query using regular hook for production
-  const {
-    data: regularDryRunData,
-    error: regularDryRunError,
-    isFetching: regularDryRunFetching,
-  } = useContractRead({
-    address: feeMinterAddress as `0x${string}`,
-    abi: MINTER_PEGGED_ABI,
-    functionName: "mintPeggedTokenDryRun",
-    args: amountForFeeDryRun ? [amountForFeeDryRun] : undefined,
-    query: {
-      enabled: !shouldUseAnvilHook && dryRunEnabled && !!amountForFeeDryRun,
-      retry: 1,
-    },
-  });
-
-  // Use the appropriate dry run data based on environment
-  const dryRunData = shouldUseAnvilHook ? anvilDryRunData : regularDryRunData;
-  const dryRunError = shouldUseAnvilHook
-    ? anvilDryRunError
-    : regularDryRunError;
-  const dryRunFetching = shouldUseAnvilHook
-    ? anvilDryRunFetching
-    : regularDryRunFetching;
-
-  if (process.env.NODE_ENV === "development" && activeTab === "deposit") {
-    console.log("[Dry Run Data]", {
-      dryRunData: dryRunData ? (Array.isArray(dryRunData) ? dryRunData.map(v => typeof v === "bigint" ? v.toString() : v) : dryRunData) : null,
-      dryRunError: dryRunError?.message || null,
-      parsedAmount: parsedAmount?.toString(),
-    });
-  }
-
-  // Use dry run data's peggedMinted as fallback when calculateMintPeggedTokenOutput fails
-  // dryRunData is an array: [incentiveRatio, fee, discount, peggedMinted, price, rate]
-  const expectedMintOutput = useMemo(() => {
-    // For swap deposits, use swapDryRunOutput
-    if (anyTokenDeposit.needsSwap && swapDryRunOutput && Array.isArray(swapDryRunOutput) && swapDryRunOutput.length >= 4) {
-      return swapDryRunOutput[3] as bigint;
-    }
-    
-    // For swap deposits without dry run, estimate from swap quote
-    // This provides a rough estimate when dry run isn't available (e.g., very small amounts)
-    if (anyTokenDeposit.needsSwap && anyTokenDeposit.swapQuote && swappedAmountForDryRun && amount && parseFloat(amount) > 0) {
-      // Use swappedAmountForDryRun as an estimate - it's the wrapped collateral amount
-      // The minter typically mints close to 1:1 with wrapped collateral (minus fees)
-      // This is a rough estimate, but better than showing 0
-      const estimatedOutput = swappedAmountForDryRun * 95n / 100n; // Estimate 5% fee
-      if (estimatedOutput > 0n) {
-        if (process.env.NODE_ENV === "development") {
-          console.log("[expectedMintOutput] Using estimated output from swap quote:", estimatedOutput.toString());
-        }
-        return estimatedOutput;
-      }
-    }
-    
-    // For regular deposits, use rawExpectedMintOutput
-    if (rawExpectedMintOutput) return rawExpectedMintOutput;
-    // Fallback to dry run data's peggedMinted (index 3)
-    if (dryRunData && Array.isArray(dryRunData) && dryRunData.length >= 4) {
-      return dryRunData[3] as bigint;
-    }
-    return undefined;
-  }, [anyTokenDeposit.needsSwap, swapDryRunOutput, rawExpectedMintOutput, dryRunData, anyTokenDeposit.swapQuote, swappedAmountForDryRun, amount]);
-
-  // Get minter address for the selected stability pool's market (for collateral ratio display)
-  const stabilityPoolMarket = useMemo(() => {
-    if (!selectedStabilityPool || !simpleMode) return null;
-    return marketsForToken.find(
-      (m) => m.marketId === selectedStabilityPool.marketId
-    )?.market;
-  }, [selectedStabilityPool, marketsForToken, simpleMode]);
-
-  const stabilityPoolMinterAddress = stabilityPoolMarket?.addresses?.minter;
-  const isValidStabilityPoolMinter =
-    stabilityPoolMinterAddress &&
-    typeof stabilityPoolMinterAddress === "string" &&
-    stabilityPoolMinterAddress.startsWith("0x") &&
-    stabilityPoolMinterAddress.length === 42;
-
-  // Fetch collateral ratio for the stability pool's market (only when pool is selected)
-  const { data: collateralRatioData } = useContractRead({
-    address: stabilityPoolMinterAddress as `0x${string}`,
-    abi: MINTER_PEGGED_ABI,
-    functionName: "collateralRatio",
-    query: {
-      enabled:
-        !!isValidStabilityPoolMinter &&
-        isActive &&
-        simpleMode &&
-        activeTab === "deposit" &&
-        !!selectedStabilityPool,
-      retry: 1,
-      allowFailure: true,
-    },
-  });
-
-  // Fetch config to get minimum collateral ratio for the stability pool's market
-  const { data: minterConfigData } = useContractRead({
-    address: stabilityPoolMinterAddress as `0x${string}`,
-    abi: MINTER_PEGGED_ABI,
-    functionName: "config",
-    query: {
-      enabled:
-        !!isValidStabilityPoolMinter &&
-        isActive &&
-        simpleMode &&
-        activeTab === "deposit" &&
-        !!selectedStabilityPool,
-      retry: 1,
-      allowFailure: true,
-    },
-  });
-
-  // Extract minimum collateral ratio from config (typically in the first band upper bound)
-  const minCollateralRatio = useMemo(() => {
-    if (!minterConfigData) return undefined;
-    const config = minterConfigData as any;
-    // Minimum collateral ratio is typically the first band upper bound
-    const bands =
-      config?.mintPeggedIncentiveConfig?.collateralRatioBandUpperBounds;
-    if (bands && Array.isArray(bands) && bands.length > 0) {
-      return bands[0] as bigint;
-    }
-    return undefined;
-  }, [minterConfigData]);
-
-  // Format collateral ratio as percentage
-  const formatCollateralRatio = (ratio: bigint | undefined): string => {
-    if (!ratio) return "-";
-    // Collateral ratio is typically stored as a value where 1e18 = 100%
-    return `${(Number(ratio) / 1e16).toFixed(2)}%`;
-  };
-
-  // Calculate fee percentage from dry run result and detect mint cap
-  const feePercentage = useMemo(() => {
-    // Don't calculate fee for direct pegged token deposits (no minting)
-    if (isDirectPeggedDeposit) return undefined;
-
-    // For swap deposits, use swapDryRunOutput
-    if (anyTokenDeposit.needsSwap) {
-      if (!swapDryRunOutput || !swappedAmountForDryRun || swappedAmountForDryRun === 0n) return undefined;
-      
-      const dryRunResult = swapDryRunOutput as [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
-      if (!dryRunResult || dryRunResult.length < 2) return undefined;
-
-      // Use incentiveRatio (index 0) from dry run to get the fee percentage
-      const incentiveRatio = dryRunResult[0];
-      const incentiveRatioBN = BigInt(incentiveRatio);
-      
-      // Check if minting is disallowed (incentiveRatio === 1e18)
-      const isDisallowed = incentiveRatioBN === 1000000000000000000n; // 1e18
-      if (isDisallowed) {
-        return undefined; // Don't show fee if minting is disallowed
-      }
-      
-      // Convert incentiveRatio to percentage: divide by 1e16 to get percentage
-      let feePercent = 0;
-      if (incentiveRatioBN > 0n) {
-        feePercent = Number(incentiveRatioBN) / 1e16; // convert to percent
-      } else if (incentiveRatioBN < 0n) {
-        // Negative means discount, but we still show it as 0% fee
-        feePercent = 0;
-      }
-      
-      return feePercent;
-    }
-
-    // For regular deposits, use dryRunData
-    // If there's an error, return undefined (will show fallback fee)
-    if (dryRunError) {
-      return undefined;
-    }
-
-    if (!dryRunData || !parsedAmount || parsedAmount === 0n) return undefined;
-
-    // Handle both array and object formats
-    let dryRunResult: [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
-    if (Array.isArray(dryRunData)) {
-      dryRunResult = dryRunData as [bigint, bigint, bigint, bigint, bigint, bigint];
-    } else if (typeof dryRunData === "object" && dryRunData !== null) {
-      // Handle object format if returned
-      const obj = dryRunData as any;
-      if (obj.incentiveRatio !== undefined) {
-        dryRunResult = [
-          BigInt(obj.incentiveRatio || 0),
-          BigInt(obj.fee || 0),
-          BigInt(obj.discount || 0),
-          BigInt(obj.peggedMinted || 0),
-          BigInt(obj.price || 0),
-          BigInt(obj.rate || 0),
-        ];
-      }
-    }
-    
-    if (!dryRunResult || dryRunResult.length < 1) {
-    if (process.env.NODE_ENV === "development") {
-        console.warn("[Fee Calculation] Invalid dry run result structure:", dryRunData);
-    }
-      return undefined;
-    }
-
-    // Use incentiveRatio (index 0) from dry run to get the fee percentage
-    // This is the correct way as it returns the exact fee percentage for the current CR band
-    // Format: incentiveRatio is in 1e18 units, where 0.25% = 0.0025 * 1e18 = 2500000000000000
-    const incentiveRatio = dryRunResult[0];
-    if (incentiveRatio === undefined || incentiveRatio === null) {
-      if (process.env.NODE_ENV === "development") {
-        console.warn("[Fee Calculation] incentiveRatio is missing from dry run result");
-      }
-      return undefined;
-    }
-    
-    const incentiveRatioBN = BigInt(incentiveRatio);
-    
-    // Check if minting is disallowed (incentiveRatio === 1e18)
-    const isDisallowed = incentiveRatioBN === 1000000000000000000n; // 1e18
-    if (isDisallowed) {
-      return undefined; // Don't show fee if minting is disallowed
-    }
-
-    // Convert incentiveRatio to percentage: divide by 1e16 to get percentage
-    // Positive values = fee, negative values = discount
-    let feePercent = 0;
-    if (incentiveRatioBN > 0n) {
-      feePercent = Number(incentiveRatioBN) / 1e16; // convert to percent
-    } else if (incentiveRatioBN < 0n) {
-      // Negative means discount, but we still show it as 0% fee
-      feePercent = 0;
-    }
-    
-    if (process.env.NODE_ENV === "development") {
-      console.log("[Fee Calculation Debug] Using incentiveRatio from dry run:", {
-        dryRunData: Array.isArray(dryRunData) ? dryRunData.map(v => typeof v === "bigint" ? v.toString() : String(v)) : dryRunData,
-        dryRunResult: dryRunResult.map(v => v.toString()),
-        incentiveRatio: incentiveRatio.toString(),
-        incentiveRatioBN: incentiveRatioBN.toString(),
-        feePercent,
-        parsedAmount: parsedAmount.toString(),
-        selectedDepositAsset,
-        activeCollateralSymbol,
-        isWstETH: activeCollateralSymbol?.toLowerCase() === "wsteth",
-        isFxSAVE: activeCollateralSymbol?.toLowerCase() === "fxsave",
-      });
-    }
-    
-    return feePercent;
-  }, [anyTokenDeposit.needsSwap, swapDryRunOutput, swappedAmountForDryRun, dryRunData, dryRunError, parsedAmount, isDirectPeggedDeposit, activeMarketForFees, market, selectedDepositAsset, activeCollateralSymbol, btcPrice, ethPrice]);
-
-  const mintValidation = useMemo(() => {
-    const hasAmount = !!amount && parseFloat(amount) > 0;
-
-    if (anyTokenDeposit.needsSwap) {
-      return resolveMintValidation({
-        isDirectPeggedDeposit,
-        hasAmount,
-        isLoading:
-          anyTokenDeposit.isLoadingSwapQuote ||
-          (!!swappedAmountForDryRun &&
-            swappedAmountForDryRun > 0n &&
-            swapDryRunFetching &&
-            !swapDryRunOutput),
-        hasDryRunError: !!swapDryRunError,
-        dryRun: parseMintDryRunResult(swapDryRunOutput),
-        inputAmountWrapped: swappedAmountForDryRun,
-      });
-    }
-
-    return resolveMintValidation({
-      isDirectPeggedDeposit,
-      hasAmount,
-      isLoading:
-        !!amountForFeeDryRun &&
-        amountForFeeDryRun > 0n &&
-        dryRunFetching &&
-        !dryRunData,
-      hasDryRunError: !!dryRunError,
-      dryRun: parseMintDryRunResult(dryRunData),
-      inputAmountWrapped: amountForFeeDryRun,
-    });
-  }, [
-    amount,
-    anyTokenDeposit.needsSwap,
-    anyTokenDeposit.isLoadingSwapQuote,
-    isDirectPeggedDeposit,
-    swappedAmountForDryRun,
-    swapDryRunFetching,
-    swapDryRunOutput,
-    swapDryRunError,
+    parsedAmount,
+    dryRunEnabled,
     amountForFeeDryRun,
-    dryRunFetching,
+    anvilDryRunData,
+    anvilDryRunError,
+    regularDryRunData,
+    regularDryRunError,
     dryRunData,
     dryRunError,
-  ]);
+    dryRunFetching,
+    expectedMintOutput,
+    feePercentage,
+    mintValidation,
+  } = useMintDryRunAndValidation({
+    feeMinterAddress,
+    isValidFeeMinterAddress: !!isValidFeeMinterAddress,
+    isActive,
+    activeTab,
+    isDirectPeggedDeposit,
+    shouldUseAnvilHook,
+    amount,
+    debouncedAmount,
+    selectedDepositAsset,
+    marketForDepositAsset,
+    selectedMarket,
+    activeMarketForFees,
+    market,
+    activeCollateralSymbol,
+    btcPrice,
+    ethPrice,
+    wstETHAmountFromContract,
+    rawExpectedMintOutput,
+    anyTokenDeposit,
+    swappedAmountForDryRun,
+    swapDryRunOutput,
+    swapDryRunError,
+    swapDryRunFetching,
+  });
 
-  const showMintCapNavNotice =
-    activeTab === "deposit" &&
-    !isDirectPeggedDeposit &&
-    !!mintValidation.message &&
-    (mintValidation.status === "capped" ||
-      mintValidation.status === "blocked");
+  const {
+    stabilityPoolMarket,
+    stabilityPoolMinterAddress,
+    isValidStabilityPoolMinter,
+    collateralRatioData,
+    minterConfigData,
+    minCollateralRatio,
+    formatCollateralRatio,
+  } = useStabilityPoolCollateralRatio({
+    simpleMode,
+    isActive,
+    activeTab,
+    selectedStabilityPool,
+    marketsForToken,
+  });
 
-  const anchorModalNotificationCountWithMint = useMemo(
-    () =>
-      anchorModalNotificationCount + (showMintCapNavNotice ? 1 : 0),
-    [anchorModalNotificationCount, showMintCapNavNotice],
-  );
-
-  const anchorModalNotificationSeveritiesWithMint = useMemo((): Array<
-    "navy" | "green" | "amber" | "coral"
-  > => {
-    if (!showMintCapNavNotice) return anchorModalNotificationSeverities;
-    return ["coral", ...anchorModalNotificationSeverities];
-  }, [showMintCapNavNotice, anchorModalNotificationSeverities]);
-
-  const anchorModalNotificationsBodyWithMint = useMemo(() => {
-    if (!showMintCapNavNotice || !mintValidation.message) {
-      return anchorModalNotificationsBody;
-    }
-    return (
-      <>
-        <ErrorBanner message={mintValidation.message} />
-        {anchorModalNotificationsBody}
-      </>
-    );
-  }, [
-    showMintCapNavNotice,
-    mintValidation.message,
+  // Notification tray contents for the active tab, with mint-cap warnings merged in.
+  const {
+    showWithdrawRedemptionCapNotice,
+    showWithdrawCrossMarketNotice,
+    withdrawNotificationCount,
+    depositNotificationCount,
+    anchorModalNotificationCount,
+    anchorModalNotificationSeverities,
     anchorModalNotificationsBody,
-  ]);
-
-  useRegisterAppNotifications(
-    "anchor-embedded-deposit",
-    {
-      count: anchorModalNotificationCountWithMint,
-      badgeSeverities: anchorModalNotificationSeveritiesWithMint,
-      body: anchorModalNotificationsBodyWithMint,
-    },
-    embedded && isActive,
-  );
-
-  const appNotifications = useAppNotificationsOptional();
-  const setAppNotificationsExpanded = appNotifications?.setExpanded;
-  /** Only auto-open after the mint warning has persisted (avoids flash open/close). */
-  const [persistedMintNavNotice, setPersistedMintNavNotice] = useState(false);
-  useEffect(() => {
-    if (!showMintCapNavNotice) {
-      setPersistedMintNavNotice(false);
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      setPersistedMintNavNotice(true);
-    }, 1500);
-    return () => window.clearTimeout(timer);
-  }, [showMintCapNavNotice, mintValidation.message]);
-
-  useEffect(() => {
-    if (!persistedMintNavNotice) return;
-    if (embedded && isActive) {
-      setAppNotificationsExpanded?.(true);
-    }
-    setShowNotifications(true);
-  }, [
-    persistedMintNavNotice,
+  } = useModalNotifications({
+    activeTab,
     embedded,
     isActive,
-    setAppNotificationsExpanded,
-  ]);
+    transactionNotificationError,
+    setShowNotifications,
+    mintOnly,
+    withdrawOnly,
+    isDirectPeggedDeposit,
+    isCollateralOnlyChain,
+    needsSwap: anyTokenDeposit.needsSwap,
+    selectedDepositAsset,
+    activeCollateralSymbol,
+    activeWrappedCollateralSymbol,
+    peggedTokenSymbol,
+    marketsForToken,
+    selectedMarket,
+    selectedMarketId,
+    selectedRedeemMarket,
+    selectedRedeemMarketId,
+    redeemCollateralSymbol,
+    redeemInputAmount,
+    redeemPreview,
+    isCrossMarketRedeem,
+    mintValidation,
+  });
 
-  // Auto-adjust amount when minter refuses full deposit
-  const [depositLimitWarning, setDepositLimitWarning] = useState<string | null>(null);
-  const [tempMaxWarning, setTempMaxWarning] = useState<string | null>(null);
-  const tempWarningTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const lastAdjustedAmountRef = useRef<string | null>(null);
-  /** Latest market max mintable in deposit-asset units (for MAX button capping). */
-  const maxMintableDepositAmountRef = useRef<number | undefined>(undefined);
-
+  // Clamp the deposit amount to what the minter will accept, with the matching warnings.
+  const {
+    depositLimitWarning,
+    setDepositLimitWarning,
+    tempMaxWarning,
+    setTempMaxWarning,
+    tempWarningTimerRef,
+    lastAdjustedAmountRef,
+    maxMintableDepositAmountRef,
+    calculateMaxSwapAmount,
+  } = useDepositAmountCap({
+    activeTab,
+    amount,
+    setAmount,
+    selectedDepositAsset,
+    isDirectPeggedDeposit,
+    collateralSymbol,
+    activeCollateralSymbol,
+    activeWrappedCollateralSymbol,
+    marketForDepositAsset,
+    selectedMarket,
+    dryRunData,
+    parsedAmount,
+    swapDryRunOutput,
+    swappedAmountForDryRun,
+    anyTokenDeposit,
+  });
 
   /** Simple-mode deposit: clear amount, tx/progress, pool/reward picks; keep selected deposit token. */
   const resetSimpleDepositFlowKeepToken = () => {
@@ -5464,436 +4393,6 @@ export function useAnchorDepositWithdrawModal({
     }));
   }, []);
 
-  // Helper function to calculate max acceptable amount for swap deposits
-  const calculateMaxSwapAmount = useMemo(() => {
-    // Skip for direct deposits (wstETH, fxSAVE) that don't need swaps
-    const isWrappedCollateralDeposit = selectedDepositAsset?.toLowerCase() === "wsteth" || 
-                                        selectedDepositAsset?.toLowerCase() === "fxsave";
-    if (!anyTokenDeposit.needsSwap || !swapDryRunOutput || !swappedAmountForDryRun || !anyTokenDeposit.swapQuote || isWrappedCollateralDeposit) {
-      return null;
-    }
-
-    const dryRunResult = swapDryRunOutput as [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
-    if (!dryRunResult || dryRunResult.length < 3) return null;
-
-    const wrappedCollateralTaken = dryRunResult[2];
-    const takenRatio = Number(wrappedCollateralTaken) / Number(swappedAmountForDryRun);
-
-    // If minter is taking less than 99.5% of swap output, there's a limit
-    if (takenRatio >= 0.995 || wrappedCollateralTaken === 0n) {
-      return null;
-    }
-
-    // Work backwards: wrappedCollateral → intermediate token (USDC/ETH) → input token
-    const isFxSAVEMarket = activeWrappedCollateralSymbol === "fxSAVE";
-    const isWstETHMarket = activeWrappedCollateralSymbol === "wstETH";
-    let maxIntermediateAmount: bigint;
-    const isSwappingToUSDC = anyTokenDeposit.swapTargetToken !== "ETH";
-    
-    if (isSwappingToUSDC && isFxSAVEMarket) {
-      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
-      const fxUsdAmount = (wrappedCollateralTaken * wrappedRate) / 10n**18n;
-      maxIntermediateAmount = fxUsdAmount / 10n**12n;
-    } else if (!isSwappingToUSDC && isWstETHMarket) {
-      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
-      const stEthAmount = (wrappedCollateralTaken * wrappedRate) / 10n**18n;
-      maxIntermediateAmount = stEthAmount;
-    } else {
-      return null;
-    }
-    
-    const swapFromAmount = BigInt(anyTokenDeposit.swapQuote.fromAmount);
-    const swapToAmount = BigInt(anyTokenDeposit.swapQuote.toAmount);
-    const maxInputAmount = (swapFromAmount * maxIntermediateAmount) / swapToAmount;
-    const formattedMax = (Number(maxInputAmount) / (10 ** anyTokenDeposit.tokenDecimals)).toString();
-    
-    return formattedMax;
-  }, [
-    anyTokenDeposit.needsSwap,
-    anyTokenDeposit.swapQuote,
-    anyTokenDeposit.swapTargetToken,
-    anyTokenDeposit.tokenDecimals,
-    swapDryRunOutput,
-    swappedAmountForDryRun,
-    activeWrappedCollateralSymbol,
-    marketForDepositAsset,
-    selectedMarket,
-    selectedDepositAsset,
-  ]);
-
-  // Check swap dry run for max acceptable amount and auto-adjust
-  // Skip this entirely for direct deposits (wstETH, fxSAVE) that don't need swaps
-  useEffect(() => {
-    // Skip if not a swap deposit, or if it's a wrapped collateral (direct deposit, no swap needed)
-    const isWrappedCollateralDeposit = selectedDepositAsset?.toLowerCase() === "wsteth" || 
-                                        selectedDepositAsset?.toLowerCase() === "fxsave";
-    if (!anyTokenDeposit.needsSwap || activeTab !== "deposit" || isWrappedCollateralDeposit) {
-      setDepositLimitWarning(null);
-      lastAdjustedAmountRef.current = null; // Reset tracking when not applicable
-      return;
-    }
-
-    // If calculateMaxSwapAmount is not available yet, preserve existing warning
-    // This prevents the warning from disappearing during recalculation
-    if (!calculateMaxSwapAmount) {
-      // Only clear warning if amount is 0 or empty - otherwise preserve it during recalculation
-      if (!amount || parseFloat(amount) === 0) {
-        setDepositLimitWarning(null);
-        return;
-      }
-      // If we have an amount but no calculateMaxSwapAmount yet, preserve the warning
-      // and wait for calculateMaxSwapAmount to become available
-      // This ensures the warning doesn't disappear during recalculation
-      if (process.env.NODE_ENV === "development") {
-        console.log("[Swap Dry Run] calculateMaxSwapAmount not available yet, preserving warning for amount:", amount);
-      }
-      return;
-    }
-
-    const currentInputAmount = parseFloat(amount || "0");
-    const maxInputAmountFloat = parseFloat(calculateMaxSwapAmount);
-    const difference = currentInputAmount - maxInputAmountFloat;
-
-    if (process.env.NODE_ENV === "development") {
-      console.log("[Swap Dry Run Check]", {
-        currentAmount: amount,
-        maxAmount: calculateMaxSwapAmount,
-        currentInputAmount,
-        maxInputAmountFloat,
-        difference,
-        exceedsMax: currentInputAmount > maxInputAmountFloat,
-        willAutoAdjust: currentInputAmount > maxInputAmountFloat,
-      });
-    }
-
-    // Tolerance for comparing amounts (accounts for floating point precision)
-    // Use a small tolerance only for "at max" detection, but adjust immediately if above max
-    const tolerance = 0.0001; // Small tolerance for "at max" detection
-    // Consider "at max" if within tolerance (either slightly above or at the max)
-    // This ensures the warning persists even if calculateMaxSwapAmount is recalculated
-    const isAtMax = Math.abs(difference) <= tolerance || currentInputAmount <= maxInputAmountFloat + tolerance;
-    // If amount is greater than max (even slightly), always adjust it down
-    // Use a very small threshold to account for floating point precision, but be aggressive about adjusting
-    const exceedsMax = difference > 0.00001; // Adjust if more than 0.00001 above max
-
-    if (process.env.NODE_ENV === "development") {
-      console.log("[Swap Dry Run Check] Comparison:", {
-        currentInputAmount,
-        maxInputAmountFloat,
-        difference,
-        isAtMax,
-        exceedsMax,
-        willAdjust: exceedsMax,
-      });
-    }
-
-    // If amount exceeds the max, always adjust it down
-    // But only if we haven't already adjusted to this value (prevent infinite loops)
-    if (exceedsMax) {
-      const adjustedAmount = calculateMaxSwapAmount;
-      
-      // Prevent infinite loop: don't adjust if we've already adjusted to this value
-      if (lastAdjustedAmountRef.current === adjustedAmount) {
-        if (process.env.NODE_ENV === "development") {
-          console.log("[Swap Dry Run] Skipping adjustment - already adjusted to this value:", adjustedAmount);
-        }
-        return;
-      }
-      
-      if (process.env.NODE_ENV === "development") {
-        console.log("[Swap Dry Run] Adjusting amount from", currentInputAmount, "to", calculateMaxSwapAmount, "difference:", difference);
-      }
-      // Always adjust - use the calculated max
-      setAmount(adjustedAmount);
-      anyTokenDeposit.setAmount(adjustedAmount); // Sync with hook
-      lastAdjustedAmountRef.current = adjustedAmount; // Track the adjusted amount
-      
-      if (process.env.NODE_ENV === "development") {
-        console.log("[Swap Dry Run] Amount adjusted successfully to:", adjustedAmount);
-      }
-      
-      // Show warning message
-      const warningMessage = `Maximum deposit limited to ${calculateMaxSwapAmount} ${selectedDepositAsset || ""} (after swap) to maintain collateral ratio.`;
-      setDepositLimitWarning(warningMessage);
-
-      // Set temporary warning near Max button
-      const warningText = `Max: ${parseFloat(calculateMaxSwapAmount).toFixed(4)} ${selectedDepositAsset || ""}`;
-      setTempMaxWarning(warningText);
-
-      if (process.env.NODE_ENV === "development") {
-        console.log("[Swap Dry Run] Setting warning:", {
-          warningMessage,
-          warningText,
-        });
-      }
-
-      // Clear any existing timer
-      if (tempWarningTimerRef.current) {
-        clearTimeout(tempWarningTimerRef.current);
-      }
-
-      // Set new timer to clear temp warning after 5 seconds (keep depositLimitWarning visible)
-      tempWarningTimerRef.current = setTimeout(() => {
-        setTempMaxWarning(null);
-        tempWarningTimerRef.current = null;
-      }, 5000);
-    } else if (isAtMax) {
-      // Amount is at the max - show warning but don't adjust
-
-      // Show warning message
-      const warningMessage = `Maximum deposit limited to ${calculateMaxSwapAmount} ${selectedDepositAsset || ""} (after swap) to maintain collateral ratio.`;
-      setDepositLimitWarning(warningMessage);
-
-      // Set temporary warning near Max button
-      const warningText = `Max: ${parseFloat(calculateMaxSwapAmount).toFixed(4)} ${selectedDepositAsset || ""}`;
-      setTempMaxWarning(warningText);
-
-      if (process.env.NODE_ENV === "development") {
-        console.log("[Swap Dry Run] Setting warning:", {
-          warningMessage,
-          warningText,
-          isAtMax,
-          exceedsMax,
-        });
-      }
-
-      // Clear any existing timer
-      if (tempWarningTimerRef.current) {
-        clearTimeout(tempWarningTimerRef.current);
-      }
-
-      // Set new timer to clear temp warning after 5 seconds (keep depositLimitWarning visible)
-      tempWarningTimerRef.current = setTimeout(() => {
-        setTempMaxWarning(null);
-        tempWarningTimerRef.current = null;
-      }, 5000);
-    } else {
-      // Input is below the max, clear warnings and reset adjustment tracking
-      // Only clear if the amount is significantly below the max (not just slightly)
-      // Use a larger threshold (1% of max) to ensure warnings persist when near the max
-      // This prevents the warning from disappearing when calculateMaxSwapAmount is recalculated
-      const clearThreshold = Math.max(0.001, maxInputAmountFloat * 0.01); // At least 0.001 or 1% of max
-      const significantDifference = currentInputAmount < maxInputAmountFloat - clearThreshold;
-      if (significantDifference) {
-        // Reset adjustment tracking when amount is significantly below max
-        // This allows re-adjustment if user increases amount again
-        lastAdjustedAmountRef.current = null;
-        if (process.env.NODE_ENV === "development") {
-          console.log("[Swap Dry Run] Clearing warning - amount significantly below max:", {
-            currentInputAmount,
-            maxInputAmountFloat,
-            difference: currentInputAmount - maxInputAmountFloat,
-            clearThreshold,
-          });
-        }
-        setDepositLimitWarning(null);
-        if (tempWarningTimerRef.current) {
-          clearTimeout(tempWarningTimerRef.current);
-          tempWarningTimerRef.current = null;
-        }
-        setTempMaxWarning(null);
-      } else {
-        // Amount is very close to max but not quite at it - keep warning visible
-        // This ensures the warning doesn't flicker when the amount is near the max
-        // or when calculateMaxSwapAmount is recalculated
-        if (process.env.NODE_ENV === "development") {
-          console.log("[Swap Dry Run] Keeping warning - amount very close to max:", {
-            currentInputAmount,
-            maxInputAmountFloat,
-            difference: currentInputAmount - maxInputAmountFloat,
-            clearThreshold,
-          });
-        }
-        // Always set the warning if we're near the max - don't check if it already exists
-        // This ensures it persists even if calculateMaxSwapAmount changes slightly
-        const warningMessage = `Maximum deposit limited to ${calculateMaxSwapAmount} ${selectedDepositAsset || ""} (after swap) to maintain collateral ratio.`;
-        setDepositLimitWarning(warningMessage);
-        
-        // Also set temporary warning if not already set
-        if (!tempMaxWarning) {
-          const warningText = `Max: ${parseFloat(calculateMaxSwapAmount).toFixed(4)} ${selectedDepositAsset || ""}`;
-          setTempMaxWarning(warningText);
-          
-          // Clear any existing timer
-          if (tempWarningTimerRef.current) {
-            clearTimeout(tempWarningTimerRef.current);
-          }
-          
-          // Set new timer to clear temp warning after 5 seconds (keep depositLimitWarning visible)
-          tempWarningTimerRef.current = setTimeout(() => {
-            setTempMaxWarning(null);
-            tempWarningTimerRef.current = null;
-          }, 5000);
-        }
-      }
-    }
-  }, [
-    anyTokenDeposit.needsSwap,
-    calculateMaxSwapAmount,
-    amount,
-    selectedDepositAsset,
-    activeTab,
-    anyTokenDeposit.setAmount,
-  ]);
-
-  // Reset adjustment tracking when deposit asset changes
-  useEffect(() => {
-    lastAdjustedAmountRef.current = null;
-  }, [selectedDepositAsset]);
-
-  // Check direct deposit dry run for max acceptable amount
-  useEffect(() => {
-    // For swap deposits, this useEffect should not run - handled by swap dry run useEffect
-    if (anyTokenDeposit.needsSwap) {
-      return; // Don't clear warning - it's managed by the swap dry run useEffect
-    }
-    
-    // Skip auto-adjustment for wrapped collateral deposits (wstETH, fxSAVE) - they should go directly to minter
-    // The dry run might show limits, but we shouldn't auto-adjust for these direct deposits
-    const isWrappedCollateralDeposit = selectedDepositAsset?.toLowerCase() === "wsteth" || 
-                                        selectedDepositAsset?.toLowerCase() === "fxsave";
-    if (isWrappedCollateralDeposit) {
-      setDepositLimitWarning(null);
-      if (tempWarningTimerRef.current) {
-        clearTimeout(tempWarningTimerRef.current);
-        tempWarningTimerRef.current = null;
-      }
-      setTempMaxWarning(null);
-      lastAdjustedAmountRef.current = null;
-      return;
-    }
-    
-    if (isDirectPeggedDeposit || !dryRunData || !parsedAmount || activeTab !== "deposit") {
-      setDepositLimitWarning(null);
-      // Clear any pending timer
-      if (tempWarningTimerRef.current) {
-        clearTimeout(tempWarningTimerRef.current);
-        tempWarningTimerRef.current = null;
-      }
-      setTempMaxWarning(null);
-      return;
-    }
-
-    const dryRunResult = dryRunData as
-      | [bigint, bigint, bigint, bigint, bigint, bigint]
-      | undefined;
-    
-    if (!dryRunResult || dryRunResult.length < 3) {
-      setDepositLimitWarning(null);
-      // Clear any pending timer
-      if (tempWarningTimerRef.current) {
-        clearTimeout(tempWarningTimerRef.current);
-        tempWarningTimerRef.current = null;
-      }
-      setTempMaxWarning(null);
-      return;
-    }
-
-    // result[2] = wrappedCollateralTaken (actual amount minter will accept in fxSAVE)
-    const wrappedCollateralTaken = dryRunResult[2];
-    const takenRatio = Number(wrappedCollateralTaken) / Number(parsedAmount);
-
-    // If minter is taking less than 99.5% of input, there's a limit
-    if (takenRatio < 0.995 && wrappedCollateralTaken > 0n) {
-      // Convert back to user's selected asset for display
-      const wrappedCollateralSymbol = marketForDepositAsset?.collateral?.symbol || "";
-      const underlyingCollateralSymbol = marketForDepositAsset?.collateral?.underlyingSymbol || "";
-      const wrappedRate = marketForDepositAsset?.wrappedRate;
-      
-      let maxAcceptableInUserAsset: number;
-      
-      if (selectedDepositAsset?.toLowerCase() === wrappedCollateralSymbol.toLowerCase()) {
-        // User selected fxSAVE - use amount directly
-        maxAcceptableInUserAsset = Number(formatEther(wrappedCollateralTaken));
-      } else if (selectedDepositAsset?.toLowerCase() === underlyingCollateralSymbol.toLowerCase()) {
-        // User selected fxUSD - convert fxSAVE back to fxUSD
-        // fxUSD = fxSAVE * rate
-        if (wrappedRate && wrappedRate > 0n) {
-          const amountInUnderlying = (wrappedCollateralTaken * wrappedRate) / BigInt(1e18);
-          maxAcceptableInUserAsset = Number(formatEther(amountInUnderlying));
-        } else {
-          // Fallback: 1:1
-          maxAcceptableInUserAsset = Number(formatEther(wrappedCollateralTaken));
-        }
-      } else {
-        // For ETH/stETH deposits: convert wstETH back to ETH/stETH using wrapped rate
-        // wrappedCollateralTaken is in wstETH, we need to convert back to ETH/stETH
-        const isWstETHMarket = activeWrappedCollateralSymbol === "wstETH";
-        if (isWstETHMarket && (selectedDepositAsset === "ETH" || selectedDepositAsset === collateralSymbol || selectedDepositAsset === "stETH")) {
-          // wstETH → stETH → ETH (stETH and ETH are 1:1)
-          // stETH = wstETH * wrappedRate / 1e18
-          if (wrappedRate && wrappedRate > 0n) {
-            const stEthAmount = (wrappedCollateralTaken * wrappedRate) / 10n**18n;
-            maxAcceptableInUserAsset = Number(formatEther(stEthAmount));
-          } else {
-            // Fallback: assume 1:1 (shouldn't happen, but safe fallback)
-        maxAcceptableInUserAsset = Number(formatEther(wrappedCollateralTaken));
-          }
-        } else {
-          // For USDC, fxUSD, etc. - use wrapped amount directly
-          maxAcceptableInUserAsset = Number(formatEther(wrappedCollateralTaken));
-        }
-      }
-      
-      const formattedMax = maxAcceptableInUserAsset.toFixed(4);
-      const currentInputAmount = parseFloat(amount || "0");
-      const maxInputAmountFloat = parseFloat(formattedMax);
-      
-      // Only auto-adjust if user's input EXCEEDS the max
-      // But prevent infinite loops by checking if we've already adjusted to this value
-      if (currentInputAmount > maxInputAmountFloat) {
-        // Prevent infinite loop: don't adjust if we've already adjusted to this value
-        if (lastAdjustedAmountRef.current === formattedMax) {
-          if (process.env.NODE_ENV === "development") {
-            console.log("[Direct Deposit Dry Run] Skipping adjustment - already adjusted to this value:", formattedMax);
-          }
-          return;
-        }
-        
-        setAmount(formattedMax);
-        lastAdjustedAmountRef.current = formattedMax; // Track the adjusted amount
-        setDepositLimitWarning(
-          `Maximum deposit limited to ${formattedMax} ${selectedDepositAsset || activeCollateralSymbol} to maintain collateral ratio.`
-        );
-        
-        // Set temporary warning near Max button
-        const warningText = `Max: ${formattedMax} ${selectedDepositAsset || activeCollateralSymbol}`;
-        setTempMaxWarning(warningText);
-        
-        // Clear any existing timer
-        if (tempWarningTimerRef.current) {
-          clearTimeout(tempWarningTimerRef.current);
-        }
-        
-        // Set new timer to clear warning after 3 seconds
-        tempWarningTimerRef.current = setTimeout(() => {
-          setTempMaxWarning(null);
-          tempWarningTimerRef.current = null;
-        }, 3000);
-      } else {
-        // Input is within limits, just clear any previous warning
-        // Reset adjustment tracking when amount is within limits
-        lastAdjustedAmountRef.current = null;
-        setDepositLimitWarning(null);
-      }
-    } else {
-      // No limit detected, clear warnings if no temp warning is active
-      if (!tempMaxWarning) {
-        setDepositLimitWarning(null);
-      }
-    }
-  }, [
-    dryRunData,
-    parsedAmount,
-    isDirectPeggedDeposit,
-    activeTab,
-    selectedDepositAsset,
-    activeCollateralSymbol,
-    marketForDepositAsset,
-    tempMaxWarning,
-  ]);
-
-
   // Contract write hooks
   const { writeContractAsync: originalWriteContractAsync } = useWriteContract();
   const { sendTransactionAsync: originalSendTransactionAsync } = useSendTransaction();
@@ -5935,194 +4434,33 @@ export function useAnchorDepositWithdrawModal({
       : peggedBalanceContract;
   const canSellFromWallet = peggedBalance > 0n;
 
-  const redeemWindowContracts = useMemo(() => {
-    if (!simpleMode) return [];
-    return groupedPoolPositions
-      .filter((row) => row.balance > 0n && row.poolAddress)
-      .map((row) => ({
-        address: row.poolAddress as `0x${string}`,
-        abi: STABILITY_POOL_ABI,
-        functionName: "getWithdrawalRequest" as const,
-        args: address
-          ? ([address] as const)
-          : (["0x0000000000000000000000000000000000000000"] as const),
-      }));
-  }, [simpleMode, groupedPoolPositions, address]);
-
-  const { data: redeemWindowReads } = useContractReads({
-    contracts: redeemWindowContracts,
-    query: {
-      enabled:
-        simpleMode &&
-        isActive &&
-        (activeTab === "withdraw" || activeTab === "sell") &&
-        redeemWindowContracts.length > 0 &&
-        !!address,
-      refetchInterval: 30_000,
-    },
-  });
-
-  // Keep countdown badges fresh between chain refetches.
-  const [redeemCountdownNowSec, setRedeemCountdownNowSec] = useState(() =>
-    Math.floor(Date.now() / 1000),
-  );
-  useEffect(() => {
-    if (!simpleMode || (activeTab !== "withdraw" && activeTab !== "sell")) {
-      return;
-    }
-    const id = window.setInterval(() => {
-      setRedeemCountdownNowSec(Math.floor(Date.now() / 1000));
-    }, 15_000);
-    return () => window.clearInterval(id);
-  }, [simpleMode, activeTab]);
-
-  const redeemWindowOpenByPoolAddress = useMemo(() => {
-    const map = new Map<string, boolean>();
-    redeemWindowContracts.forEach((c, i) => {
-      const result = redeemWindowReads?.[i]?.result as
-        | readonly [bigint, bigint]
-        | undefined;
-      if (!result) {
-        map.set(c.address.toLowerCase(), false);
-        return;
-      }
-      const [start, end] = result;
-      if (start === 0n && end === 0n) {
-        map.set(c.address.toLowerCase(), false);
-        return;
-      }
-      const now = BigInt(redeemCountdownNowSec);
-      map.set(c.address.toLowerCase(), now >= start && now <= end);
-    });
-    return map;
-  }, [redeemWindowContracts, redeemWindowReads, redeemCountdownNowSec]);
-
-  const redeemRequestStatusByPoolAddress = useMemo(() => {
-    const map = new Map<string, AnchorRedeemRequestStatus | undefined>();
-    redeemWindowContracts.forEach((c, i) => {
-      const result = redeemWindowReads?.[i]?.result as
-        | readonly [bigint, bigint]
-        | undefined;
-      map.set(
-        c.address.toLowerCase(),
-        deriveRedeemRequestStatus(result, redeemCountdownNowSec),
-      );
-    });
-    return map;
-  }, [redeemWindowContracts, redeemWindowReads, redeemCountdownNowSec]);
-
-  const redeemPositionsBase = useMemo(
-    () =>
-      buildAnchorRedeemPositions({
-        peggedBalance,
-        poolRows: groupedPoolPositions,
-        windowOpenByPoolAddress: redeemWindowOpenByPoolAddress,
-        requestStatusByPoolAddress: redeemRequestStatusByPoolAddress,
-      }),
-    [
-      peggedBalance,
-      groupedPoolPositions,
-      redeemWindowOpenByPoolAddress,
-      redeemRequestStatusByPoolAddress,
-    ],
-  );
-
-  const selectedRedeemPosition = useMemo(
-    () =>
-      redeemPositionsBase.find((p) => p.key === selectedRedeemPositionKey) ??
-      null,
-    [redeemPositionsBase, selectedRedeemPositionKey],
-  );
-
-  const needsRedeemRouteStep = useMemo(() => {
-    if (!simpleMode || marketsForToken.length <= 1 || withdrawOnly) {
-      return false;
-    }
-    if (!selectedRedeemPosition) return false;
-    if (selectedRedeemPosition.kind === "wallet") return true;
-    if (earlyWithdraw1PctEnabled) return true;
-    if (selectedRedeemPosition.windowOpen) return true;
-    const method =
-      selectedRedeemPosition.poolType === "collateral"
-        ? withdrawalMethods.collateralPool
-        : withdrawalMethods.sailPool;
-    return method === "immediate";
-  }, [
-    simpleMode,
-    marketsForToken.length,
-    withdrawOnly,
+  // Position-first redeem flow: selectable positions plus the derived flow-page flags.
+  const {
+    redeemPositionsBase,
     selectedRedeemPosition,
-    earlyWithdraw1PctEnabled,
-    withdrawalMethods.collateralPool,
-    withdrawalMethods.sailPool,
-  ]);
-
-  const isRedeemConfirmFlowPage =
-    simpleMode && !!selectedRedeemPosition && flowPage === 2;
-  const isRedeemRouteFlowPage =
-    simpleMode && needsRedeemRouteStep && flowPage === 3;
-  const isRedeemReviewFlowPage =
-    simpleMode &&
-    !!selectedRedeemPosition &&
-    (needsRedeemRouteStep ? flowPage === 4 : flowPage === 3);
-
-  const isMintReviewFlowPage =
-    simpleMode &&
-    activeTab === "deposit" &&
-    (mintOnly ? flowPage === 2 : flowPage === 3);
-
-  // Drop the route/review pages when route is no longer needed.
-  useEffect(() => {
-    if (!needsRedeemRouteStep && flowPage === 4) {
-      setFlowPage(3);
-    }
-  }, [needsRedeemRouteStep, flowPage]);
-
-  // Mint-only collapses deposit page; clamp review to page 2.
-  useEffect(() => {
-    if (!simpleMode || activeTab !== "deposit") return;
-    if (mintOnly && flowPage > 2) {
-      setFlowPage(2);
-    }
-  }, [simpleMode, activeTab, mintOnly, flowPage]);
-
-  const simpleWithdrawFlowParts = useMemo(() => {
-    if (!simpleMode) return anchorSimpleWithdrawFlowParts(withdrawOnly);
-    const confirmLabel =
-      selectedRedeemPositionKey === "wallet"
-        ? ("Redeem" as const)
-        : selectedRedeemPositionKey &&
-            ((selectedRedeemPositionKey.endsWith("-collateral") &&
-              withdrawalMethods.collateralPool === "request") ||
-              (selectedRedeemPositionKey.endsWith("-sail") &&
-                withdrawalMethods.sailPool === "request")) &&
-            !earlyWithdraw1PctEnabled
-          ? ("Request" as const)
-          : ("Confirm" as const);
-    return anchorSimpleRedeemPositionFlowParts(flowPage, {
-      confirmLabel,
-      includeRouteStep: needsRedeemRouteStep,
-    });
-  }, [
-    simpleMode,
-    withdrawOnly,
-    flowPage,
-    selectedRedeemPositionKey,
-    withdrawalMethods.collateralPool,
-    withdrawalMethods.sailPool,
-    earlyWithdraw1PctEnabled,
     needsRedeemRouteStep,
-  ]);
-
-  const simpleSellFlowParts = useMemo(() => {
-    if (simpleMode) {
-      return anchorSimpleRedeemPositionFlowParts(flowPage, {
-        confirmLabel: "Redeem",
-        includeRouteStep: needsRedeemRouteStep,
-      });
-    }
-    return anchorSimpleSellFlowParts();
-  }, [simpleMode, flowPage, needsRedeemRouteStep]);
+    isRedeemConfirmFlowPage,
+    isRedeemRouteFlowPage,
+    isRedeemReviewFlowPage,
+    isMintReviewFlowPage,
+    simpleWithdrawFlowParts,
+    simpleSellFlowParts,
+  } = useRedeemPositionFlow({
+    simpleMode,
+    isActive,
+    activeTab,
+    address,
+    groupedPoolPositions,
+    peggedBalance,
+    selectedRedeemPositionKey,
+    marketsForToken,
+    withdrawOnly,
+    mintOnly,
+    earlyWithdraw1PctEnabled,
+    withdrawalMethods,
+    flowPage,
+    setFlowPage,
+  });
 
   const directPeggedBalance = directPeggedBalanceData || 0n;
 
@@ -12001,91 +10339,19 @@ export function useAnchorDepositWithdrawModal({
     depositTokenPriceUSD,
   ]);
 
-  const marketHealth = useMemo(() => {
-    if (!marketHealthReadsEnabled) return null;
-
-    const rawCr = marketHealthCollateralRatio as bigint | undefined;
-    const pegBal = marketHealthPeggedBalance as bigint | undefined;
-    const collBal = marketHealthCollateralBalance as bigint | undefined;
-    // Match Earn market-card fallback: CR = collateral / debt when the view fails.
-    let cr: bigint | undefined = rawCr;
-    if (cr === undefined && collBal !== undefined && pegBal !== undefined) {
-      if (pegBal === 0n) {
-        cr = MAX_UINT256;
-      } else if (pegBal > 0n) {
-        cr = (collBal * 10n ** 18n) / pegBal;
-      }
-    } else if (cr === undefined && pegBal === 0n) {
-      cr = MAX_UINT256;
-    }
-    const minCr = resolveMinCollateralRatio(
-      undefined,
-      marketHealthMinterConfig,
-    );
-
-    let maxMintableUsd: number | undefined;
-    let maxMintableHa: number | undefined;
-    let maxMintableWrappedWei: bigint | undefined;
-    let maxMintableDepositAmount: number | undefined;
-    const haSymbol =
-      activeMarketForFees?.peggedToken?.symbol || peggedTokenSymbol || "ha";
-
-    const parsedCapacity = parseMintDryRunResult(marketHealthCapacityDryRun);
-    if (parsedCapacity) {
-      const wrappedTaken = parsedCapacity.wrappedCollateralTaken;
-      const peggedMinted = parsedCapacity.peggedMinted;
-      maxMintableWrappedWei = wrappedTaken;
-      maxMintableHa = Number(formatEther(peggedMinted));
-
-      if (wrappedTaken > 0n && wrappedCollateralPriceUSD > 0) {
-        maxMintableUsd =
-          Number(formatEther(wrappedTaken)) * wrappedCollateralPriceUSD;
-      } else if (wrappedTaken === 0n) {
-        maxMintableUsd = 0;
-      }
-
-      maxMintableDepositAmount = maxMintableWrappedToDepositAmount({
-        wrappedTaken,
-        depositAsset: selectedDepositAsset || activeCollateralSymbol,
-        wrappedCollateralSymbol:
-          activeMarketForFees?.collateral?.symbol ||
-          activeWrappedCollateralSymbol,
-        underlyingCollateralSymbol:
-          activeMarketForFees?.collateral?.underlyingSymbol,
-        wrappedRate: activeMarketForFees?.wrappedRate as bigint | undefined,
-      });
-    }
-
-    return {
-      collateralRatio: cr,
-      maxMintableUsd,
-      maxMintableHa,
-      maxMintableHaSymbol: haSymbol,
-      maxMintableDepositAmount,
-      maxMintableWrappedWei,
-      healthStatus: classifyMarketHealthStatus(cr, minCr, maxMintableUsd),
-      liquidityStatus: classifyMarketLiquidityStatus(maxMintableUsd),
-      isLoading:
-        (marketHealthCrFetching && cr === undefined) ||
-        (marketHealthCapacityFetching && maxMintableUsd === undefined),
-      isSaturatedCr: isSaturatedCollateralRatio(cr),
-    };
-  }, [
-    marketHealthReadsEnabled,
-    marketHealthCollateralRatio,
-    marketHealthPeggedBalance,
-    marketHealthCollateralBalance,
-    marketHealthMinterConfig,
-    marketHealthCapacityDryRun,
+  const { marketHealth } = useMarketHealth({
+    feeMinterAddress,
+    isValidFeeMinterAddress: !!isValidFeeMinterAddress,
+    isActive,
+    activeTab,
+    isDirectPeggedDeposit,
     wrappedCollateralPriceUSD,
-    marketHealthCrFetching,
-    marketHealthCapacityFetching,
     activeMarketForFees,
     peggedTokenSymbol,
     selectedDepositAsset,
     activeCollateralSymbol,
     activeWrappedCollateralSymbol,
-  ]);
+  });
 
   maxMintableDepositAmountRef.current =
     marketHealth?.maxMintableDepositAmount;
@@ -12209,208 +10475,66 @@ export function useAnchorDepositWithdrawModal({
     mintValidation,
   ]);
 
-  const buyFeeFooter = useMemo(() => {
-    if (isDirectPeggedDeposit || !selectedDepositAsset) return null;
+  const buyFeeFooter = useMemo(
+    () => (
+      <AnchorMintFeeFooter
+        isDirectPeggedDeposit={isDirectPeggedDeposit}
+        selectedDepositAsset={selectedDepositAsset}
+        amount={amount}
+        feePercentage={feePercentage}
+        feeRange={feeRange}
+        marketsForTokenCount={marketsForToken.length}
+      />
+    ),
+    [
+      isDirectPeggedDeposit,
+      selectedDepositAsset,
+      amount,
+      feeRange,
+      marketsForToken.length,
+      feePercentage,
+    ],
+  );
 
-    const displayFee =
-      amount && parseFloat(amount) > 0 && feePercentage !== undefined
-        ? feePercentage
-        : undefined;
-    const showRange =
-      feeRange && feeRange.hasRange && marketsForToken.length > 1;
-
-    let displayValue = "—";
-    if (showRange && !(amount && parseFloat(amount) > 0)) {
-      displayValue = `${feeRange.min.toFixed(2)}% – ${feeRange.max.toFixed(2)}%`;
-    } else if (displayFee !== undefined) {
-      displayValue = `${displayFee.toFixed(2)}%`;
-    } else if (feeRange) {
-      displayValue = `${feeRange.min.toFixed(2)}%`;
-    }
-
-    const heading =
-      amount && parseFloat(amount) > 0
-        ? "Mint fee"
-        : feeRange?.hasRange
-          ? "Fee range"
-          : "Mint fee";
-
-    const items: DepositTradeFeeItem[] = [
-      {
-        label: "Mint",
-        displayValue:
-          showRange && !(amount && parseFloat(amount) > 0)
-            ? displayValue
-            : undefined,
-        ratio:
-          displayFee !== undefined
-            ? pctToDepositFeeRatio(displayFee)
-            : !showRange && feeRange
-              ? pctToDepositFeeRatio(feeRange.min)
-              : undefined,
-        isMintSail: true,
-        tooltip: (
-          <div className="space-y-2">
-            <p className="font-semibold">Dynamic Mint Fees</p>
-            <p>
-              Mint fees adjust in real time based on market health and your
-              deposit size.
-            </p>
-          </div>
-        ),
-      },
-    ];
-
-    return <DepositTradeFeeFooter heading={heading} items={items} />;
-  }, [
-    isDirectPeggedDeposit,
-    selectedDepositAsset,
-    amount,
-    feeRange,
-    marketsForToken.length,
-    feePercentage,
-  ]);
-
-  const withdrawFeeFooter = useMemo(() => {
-    if ((activeTab !== "withdraw" && activeTab !== "sell") || !simpleMode) {
-      return null;
-    }
-    // Choose position: no fees.
-    if (flowPage === 1) return null;
-
-    const isMultiMarket = marketsForToken.length > 1;
-
-    // Fast-exit withdraw fee on Confirm / Route / Review when enabled.
-    const showEarlyFee =
-      !!selectedPoolEarlyWithdrawFee &&
-      selectedPoolEarlyWithdrawFee.percent > 0 &&
-      earlyWithdraw1PctEnabled &&
-      (isRedeemConfirmFlowPage ||
-        isRedeemRouteFlowPage ||
-        isRedeemReviewFlowPage);
-
-    // Redeem fee:
-    // - Redeem to + Review: when redeeming
-    // - Confirm single-market: when this path redeems (not request-only / withdraw-only)
-    // - Confirm multi-market: wait for Redeem to
-    const willRedeemOnConfirm =
-      !withdrawOnly &&
-      (redeemStepActionKind === "withdrawAndRedeem" ||
-        redeemStepActionKind === "redeem" ||
-        earlyWithdraw1PctEnabled);
-
-    const showSellFee =
-      !withdrawOnly &&
-      (isRedeemRouteFlowPage ||
-        isRedeemReviewFlowPage ||
-        (isRedeemConfirmFlowPage && !isMultiMarket && willRedeemOnConfirm) ||
-        (activeTab === "sell" && !isRedeemConfirmFlowPage));
-
-    if (!showSellFee && !showEarlyFee) return null;
-
-    const sellFeeLabel =
-      redeemInputAmount &&
-      redeemInputAmount > 0n &&
-      redeemFeePercentage !== undefined
-        ? "Redeem fee"
-        : sellFeeRange?.hasRange && isMultiMarket
-          ? "Fee range"
-          : "Redeem fee";
-
-    const sellFeeValue = (() => {
-      if (!showSellFee) return null;
-      if (
-        redeemInputAmount &&
-        redeemInputAmount > 0n &&
-        redeemFeePercentage !== undefined
-      ) {
-        return `${redeemFeePercentage.toFixed(2)}%`;
-      }
-      if (
-        sellFeeRange?.hasRange &&
-        isMultiMarket &&
-        !(redeemInputAmount && redeemInputAmount > 0n)
-      ) {
-        return `${sellFeeRange.min.toFixed(2)}% – ${sellFeeRange.max.toFixed(2)}%`;
-      }
-      if (sellFeeRange) {
-        return `${sellFeeRange.min.toFixed(2)}%`;
-      }
-      if (redeemFeePercentage !== undefined) {
-        return `${redeemFeePercentage.toFixed(2)}%`;
-      }
-      return "—";
-    })();
-
-    const items: DepositTradeFeeItem[] = [];
-
-    if (showSellFee && sellFeeValue !== null) {
-      const hasAmount =
-        redeemInputAmount &&
-        redeemInputAmount > 0n &&
-        redeemFeePercentage !== undefined;
-      items.push({
-        label: "Redeem",
-        displayValue:
-          !hasAmount && sellFeeValue.includes("–") ? sellFeeValue : undefined,
-        ratio: hasAmount
-          ? pctToDepositFeeRatio(redeemFeePercentage!)
-          : sellFeeRange && !sellFeeRange.hasRange
-            ? pctToDepositFeeRatio(sellFeeRange.min)
-            : undefined,
-        isMintSail: false,
-        tooltip: (
-          <div className="space-y-2">
-            <p className="font-semibold">Dynamic Redeem Fees</p>
-            <p>
-              Redeem fees adjust in real time based on market health and your
-              withdraw size when redeeming to collateral.
-            </p>
-          </div>
-        ),
-      });
-    }
-
-    if (showEarlyFee) {
-      items.push({
-        label: "Withdraw",
-        ratio: pctToDepositFeeRatio(selectedPoolEarlyWithdrawFee!.percent),
-        isMintSail: false,
-        tooltip: (
-          <div className="space-y-2">
-            <p className="font-semibold">Withdraw Fee</p>
-            <p>
-              Charged when exiting a stability pool. Free during an open request
-              window; 1% for fast withdrawal outside the window.
-            </p>
-          </div>
-        ),
-      });
-    }
-
-    const heading =
-      items.length > 1 ? "Fees" : showSellFee ? sellFeeLabel : "Withdraw fee";
-
-    return <DepositTradeFeeFooter heading={heading} items={items} />;
-  }, [
-    activeTab,
-    simpleMode,
-    flowPage,
-    isRedeemRouteFlowPage,
-    isRedeemConfirmFlowPage,
-    isRedeemReviewFlowPage,
-    withdrawOnly,
-    selectedPoolEarlyWithdrawFee,
-    redeemInputAmount,
-    redeemFeePercentage,
-    sellFeeRange,
-    marketsForToken.length,
-    redeemStepActionKind,
-    earlyWithdraw1PctEnabled,
-  ]);
+  const withdrawFeeFooter = useMemo(
+    () => (
+      <AnchorWithdrawFeeFooter
+        activeTab={activeTab}
+        simpleMode={simpleMode}
+        flowPage={flowPage}
+        isRedeemRouteFlowPage={isRedeemRouteFlowPage}
+        isRedeemConfirmFlowPage={isRedeemConfirmFlowPage}
+        isRedeemReviewFlowPage={isRedeemReviewFlowPage}
+        withdrawOnly={withdrawOnly}
+        selectedPoolEarlyWithdrawFee={selectedPoolEarlyWithdrawFee}
+        earlyWithdraw1PctEnabled={earlyWithdraw1PctEnabled}
+        redeemStepActionKind={redeemStepActionKind}
+        redeemInputAmount={redeemInputAmount}
+        redeemFeePercentage={redeemFeePercentage}
+        sellFeeRange={sellFeeRange}
+        marketsForTokenCount={marketsForToken.length}
+      />
+    ),
+    [
+      activeTab,
+      simpleMode,
+      flowPage,
+      isRedeemRouteFlowPage,
+      isRedeemConfirmFlowPage,
+      isRedeemReviewFlowPage,
+      withdrawOnly,
+      selectedPoolEarlyWithdrawFee,
+      redeemInputAmount,
+      redeemFeePercentage,
+      sellFeeRange,
+      marketsForToken.length,
+      redeemStepActionKind,
+      earlyWithdraw1PctEnabled,
+    ],
+  );
 
   const withdrawTransactionOverview =
-    useMemo((): AnchorTransactionOverviewProps | null => {
+    useMemo((): DepositTransactionOverviewProps | null => {
       if ((activeTab !== "withdraw" && activeTab !== "sell") || !simpleMode) {
         return null;
       }
@@ -12467,7 +10591,7 @@ export function useAnchorDepositWithdrawModal({
       const buildPoolWithdrawPreview = (
         receiveLabel: string,
         nextStepLine?: string,
-      ): AnchorTransactionOverviewProps => {
+      ): DepositTransactionOverviewProps => {
         const amountStr =
           poolType === "collateral"
             ? positionAmounts.collateralPool
@@ -13154,7 +11278,6 @@ export function useAnchorDepositWithdrawModal({
     redeemFeePercentage,
   ]);
 
-
   const getButtonText = () => {
     if (activeTab === "deposit") {
       switch (step) {
@@ -13326,7 +11449,6 @@ export function useAnchorDepositWithdrawModal({
       : (activeTab === "withdraw" && !withdrawOnly) || activeTab === "sell"
       ? redeemCollateralSymbol
       : undefined;
-
 
   // Check if any request withdrawals were made
   const hasRequestWithdrawals =
@@ -13665,10 +11787,9 @@ export function useAnchorDepositWithdrawModal({
     showWithdrawCrossMarketNotice,
     withdrawNotificationCount,
     depositNotificationCount,
-    anchorModalNotificationCount: anchorModalNotificationCountWithMint,
-    anchorModalNotificationSeverities:
-      anchorModalNotificationSeveritiesWithMint,
-    anchorModalNotificationsBody: anchorModalNotificationsBodyWithMint,
+    anchorModalNotificationCount,
+    anchorModalNotificationSeverities,
+    anchorModalNotificationsBody,
     depositFlowParts,
     simpleDepositFlowParts,
     simpleWithdrawFlowParts,

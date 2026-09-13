@@ -6,6 +6,7 @@ import type { GenesisActiveVoyageCardProps } from "@/components/genesis/GenesisA
 import { GenesisActiveVoyageCard } from "@/components/genesis/GenesisActiveVoyageCard";
 import { GenesisRevenueShareCalculator } from "@/components/genesis/GenesisRevenueShareCalculator";
 import { resolveRevenueShareCalculatorProps } from "@/utils/maidenVoyageYieldShareEstimate";
+import { ProductAdvancedLayoutShell } from "@/components/deposit/ProductAdvancedLayoutShell";
 import { GenesisVoyageHeader } from "./GenesisVoyageHeader";
 import { GenesisVoyageActionPanel } from "./GenesisVoyageActionPanel";
 import { GenesisVoyageInfoFooter } from "./GenesisVoyageInfoFooter";
@@ -101,40 +102,43 @@ export function GenesisAdvancedLayout({
     : null;
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-5">
-      <GenesisVoyageHeader
-        options={voyageOptions}
-        selectedMarketId={selectedMarketId}
-        selectedMarket={selectedMarket}
-        yieldRevSharePct={activeCard?.yieldRevSharePct ?? null}
-        onSelectMarket={onSelectMarket}
-        voyageStatus={activeCard?.voyageStatus ?? null}
-        capDisplay={activeCard?.capDisplay ?? null}
-        capLoading={activeCard?.capLoading}
-        genesisAddress={activeCard?.genesisAddress}
-        userDepositUsd={activeCard?.userDepositUsd}
-      />
-
-      <div
-        id="maiden-voyage-active"
-        className={`${GENESIS_TRADE_PANEL_GRID_CLASS} scroll-mt-24`}
-      >
-        <div className={`min-w-0 ${GENESIS_VOYAGE_CARD_HEIGHT}`}>
-          {resolvedCard ? (
-            <GenesisActiveVoyageCard
-              {...resolvedCard}
-              className={`h-full w-full ${GENESIS_VOYAGE_CARD_HEIGHT}`}
-            />
-          ) : (
-            <div
-              className={`flex min-h-[16rem] ${GENESIS_VOYAGE_CARD_HEIGHT} items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 text-center text-sm text-white/60`}
-            >
-              No active Maiden Voyage to feature right now.
-            </div>
-          )}
-        </div>
-
-        {selectedMarket && selectedMarketId ? (
+    <ProductAdvancedLayoutShell
+      className="flex flex-col gap-4 sm:gap-5"
+      header={
+        <GenesisVoyageHeader
+          options={voyageOptions}
+          selectedMarketId={selectedMarketId}
+          selectedMarket={selectedMarket}
+          yieldRevSharePct={activeCard?.yieldRevSharePct ?? null}
+          onSelectMarket={onSelectMarket}
+          voyageStatus={activeCard?.voyageStatus ?? null}
+          capDisplay={activeCard?.capDisplay ?? null}
+          capLoading={activeCard?.capLoading}
+          genesisAddress={activeCard?.genesisAddress}
+          userDepositUsd={activeCard?.userDepositUsd}
+        />
+      }
+      gridId="maiden-voyage-active"
+      gridClassName={GENESIS_TRADE_PANEL_GRID_CLASS}
+      gridWrapperClassName="scroll-mt-24"
+      primaryClassName={`min-w-0 ${GENESIS_VOYAGE_CARD_HEIGHT}`}
+      actionClassName="min-w-0"
+      primary={
+        resolvedCard ? (
+          <GenesisActiveVoyageCard
+            {...resolvedCard}
+            className={`h-full w-full ${GENESIS_VOYAGE_CARD_HEIGHT}`}
+          />
+        ) : (
+          <div
+            className={`flex min-h-[16rem] ${GENESIS_VOYAGE_CARD_HEIGHT} items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 text-center text-sm text-white/60`}
+          >
+            No active Maiden Voyage to feature right now.
+          </div>
+        )
+      }
+      action={
+        selectedMarket && selectedMarketId ? (
           <GenesisVoyageActionPanel
             marketId={selectedMarketId}
             market={selectedMarket}
@@ -144,20 +148,20 @@ export function GenesisAdvancedLayout({
             isClaiming={activeCard?.isClaiming}
             onClaim={activeCard?.onClaim}
           />
-        ) : null}
-      </div>
-
-      {calculatorProps ? (
-        <GenesisRevenueShareCalculator
-          capUsd={calculatorProps.capUsd}
-          yieldRevSharePct={calculatorProps.yieldRevSharePct}
-          initialDepositUsd={calculatorProps.initialDepositUsd}
-        />
-      ) : null}
-
-      <GenesisVoyageInfoFooter />
-
+        ) : null
+      }
+      metrics={
+        calculatorProps ? (
+          <GenesisRevenueShareCalculator
+            capUsd={calculatorProps.capUsd}
+            yieldRevSharePct={calculatorProps.yieldRevSharePct}
+            initialDepositUsd={calculatorProps.initialDepositUsd}
+          />
+        ) : null
+      }
+      infoFooter={<GenesisVoyageInfoFooter />}
+    >
       {children}
-    </div>
+    </ProductAdvancedLayoutShell>
   );
 }

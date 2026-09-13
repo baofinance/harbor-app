@@ -38,7 +38,7 @@ import { DepositPermitToggle } from "@/components/deposit/DepositPermitToggle";
 import { DepositModalLayout } from "@/components/deposit/DepositModalLayout";
 import { AnchorBuyTransactionOverview } from "@/components/anchor/AnchorBuyTransactionOverview";
 import { AnchorMarketHealthStrip } from "@/components/anchor/AnchorMarketHealthStrip";
-import { AnchorTransactionOverview } from "@/components/anchor/AnchorTransactionOverview";
+import { DepositTransactionOverview } from "@/components/deposit/DepositTransactionOverview";
 import { DepositAmountCard } from "@/components/deposit/DepositAmountCard";
 import { DepositBalanceStrip } from "@/components/deposit/DepositBalanceStrip";
 import { DepositReceivePreview } from "@/components/deposit/DepositReceivePreview";
@@ -1291,7 +1291,7 @@ export function AnchorDepositWithdrawModalView(
                       />
                     </div>
                   ) : withdrawTransactionOverview ? (
-                    <AnchorTransactionOverview
+                    <DepositTransactionOverview
                       {...withdrawTransactionOverview}
                     />
                   ) : null

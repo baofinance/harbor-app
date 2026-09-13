@@ -1,15 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { GenesisVoyageCompletedNotice } from "./GenesisVoyageCompletedNotice";
-
-export function GenesisVoyageFooterNotice() {
-  return (
-    <footer className="mt-8">
-      <GenesisVoyageCompletedNotice />
-    </footer>
-  );
-}
 
 /** Attribution line for under FAQ / page chrome. */
 export function GenesisMaidenVoyageHarborAttribution({
