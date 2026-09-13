@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useAccount } from "wagmi";
+import { useHarborAccount } from "@/hooks/useHarborAccount";
 import { formatEther } from "viem";
 import { markets, getGenesisStatus, type Market } from "@/config/markets";
 import { resolveFeaturedActiveMarketIds } from "@/config/maidenVoyageFeatured";
@@ -32,7 +32,7 @@ export type DashboardActiveVoyageSnapshot = {
 };
 
 export function useDashboardActiveVoyage(): DashboardActiveVoyageSnapshot | null {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useHarborAccount();
   const {
     genesisMarkets,
     maidenVoyageCampaignResults,

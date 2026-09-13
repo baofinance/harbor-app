@@ -15,10 +15,14 @@ import {
 } from "wagmi";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
-import { REDEEM_LEVERAGED_WITH_PERMIT_ABI } from "@/abis/redeemPermit";
+import { ERC20_PERMIT_ABI } from "@/abis/permit";
 import { WSTETH_ABI } from "@/abis";
-import { MINTER_ETH_ZAP_V3_ABI } from "@/abis";
+import { MINTER_ETH_ZAP_V3_ABI, MINTER_ETH_ZAP_V1_ABI } from "@/abis";
 import { MINTER_USDC_ZAP_V3_ABI } from "@/abis";
+import {
+  marketUsesZapV1,
+  minterEthNativeZapFunctionName,
+} from "@/utils/zapApiVersion";
 import { calculateDeadline } from "@/utils/permit";
 import { usePermitFlow } from "@/hooks/usePermitFlow";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
@@ -30,6 +34,7 @@ import {
 import type { SailTradeMarketFees } from "@/components/sail/SailTradeFeeFooter";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { InfoCallout } from "@/components/InfoCallout";
+import { useRegisterAppNotifications } from "@/contexts/AppNotificationsContext";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { AlertOctagon, Info, RefreshCw } from "lucide-react";
 import {
@@ -40,8 +45,11 @@ import { useTransactionProgress } from "@/hooks/useTransactionProgress";
 import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useUserTokens, useTokenDecimals } from "@/hooks/useUserTokens";
 import { SailTradeAmountCard } from "@/components/sail/SailTradeAmountCard";
-import { SailTradeReceivePreview } from "@/components/sail/SailTradeReceivePreview";
+import { SailTradeTransactionOverview } from "@/components/sail/SailTradeTransactionOverview";
 import { SailTradeActionFooter } from "@/components/sail/SailTradeActionFooter";
+import { DepositModalLayout } from "@/components/deposit/DepositModalLayout";
+import { DEPOSIT_EMBEDDED_CONTENT_CLASS } from "@/components/deposit/depositFlowStyles";
+import { DepositPermitToggle } from "@/components/deposit/DepositPermitToggle";
 import { resolveSailTradePrimaryAction } from "@/utils/sailTradeFormState";
 import { DepositModalShell } from "@/components/DepositModalShell";
 import { DepositModalTabHeader } from "@/components/DepositModalTabHeader";
@@ -54,8 +62,14 @@ import { DepositModalTitle } from "@/components/DepositModalTitle";
 import { TransactionSuccessMessage } from "@/components/TransactionSuccessMessage";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { getDepositMode } from "@/utils/depositMode";
+import {
+  buildDepositTokenDropdownGroups,
+  filterUserSwapTokens,
+} from "@/utils/depositTokenDropdownOptions";
+import { getAcceptedDepositAssets } from "@/utils/anchor";
 import type { DefinedMarket } from "@/config/markets";
 import { depositsBlockedForMarket, isMarketArchived } from "@/config/markets";
+import { isTxUserRejection } from "@/utils/anchorMintDepositFlow";
 
 interface SailManageModalProps {
  isOpen: boolean;
@@ -91,21 +105,6 @@ const SAIL_TRADE_TAB_LABEL = {
   mint: "Buy",
   redeem: "Sell",
 } as const;
-
-// Helper function to get accepted deposit assets from market config
-function getAcceptedDepositAssets(
- market: DefinedMarket
-): Array<{ symbol: string; name: string }> {
- // Use acceptedAssets from market config if available
- if (market?.acceptedAssets && Array.isArray(market.acceptedAssets)) {
-   return market.acceptedAssets;
- }
- // Fallback: return collateral token as the only accepted asset
- if (market?.collateral?.symbol) {
-   return [{ symbol: market.collateral.symbol, name: market.collateral.name || market.collateral.symbol }];
- }
- return [];
-}
 
 export const SailManageModal = ({
  isOpen,
@@ -160,6 +159,7 @@ export const SailManageModal = ({
     setPermitEnabled,
   } = usePermitFlow({
     enabled: (isOpen || embedded) && !!address,
+    defaultEnabled: true,
     depositAssetSymbol:
       activeTab === "redeem"
         ? market?.leveragedToken?.symbol
@@ -316,6 +316,8 @@ const needsSwap =
 
 const useETHZap = useZap && isWstETHMarket && (isNativeETH || isStETH || needsSwap);
 const useUSDCZap = useZap && isFxUSDMarket && (isUSDC || isFxUSD || needsSwap);
+const useZapV1 = marketUsesZapV1(market);
+const ethZapAbi = useZapV1 ? MINTER_ETH_ZAP_V1_ABI : MINTER_ETH_ZAP_V3_ABI;
 
 // Get fxSAVE rate for USDC zap calculations
 const priceOracleAddress = market.addresses?.collateralPrice as `0x${string}` | undefined;
@@ -368,11 +370,11 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
 
  // Merge accepted assets with user tokens for dropdown (avoid duplicates). Non-mainnet: collateral only.
  const allAvailableAssets = useMemo(() => {
-   if (isCollateralOnlyChain) return { filteredUserTokens: [] };
-   const acceptedUpper = new Set(acceptedAssets.map((a) => a.symbol.toUpperCase()));
-   const filteredUserTokens = userTokens.filter(
-     (t) => !acceptedUpper.has(t.symbol.toUpperCase()) && t.balance > 0n
-   );
+   if (isCollateralOnlyChain) return { filteredUserTokens: [] as typeof userTokens };
+   const filteredUserTokens = filterUserSwapTokens(
+     userTokens,
+     acceptedAssets,
+   ).filter((token) => token.balance > 0n);
    return { filteredUserTokens };
  }, [acceptedAssets, userTokens, isCollateralOnlyChain]);
 
@@ -891,8 +893,8 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
    depositsPaused
      ? `Deposits are paused until more ${haTokenSymbol} is minted for leverage to work as expected.`
      : isMarketArchived(market)
-     ? "This market is archived. New mints are not accepted."
-     : "Mints are unavailable while this market is in maintenance."
+     ? "This market is archived. New buys are not accepted."
+     : "Buys are unavailable while this market is in maintenance."
  );
  return;
  }
@@ -926,9 +928,15 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
      ? ((depositAssetAllowance as bigint) || 0n) < parsedAmount
      : false;
  const needsApproval = needsZapApproval || needsDirectApproval;
- // When permit is enabled for zap flows (stETH, USDC, fxUSD), we skip the approve step—permit is used inside the mint step
+ // Zap: permit is embedded in zap*WithPermit. Direct minter: ERC20 permit then plain mint.
  const willUsePermitForZap =
    permitEnabled && (useETHZap || useUSDCZap) && !includeSwap && !isNativeETH;
+ const willUsePermitForDirect =
+   permitEnabled &&
+   isPermitCapable &&
+   !useZap &&
+   !includeSwap &&
+   needsDirectApproval;
 
  // Swap approvals
  const needsSwapApproval =
@@ -980,7 +988,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
      details: "Approve USDC for deposit via zap",
    });
  }
- if (needsApproval && !willUsePermitForZap) {
+ if (needsApproval && !willUsePermitForZap && !willUsePermitForDirect) {
    const approveLabel = useZap && zapAssetName
      ? `Approve ${zapAssetName} for deposit`
      : `Approve ${selectedDepositAsset || collateralSymbol} for deposit`;
@@ -998,22 +1006,29 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
      status: "pending",
      details: "Sign EIP-2612 permit to authorize deposit (no gas fee)",
    });
+ } else if (willUsePermitForDirect) {
+   steps.push({
+     id: "signPermit",
+     label: `Sign permit for ${selectedDepositAsset || collateralSymbol} (no gas)`,
+     status: "pending",
+     details: "Sign EIP-2612 permit for the minter (no gas fee)",
+   });
  }
- const mintLabel = useZap && zapAssetName
+ const buyLabel = useZap && zapAssetName
    ? `Zap ${zapAssetName} to ${leveragedTokenSymbol}`
-   : `Mint ${leveragedTokenSymbol}`;
+   : `Buy ${leveragedTokenSymbol}`;
  steps.push({
    id:"mint",
-   label: mintLabel,
+   label: buyLabel,
    status:"pending",
-   details: `Mint ${
+   details: `Buy ${
      expectedMintOutput
      ? Number(formatEther(expectedMintOutput)).toFixed(4)
      :"..."
    } ${leveragedTokenSymbol}`,
  });
 
- progress.open(steps, `Mint ${leveragedTokenSymbol}`);
+ progress.open(steps, `Buy ${leveragedTokenSymbol}`);
  flushSync(() => {}); // Force React to paint before first action
 
  try {
@@ -1082,12 +1097,116 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
      });
    }
 
-   // Step 2: Approve (if needed, no-swap path)
-   // Skip when willUsePermitForZap: permit is used inside the mint step instead
-   // If using zap (ETH zap or USDC zap), approve to zapAddress
-   // Only direct mints (wstETH, fxSAVE) approve to minterAddress
-   // Note: useETHZap and useUSDCZap already check for zapAddress via useZap, so if they're true, zapAddress must exist
-   if (needsApproval && !willUsePermitForZap && depositAssetAddress) {
+   // Step 2: Approve or submit ERC20 permit (direct mint / non-permit zap)
+   // Zap WithPermit: skip here — signature is used inside the mint step.
+   // Direct minter: Harbor has no mint*WithPermit — permit on the token, then plain mint.
+   let usePermitDirect = false;
+   if (
+     willUsePermitForDirect &&
+     depositAssetAddress &&
+     minterAddress &&
+     needsDirectApproval
+   ) {
+     updateProgressStep("signPermit", { status: "in_progress" });
+     const directPermit = await handlePermitOrApproval(
+       depositAssetAddress,
+       minterAddress,
+       parsedAmount
+     );
+     usePermitDirect =
+       !!directPermit?.usePermit &&
+       !!directPermit?.permitSig &&
+       !!directPermit?.deadline;
+     if (usePermitDirect && directPermit?.permitSig && directPermit?.deadline) {
+       updateProgressStep("signPermit", { status: "completed" });
+       progress.setSteps((prev) => {
+         if (prev.some((s) => s.id === "approve")) return prev;
+         const mintIdx = prev.findIndex((s) => s.id === "mint");
+         const next = [...prev];
+         next.splice(mintIdx >= 0 ? mintIdx : next.length, 0, {
+           id: "approve",
+           label: `Permit ${selectedDepositAsset || collateralSymbol}`,
+           status: "pending",
+           details: "Submit EIP-2612 permit on-chain",
+         });
+         return {
+           steps: next,
+           currentStepIndex: next.findIndex((s) => s.id === "approve"),
+         };
+       });
+       updateProgressStep("approve", { status: "in_progress" });
+       try {
+         const permitHash = await writeContractAsync({
+           address: depositAssetAddress,
+           abi: ERC20_PERMIT_ABI,
+           functionName: "permit",
+           args: [
+             address as `0x${string}`,
+             minterAddress,
+             parsedAmount,
+             directPermit.deadline,
+             directPermit.permitSig.v,
+             directPermit.permitSig.r,
+             directPermit.permitSig.s,
+           ],
+           chainId: marketChainId,
+         });
+         await publicClient?.waitForTransactionReceipt({ hash: permitHash });
+         updateProgressStep("approve", {
+           status: "completed",
+           txHash: permitHash,
+         });
+       } catch (permitErr) {
+         if (isTxUserRejection(permitErr)) throw permitErr;
+         console.warn(
+           "[SailManage] ERC20 permit failed, falling back to approve",
+           permitErr
+         );
+         usePermitDirect = false;
+         progress.setSteps((prev) => ({
+           steps: prev.map((s) =>
+             s.id === "approve"
+               ? {
+                   ...s,
+                   label: `Approve ${selectedDepositAsset || collateralSymbol} for deposit`,
+                   details: "Approve token for deposit",
+                 }
+               : s
+           ),
+           currentStepIndex: prev.findIndex((s) => s.id === "approve"),
+         }));
+       }
+     } else {
+       progress.setSteps((prev) => {
+         const withoutSign = prev.filter((s) => s.id !== "signPermit");
+         if (withoutSign.some((s) => s.id === "approve")) {
+           return {
+             steps: withoutSign,
+             currentStepIndex: withoutSign.findIndex((s) => s.id === "approve"),
+           };
+         }
+         const mintIdx = withoutSign.findIndex((s) => s.id === "mint");
+         const next = [...withoutSign];
+         next.splice(mintIdx >= 0 ? mintIdx : next.length, 0, {
+           id: "approve",
+           label: `Approve ${selectedDepositAsset || collateralSymbol} for deposit`,
+           status: "pending",
+           details: "Approve token for deposit",
+         });
+         return {
+           steps: next,
+           currentStepIndex: next.findIndex((s) => s.id === "approve"),
+         };
+       });
+     }
+   }
+
+   if (
+     needsApproval &&
+     !willUsePermitForZap &&
+     !usePermitDirect &&
+     depositAssetAddress
+   ) {
      updateProgressStep("approve", { status:"in_progress" });
      const approveTarget = useETHZap || useUSDCZap
        ? zapAddress!
@@ -1180,8 +1299,8 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
        if (includeSwap || isNativeETH) {
          mintHash = await writeContractAsync({
            address: zapAddress,
-           abi: MINTER_ETH_ZAP_V3_ABI,
-           functionName: "zapBaseAssetToLeveraged",
+           abi: ethZapAbi,
+           functionName: minterEthNativeZapFunctionName("ToLeveraged", useZapV1),
            args: [
              minWrappedCollateralOut,
              address as `0x${string}`,
@@ -1216,7 +1335,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
           try {
             mintHash = await writeContractAsync({
               address: zapAddress,
-              abi: MINTER_ETH_ZAP_V3_ABI,
+              abi: ethZapAbi,
               functionName: "zapCollateralToLeveragedWithPermit",
               args: [
                 amountForMint,
@@ -1231,6 +1350,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
               chainId: marketChainId,
             });
           } catch (permitError) {
+            if (isTxUserRejection(permitError)) throw permitError;
             console.error("Permit zap failed, falling back to approval:", permitError);
             // Fall through to approval flow below
             usePermit = false;
@@ -1272,7 +1392,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
           
           mintHash = await writeContractAsync({
             address: zapAddress,
-            abi: MINTER_ETH_ZAP_V3_ABI,
+            abi: ethZapAbi,
             functionName: "zapCollateralToLeveraged",
             args: [
               amountForMint,
@@ -1370,6 +1490,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
             throw new Error("Invalid asset for USDC zap");
           }
         } catch (permitError) {
+          if (isTxUserRejection(permitError)) throw permitError;
           console.error("Permit zap failed, falling back to approval:", permitError);
           // Fall through to approval flow below
           usePermit = false;
@@ -1558,20 +1679,20 @@ details: "Sign permit to skip approval transaction",
 if (needsApproval && !canAttemptPermitRedeem) {
  steps.push({
  id:"approve",
- label: `Approve ${leveragedTokenSymbol} for redemption`,
+ label: `Approve ${leveragedTokenSymbol} for sale`,
  status:"pending",
- details: "Approve token for redemption",
+ details: "Approve token for sale",
  });
  }
  steps.push({
  id:"redeem",
- label: `Redeem ${leveragedTokenSymbol} for collateral`,
+ label: `Sell ${leveragedTokenSymbol} for collateral`,
  status:"pending",
  details: `Receive ${expectedRedeemOutput ? Number(formatEther(expectedRedeemOutput)).toFixed(4) : "..."} ${collateralSymbol}`,
  });
 
  // Open progress modal
- progress.open(steps, `Redeem ${leveragedTokenSymbol}`);
+ progress.open(steps, `Sell ${leveragedTokenSymbol}`);
  flushSync(() => {}); // Force React to paint before first action
 
  try {
@@ -1604,9 +1725,9 @@ if (canAttemptPermitRedeem) {
       const next = [...prev];
       next.splice(redeemIdx >= 0 ? redeemIdx : next.length, 0, {
         id: "approve",
-        label: `Approve ${leveragedTokenSymbol} for redemption`,
+        label: `Approve ${leveragedTokenSymbol} for sale`,
         status: "pending",
-        details: "Approve token for redemption",
+        details: "Approve token for sale",
       });
       return {
         steps: next,
@@ -1616,67 +1737,74 @@ if (canAttemptPermitRedeem) {
   }
 }
 
-// Step 1: Approve (if needed and permit not used)
-if (needsApproval && !usePermitRedeem) {
- updateProgressStep("approve", { status:"in_progress" });
- const approveHash = await writeContractAsync({
- address: leveragedTokenAddress,
- abi: ERC20_ABI,
- functionName:"approve",
- args: [minterAddress, parsedAmount],
- chainId: marketChainId,
- });
- await publicClient?.waitForTransactionReceipt({ hash: approveHash });
- updateProgressStep("approve", {
- status:"completed",
- txHash: approveHash,
- });
- }
-
- // Step 2: Redeem
- updateProgressStep("redeem", { status:"in_progress" });
- const minOutput = expectedRedeemOutput
- ? (expectedRedeemOutput * 99n) / 100n
- : 0n;
-
-let redeemHash: `0x${string}`;
-if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
-  try {
-    redeemHash = await writeContractAsync({
-      address: minterAddress,
-      abi: REDEEM_LEVERAGED_WITH_PERMIT_ABI,
-      functionName: "redeemLeveragedTokenWithPermit",
-      args: [
-        parsedAmount,
-        address,
-        minOutput,
-        permitResult.deadline,
-        permitResult.permitSig.v,
-        permitResult.permitSig.r,
-        permitResult.permitSig.s,
-      ],
-      chainId: marketChainId,
-    });
-  } catch (permitRedeemErr) {
-    console.warn(
-      "[SailManage] redeemLeveragedTokenWithPermit failed, falling back to approve+redeem",
-      permitRedeemErr
-    );
+// Step 1: ERC20 permit (spender = minter) or classic approve.
+// Harbor minters have no redeem*WithPermit — submit permit on the hs token, then plain redeem.
+if (needsApproval) {
+  if (
+    usePermitRedeem &&
+    permitResult?.permitSig &&
+    permitResult?.deadline
+  ) {
     progress.setSteps((prev) => {
       if (prev.some((s) => s.id === "approve")) return prev;
       const redeemIdx = prev.findIndex((s) => s.id === "redeem");
       const next = [...prev];
       next.splice(redeemIdx >= 0 ? redeemIdx : next.length, 0, {
         id: "approve",
-        label: `Approve ${leveragedTokenSymbol} for redemption`,
+        label: `Permit ${leveragedTokenSymbol}`,
         status: "pending",
-        details: "Approve token for redemption",
+        details: "Submit EIP-2612 permit on-chain",
       });
       return {
         steps: next,
         currentStepIndex: next.findIndex((s) => s.id === "approve"),
       };
     });
+    updateProgressStep("approve", { status: "in_progress" });
+    try {
+      const permitHash = await writeContractAsync({
+        address: leveragedTokenAddress,
+        abi: ERC20_PERMIT_ABI,
+        functionName: "permit",
+        args: [
+          address as `0x${string}`,
+          minterAddress,
+          parsedAmount,
+          permitResult.deadline,
+          permitResult.permitSig.v,
+          permitResult.permitSig.r,
+          permitResult.permitSig.s,
+        ],
+        chainId: marketChainId,
+      });
+      await publicClient?.waitForTransactionReceipt({ hash: permitHash });
+      updateProgressStep("approve", {
+        status: "completed",
+        txHash: permitHash,
+      });
+    } catch (permitErr) {
+      if (isTxUserRejection(permitErr)) throw permitErr;
+      console.warn(
+        "[SailManage] ERC20 permit failed, falling back to approve",
+        permitErr
+      );
+      usePermitRedeem = false;
+      progress.setSteps((prev) => ({
+        steps: prev.map((s) =>
+          s.id === "approve"
+            ? {
+                ...s,
+                label: `Approve ${leveragedTokenSymbol} for sale`,
+                details: "Approve token for sale",
+              }
+            : s
+        ),
+        currentStepIndex: prev.findIndex((s) => s.id === "approve"),
+      }));
+    }
+  }
+
+  if (!usePermitRedeem) {
     updateProgressStep("approve", { status: "in_progress" });
     const approveHash = await writeContractAsync({
       address: leveragedTokenAddress,
@@ -1690,23 +1818,22 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
       status: "completed",
       txHash: approveHash,
     });
-    redeemHash = await writeContractAsync({
-      address: minterAddress,
-      abi: MINTER_ABI,
-      functionName: "redeemLeveragedToken",
-      args: [parsedAmount, address, minOutput],
-      chainId: marketChainId,
-    });
   }
-} else {
-  redeemHash = await writeContractAsync({
-    address: minterAddress,
-    abi: MINTER_ABI,
-    functionName:"redeemLeveragedToken",
-    args: [parsedAmount, address, minOutput],
-    chainId: marketChainId,
-  });
 }
+
+ // Step 2: Redeem (plain minter call — no *WithPermit on Harbor minters)
+ updateProgressStep("redeem", { status:"in_progress" });
+ const minOutput = expectedRedeemOutput
+ ? (expectedRedeemOutput * 99n) / 100n
+ : 0n;
+
+const redeemHash = await writeContractAsync({
+  address: minterAddress,
+  abi: MINTER_ABI,
+  functionName: "redeemLeveragedToken",
+  args: [parsedAmount, address, minOutput],
+  chainId: marketChainId,
+});
  await publicClient?.waitForTransactionReceipt({ hash: redeemHash });
  updateProgressStep("redeem", { status:"completed", txHash: redeemHash });
 
@@ -1765,6 +1892,71 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
  setStep("input");
  setError(null);
  };
+
+ const sailNotificationCount =
+   activeTab === "mint" ? (isCollateralOnlyChain ? 1 : 2) : 1;
+ const sailNotificationSeverities = useMemo(
+   () =>
+     activeTab === "mint"
+       ? isCollateralOnlyChain
+         ? (["navy"] as const)
+         : (["green", "navy"] as const)
+       : (["navy"] as const),
+   [activeTab, isCollateralOnlyChain]
+ );
+ const sailNotificationsBody = useMemo(
+   () => (
+     <>
+       {activeTab === "mint" && (
+         <>
+           {!isCollateralOnlyChain && (
+             <InfoCallout
+               tone="success"
+               icon={
+                 <RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />
+               }
+               title="Tip"
+             >
+               You can deposit any ERC20 token! Non-collateral tokens will be
+               automatically swapped via Velora.
+             </InfoCallout>
+           )}
+           <InfoCallout
+             title="Info"
+             icon={
+               <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />
+             }
+           >
+             For large deposits, Harbor recommends using wstETH or fxSAVE
+             instead of the built-in swap and zaps.
+           </InfoCallout>
+         </>
+       )}
+       {activeTab === "redeem" && (
+         <InfoCallout
+           title="Info"
+           icon={
+             <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />
+           }
+         >
+           You will receive collateral (e.g. {collateralSymbol}) in your
+           wallet.
+         </InfoCallout>
+       )}
+     </>
+   ),
+   [activeTab, isCollateralOnlyChain, collateralSymbol]
+ );
+
+ useRegisterAppNotifications(
+   "sail-embedded-trade",
+   {
+     count: sailNotificationCount,
+     badgeSeverities: [...sailNotificationSeverities],
+     body: sailNotificationsBody,
+   },
+   embedded && (isOpen || embedded)
+ );
 
  if (!isOpen && !embedded) return null;
 
@@ -1837,7 +2029,7 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
      errorMessage={progress.steps.find((s) => s.status === "error")?.error}
    />
  )}
- {!progress.isOpen && (isOpen || embedded) && (
+ {(isOpen || embedded) && (!progress.isOpen || embedded) && (
  <DepositModalShell
    variant={embedded ? "inline" : "modal"}
    isOpen={isOpen || embedded}
@@ -1855,44 +2047,9 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
    notifications={{
      expanded: showNotifications,
      onToggle: () => setShowNotifications((prev) => !prev),
-     count: activeTab === "mint" ? (isCollateralOnlyChain ? 1 : 2) : 1,
-     badgeSeverities:
-       activeTab === "mint"
-         ? isCollateralOnlyChain
-           ? ["navy"]
-           : ["green", "navy"]
-         : ["navy"],
-     children: (
-       <>
-         {activeTab === "mint" && (
-           <>
-             {!isCollateralOnlyChain && (
-               <InfoCallout
-                 tone="success"
-                 icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}
-                 title="Tip"
-               >
-                 You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
-               </InfoCallout>
-             )}
-             <InfoCallout
-               title="Info"
-               icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
-             >
-               For large deposits, Harbor recommends using wstETH or fxSAVE instead of the built-in swap and zaps.
-             </InfoCallout>
-           </>
-         )}
-         {activeTab === "redeem" && (
-           <InfoCallout
-             title="Info"
-             icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
-           >
-             You will receive collateral (e.g. {collateralSymbol}) in your wallet.
-           </InfoCallout>
-         )}
-       </>
-     ),
+     count: sailNotificationCount,
+     badgeSeverities: [...sailNotificationSeverities],
+     children: sailNotificationsBody,
    }}
    tabs={
      <DepositModalTabHeader
@@ -1909,13 +2066,11 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
    closeDisabled={isProcessing}
   panelClassName={
     embedded
-      ? "flex h-full min-h-0 flex-1 flex-col"
-      : "max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col"
+      ? "flex h-full min-h-0 flex-col overflow-hidden"
+      : undefined
   }
   contentClassName={
-    embedded
-      ? "flex min-h-0 flex-1 flex-col"
-      : "flex min-h-0 flex-1 flex-col p-3 sm:p-4"
+    embedded ? DEPOSIT_EMBEDDED_CONTENT_CLASS : undefined
   }
  >
  {step ==="success" ? (
@@ -1928,16 +2083,17 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
    txHash={txHash}
  />
  ) : (
- <div className="flex min-h-0 flex-1 flex-col">
-   <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
-   {!embedded ? (
+ <DepositModalLayout
+   flowOverview={
      <DepositModalFlowOverview
        parts={
          activeTab === "mint" ? sailMintFlowParts() : sailRedeemFlowParts()
        }
      />
-   ) : null}
- <SailTradeAmountCard
+   }
+   scroll={
+     <>
+       <SailTradeAmountCard
    activeTab={activeTab}
    tokenSelector={
      activeTab === "mint"
@@ -1954,27 +2110,13 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
              }
              resetSailMintFormKeepToken();
            },
-           options: [
-             ...(acceptedAssets.length > 0
-               ? [{
-                   label: isCollateralOnlyChain ? (isMegaEth ? "Collateral (MegaETH)" : "Collateral") : "Supported Assets",
-                   tokens: acceptedAssets.map((a) => ({
-                     symbol: a.symbol,
-                     name: (isMegaEth && a.symbol?.toUpperCase() === "ETH") ? nativeTokenLabel : a.name,
-                   })),
-                 }]
-               : []),
-             ...(!isCollateralOnlyChain && allAvailableAssets.filteredUserTokens.length > 0
-               ? [{
-                   label: "Other Tokens (via Swap)",
-                   tokens: allAvailableAssets.filteredUserTokens.map((t) => ({
-                     symbol: t.symbol,
-                     name: t.name,
-                     isUserToken: true,
-                   })),
-                 }]
-               : []),
-           ],
+           options: buildDepositTokenDropdownGroups({
+             supportedAssets: acceptedAssets,
+             swapAssets: allAvailableAssets.filteredUserTokens,
+             collateralOnly: isCollateralOnlyChain,
+             isMegaEth,
+             nativeTokenLabel,
+           }),
            placeholder: "Select token",
            disabled: isProcessing,
            showCustomOption: !isCollateralOnlyChain,
@@ -2037,60 +2179,16 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
    }}
    afterAmount={
     activeTab === "mint" || activeTab === "redeem" ? (
-   <div className="flex items-center justify-between gap-2 text-xs text-[#1E4775]/70">
-     <span>Gasless approval</span>
-     {disableReason ? (
-       <SimpleTooltip label={disableReason}>
-         <span className="flex items-center cursor-not-allowed opacity-70">
-           <button
-             type="button"
-             disabled
-             className="relative inline-flex h-5 w-9 items-center rounded-full bg-[#1E4775]/30 cursor-not-allowed"
-             aria-label="Gasless approval disabled"
-           >
-             <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-1" />
-           </button>
-         </span>
-       </SimpleTooltip>
-     ) : (
-       <label className="flex items-center cursor-pointer">
-         <button
-           type="button"
-           onClick={() => setPermitEnabled((prev) => !prev)}
-           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-             permitEnabled ? "bg-[#1E4775]" : "bg-[#1E4775]/30"
-           }`}
-           aria-pressed={permitEnabled}
-           aria-label="Toggle gasless approval"
-           disabled={isProcessing}
-         >
-           <span
-             className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-               permitEnabled ? "translate-x-4" : "translate-x-1"
-             }`}
-           />
-         </button>
-       </label>
-     )}
-   </div>
- ) : null
+      <DepositPermitToggle
+        mode={activeTab === "mint" ? "deposit" : "redemption"}
+        enabled={permitEnabled}
+        onToggle={() => setPermitEnabled((prev) => !prev)}
+        disabled={isProcessing}
+        disableReason={disableReason}
+      />
+    ) : null
    }
    disabled={isProcessing}
- />
-
- <SailTradeReceivePreview
-   activeTab={activeTab}
-   parsedAmount={parsedAmount}
-   amount={amount}
-   expectedMintOutput={expectedMintOutput}
-   expectedRedeemOutput={expectedRedeemOutput}
-   leveragedTokenSymbol={leveragedTokenSymbol}
-   collateralSymbol={collateralSymbol}
-   selectedDepositAsset={selectedDepositAsset}
-   ethPrice={ethPrice}
-   wstETHPrice={wstETHPrice}
-   fxSAVEPrice={fxSAVEPrice}
-   leveragedTokenPriceUSD={leveragedTokenPriceUSD}
  />
 
  {error && (
@@ -2107,30 +2205,45 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
  {step ==="approving"
  ?"Approving..."
  : step ==="minting"
- ?"Minting sail tokens..."
- :"Redeeming sail tokens..."}
+ ?"Buying sail tokens..."
+ :"Selling sail tokens..."}
  </p>
  </div>
  )}
-
-   </div>
-
- {!isProcessing && (
- <SailTradeActionFooter
-   layout={embedded ? "embedded" : "modal"}
-   marketFees={marketFees}
-   activeTab={activeTab}
-   buyFeeEstimatePct={mintFeePercentage}
-   sellFeeEstimatePct={redeemFeePercentage}
-   showEstimates={Boolean(parsedAmount && parsedAmount > 0n)}
-   action={primaryAction}
-   onSubmit={activeTab === "mint" ? handleMint : handleRedeem}
-   onRetry={activeTab === "mint" ? handleMint : handleRedeem}
-   showCancel={!embedded && (step === "error" || step === "input")}
-   onCancel={step === "error" ? handleCancel : handleClose}
+     </>
+   }
+   overview={
+     <SailTradeTransactionOverview
+       activeTab={activeTab}
+       parsedAmount={parsedAmount}
+       amount={amount}
+       expectedMintOutput={expectedMintOutput}
+       expectedRedeemOutput={expectedRedeemOutput}
+       leveragedTokenSymbol={leveragedTokenSymbol}
+       collateralSymbol={collateralSymbol}
+       selectedDepositAsset={selectedDepositAsset}
+       ethPrice={ethPrice}
+       wstETHPrice={wstETHPrice}
+       fxSAVEPrice={fxSAVEPrice}
+       leveragedTokenPriceUSD={leveragedTokenPriceUSD}
+     />
+   }
+   footer={
+     !isProcessing ? (
+       <SailTradeActionFooter
+         layout={embedded ? "embedded" : "modal"}
+         marketFees={marketFees}
+         activeTab={activeTab}
+         action={primaryAction}
+         onSubmit={activeTab === "mint" ? handleMint : handleRedeem}
+         onRetry={activeTab === "mint" ? handleMint : handleRedeem}
+         showCancel={!embedded && (step === "error" || step === "input")}
+         onCancel={step === "error" ? handleCancel : handleClose}
+       />
+     ) : null
+   }
+   footerDisabled={isProcessing}
  />
- )}
- </div>
  )}
  </DepositModalShell>
  )}

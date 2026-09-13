@@ -3,11 +3,13 @@
 import type { ReactNode } from "react";
 import type { DepositPrimaryAction } from "@/utils/depositFormState";
 import { DepositPrimaryButton } from "@/components/deposit/DepositPrimaryButton";
-import { DEPOSIT_CANCEL_BUTTON_CLASS } from "@/components/deposit/depositFlowStyles";
+import { DEPOSIT_CANCEL_BUTTON_CLASS, ANCHOR_MODAL_FOOTER_CHROME } from "@/components/deposit/depositFlowStyles";
 
 type DepositActionFooterProps = {
   layout?: "embedded" | "modal";
   feeFooter?: ReactNode;
+  /** Quiet line under the primary CTA (e.g. review wallet prompts). */
+  actionHint?: string;
   action: DepositPrimaryAction;
   onSubmit: () => void;
   onRetry: () => void;
@@ -19,6 +21,7 @@ type DepositActionFooterProps = {
 export function DepositActionFooter({
   layout = "modal",
   feeFooter,
+  actionHint,
   action,
   onSubmit,
   onRetry,
@@ -27,9 +30,14 @@ export function DepositActionFooter({
   cancelLabel = "Cancel",
 }: DepositActionFooterProps) {
   return (
-    <div className="mt-auto shrink-0 space-y-2.5 border-t border-[#1E4775]/8 pt-3">
+    <div className={ANCHOR_MODAL_FOOTER_CHROME}>
       {feeFooter}
-      <div className={layout === "modal" ? "flex gap-3" : undefined}>
+      {actionHint ? (
+        <p className="text-center text-[10px] leading-snug text-[#1E4775]/45">
+          {actionHint}
+        </p>
+      ) : null}
+      <div className={layout === "modal" ? "flex gap-3" : "w-full"}>
         {showCancel && onCancel ? (
           <button
             type="button"
@@ -39,12 +47,12 @@ export function DepositActionFooter({
             {cancelLabel}
           </button>
         ) : null}
-        <div className={layout === "modal" ? "min-w-0 flex-1" : undefined}>
+        <div className={layout === "modal" ? "min-w-0 flex-1" : "w-full"}>
           <DepositPrimaryButton
             action={action}
             onSubmit={onSubmit}
             onRetry={onRetry}
-            className={layout === "modal" ? "w-full" : undefined}
+            className="w-full"
           />
         </div>
       </div>

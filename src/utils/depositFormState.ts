@@ -1,4 +1,4 @@
-export type DepositPrimaryVariant = "mint" | "navy";
+export type DepositPrimaryVariant = "mint" | "navy" | "coral";
 
 export type DepositPrimaryAction =
   | { kind: "connect" }

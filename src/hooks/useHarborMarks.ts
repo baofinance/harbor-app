@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAccount } from "wagmi";
+import { useHarborAccount } from "@/hooks/useHarborAccount";
 import { formatEther } from "viem";
 import { getGraphUrl, getGraphHeaders, retryGraphQLQuery } from "@/config/graph";
 import { redactUrl, redactForLog } from "@/utils/redactUrl";
@@ -227,7 +227,7 @@ export function useHarborMarks({
   enabled = true,
   graphUrl = getGraphUrl(),
 }: UseHarborMarksOptions) {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useHarborAccount();
 
   return useQuery<HarborMarksData>({
     queryKey: ["harborMarks", genesisAddress, address],
@@ -316,7 +316,7 @@ export function useHarborMarks({
 
 // Hook to get all Harbor Marks across all genesis markets
 export function useAllHarborMarks(genesisAddresses: string[]) {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useHarborAccount();
   const graphUrl = getGraphUrl();
   const queryClient = useQueryClient();
 

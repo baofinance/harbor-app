@@ -2,7 +2,17 @@
 
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
-import { BellIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import {
+  ArchiveBoxIcon,
+  BellIcon,
+  CheckCircleIcon,
+  SparklesIcon,
+} from "@heroicons/react/24/outline";
+import IndexToolbarSegmentedToggle from "@/components/shared/IndexToolbarSegmentedToggle";
+import {
+  INDEX_MARKETS_TOOLBAR_FILTERS_ROW_CLASS,
+  INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS,
+} from "@/components/shared/indexMarketsToolbarStyles";
 import { HARBOR_BTN_SECONDARY_CLASS } from "@/components/shared/harborButtonStyles";
 import { HarborSectionCard } from "@/components/shared/HarborSectionCard";
 import {
@@ -33,12 +43,7 @@ import {
   GenesisMarketCollateralEquationStrip,
 } from "./GenesisMarketSharedRowCells";
 import { readContractRowResult } from "./readContractRow";
-import type { GenesisClaimMarketArgs } from "./GenesisCompletedMarketsSection";
-import {
-  GenesisMaidenVoyageToolbar,
-  type MaidenVoyageStatusFilter,
-} from "./GenesisMaidenVoyageToolbar";
-import { GenesisMaidenVoyageTableHeader } from "./GenesisMaidenVoyageTableHeader";
+import type { GenesisClaimMarketArgs } from "./genesisClaimTypes";
 import {
   MV_EXPLORER_COL_ACTION_CLASSNAME,
   MV_EXPLORER_COL_CAPACITY_CLASSNAME,
@@ -49,25 +54,136 @@ import {
   MV_EXPLORER_COL_TYPE_CLASSNAME,
   MV_EXPLORER_COL_VOYAGE_CLASSNAME,
   MV_EXPLORER_COL_VOYAGE_INNER_CLASSNAME,
+  MV_EXPLORER_HEADER_CELL_CLASSNAME,
   MV_EXPLORER_MOBILE_META_GRID_CLASSNAME,
   MV_EXPLORER_MOBILE_META_LABEL_CLASSNAME,
   MV_EXPLORER_MOBILE_VOYAGE_CLASSNAME,
   MV_EXPLORER_OPEN_STATUS_CLASSNAME,
+  MV_EXPLORER_TABLE_HEADER_GRID_CLASSNAME,
+  MV_EXPLORER_TABLE_HEADER_WRAP_CLASSNAME,
   MV_EXPLORER_TABLE_INNER_CLASSNAME,
+  MV_EXPLORER_TABLE_MIN_WIDTH_CLASSNAME,
   MV_EXPLORER_TABLE_ROW_DESKTOP_CLASSNAME,
   MV_EXPLORER_TABLE_ROW_MOBILE_CLASSNAME,
   MV_EXPLORER_TABLE_ROW_SHELL_CLASSNAME,
   MV_EXPLORER_TABLE_SCROLL_WRAP_CLASSNAME,
   MV_EXPLORER_TYPE_CHIP_CLASSNAME,
 } from "./genesisMaidenVoyageTableGrid";
-import {
-  GenesisVoyageArchivedBadge,
-  GenesisVoyageCompletedBadge,
-} from "./GenesisVoyageLifecycleBadge";
 import { GENESIS_TABLE_FROSTED_SURFACE } from "./genesisActiveTableStyles";
-import { MV_UPCOMING_BADGE } from "./maidenVoyageLayoutStyles";
+import {
+  MV_ARCHIVED_PILL,
+  MV_COMPLETED_PILL,
+  MV_UPCOMING_BADGE,
+} from "./maidenVoyageLayoutStyles";
 
 const EXPLORER_NETWORK_ICON_PX = 20;
+
+const MAIDEN_VOYAGE_STATUS_OPTIONS = [
+  { id: "all", label: "All" },
+  { id: "ongoing", label: "Ongoing" },
+  { id: "upcoming", label: "Upcoming" },
+  { id: "completed", label: "Completed" },
+] as const;
+
+type MaidenVoyageStatusFilter =
+  (typeof MAIDEN_VOYAGE_STATUS_OPTIONS)[number]["id"];
+
+function GenesisVoyageCompletedBadge() {
+  return (
+    <span className={MV_COMPLETED_PILL}>
+      <CheckCircleIcon
+        className="h-3.5 w-3.5 shrink-0"
+        strokeWidth={2.5}
+        aria-hidden
+      />
+      Completed
+    </span>
+  );
+}
+
+/** Short-chip styling; archive box reads clearer than a stop sign for “stored / disabled”. */
+function GenesisVoyageArchivedBadge() {
+  return (
+    <span className={MV_ARCHIVED_PILL}>
+      <ArchiveBoxIcon
+        className="h-3.5 w-3.5 shrink-0"
+        strokeWidth={2.5}
+        aria-hidden
+      />
+      Archived
+    </span>
+  );
+}
+
+/**
+ * Column headers for the Maiden Voyage explorer — grid tracks match Anchor table rows.
+ */
+function GenesisMaidenVoyageTableHeader() {
+  return (
+    <div className={MV_EXPLORER_TABLE_HEADER_WRAP_CLASSNAME}>
+      <div className={MV_EXPLORER_TABLE_MIN_WIDTH_CLASSNAME}>
+        <div className={MV_EXPLORER_TABLE_HEADER_GRID_CLASSNAME}>
+          <div className={MV_EXPLORER_COL_NETWORK_CLASSNAME} aria-label="Network" />
+          <div className={MV_EXPLORER_HEADER_CELL_CLASSNAME}>Lifecycle</div>
+          <div className={MV_EXPLORER_HEADER_CELL_CLASSNAME}>Voyage</div>
+          <div className={MV_EXPLORER_HEADER_CELL_CLASSNAME}>Type</div>
+          <div className={MV_EXPLORER_HEADER_CELL_CLASSNAME}>Phase</div>
+          <div className={MV_EXPLORER_HEADER_CELL_CLASSNAME}>Est. capacity</div>
+          <div className={MV_EXPLORER_HEADER_CELL_CLASSNAME}>Launch window</div>
+          <div className={MV_EXPLORER_HEADER_CELL_CLASSNAME}>Action</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type GenesisMaidenVoyageToolbarProps = {
+  statusFilter: MaidenVoyageStatusFilter;
+  onStatusFilterChange: (id: MaidenVoyageStatusFilter) => void;
+  archivedCount: number;
+  showArchivedLink: boolean;
+  onViewArchived: () => void;
+};
+
+/**
+ * Status Voyages filter row above the explorer table (Anchor/Sail toolbar pattern).
+ */
+function GenesisMaidenVoyageToolbar({
+  statusFilter,
+  onStatusFilterChange,
+  archivedCount,
+  showArchivedLink,
+  onViewArchived,
+}: GenesisMaidenVoyageToolbarProps) {
+  return (
+    <div className={INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}>
+      <div className="w-full lg:w-auto lg:min-w-0">
+        <div className={INDEX_MARKETS_TOOLBAR_FILTERS_ROW_CLASS}>
+          <IndexToolbarSegmentedToggle
+            label="Status Voyages:"
+            value={statusFilter}
+            onChange={(id) =>
+              onStatusFilterChange(id as MaidenVoyageStatusFilter)
+            }
+            options={[...MAIDEN_VOYAGE_STATUS_OPTIONS]}
+            ariaLabel="Status voyages"
+          />
+        </div>
+      </div>
+      {showArchivedLink ? (
+        <div className="flex w-full items-center justify-end lg:ml-auto lg:w-auto lg:min-w-0">
+          <button
+            type="button"
+            onClick={onViewArchived}
+            className="shrink-0 text-xs font-semibold text-[#FF8A7A]/90 hover:text-[#ffb4a8]"
+          >
+            View archived ({archivedCount})
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function ExplorerRowNetworkCell({ mkt }: { mkt: GenesisMarketConfig }) {
   return (

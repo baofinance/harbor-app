@@ -27,6 +27,10 @@ import { PageLayoutToggle } from "@/components/PageLayoutToggle";
 import { useAppBackground } from "@/contexts/AppBackgroundContext";
 import { ImpersonateDialog } from "@/components/ImpersonateDialog";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
+import {
+  AppNotificationsStrip,
+  NavNotificationBell,
+} from "@/components/AppNotifications";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { IMPERSONATION_ENABLED } from "@/config/impersonation";
 
@@ -68,7 +72,7 @@ export default function Example() {
     ) : null}
     <Disclosure<"nav">
       as="nav"
-      className={`app-nav-shell relative w-full max-w-[1300px] shrink-0 ${navBgClass} after:pointer-events-none mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/20 mb-4 sm:mb-6`}
+      className={`app-nav-shell sticky top-0 z-[60] w-full max-w-[1300px] shrink-0 ${navBgClass} after:pointer-events-none mx-auto mb-4 after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/20 sm:mb-6`}
     >
       {/* Match index pages: `max-w-[1300px]` + `px-4 sm:px-10` on main */}
       <div className="w-full px-4 sm:px-10">
@@ -114,12 +118,12 @@ export default function Example() {
             </Link>
             <Link
               href="/genesis"
-              className={`${linkClass("/genesis")} inline-flex min-w-0 shrink-0 items-center justify-center gap-1`}
+              className={`${linkClass("/genesis")} flex shrink-0 items-center justify-center gap-1`}
               aria-current={isActive("/genesis") ? "page" : undefined}
             >
-              <span>Maiden Voyage</span>
+              Maiden Voyage
               <span
-                className={`shrink-0 rounded border px-1 py-0.5 text-[10px] font-bold leading-none font-mono ${
+                className={`inline-flex h-4 shrink-0 items-center rounded border px-1 text-[10px] font-bold font-mono leading-none ${
                   isActive("/genesis")
                     ? "border-[#1E4775]/25 bg-[#1E4775]/10 text-[#1E4775]"
                     : "border-white/40 bg-white/10 text-white"
@@ -142,6 +146,7 @@ export default function Example() {
                 <PageLayoutToggle />
               </Suspense>
               <ConnectWallet />
+              <NavNotificationBell />
               <Popover className="relative">
                 <PopoverButton
                   className={HARBOR_NAV_ICON_BUTTON_CLASS}
@@ -192,7 +197,8 @@ export default function Example() {
                 </PopoverPanel>
               </Popover>
             </div>
-            <div className="-mr-2 flex sm:hidden">
+            <div className="-mr-2 flex items-center gap-1 sm:hidden">
+              <NavNotificationBell />
               {/* Mobile menu button */}
               <DisclosureButton className={`group relative inline-flex items-center justify-center ${HARBOR_NAV_MOBILE_MENU_BUTTON_CLASS}`}>
                 <span className="absolute -inset-0.5" />
@@ -211,7 +217,7 @@ export default function Example() {
         </div>
       </div>
 
-      <DisclosurePanel className={`sm:hidden fixed inset-0 z-50 ${navBgClass} overflow-y-auto`} style={{ height: '100dvh', maxHeight: '100dvh' }}>
+      <DisclosurePanel className={`sm:hidden fixed inset-0 z-[60] ${navBgClass} overflow-y-auto`} style={{ height: '100dvh', maxHeight: '100dvh' }}>
         <div className="flex flex-col min-h-full px-6 py-4 pb-24 space-y-2">
           <div className="flex justify-end mb-2 flex-shrink-0">
             <DisclosureButton className={`inline-flex items-center justify-center rounded-full ${HARBOR_NAV_MOBILE_MENU_BUTTON_CLASS}`}>
@@ -276,10 +282,10 @@ export default function Example() {
               }`}
               aria-current={isActive("/genesis") ? "page" : undefined}
             >
-              <span className="inline-flex items-center justify-center gap-2">
+              <span className="inline-flex items-center justify-center gap-1.5 leading-none">
                 <span>Maiden Voyage</span>
                 <span
-                  className={`rounded border px-1.5 py-0.5 text-xs font-bold font-mono ${
+                  className={`inline-flex h-4 shrink-0 items-center rounded border px-1 text-[10px] font-bold font-mono leading-none ${
                     isActive("/genesis")
                       ? "border-[#1E4775]/25 bg-[#1E4775]/10 text-[#1E4775]"
                       : "border-white/40 bg-white/10 text-white"
@@ -342,6 +348,7 @@ export default function Example() {
         </div>
       </DisclosurePanel>
     </Disclosure>
+    <AppNotificationsStrip />
     </>
   );
 }

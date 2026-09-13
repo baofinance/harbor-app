@@ -45,7 +45,7 @@ export function SailMintRedeemFeeColumn({
       {crLine}
       <div className="min-w-[260px]">
         <SailFeeBandsPanel
-          title="Mint Fees"
+          title="Buy Fees"
           bands={mintBands}
           collateralRatio={collateralRatio}
           isMintSail
@@ -59,7 +59,7 @@ export function SailMintRedeemFeeColumn({
       {crLine}
       <div className="min-w-[260px]">
         <SailFeeBandsPanel
-          title="Redeem Fees"
+          title="Sell Fees"
           bands={redeemBands}
           collateralRatio={collateralRatio}
         />
@@ -72,7 +72,7 @@ export function SailMintRedeemFeeColumn({
       <div
         className="inline-flex w-full max-w-[280px] items-center justify-center gap-1.5 px-1 py-0.5"
         role="group"
-        aria-label="Mint fee and redeem fee"
+        aria-label="Buy fee and sell fee"
       >
         <SimpleTooltip
           side="bottom"
@@ -117,7 +117,7 @@ export function SailMintRedeemFeeColumn({
   return (
     <div className="inline-grid w-full max-w-[260px] grid-cols-[1fr_1px_1fr] items-stretch justify-center">
       <div className="flex w-full flex-col items-center justify-center gap-1 px-3 py-1">
-        <span className={BASIC_MARKET_FEE_COLUMN_LABEL_CLASS}>Mint Fee</span>
+        <span className={BASIC_MARKET_FEE_COLUMN_LABEL_CLASS}>Buy Fee</span>
         <SimpleTooltip
           side="bottom"
           maxHeight="none"
@@ -138,7 +138,7 @@ export function SailMintRedeemFeeColumn({
       <span className="w-px self-stretch bg-[#1E4775]/25" aria-hidden="true" />
 
       <div className="flex w-full flex-col items-center justify-center gap-1 px-3 py-1">
-        <span className={BASIC_MARKET_FEE_COLUMN_LABEL_CLASS}>Redeem Fee</span>
+        <span className={BASIC_MARKET_FEE_COLUMN_LABEL_CLASS}>Sell Fee</span>
         <SimpleTooltip
           side="bottom"
           maxHeight="none"

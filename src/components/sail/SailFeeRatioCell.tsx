@@ -6,6 +6,8 @@ type SailFeeRatioCellProps = {
   isMintSail: boolean;
   activeBand: FeeBand | undefined;
   showHelp?: boolean;
+  /** Match Earn/Sail trade modal tags when shown in footer chrome. */
+  variant?: "band" | "modal";
 };
 
 /** Mint/redeem column: same pill tags as fee popups (`SailFeeBandBadge`). */
@@ -14,6 +16,7 @@ export function SailFeeRatioCell({
   isMintSail,
   activeBand,
   showHelp = false,
+  variant = "band",
 }: SailFeeRatioCellProps) {
   if (ratio === undefined) {
     return (
@@ -30,6 +33,7 @@ export function SailFeeRatioCell({
       upperBound={activeBand?.upperBound}
       showHelp={showHelp}
       omitFeeSuffix
+      variant={variant}
     />
   );
 }

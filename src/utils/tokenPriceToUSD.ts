@@ -49,17 +49,16 @@ export function getTokenPriceUSD(
 
   // Leveraged tokens (hsFXUSD-ETH, hsSTETH-EUR, hsSTETH-BTC, etc.)
   if (s.startsWith("hs")) {
-    const isWstETHBacked = col === "wsteth" || col === "steth" || s.includes("steth");
-    const isFxSaveBacked = col === "fxsave" || col === "fxusd" || s.includes("fxusd");
-    // wstETH-backed: leveragedPriceUSD is wrong for EUR-peg (~1.09) but correct for BTC-peg (~55k)
-    if (isWstETHBacked) {
-      if (leveragedPriceUSD > 100) return leveragedPriceUSD; // hsSTETH-BTC
-      const collateralPrice = ethPrice > 0 ? ethPrice : wstETHPrice;
-      if (collateralPrice > 0) return collateralPrice; // hsSTETH-EUR
-    }
-    // fxSAVE-backed (hsFXUSD-ETH): leveragedPriceUSD ~1.08 is correct
+    // On-chain NAV × peg target (from useTokenPrices) — authoritative when present.
     if (leveragedPriceUSD > 0) return leveragedPriceUSD;
+
+    const isFxSaveBacked =
+      col === "fxsave" || col === "fxusd" || s.includes("fxusd");
     if (isFxSaveBacked) return fxSAVEPrice;
+
+    // wstETH-backed without NAV: do not fall back to ETH/wstETH spot — that
+    // overstates EUR/BTC sail tokens by ~1000× (e.g. hsSTETH-EUR shown as ~$197k).
+    return 0;
   }
 
   // Genesis/modals: use collateralPriceUSD when symbol is a collateral type

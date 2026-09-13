@@ -1,0 +1,231 @@
+"use client";
+
+import {
+  ANCHOR_TRANSACTION_OVERVIEW_FEE_DIVIDER,
+  ANCHOR_TRANSACTION_OVERVIEW_INNER,
+  ANCHOR_TRANSACTION_OVERVIEW_LABEL,
+  ANCHOR_TRANSACTION_OVERVIEW_WRAPPER,
+  DEPOSIT_OVERVIEW_CARD_CLASS,
+} from "@/components/deposit/depositFlowStyles";
+
+export type TransactionOverviewFee = {
+  label: string;
+  percentage: number;
+  usd?: number;
+  /** Optional step hint shown beside the label, e.g. "pool exit". */
+  hint?: string;
+};
+
+export type DepositTransactionOverviewProps = {
+  receiveAmount: string | null;
+  receiveSymbol: string;
+  receiveUsd?: number;
+  receiveLabel?: string;
+  /** e.g. "From wstETH · 0.0049" */
+  sourceLine?: string;
+  emptyMessage?: string;
+  /** Loading / error / placeholder while receive is not ready */
+  statusMessage?: string;
+  statusVariant?: "default" | "error";
+  /** Full-precision receive amount for hover when display is truncated. */
+  receiveAmountTitle?: string;
+  fees?: TransactionOverviewFee[];
+  /** Sum of fee USD values when multiple fees apply (do not add percentages). */
+  totalFeeUsd?: number;
+  bonus?: { percentage: number };
+  bannerMessage?: string;
+  /** Extra summary rows under fees (e.g. Genesis voyage totals). */
+  trailingRows?: Array<{
+    label: string;
+    value: string;
+    secondary?: string;
+    emphasize?: boolean;
+  }>;
+};
+
+/** Compact buy / sell summary card — pinned above the action footer. */
+export function DepositTransactionOverview({
+  receiveAmount,
+  receiveSymbol,
+  receiveUsd,
+  receiveLabel = "You will receive",
+  sourceLine,
+  emptyMessage = "Enter an amount to see what you'll receive.",
+  statusMessage,
+  statusVariant = "default",
+  receiveAmountTitle,
+  fees,
+  totalFeeUsd,
+  bonus,
+  bannerMessage,
+  trailingRows,
+}: DepositTransactionOverviewProps) {
+  const hasReceive =
+    receiveAmount !== null && receiveAmount !== "..." && receiveAmount.length > 0;
+  const hasFeeBlock =
+    !!fees?.length ||
+    !!bonus ||
+    (totalFeeUsd !== undefined && totalFeeUsd > 0) ||
+    !!trailingRows?.length;
+
+  return (
+    <div className={ANCHOR_TRANSACTION_OVERVIEW_WRAPPER}>
+      <label className={ANCHOR_TRANSACTION_OVERVIEW_LABEL}>
+        Transaction Overview
+      </label>
+      <div className={DEPOSIT_OVERVIEW_CARD_CLASS}>
+        {bannerMessage ? (
+          <div className="mb-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
+            {bannerMessage}
+          </div>
+        ) : null}
+
+        {!hasReceive ? (
+          <div
+            className={`text-[11px] leading-snug ${
+              statusVariant === "error" ? "text-red-600" : "text-[#1E4775]/55"
+            }`}
+          >
+            {statusMessage ?? emptyMessage}
+          </div>
+        ) : (
+          <div className={ANCHOR_TRANSACTION_OVERVIEW_INNER}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-[#1E4775]/55">
+                  {receiveLabel}
+                </div>
+                {sourceLine ? (
+                  <div className="mt-0.5 truncate text-[10px] leading-tight text-[#1E4775]/40">
+                    {sourceLine}
+                  </div>
+                ) : null}
+              </div>
+              <div className="shrink-0 text-right">
+                <div
+                  className="font-mono text-sm font-semibold leading-tight tabular-nums text-[#1E4775]/85"
+                  title={receiveAmountTitle}
+                >
+                  {receiveAmount} {receiveSymbol}
+                </div>
+                {receiveUsd !== undefined && receiveUsd > 0 ? (
+                  <div className="font-mono text-[10px] text-[#1E4775]/45">
+                    $
+                    {receiveUsd.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            {hasFeeBlock ? (
+              <div className={ANCHOR_TRANSACTION_OVERVIEW_FEE_DIVIDER}>
+                {fees?.map((fee) => (
+                  <div
+                    key={`${fee.label}-${fee.hint ?? ""}`}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <span className="text-[#1E4775]/50">
+                      {fee.label}
+                      {fee.hint ? (
+                        <span className="text-[#1E4775]/35"> · {fee.hint}</span>
+                      ) : null}
+                    </span>
+                    <span
+                      className={`font-mono tabular-nums ${
+                        fee.percentage > 2
+                          ? "font-semibold text-red-600"
+                          : "font-medium text-[#1E4775]/70"
+                      }`}
+                    >
+                      {fee.percentage <= 0
+                        ? "Free"
+                        : `${fee.percentage.toFixed(2)}%`}
+                      {fee.usd !== undefined && fee.usd > 0
+                        ? ` · $${fee.usd.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}`
+                        : ""}
+                    </span>
+                  </div>
+                ))}
+                {totalFeeUsd !== undefined &&
+                totalFeeUsd > 0 &&
+                (fees?.length ?? 0) > 1 ? (
+                  <div className="mt-0.5 flex items-center justify-between gap-2 border-t border-[#1E4775]/8 pt-1.5">
+                    <span className="font-medium text-[#1E4775]/55">
+                      Total fees
+                    </span>
+                    <span className="font-mono font-medium tabular-nums text-[#1E4775]/75">
+                      $
+                      {totalFeeUsd.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                ) : null}
+                {bonus ? (
+                  <div className="flex items-center justify-between gap-2 text-green-700/80">
+                    <span>Bonus</span>
+                    <span className="font-mono font-medium tabular-nums">
+                      {bonus.percentage.toFixed(2)}%
+                    </span>
+                  </div>
+                ) : null}
+                {trailingRows?.map((row, index) => {
+                  const hasRowsAbove =
+                    (fees?.length ?? 0) > 0 ||
+                    !!bonus ||
+                    (totalFeeUsd !== undefined &&
+                      totalFeeUsd > 0 &&
+                      (fees?.length ?? 0) > 1);
+                  const showRowDivider = index > 0 || hasRowsAbove;
+                  return (
+                  <div
+                    key={row.label}
+                    className={`flex items-start justify-between gap-2${
+                      showRowDivider
+                        ? " border-t border-[#1E4775]/8 pt-1.5"
+                        : ""
+                    }`}
+                  >
+                    <span
+                      className={
+                        row.emphasize
+                          ? "font-medium text-[#1E4775]/70"
+                          : "text-[#1E4775]/50"
+                      }
+                    >
+                      {row.label}
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span
+                        className={`font-mono tabular-nums ${
+                          row.emphasize
+                            ? "font-semibold text-[#1E4775]"
+                            : "font-medium text-[#1E4775]/70"
+                        }`}
+                      >
+                        {row.value}
+                      </span>
+                      {row.secondary ? (
+                        <span className="mt-0.5 block font-mono text-[10px] text-[#1E4775]/45">
+                          {row.secondary}
+                        </span>
+                      ) : null}
+                    </span>
+                  </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

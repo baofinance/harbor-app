@@ -16,10 +16,12 @@ import { SailMarketInfoFooter } from "./SailMarketInfoFooter";
 import { SailMarketMetricsCollapsible } from "./SailMarketMetricsCollapsible";
 import { SailMobileTradeBar } from "./SailMobileTradeBar";
 import type { SailWalletStatsStripProps } from "./SailWalletStatsStrip";
+import type { SailDropdownPositionTone } from "@/utils/sailMarketDropdownPosition";
 import {
   SAIL_ADVANCED_FROSTED_LIGHT_PANEL,
   SAIL_ADVANCED_MAIN_GRID_CLASS,
 } from "./sailAdvancedStyles";
+import { ProductAdvancedLayoutShell } from "@/components/deposit/ProductAdvancedLayoutShell";
 
 const SAIL_TRADE_PANEL_ID = "sail-trade-panel";
 
@@ -37,6 +39,11 @@ export type SailAdvancedLayoutProps = {
   tokenPricesByMarket: Record<
     string,
     { leveragedPriceUSD?: number } | undefined
+  >;
+  marketDropdownPnLToneByMarketId?: Record<string, SailDropdownPositionTone>;
+  marketDropdownPositionByMarketId?: Record<
+    string,
+    { label?: string; tone: SailDropdownPositionTone }
   >;
   userDeposit?: bigint;
   currentValueUSD?: number;
@@ -60,6 +67,8 @@ export function SailAdvancedLayout({
   isConnected,
   userDepositMap,
   tokenPricesByMarket,
+  marketDropdownPnLToneByMarketId = {},
+  marketDropdownPositionByMarketId = {},
   userDeposit,
   currentValueUSD,
   onManageSuccess,
@@ -109,6 +118,9 @@ export function SailAdvancedLayout({
           isConnected && globalIndex !== undefined
             ? userDepositMap.get(globalIndex)
             : undefined;
+        const positionDisplay = isConnected
+          ? marketDropdownPositionByMarketId[marketId]
+          : undefined;
         const position = isConnected
           ? buildSailUserPositionLabel(
               market,
@@ -123,7 +135,14 @@ export function SailAdvancedLayout({
           market,
           leverageRatio,
           hasPosition: position.hasPosition,
-          positionLabel: position.hasPosition ? position.label : undefined,
+          positionLabel: positionDisplay?.label ?? (
+            position.hasPosition ? position.label?.replace(/^Your position ·\s*/, "") : undefined
+          ),
+          positionTone: position.hasPosition
+            ? positionDisplay?.tone ??
+              marketDropdownPnLToneByMarketId[marketId] ??
+              "pending"
+            : undefined,
           isComingSoon: comingSoon,
           isDepositsPaused:
             !comingSoon && isSailDepositsPausedByLeverage(leverageRatio),
@@ -137,6 +156,8 @@ export function SailAdvancedLayout({
       sailMarketIdToIndex,
       userDepositMap,
       tokenPricesByMarket,
+      marketDropdownPnLToneByMarketId,
+      marketDropdownPositionByMarketId,
     ],
   );
 
@@ -152,94 +173,91 @@ export function SailAdvancedLayout({
     selectedMarket.peggedToken?.symbol || "ha token";
 
   return (
-    <div className="space-y-5 pb-[calc(4.25rem+env(safe-area-inset-bottom))] lg:pb-0">
-      <SailMarketHeader
-        selectedMarketId={selectedMarketId}
-        selectedMarket={selectedMarket}
-        dropdownOptions={dropdownOptions}
-        onSelectMarket={onSelectMarket}
-        walletStats={walletStats}
-        marketPosition={{
-          userDeposit,
-          currentValueUSD,
-          leveragedTokenPriceUSD,
-          isConnected,
-        }}
-        leverageRatio={selectedMetrics?.leverageRatio}
-        rebalanceThresholdLabel={selectedMetrics?.rebalanceThresholdLabel}
-      />
-
-      {isDepositsPaused && !isComingSoon ? (
-        <div
-          className={`overflow-hidden rounded-xl px-4 py-3 ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`}
-          role="status"
-        >
-          <p className="text-sm font-semibold text-[#1E4775]">
-            Deposits paused
-          </p>
-          <p className="mt-1 text-sm leading-snug text-[#1E4775]/75">
-            More {haTokenSymbol} needs to be minted for the leverage function to
-            work as expected on this market. Selling existing sail tokens remains
-            available.
-          </p>
-        </div>
-      ) : null}
-
-      <div className="space-y-4 pt-0.5">
-        <div className={`relative z-0 ${SAIL_ADVANCED_MAIN_GRID_CLASS}`}>
-          <div className="order-1 flex min-h-0 flex-col gap-3 lg:order-none lg:h-full">
-            <div className="flex min-h-[22rem] flex-1 flex-col sm:min-h-[26rem] lg:min-h-0">
-              <SailMarketChartColumn
-                marketId={selectedMarketId}
-                market={selectedMarket}
-              />
-            </div>
-          </div>
-
+    <ProductAdvancedLayoutShell
+      header={
+        <SailMarketHeader
+          selectedMarketId={selectedMarketId}
+          selectedMarket={selectedMarket}
+          dropdownOptions={dropdownOptions}
+          onSelectMarket={onSelectMarket}
+          walletStats={walletStats}
+          marketPosition={{
+            userDeposit,
+            currentValueUSD,
+            leveragedTokenPriceUSD,
+            isConnected,
+          }}
+          leverageRatio={selectedMetrics?.leverageRatio}
+          rebalanceThresholdLabel={selectedMetrics?.rebalanceThresholdLabel}
+        />
+      }
+      banner={
+        isDepositsPaused && !isComingSoon ? (
           <div
-            id={SAIL_TRADE_PANEL_ID}
-            className="order-2 flex min-h-0 flex-col scroll-mt-20 lg:order-none lg:h-full"
+            className={`overflow-hidden rounded-xl px-4 py-3 ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL}`}
+            role="status"
           >
-            <SailMarketActionPanel
-              marketId={selectedMarketId}
-              market={selectedMarket}
-              initialTab={tradeTab}
-              onSuccess={onManageSuccess}
-              leveragedTokenPriceUSD={leveragedTokenPriceUSD}
-              ethPrice={ethPrice}
-              wstETHPrice={wstETHPrice}
-              fxSAVEPrice={fxSAVEPrice}
-              isComingSoon={isComingSoon}
-              depositsPaused={isDepositsPaused}
-              marketFees={
-                selectedMetrics
-                  ? {
-                      buyFeeRatio: selectedMetrics.mintFeeRatio,
-                      sellFeeRatio: selectedMetrics.redeemFeeRatio,
-                      activeBuyBand: selectedMetrics.activeMintBand,
-                      activeSellBand: selectedMetrics.activeRedeemBand,
-                    }
-                  : undefined
-              }
-            />
+            <p className="text-sm font-semibold text-[#1E4775]">
+              Deposits paused
+            </p>
+            <p className="mt-1 text-sm leading-snug text-[#1E4775]/75">
+              More {haTokenSymbol} needs to be minted for the leverage function to
+              work as expected on this market. Selling existing sail tokens remains
+              available.
+            </p>
           </div>
+        ) : null
+      }
+      tradePanelId={SAIL_TRADE_PANEL_ID}
+      gridClassName={SAIL_ADVANCED_MAIN_GRID_CLASS}
+      primary={
+        <div className="flex min-h-[22rem] flex-1 flex-col sm:min-h-[26rem] lg:min-h-0">
+          <SailMarketChartColumn
+            marketId={selectedMarketId}
+            market={selectedMarket}
+          />
         </div>
-
+      }
+      action={
+        <SailMarketActionPanel
+          marketId={selectedMarketId}
+          market={selectedMarket}
+          initialTab={tradeTab}
+          onSuccess={onManageSuccess}
+          leveragedTokenPriceUSD={leveragedTokenPriceUSD}
+          ethPrice={ethPrice}
+          wstETHPrice={wstETHPrice}
+          fxSAVEPrice={fxSAVEPrice}
+          isComingSoon={isComingSoon}
+          depositsPaused={isDepositsPaused}
+          marketFees={
+            selectedMetrics
+              ? {
+                  buyFeeRatio: selectedMetrics.mintFeeRatio,
+                  sellFeeRatio: selectedMetrics.redeemFeeRatio,
+                  activeBuyBand: selectedMetrics.activeMintBand,
+                  activeSellBand: selectedMetrics.activeRedeemBand,
+                }
+              : undefined
+          }
+        />
+      }
+      metrics={
         <SailMarketMetricsCollapsible
           market={selectedMarket}
           metrics={selectedMetrics}
         />
-      </div>
-
-      {isComingSoon ? null : (
-        <SailMobileTradeBar
-          onMint={() => openTradeTab("mint")}
-          onRedeem={() => openTradeTab("redeem")}
-          mintDisabled={isDepositsPaused}
-        />
-      )}
-
-      <SailMarketInfoFooter />
-    </div>
+      }
+      mobileBar={
+        isComingSoon ? null : (
+          <SailMobileTradeBar
+            onMint={() => openTradeTab("mint")}
+            onRedeem={() => openTradeTab("redeem")}
+            mintDisabled={isDepositsPaused}
+          />
+        )
+      }
+      infoFooter={<SailMarketInfoFooter />}
+    />
   );
 }

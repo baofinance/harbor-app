@@ -3,6 +3,8 @@ import { markets as contractsMarkets } from "./contracts.index";
 // Check if we're using test2 contracts
 const useTest2 = process.env.NEXT_PUBLIC_USE_TEST2_CONTRACTS === "true";
 const useMegaeth = process.env.NEXT_PUBLIC_USE_MEGAETH === "true";
+/** Preview markets (`genesisActive: "soon"`) become live on staging for QA (e.g. haUSD zap). */
+const isStaging = process.env.NEXT_PUBLIC_APP_ENV === "staging";
 
 const getContractMarket = (marketId: string) => contractsMarkets[marketId];
 
@@ -16,6 +18,12 @@ const resolveStabilityPoolManager = (
 
 /** Maiden Voyage / genesis index visibility (see `getGenesisActiveSetting`). */
 export type GenesisActiveSetting = true | false | "soon" | "completed";
+
+/** On-chain zap contract API (`v1` = harbor-zap-contracts `_v1` family). */
+export type ZapApiVersion = "legacy" | "v1";
+
+/** When true, one-tx zap→stability-pool paths revert until Safe allowlist batch lands. */
+export type ZapStabilityPoolAllowlistPending = boolean;
 
 export const markets = {
   // ============================================================================
@@ -31,6 +39,7 @@ export const markets = {
     genesisActive: "completed" as GenesisActiveSetting,
     pegTarget: "ETH", // haETH is pegged to ETH
     zapper: true,
+    zapApiVersion: "v1" as ZapApiVersion,
     anyswap: true,
     chain: {
       name: "Ethereum",
@@ -122,6 +131,7 @@ export const markets = {
     genesisActive: "completed" as GenesisActiveSetting,
     pegTarget: "BTC", // haBTC is pegged to BTC
     zapper: true,
+    zapApiVersion: "v1" as ZapApiVersion,
     anyswap: true,
     chain: {
       name: "Ethereum",
@@ -212,6 +222,8 @@ export const markets = {
     status: "genesis" as const,
     genesisActive: "completed" as GenesisActiveSetting,
     pegTarget: "BTC", // haBTC is pegged to BTC
+    zapper: true,
+    zapApiVersion: "v1" as ZapApiVersion,
     chain: {
       name: "Ethereum",
       logo: "icons/eth.png",
@@ -467,6 +479,8 @@ export const markets = {
     status: "genesis" as const,
     genesisActive: true as GenesisActiveSetting,
     pegTarget: "EUR",
+    zapper: true,
+    zapApiVersion: "v1" as ZapApiVersion,
     chain: {
       name: "Ethereum",
       logo: "icons/eth.png",
@@ -549,6 +563,8 @@ export const markets = {
     status: "genesis" as const,
     genesisActive: true as GenesisActiveSetting,
     pegTarget: "EUR",
+    zapper: true,
+    zapApiVersion: "v1" as ZapApiVersion,
     chain: {
       name: "Ethereum",
       logo: "icons/eth.png",
@@ -954,10 +970,11 @@ export const markets = {
           sailActive: "soon" as const,
           test: false,
           status: "genesis" as const,
-          genesisActive: "soon" as GenesisActiveSetting,
+          genesisActive: (isStaging ? true : "soon") as GenesisActiveSetting,
           pegTarget: "USD",
           chainId: 1,
-          zapper: false,
+          zapper: true,
+          zapApiVersion: "v1" as ZapApiVersion,
           anyswap: false,
           chain: { name: "Ethereum", logo: "icons/eth.png" },
           collateral: {
@@ -966,7 +983,11 @@ export const markets = {
             underlyingSymbol: "stETH",
           },
           underlyingCoinGeckoId: "wrapped-steth",
-          acceptedAssets: [{ symbol: "wstETH", name: "Wrapped stETH" }],
+          acceptedAssets: [
+            { symbol: "ETH", name: "Ethereum" },
+            { symbol: "stETH", name: "Lido Staked ETH" },
+            { symbol: "wstETH", name: "Wrapped stETH" },
+          ],
           rewardTokens: { default: ["wstETH"], additional: [] },
           addresses: {
             minter: contractsMarkets["steth-usd"].addresses.minter,
@@ -986,6 +1007,10 @@ export const markets = {
             collateralToken: contractsMarkets["steth-usd"].addresses.collateralToken,
             wrappedCollateralToken:
               contractsMarkets["steth-usd"].addresses.wrappedCollateralToken,
+            genesisZap: contractsMarkets["steth-usd"].addresses.genesisZap,
+            peggedTokenZap: contractsMarkets["steth-usd"].addresses.peggedTokenZap,
+            leveragedTokenZap:
+              contractsMarkets["steth-usd"].addresses.leveragedTokenZap,
           },
           startBlock: contractsMarkets["steth-usd"].startBlock,
           peggedToken: {
@@ -1288,6 +1313,16 @@ export function isMarketArchived(mkt: unknown): boolean {
 /** Deposits/mints blocked; withdrawals/redeems/claims still allowed. */
 export function depositsBlockedForMarket(mkt: unknown): boolean {
   return isMarketInMaintenance(mkt) || isMarketArchived(mkt);
+}
+
+/** One-tx minter zap → stability pool reverts until Safe allowlists pools on the zap. */
+export function isZapStabilityPoolAllowlistPending(mkt: unknown): boolean {
+  return Boolean(
+    mkt &&
+      typeof mkt === "object" &&
+      (mkt as { zapStabilityPoolAllowlistPending?: boolean })
+        .zapStabilityPoolAllowlistPending === true
+  );
 }
 
 /**

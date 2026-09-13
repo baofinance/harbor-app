@@ -304,3 +304,11 @@ export const MV_PREVIEW_SOON_CONTENT_DIM_CLASS =
 
 export const MV_PREVIEW_SOON_BADGE_CLASS =
   "rounded-xl border border-white/40 bg-[#CFE5DD]/95 px-4 py-2 font-mono text-base font-extrabold tracking-[0.12em] text-[#2F4572] shadow-[0_10px_30px_-12px_rgba(0,0,0,0.45)] sm:text-lg";
+
+/** Frosted veil for completed / launched voyages (same treatment as coming soon). */
+export const MV_PREVIEW_COMPLETED_VEIL_CLASS = MV_PREVIEW_SOON_VEIL_CLASS;
+
+export const MV_PREVIEW_COMPLETED_CONTENT_DIM_CLASS =
+  MV_PREVIEW_SOON_CONTENT_DIM_CLASS;
+
+export const MV_PREVIEW_COMPLETED_BADGE_CLASS = MV_PREVIEW_SOON_BADGE_CLASS;

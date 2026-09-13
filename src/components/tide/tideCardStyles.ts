@@ -53,7 +53,7 @@ export const TIDE_MAX_BUTTON_CLASS = `absolute right-2 top-1/2 -translate-y-1/2 
 
 /** Summary / receive rows — Sail transaction overview style. */
 export const TIDE_OVERVIEW_PANEL_SHELL =
-  "rounded-md border border-[#1E4775]/10 bg-[#17395F]/5 px-3 py-2.5";
+  "rounded-md border border-[#1E4775]/12 bg-white px-3 py-2.5";
 
 export const TIDE_ROW_DIVIDER =
   "flex w-full items-center justify-between gap-3 border-b border-[#1E4775]/10 py-2.5 last:border-b-0";

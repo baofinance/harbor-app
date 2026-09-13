@@ -6,7 +6,8 @@ import { AppBackgroundProvider } from "@/contexts/AppBackgroundContext";
 import { headers } from "next/headers";
 import Navigation from "@/components/Navigation";
 import FadeContent from "@/components/FadeContent";
-import { DocumentTextIcon } from "@heroicons/react/24/outline";
+import { MobileTradeBarScrollClearance } from "@/components/MobileTradeBarScrollClearance";
+import { DocumentTextIcon, ScaleIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { SiDiscord, SiX } from "react-icons/si";
 
 const siteUrl ="https://app.harborfinance.io";
@@ -48,7 +49,7 @@ export const metadata: Metadata = {
  openGraph: {
  title: siteTitleDefault,
  description,
- url: siteUrl,
+ url: `${siteUrl}/anchor`,
  siteName: siteTitleDefault,
  images: [
  {
@@ -69,7 +70,7 @@ export const metadata: Metadata = {
  images: [`${siteUrl}/logowhitenobg.png`],
  },
  alternates: {
- canonical: siteUrl,
+   canonical: `${siteUrl}/anchor`,
  },
 };
 
@@ -127,6 +128,26 @@ export default async function RootLayout({
          Docs
        </a>
        <a
+         href="https://docs.harborfinance.io/terms-of-use"
+         target="_blank"
+         rel="noopener noreferrer"
+         title="Terms of Use"
+         className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 font-normal hover:bg-white/10 hover:text-white transition-colors"
+       >
+         <ScaleIcon className="h-4 w-4 shrink-0" aria-hidden />
+         Terms of Use
+       </a>
+       <a
+         href="https://docs.harborfinance.io/privacy-policy"
+         target="_blank"
+         rel="noopener noreferrer"
+         title="Privacy Policy"
+         className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 font-normal hover:bg-white/10 hover:text-white transition-colors"
+       >
+         <ShieldCheckIcon className="h-4 w-4 shrink-0" aria-hidden />
+         Privacy Policy
+       </a>
+       <a
          href="https://discord.com/invite/BW3P62vJXT"
          target="_blank"
          rel="noopener noreferrer"
@@ -149,6 +170,7 @@ export default async function RootLayout({
      </div>
    </div>
  </footer>
+ <MobileTradeBarScrollClearance />
  </ContextProvider>
  </div>
  </body>

@@ -45,6 +45,7 @@ export default function SailPage() {
     sailMarksError,
     sailPnLSummary,
     totalSailMarks,
+    sailMarksPerDay,
     isLoadingSailMarks,
     sailMarketIdToIndex,
     reads,
@@ -61,6 +62,8 @@ export default function SailPage() {
     refetchUserDeposits,
     sailUserStats,
     pnlFromMarkets,
+    marketDropdownPnLToneByMarketId,
+    marketDropdownPositionByMarketId,
     activeSailBoostEndTimestamp,
     displayedArchivedSailMarkets,
     tableMarkets,
@@ -187,6 +190,7 @@ export default function SailPage() {
             isConnected={isConnected}
             userDepositMap={userDepositMap}
             tokenPricesByMarket={tokenPricesByMarket}
+            marketDropdownPnLToneByMarketId={marketDropdownPnLToneByMarketId}
             userDeposit={selectedUserDeposit}
             currentValueUSD={selectedCurrentValueUSD}
             onManageSuccess={refetchAfterManage}
@@ -205,6 +209,7 @@ export default function SailPage() {
               pnlSummaryLoading: sailPnLSummary.isLoading,
               isLoadingSailMarks,
               totalSailMarks,
+              marksPerDay: sailMarksPerDay,
             }}
           />
         )}

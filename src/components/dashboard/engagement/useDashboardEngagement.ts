@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useAccount } from "wagmi";
+import { useHarborAccount } from "@/hooks/useHarborAccount";
 import { isAddress, type Address } from "viem";
 import { markets } from "@/config/markets";
 import { useGenesisPageData } from "@/hooks/useGenesisPageData";
@@ -33,7 +33,7 @@ type UseDashboardEngagementParams = {
 };
 
 export function useDashboardEngagement(params: UseDashboardEngagementParams) {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useHarborAccount();
   const { genesisMarkets, marksResults, getMarketName } = useGenesisPageData();
   const [yieldEvents, setYieldEvents] = useState<YieldDistributionEvent[]>([]);
 

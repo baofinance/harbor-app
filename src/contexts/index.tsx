@@ -6,6 +6,7 @@ import React, { type ReactNode } from "react";
 import { cookieToInitialState, WagmiProvider, type Config } from "wagmi";
 import { CurrencyProvider, type CurrencyCode } from "./CurrencyContext";
 import { ImpersonationProvider } from "./ImpersonationContext";
+import { AppNotificationsProvider } from "./AppNotificationsContext";
 import { SafeAppProviderWrapper } from "@/components/SafeAppProvider";
 
 // Set up queryClient
@@ -68,9 +69,11 @@ function ContextProvider({
  <QueryClientProvider client={queryClient}>
 <SafeAppProviderWrapper>
  <ImpersonationProvider>
+ <AppNotificationsProvider>
  <CurrencyProvider initialCode={initialCurrency}>
  {children}
  </CurrencyProvider>
+ </AppNotificationsProvider>
  </ImpersonationProvider>
 </SafeAppProviderWrapper>
  </QueryClientProvider>

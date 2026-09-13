@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { HARBOR_FROSTED_MODAL_SHELL } from "@/components/shared/harborFrostedSurfaceStyles";
 import { GenesisTransactionProgressSteps } from "./GenesisTransactionProgressSteps";
 import { CompactTransactionProgressRail } from "./CompactTransactionProgressRail";
@@ -242,18 +243,31 @@ export const TransactionProgressModal = ({
     failedStep?.error ??
     "Something went wrong. Please try again or contact support if the issue persists.";
 
+  /** Full-page layover (Earn + Sail embedded and popup flows). */
+  const mount = (panel: React.ReactNode) => {
+    if (typeof document === "undefined") return panel;
+    return createPortal(
+      <div className="fixed inset-0 z-[200] flex items-center justify-center">
+        <div
+          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          onClick={onCancel || onClose}
+          aria-hidden
+        />
+        {panel}
+      </div>,
+      document.body
+    );
+  };
+
+  const panelShellClass = `relative isolate mx-4 flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl ${HARBOR_FROSTED_MODAL_SHELL} animate-in fade-in-0 scale-in-95 duration-200`;
+
   // If we're showing fee info, show confirmation screen
   if (showFeeInfo && onConfirmFee) {
     const fees = Array.isArray(showFeeInfo) ? showFeeInfo : [showFeeInfo];
     const totalFeeUSD = fees.reduce((sum, fee) => sum + (fee.feeUSD || 0), 0);
 
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div
-          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          onClick={onCancel || onClose}
-        />
-        <div className={`relative isolate mx-4 flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl ${HARBOR_FROSTED_MODAL_SHELL} animate-in fade-in-0 scale-in-95 duration-200`}>
+    return mount(
+      <div className={panelShellClass}>
           <div className="flex shrink-0 items-center justify-between border-b border-[#1E4775]/20 p-6">
             <h2 className="text-2xl font-bold text-[#1E4775]">{title}</h2>
             <button
@@ -278,7 +292,6 @@ export const TransactionProgressModal = ({
           </div>
 
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
-            {/* All Steps Preview with Fees */}
             <div>
               <h3 className="mb-3 text-sm font-semibold text-[#1E4775]">
                 Transaction Steps & Fees
@@ -349,7 +362,6 @@ export const TransactionProgressModal = ({
               </div>
             </div>
 
-            {/* Total Fees Summary */}
             {fees.length > 0 && (
               <div className="rounded-md border border-yellow-200 bg-yellow-50 p-4">
                 <h3 className="mb-2 text-sm font-semibold text-yellow-800">
@@ -395,17 +407,11 @@ export const TransactionProgressModal = ({
             </div>
           </div>
         </div>
-      </div>
     );
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div className={`relative isolate mx-4 flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl ${HARBOR_FROSTED_MODAL_SHELL} animate-in fade-in-0 scale-in-95 duration-200`}>
+  return mount(
+    <div className={panelShellClass}>
         <div className="flex shrink-0 items-start justify-between gap-2 border-b border-[#1E4775]/20 p-6">
           <div className="min-w-0 flex-1">
             <h2 className="text-2xl font-bold text-[#1E4775]">{title}</h2>
@@ -542,6 +548,5 @@ export const TransactionProgressModal = ({
           )}
         </div>
       </div>
-    </div>
   );
 };

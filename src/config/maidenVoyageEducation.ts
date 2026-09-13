@@ -41,10 +41,10 @@ export const MAIDEN_VOYAGE_REVENUE_SHARE_BULLETS = [
 ] as const;
 
 export const MAIDEN_VOYAGE_WHY_JOIN_BULLETS = [
-  "Earn 5% of market revenue forever",
-  "Permanent share, limited opportunity",
+  "Earn up to 5% of market revenue forever",
+  "Revenue from mint/redeem fees plus collateral yield",
   "Anchor + Sail tokens at launch",
-  "Boosted yield for early supporters",
+  "Stay deposited after launch to keep your share",
 ] as const;
 
 /** Explore the Upside section — narrative copy (Phase 1). */

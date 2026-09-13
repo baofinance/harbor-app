@@ -65,7 +65,11 @@ export type GenesisMaidenVoyageStageStripProps = {
 };
 
 const STAGE_STRIP_GRID_CLASS =
-  "grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-x-0.5 sm:gap-x-1";
+  "hidden w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-x-1 lg:grid";
+
+const STAGE_STRIP_MOBILE_CLASS =
+  "flex w-full justify-between gap-1 lg:hidden";
+
 
 function StageChevron() {
   return (
@@ -121,10 +125,51 @@ export function GenesisMaidenVoyageStageStrip({
     <div className="w-full">
       {showHeading ? <GenesisMaidenVoyageStageLabel status={status} /> : null}
 
+      {/* Mobile: equal-width steps, no overlap */}
       <div
-        className={showHeading ? `mt-3 ${STAGE_STRIP_GRID_CLASS}` : STAGE_STRIP_GRID_CLASS}
+        className={
+          showHeading ? `mt-3 ${STAGE_STRIP_MOBILE_CLASS}` : STAGE_STRIP_MOBILE_CLASS
+        }
         role="list"
         aria-label="Voyage stages"
+      >
+        {STAGES.map((stage) => {
+          const isActive = stage.order === activeOrder;
+          return (
+            <div
+              key={stage.key}
+              role="listitem"
+              aria-current={isActive ? "step" : undefined}
+              className="flex min-w-0 flex-1 flex-col items-center gap-1.5"
+            >
+              <span
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold tabular-nums ${
+                  isActive
+                    ? "bg-white/90 text-[#0a1628] shadow-sm backdrop-blur-sm"
+                    : "bg-black text-white/75 ring-1 ring-white/15"
+                }`}
+              >
+                {stage.order}
+              </span>
+              <span
+                className={`w-full text-center text-[9px] font-medium leading-tight tracking-wide ${
+                  isActive ? "text-white" : "text-white/50"
+                }`}
+              >
+                {stage.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop: full equal-width strip with chevrons */}
+      <div
+        className={
+          showHeading ? `mt-3 ${STAGE_STRIP_GRID_CLASS}` : STAGE_STRIP_GRID_CLASS
+        }
+        role="list"
+        aria-hidden="true"
       >
         {STAGES.map((stage, index) => {
           const isActive = stage.order === activeOrder;

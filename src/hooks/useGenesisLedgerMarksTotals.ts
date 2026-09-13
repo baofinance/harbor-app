@@ -24,7 +24,6 @@ type MarksResult = {
   errors?: unknown[];
 };
 
-/** Inline with GenesisCampaignStats props */
 export type GenesisCampaignStatsPropsMarksResults = MarksResult[];
 
 type GenesisMarketConfig = {
@@ -60,7 +59,7 @@ function parseUserHarborMarks(raw: unknown): HarborMarksRecord | undefined {
 }
 
 /**
- * Pure campaign selection + Ledger Marks totals (same rules as GenesisCampaignStats).
+ * Pure campaign selection + Ledger Marks totals.
  * `nowSec` is wall-clock seconds for extrapolation since last subgraph update.
  */
 export function computeGenesisLedgerMarksTotals(

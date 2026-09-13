@@ -2,7 +2,21 @@ import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
 import {
   HARBOR_FEE_BAND_PILL_CLASS,
   resolveHarborFeeBandKind,
+  type HarborFeeBandKind,
 } from "@/lib/harborFeeBandStyles";
+import {
+  DEPOSIT_TAG_BLOCKED_CLASS,
+  DEPOSIT_TAG_CORAL_CLASS,
+  DEPOSIT_TAG_MINT_CLASS,
+} from "@/components/deposit/depositFlowStyles";
+
+/** Compact bordered tags — Earn / Sail trade modal footers. */
+const HARBOR_FEE_BAND_MODAL_TAG_CLASS: Record<HarborFeeBandKind, string> = {
+  blocked: DEPOSIT_TAG_BLOCKED_CLASS,
+  free: DEPOSIT_TAG_MINT_CLASS,
+  discount: DEPOSIT_TAG_MINT_CLASS,
+  fee: DEPOSIT_TAG_CORAL_CLASS,
+};
 
 type SailFeeBandBadgeProps = {
   ratio: bigint;
@@ -13,10 +27,15 @@ type SailFeeBandBadgeProps = {
   showHelp?: boolean;
   /** Table row only: show `1.00%` instead of `1.00% fee` (popups keep full text). */
   omitFeeSuffix?: boolean;
+  /**
+   * `band` — heavier ring pills (tables / fee panels).
+   * `modal` — compact bordered tags matching Earn/Sail trade modals.
+   */
+  variant?: "band" | "modal";
 };
 
 /**
- * Pill for a single incentive ratio (table cells and fee-band list rows).
+ * Fee-band badge — ring pills by default; modal variant matches trade-modal tags.
  */
 export function SailFeeBandBadge({
   ratio,
@@ -25,6 +44,7 @@ export function SailFeeBandBadge({
   upperBound,
   showHelp = false,
   omitFeeSuffix = false,
+  variant = "band",
 }: SailFeeBandBadgeProps) {
   const pct = Number(ratio) / 1e16;
   const kind = resolveHarborFeeBandKind(
@@ -45,18 +65,27 @@ export function SailFeeBandBadge({
             ? `${pct.toFixed(2)}%`
             : `${pct.toFixed(2)}% fee`;
 
-  const className = HARBOR_FEE_BAND_PILL_CLASS[kind];
+  const surfaceClass =
+    variant === "modal"
+      ? HARBOR_FEE_BAND_MODAL_TAG_CLASS[kind]
+      : HARBOR_FEE_BAND_PILL_CLASS[kind];
 
-  /** Table badges: fixed width for `4.00%` + `[?]` (5px narrower than 4.5rem); popup badges unchanged. */
-  const tableUniformClasses = omitFeeSuffix
-    ? "w-[calc(4.5rem-5px)] min-w-[calc(4.5rem-5px)] shrink-0 tabular-nums"
-    : "";
+  /** Table badges: fixed width for `4.00%` + `[?]`; popup / modal badges auto-size. */
+  const tableUniformClasses =
+    variant === "band" && omitFeeSuffix
+      ? "w-[calc(4.5rem-5px)] min-w-[calc(4.5rem-5px)] shrink-0 tabular-nums"
+      : variant === "modal"
+        ? "tabular-nums"
+        : "";
+
+  const layoutClass =
+    variant === "modal"
+      ? `inline-flex items-center gap-1 whitespace-nowrap ${surfaceClass} ${tableUniformClasses}`
+      : `inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] whitespace-nowrap ${tableUniformClasses} ${surfaceClass}`;
 
   return (
-    <span
-      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] whitespace-nowrap ${tableUniformClasses} ${className}`}
-    >
-      {omitFeeSuffix ? (
+    <span className={layoutClass}>
+      {omitFeeSuffix && variant === "band" ? (
         <span className="min-w-0 flex-1 truncate text-center">{label}</span>
       ) : (
         label
