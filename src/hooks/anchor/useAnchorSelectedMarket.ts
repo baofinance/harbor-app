@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
 import type { DefinedMarket } from "@/config/markets";
 import { isAnchorSoonUi } from "@/config/markets";
 import type { MarketData } from "@/hooks/anchor/useAnchorMarketData";
+import { useMarketQueryParam } from "@/hooks/useMarketQueryParam";
 
 export type UseAnchorSelectedMarketArgs = {
   markets: readonly [string, DefinedMarket][];
@@ -48,8 +48,7 @@ export function useAnchorSelectedMarket({
   marketPositions,
   marketsDataById,
 }: UseAnchorSelectedMarketArgs) {
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
+  const { marketParam, setMarketParam } = useMarketQueryParam();
   const [selectedMarketId, setSelectedMarketIdState] = useState<string | null>(
     null,
   );
@@ -57,7 +56,7 @@ export function useAnchorSelectedMarket({
   useEffect(() => {
     if (!marketsReady || markets.length === 0) return;
 
-    const urlMarket = searchParams.get("market");
+    const urlMarket = marketParam;
     if (urlMarket && markets.some(([id]) => id === urlMarket)) {
       setSelectedMarketIdState(urlMarket);
       return;
@@ -67,21 +66,14 @@ export function useAnchorSelectedMarket({
       if (prev && markets.some(([id]) => id === prev)) return prev;
       return pickDefaultAnchorMarketId(markets, marketPositions);
     });
-  }, [marketsReady, markets, searchParams, marketPositions]);
+  }, [marketsReady, markets, marketParam, marketPositions]);
 
   const setSelectedMarketId = useCallback(
     (marketId: string) => {
       setSelectedMarketIdState(marketId);
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("market", marketId);
-      const qs = params.toString();
-      const nextUrl = qs ? `${pathname}?${qs}` : pathname;
-      // Avoid router.replace — it can race App Router soft navigations from the nav.
-      if (typeof window !== "undefined") {
-        window.history.replaceState(window.history.state, "", nextUrl);
-      }
+      setMarketParam(marketId);
     },
-    [pathname, searchParams],
+    [setMarketParam],
   );
 
   const selectedMarket = useMemo(() => {

@@ -91,9 +91,8 @@ export default async function RootLayout({
  <ContextProvider cookies={cookies}>
             <AppBackgroundProvider>
                 {/*
-                  Keep Navigation outside the Suspense that wraps pages.
-                  Earn/Sail call useSearchParams(); if that suspends under the same
-                  boundary as nav, the whole shell remounts and soft-routing can wedge.
+                  Keep Navigation outside the Suspense that wraps pages so a
+                  suspending page cannot remount the nav shell.
                 */}
                 <Navigation />
                 <Suspense fallback={null}>
