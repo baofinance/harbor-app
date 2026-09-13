@@ -75,13 +75,18 @@ export function GenesisClaimPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden pt-2.5 sm:pt-3">
-      <div className="shrink-0 px-4 sm:px-5">
-        <div className="flex w-full items-center justify-center rounded-md bg-[#1E4775] px-3 py-1.5 sm:py-2">
-          <span className="text-xs font-medium text-white sm:text-sm">Claim</span>
+      {/* Match DepositModalTabHeader track size; solid navy (not frosted pill). */}
+      <div className="shrink-0">
+        <div className="flex w-full gap-1 rounded-md bg-[#1E4775] p-0.5">
+          <div className="flex flex-1 flex-col items-center justify-center rounded-md py-1.5 sm:py-2">
+            <span className="text-xs font-medium text-white sm:text-sm">
+              Claim
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-3 pt-3 sm:px-5">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pb-3 pt-3">
         <div className="space-y-1 text-center">
           <p className="text-sm font-bold text-[#1E4775]">Amount</p>
           <p className="text-[11px] leading-snug text-[#1E4775]/55">
@@ -157,7 +162,7 @@ export function GenesisClaimPanel({
         </p>
       </div>
 
-      <div className={`${ANCHOR_MODAL_FOOTER_CHROME} px-4 pb-3 sm:px-5`}>
+      <div className={`${ANCHOR_MODAL_FOOTER_CHROME} pb-3`}>
         {!isConnected ? (
           <HarborConnectWalletCta
             className={`${DEPOSIT_PRIMARY_MINT_CLASS} w-full`}

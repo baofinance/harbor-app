@@ -40,7 +40,7 @@ export function SailMarketActionPanel({
   depositsPaused = false,
 }: SailMarketActionPanelProps) {
   return (
-    <aside className="flex flex-col lg:h-full">
+    <aside className="flex flex-col">
       <div
         className={`${SAIL_EMBEDDED_FORM_PANEL} ${SAIL_EMBEDDED_PANEL_HEIGHT} flex w-full min-w-0 flex-col overflow-hidden`}
       >

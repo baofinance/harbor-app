@@ -73,27 +73,29 @@ export function GenesisVoyageHeader({
             selectedMarketId={selectedMarketId}
             onSelectMarket={onSelectMarket}
           />
-          <div className="flex w-full min-w-0 flex-col items-center justify-center gap-1.5 text-center">
-            <ul className={PERKS_CLASS}>
-              {perks.map((label, index) => (
-                <li key={label} className="inline-flex items-center">
-                  {index > 0 ? (
-                    <span className={PERK_RULE_CLASS} aria-hidden="true" />
-                  ) : null}
-                  <span className={PERK_ITEM_CLASS}>
-                    <span className={PERK_DOT_CLASS} aria-hidden="true" />
-                    <span>{label}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <p className={TAGLINE_CLASS}>
-              Own a piece of the <span className={PEG_CLASS}>{pegLabel}</span>{" "}
-              market.{" "}
-              <span className={`${MV_ACCENT_GRADIENT} whitespace-nowrap`}>
-                Earn forever.
-              </span>
-            </p>
+          <div className="flex w-full min-w-0 items-center justify-center">
+            <div className="w-full text-center">
+              <ul className={PERKS_CLASS}>
+                {perks.map((label, index) => (
+                  <li key={label} className="inline-flex items-center">
+                    {index > 0 ? (
+                      <span className={PERK_RULE_CLASS} aria-hidden="true" />
+                    ) : null}
+                    <span className={PERK_ITEM_CLASS}>
+                      <span className={PERK_DOT_CLASS} aria-hidden="true" />
+                      <span>{label}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className={TAGLINE_CLASS}>
+                Own a piece of the <span className={PEG_CLASS}>{pegLabel}</span>{" "}
+                market.{" "}
+                <span className={`${MV_ACCENT_GRADIENT} whitespace-nowrap`}>
+                  Earn forever.
+                </span>
+              </p>
+            </div>
           </div>
         </div>
       </div>

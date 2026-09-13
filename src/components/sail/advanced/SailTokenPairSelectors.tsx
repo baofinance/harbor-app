@@ -26,7 +26,7 @@ import {
   SailMarketDropdownTriggerContent,
 } from "./SailMarketDropdownOptionContent";
 
-const DROPDOWN_MENU_CLASS = `absolute left-0 top-[calc(100%+0.35rem)] z-[120] min-w-full w-max max-w-[min(100vw-2rem,26rem)] max-h-80 overflow-y-auto rounded-xl shadow-2xl ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL} p-1.5`;
+const DROPDOWN_MENU_CLASS = `absolute left-0 top-[calc(100%+0.35rem)] z-40 min-w-full w-max max-w-[min(100vw-2rem,26rem)] max-h-80 overflow-y-auto rounded-xl shadow-2xl ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL} p-1.5`;
 
 const OPTION_ACTIVE = "bg-[#1E4775]/10";
 const OPTION_HOVER = "hover:bg-[#1E4775]/[0.06]";
@@ -70,7 +70,7 @@ function FrostedDropdown({
   return (
     <div
       ref={rootRef}
-      className={`relative min-w-0 ${open ? "z-[110]" : ""} ${className}`.trim()}
+      className={`relative min-w-0 ${open ? "z-40" : ""} ${className}`.trim()}
     >
       <p className={MARKET_SELECTOR_FIELD_LABEL_CLASS}>{label}</p>
       <button
@@ -244,7 +244,7 @@ export function SailTokenPairSelectors({
   return (
     <div
       className={`${MARKET_SELECTOR_ROW_CLASS} ${
-        anyOpen ? "z-[100]" : ""
+        anyOpen ? "z-40" : ""
       } ${className}`.trim()}
     >
       <FrostedDropdown
