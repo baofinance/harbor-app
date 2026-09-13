@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { DefinedMarket } from "@/config/markets";
 import type { SailContractReads } from "@/types/sail";
 import { isValidContractAddress } from "@/utils/isValidContractAddress";
@@ -58,7 +58,6 @@ export function useSailSelectedMarket({
   isCoinGeckoLoading = false,
 }: UseSailSelectedMarketArgs) {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const pathname = usePathname();
   const [selectedMarketId, setSelectedMarketIdState] = useState<string | null>(
     null
@@ -215,9 +214,13 @@ export function useSailSelectedMarket({
       const params = new URLSearchParams(searchParams.toString());
       params.set("market", marketId);
       const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      const nextUrl = qs ? `${pathname}?${qs}` : pathname;
+      // Avoid router.replace — it can race App Router soft navigations from the nav.
+      if (typeof window !== "undefined") {
+        window.history.replaceState(window.history.state, "", nextUrl);
+      }
     },
-    [pathname, router, searchParams]
+    [pathname, searchParams]
   );
 
   const selectedMarket = useMemo(() => {

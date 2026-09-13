@@ -89,20 +89,25 @@ export default async function RootLayout({
  >
  <div className="relative z-10 flex flex-1 flex-col min-h-0">
  <ContextProvider cookies={cookies}>
- <Suspense fallback={null}>
             <AppBackgroundProvider>
+                {/*
+                  Keep Navigation outside the Suspense that wraps pages.
+                  Earn/Sail call useSearchParams(); if that suspends under the same
+                  boundary as nav, the whole shell remounts and soft-routing can wedge.
+                */}
                 <Navigation />
-                <FadeContent
-                  blur={false}
-                  duration={500}
-                  easing="ease-out"
-                  initialOpacity={0}
-                  className="flex-1 min-h-0 flex flex-col"
-                >
-                  {children}
-                </FadeContent>
+                <Suspense fallback={null}>
+                  <FadeContent
+                    blur={false}
+                    duration={500}
+                    easing="ease-out"
+                    initialOpacity={0}
+                    className="flex-1 min-h-0 flex flex-col"
+                  >
+                    {children}
+                  </FadeContent>
+                </Suspense>
               </AppBackgroundProvider>
- </Suspense>
  <footer className="mt-auto flex-shrink-0 border-t border-white/20">
    <div className="w-full max-w-[1300px] mx-auto px-4 sm:px-10 py-6">
      <div className="flex justify-center mb-4">
