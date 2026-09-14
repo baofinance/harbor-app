@@ -133,8 +133,9 @@ export default function SailPage() {
       refetchRebalanceReads(),
     ]);
     queryClient.invalidateQueries({ queryKey: ["sailPositionPnL"] });
-    queryClient.invalidateQueries({ queryKey: ["sailPositionsPnLSummary"] });
-    queryClient.invalidateQueries({ queryKey: ["sailPositionsForPnL"] });
+    queryClient.invalidateQueries({
+      queryKey: ["sailPositionsForIndex"],
+    });
   }, [
     queryClient,
     refetchMinterConfigs,

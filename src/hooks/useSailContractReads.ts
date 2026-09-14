@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useContractReads } from "wagmi";
 import { useHarborAccount } from "@/hooks/useHarborAccount";
 import { markets } from "@/config/markets";
@@ -19,13 +19,22 @@ const erc20ABI = ERC20_ABI;
 const erc20MetadataABI = ERC20_ABI;
 const wrappedPriceOracleABI = WRAPPED_PRICE_ORACLE_ABI;
 
+function isValidAddress(addr: unknown): addr is `0x${string}` {
+  return (
+    !!addr &&
+    typeof addr === "string" &&
+    addr.startsWith("0x") &&
+    addr.length === 42
+  );
+}
+
 /**
  * Wagmi contract reads + derived maps for the Sail index (main batch, minter config,
  * rebalance threshold, token USD prices, user leveraged-token balances).
  * Composed by `useSailPageData`.
  */
 export function useSailContractReads() {
-  const { address } = useHarborAccount();
+  const { address, isConnected } = useHarborAccount();
 
   const sailMarkets = useMemo((): SailMarketTuple[] => {
     return (Object.entries(markets) as [string, DefinedMarket][]).filter(
@@ -54,12 +63,6 @@ export function useSailContractReads() {
       const leveragedTokenAddress = m.addresses?.leveragedToken as
         | `0x${string}`
         | undefined;
-
-      const isValidAddress = (addr: unknown): addr is `0x${string}` =>
-        !!addr &&
-        typeof addr === "string" &&
-        addr.startsWith("0x") &&
-        addr.length === 42;
 
       if (!isValidAddress(minter)) {
         return [];
@@ -101,8 +104,7 @@ export function useSailContractReads() {
           chainId: mktChainId,
         });
 
-        const collateralSymbol =
-          m.collateral?.symbol?.toLowerCase() || "";
+        const collateralSymbol = m.collateral?.symbol?.toLowerCase() || "";
         const isFxUSDMarket =
           collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
         if (isFxUSDMarket) {
@@ -132,11 +134,11 @@ export function useSailContractReads() {
 
       return contracts;
     }),
+    allowFailure: true,
     query: {
       enabled: sailMarkets.length > 0,
       retry: 1,
       retryOnMount: false,
-      allowFailure: true,
     },
   });
 
@@ -155,12 +157,6 @@ export function useSailContractReads() {
         | `0x${string}`
         | undefined;
 
-      const isValidAddress = (addr: unknown): boolean =>
-        !!addr &&
-        typeof addr === "string" &&
-        (addr as string).startsWith("0x") &&
-        (addr as string).length === 42;
-
       if (!isValidAddress(minter)) {
         return;
       }
@@ -170,8 +166,7 @@ export function useSailContractReads() {
       if (isValidAddress(priceOracle)) {
         currentOffset += 1;
 
-        const collateralSymbol =
-          m.collateral?.symbol?.toLowerCase() || "";
+        const collateralSymbol = m.collateral?.symbol?.toLowerCase() || "";
         const isFxUSDMarket =
           collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
         if (isFxUSDMarket) {
@@ -187,15 +182,36 @@ export function useSailContractReads() {
     return offsets;
   }, [sailMarkets]);
 
+  // Defer secondary batches until main reads have settled (or timed out loading).
+  const [secondaryReadsEnabled, setSecondaryReadsEnabled] = useState(false);
+  useEffect(() => {
+    if (secondaryReadsEnabled) return;
+    if (isLoadingReads && !reads) return;
+
+    let cancelled = false;
+    const enable = () => {
+      if (!cancelled) setSecondaryReadsEnabled(true);
+    };
+
+    if (typeof requestIdleCallback !== "undefined") {
+      const id = requestIdleCallback(enable, { timeout: 1500 });
+      return () => {
+        cancelled = true;
+        cancelIdleCallback(id);
+      };
+    }
+
+    const t = window.setTimeout(enable, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [isLoadingReads, reads, secondaryReadsEnabled]);
+
   const minterConfigContracts = useMemo(() => {
     return sailMarkets.flatMap(([_, m]) => {
       const minter = m.addresses?.minter as `0x${string}` | undefined;
       const mktChainId = (m as Market & { chainId?: number }).chainId ?? 1;
-      const isValidAddress = (addr: unknown): addr is `0x${string}` =>
-        !!addr &&
-        typeof addr === "string" &&
-        addr.startsWith("0x") &&
-        addr.length === 42;
       if (!isValidAddress(minter)) return [];
       return [
         {
@@ -211,11 +227,11 @@ export function useSailContractReads() {
   const { data: minterConfigReadsData, refetch: refetchMinterConfigs } =
     useContractReads({
       contracts: minterConfigContracts,
+      allowFailure: true,
       query: {
-        enabled: minterConfigContracts.length > 0,
+        enabled: secondaryReadsEnabled && minterConfigContracts.length > 0,
         retry: 1,
         retryOnMount: false,
-        allowFailure: true,
       },
     });
 
@@ -224,11 +240,6 @@ export function useSailContractReads() {
     let idx = 0;
     sailMarkets.forEach(([id, m]) => {
       const minter = m.addresses?.minter as `0x${string}` | undefined;
-      const isValidAddress = (addr: unknown): addr is `0x${string}` =>
-        !!addr &&
-        typeof addr === "string" &&
-        addr.startsWith("0x") &&
-        addr.length === 42;
       if (!isValidAddress(minter)) return;
       const read = minterConfigReadsData?.[idx];
       idx += 1;
@@ -247,11 +258,6 @@ export function useSailContractReads() {
         | `0x${string}`
         | undefined;
       const mktChainId = (m as Market & { chainId?: number }).chainId ?? 1;
-      const isValidAddress = (addr: unknown): addr is `0x${string}` =>
-        !!addr &&
-        typeof addr === "string" &&
-        addr.startsWith("0x") &&
-        addr.length === 42;
       if (!isValidAddress(spm)) return [];
       return [
         {
@@ -267,11 +273,11 @@ export function useSailContractReads() {
   const { data: rebalanceReadsData, refetch: refetchRebalanceReads } =
     useContractReads({
       contracts: rebalanceContracts,
+      allowFailure: true,
       query: {
-        enabled: rebalanceContracts.length > 0,
+        enabled: secondaryReadsEnabled && rebalanceContracts.length > 0,
         retry: 1,
         retryOnMount: false,
-        allowFailure: true,
       },
     });
 
@@ -282,11 +288,6 @@ export function useSailContractReads() {
       const spm = m.addresses?.stabilityPoolManager as
         | `0x${string}`
         | undefined;
-      const isValidAddress = (addr: unknown): addr is `0x${string}` =>
-        !!addr &&
-        typeof addr === "string" &&
-        addr.startsWith("0x") &&
-        addr.length === 42;
       if (!isValidAddress(spm)) return;
       const read = rebalanceReadsData?.[idx];
       idx += 1;
@@ -316,20 +317,14 @@ export function useSailContractReads() {
   const tokenPricesByMarket = useMultipleTokenPrices(tokenPriceInputs);
 
   const userDepositContracts = useMemo(() => {
+    if (!isConnected || !address) return [];
     return sailMarkets
       .map(([_, m], index) => {
         const mktChainId = (m as Market & { chainId?: number }).chainId ?? 1;
         const leveragedTokenAddress = m.addresses?.leveragedToken as
           | `0x${string}`
           | undefined;
-        if (
-          !leveragedTokenAddress ||
-          typeof leveragedTokenAddress !== "string" ||
-          !leveragedTokenAddress.startsWith("0x") ||
-          leveragedTokenAddress.length !== 42 ||
-          !address
-        )
-          return null;
+        if (!isValidAddress(leveragedTokenAddress)) return null;
         return {
           marketIndex: index,
           contract: {
@@ -342,36 +337,28 @@ export function useSailContractReads() {
         };
       })
       .filter((c): c is NonNullable<typeof c> => c !== null);
-  }, [sailMarkets, address]);
+  }, [sailMarkets, address, isConnected]);
 
-  const useAnvil = false;
   const userDepositContractArray = useMemo(() => {
     return userDepositContracts.map((c) => c.contract);
   }, [userDepositContracts]);
 
-  const wagmiUserDepositReads = useContractReads({
+  const {
+    data: userDepositReads,
+    refetch: refetchUserDeposits,
+  } = useContractReads({
     contracts: userDepositContractArray,
+    allowFailure: true,
     query: {
-      enabled: sailMarkets.length > 0 && !!address && !useAnvil,
+      enabled:
+        isConnected &&
+        !!address &&
+        sailMarkets.length > 0 &&
+        userDepositContractArray.length > 0,
       retry: 1,
       retryOnMount: false,
-      allowFailure: true,
     },
   });
-  const refetchUserDeposits = wagmiUserDepositReads.refetch;
-
-  const anvilUserDepositReads = useContractReads({
-    contracts: userDepositContractArray,
-    query: {
-      enabled: sailMarkets.length > 0 && !!address && useAnvil,
-      refetchInterval: 5000,
-      allowFailure: true,
-    },
-  });
-
-  const userDepositReads = useAnvil
-    ? anvilUserDepositReads.data
-    : wagmiUserDepositReads.data;
 
   const userDepositMap = useMemo(() => {
     const map = new Map<number, bigint | undefined>();
