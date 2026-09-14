@@ -2,6 +2,9 @@
  * Next.js 15.5.x can deadlock App Router soft-nav when an action is discarded
  * without resolving its deferred promise (next.js#84299 / #89281).
  * Apply the upstream resolve-on-discard fix after each install.
+ *
+ * Missing target or unmatched needle fails postinstall so the soft-nav patch
+ * cannot be silently skipped.
  */
 const fs = require("fs");
 const path = require("path");
@@ -12,8 +15,10 @@ const target = path.join(
 );
 
 if (!fs.existsSync(target)) {
-  console.warn("[patch-next-router] next app-router-instance.js not found — skip");
-  process.exit(0);
+  console.error(
+    "[patch-next-router] next app-router-instance.js not found — cannot apply soft-nav patch",
+  );
+  process.exit(1);
 }
 
 const source = fs.readFileSync(target, "utf8");
@@ -36,10 +41,10 @@ const replacement = `if (action.discarded) {
         }`;
 
 if (!source.includes(needle)) {
-  console.warn(
-    "[patch-next-router] expected discarded-action pattern not found — skip",
+  console.error(
+    "[patch-next-router] expected discarded-action pattern not found — cannot apply soft-nav patch",
   );
-  process.exit(0);
+  process.exit(1);
 }
 
 fs.writeFileSync(target, source.replace(needle, replacement));

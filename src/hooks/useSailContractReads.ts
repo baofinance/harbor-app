@@ -134,7 +134,7 @@ export function useSailContractReads() {
 
       return contracts;
     }),
-    allowFailure: true,
+    allowFailure: true, // per-market failures must not look like collateral 0n
     query: {
       enabled: sailMarkets.length > 0,
       retry: 1,

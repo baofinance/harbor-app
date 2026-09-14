@@ -20,18 +20,42 @@ function passesSideFilters(
   return true;
 }
 
-function hasLiveCollateral(
+function getCollateralReadSlot(
+  id: string,
+  sailMarketIdToIndex: Map<string, number>,
+  marketOffsets: Map<number, number>,
+  reads: SailContractReads
+): { result?: bigint; status?: string; error?: unknown } | undefined {
+  const globalIndex = sailMarketIdToIndex.get(id);
+  if (globalIndex === undefined) return undefined;
+  const baseOffset = marketOffsets.get(globalIndex) ?? 0;
+  return reads?.[baseOffset + 3] as
+    | { result?: bigint; status?: string; error?: unknown }
+    | undefined;
+}
+
+/**
+ * Include a live market unless collateral was successfully read as 0n.
+ * Failed / missing slots (allowFailure) are treated as unknown — keep the market.
+ */
+function includeLiveMarketByCollateral(
   id: string,
   sailMarketIdToIndex: Map<string, number>,
   marketOffsets: Map<number, number>,
   reads: SailContractReads
 ): boolean {
-  const globalIndex = sailMarketIdToIndex.get(id);
-  if (globalIndex === undefined) return false;
-  const baseOffset = marketOffsets.get(globalIndex) ?? 0;
-  const readSlot = reads?.[baseOffset + 3] as { result?: bigint } | undefined;
-  const collateralValue = readSlot?.result;
-  return collateralValue !== undefined && collateralValue > 0n;
+  const readSlot = getCollateralReadSlot(
+    id,
+    sailMarketIdToIndex,
+    marketOffsets,
+    reads
+  );
+  if (!readSlot || typeof readSlot !== "object") return true;
+  if (readSlot.status === "failure") return true;
+
+  const collateralValue = readSlot.result;
+  if (collateralValue === undefined) return true;
+  return collateralValue > 0n;
 }
 
 /**
@@ -51,7 +75,12 @@ export function filterSailActiveMarkets(
       return false;
     }
     if (isSailSoonUi(m)) return true;
-    return hasLiveCollateral(id, sailMarketIdToIndex, marketOffsets, reads);
+    return includeLiveMarketByCollateral(
+      id,
+      sailMarketIdToIndex,
+      marketOffsets,
+      reads
+    );
   });
 }
 
@@ -59,6 +88,8 @@ export function filterSailActiveMarkets(
  * UI+ extended table: live (collateral > 0), preview (`soon`), and deprecated metals rows.
  * Before reads resolve, keep non-soon markets in the list so selection can prefer a live
  * provisional market instead of locking onto coming-soon.
+ * With reads, exclude live markets only when collateral successfully reads as 0n;
+ * failed/unavailable slots keep the market (see allowFailure on useSailContractReads).
  */
 export function filterSailTableMarkets(
   displayedSailMarkets: SailMarketTuple[],
@@ -75,6 +106,11 @@ export function filterSailTableMarkets(
     if (isSailSoonUi(m)) return true;
     if (isSailDeprecatedExtendedUi(m)) return true;
     if (!reads) return true;
-    return hasLiveCollateral(id, sailMarketIdToIndex, marketOffsets, reads);
+    return includeLiveMarketByCollateral(
+      id,
+      sailMarketIdToIndex,
+      marketOffsets,
+      reads
+    );
   });
 }
