@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "postinstall": "node scripts/patch-next-router-deadlock.js",
     "prepare": "husky"
   },
   "dependencies": {

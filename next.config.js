@@ -31,6 +31,7 @@ const nextConfig = {
       dynamic: 0,
       static: 0,
     },
+    optimisticClientCache: false,
   },
   webpack: (config, { isServer }) => {
     // Fix for @noble/curves ESM import issues
