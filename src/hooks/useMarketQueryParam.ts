@@ -38,7 +38,8 @@ export function useMarketQueryParam(): {
       const params = new URLSearchParams(window.location.search);
       params.set("market", marketId);
       const qs = params.toString();
-      const nextUrl = qs ? `${pathname}?${qs}` : pathname;
+      const hash = window.location.hash;
+      const nextUrl = `${qs ? `${pathname}?${qs}` : pathname}${hash}`;
       // Keep Next's history.state intact; avoid router.replace races.
       window.history.replaceState(window.history.state, "", nextUrl);
     },
