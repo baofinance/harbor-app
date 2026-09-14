@@ -12,15 +12,21 @@ import { usePathname } from "next/navigation";
 
 type HarborNavLinkProps = ComponentProps<typeof Link>;
 
+const SAIL_VISITED_KEY = "harbor:sail-soft-visited";
+
 function pathMatchesHref(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function isSailPath(path: string): boolean {
+  return path === "/sail" || path.startsWith("/sail/");
+}
+
 /**
- * App Router soft-nav can no-op after Earn↔Leverage revisits (Link preventDefaults
- * but never pushStates). Fail over to a full navigation if the URL does not move.
- * Kept as a safety net; layout Suspense + client segment cache were the main suspects.
+ * Soft-nav works for most routes. Revisiting `/sail` via App Router soft-nav
+ * can deadlock Next's transition queue (Link preventDefaults, no pushState).
+ * Re-entry to Leverage uses a full navigation; a short failsafe remains as backup.
  */
 export const HarborNavLink = forwardRef<HTMLAnchorElement, HarborNavLinkProps>(
   function HarborNavLink(
@@ -30,6 +36,16 @@ export const HarborNavLink = forwardRef<HTMLAnchorElement, HarborNavLinkProps>(
     const pathname = usePathname() ?? "";
     const failSafeTimer = useRef<number | null>(null);
     const hrefString = typeof href === "string" ? href : href.pathname || "";
+
+    useEffect(() => {
+      if (isSailPath(pathname) && typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem(SAIL_VISITED_KEY, "1");
+        } catch {
+          // Ignore private-mode / unavailable sessionStorage.
+        }
+      }
+    }, [pathname]);
 
     useEffect(() => {
       if (failSafeTimer.current != null) {
@@ -55,6 +71,24 @@ export const HarborNavLink = forwardRef<HTMLAnchorElement, HarborNavLinkProps>(
       }
       if (event.button !== 0) return;
       if (!hrefString.startsWith("/")) return;
+
+      // Avoid the cached soft-nav path that wedges the App Router after a prior
+      // Sail visit in this tab. Full load resets the transition queue.
+      let sailAlreadyVisited = false;
+      try {
+        sailAlreadyVisited = sessionStorage.getItem(SAIL_VISITED_KEY) === "1";
+      } catch {
+        sailAlreadyVisited = false;
+      }
+      if (
+        isSailPath(hrefString) &&
+        !isSailPath(pathname) &&
+        sailAlreadyVisited
+      ) {
+        event.preventDefault();
+        window.location.assign(hrefString);
+        return;
+      }
 
       if (failSafeTimer.current != null) {
         window.clearTimeout(failSafeTimer.current);
