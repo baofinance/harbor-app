@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Suspense } from "react";
 import "./globals.css";
 import ContextProvider from "@/contexts";
 import { AppBackgroundProvider } from "@/contexts/AppBackgroundContext";
@@ -91,21 +90,22 @@ export default async function RootLayout({
  <ContextProvider cookies={cookies}>
             <AppBackgroundProvider>
                 {/*
-                  Keep Navigation outside the Suspense that wraps pages so a
-                  suspending page cannot remount the nav shell.
+                  Do not wrap the App Router outlet in Suspense here.
+                  A layout-level Suspense around `{children}` can wedge soft
+                  navigation after revisiting heavy client routes (e.g. Sail).
+                  Navigation stays a layout sibling so page transitions never
+                  remount the shell.
                 */}
                 <Navigation />
-                <Suspense fallback={null}>
-                  <FadeContent
-                    blur={false}
-                    duration={500}
-                    easing="ease-out"
-                    initialOpacity={0}
-                    className="flex-1 min-h-0 flex flex-col"
-                  >
-                    {children}
-                  </FadeContent>
-                </Suspense>
+                <FadeContent
+                  blur={false}
+                  duration={500}
+                  easing="ease-out"
+                  initialOpacity={0}
+                  className="flex-1 min-h-0 flex flex-col"
+                >
+                  {children}
+                </FadeContent>
               </AppBackgroundProvider>
  <footer className="mt-auto flex-shrink-0 border-t border-white/20">
    <div className="w-full max-w-[1300px] mx-auto px-4 sm:px-10 py-6">

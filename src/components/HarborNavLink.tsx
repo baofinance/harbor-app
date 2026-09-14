@@ -20,6 +20,7 @@ function pathMatchesHref(pathname: string, href: string): boolean {
 /**
  * App Router soft-nav can no-op after Earn↔Leverage revisits (Link preventDefaults
  * but never pushStates). Fail over to a full navigation if the URL does not move.
+ * Kept as a safety net; layout Suspense + client segment cache were the main suspects.
  */
 export const HarborNavLink = forwardRef<HTMLAnchorElement, HarborNavLinkProps>(
   function HarborNavLink(
