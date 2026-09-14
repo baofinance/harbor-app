@@ -1,6 +1,7 @@
 "use client";
 
-import { SailManageModal } from "@/components/SailManageModal";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import type { DefinedMarket } from "@/config/markets";
 import type { SailTradeMarketFees } from "@/components/sail/SailTradeFeeFooter";
 import {
@@ -9,6 +10,12 @@ import {
   SAIL_EMBEDDED_FORM_PANEL,
   SAIL_EMBEDDED_PANEL_HEIGHT,
 } from "./sailAdvancedStyles";
+
+const SailManageModal = dynamic(
+  () =>
+    import("@/components/SailManageModal").then((m) => m.SailManageModal),
+  { ssr: false },
+);
 
 export type SailMarketActionPanelProps = {
   marketId: string;
@@ -25,7 +32,25 @@ export type SailMarketActionPanelProps = {
   depositsPaused?: boolean;
 };
 
-/** Embedded Buy | Sell panel — wraps `SailManageModal` in inline mode. */
+function SailTradePanelSkeleton() {
+  return (
+    <div
+      className="flex min-h-0 flex-1 flex-col gap-3 px-4 py-4"
+      aria-busy="true"
+      aria-label="Loading trade panel"
+    >
+      <div className="h-9 w-full animate-pulse rounded-lg bg-[#1E4775]/10" />
+      <div className="h-24 w-full animate-pulse rounded-xl bg-[#1E4775]/8" />
+      <div className="mt-auto h-11 w-full animate-pulse rounded-lg bg-[#1E4775]/10" />
+    </div>
+  );
+}
+
+/**
+ * Embedded Buy | Sell panel — wraps `SailManageModal` in inline mode.
+ * Modal mount is deferred until after first paint/idle so soft-nav into
+ * `/sail` is not blocked by the heavy trade client tree.
+ */
 export function SailMarketActionPanel({
   marketId,
   market,
@@ -39,6 +64,36 @@ export function SailMarketActionPanel({
   isComingSoon = false,
   depositsPaused = false,
 }: SailMarketActionPanelProps) {
+  const [tradePanelReady, setTradePanelReady] = useState(false);
+
+  useEffect(() => {
+    if (isComingSoon || tradePanelReady) return;
+
+    let cancelled = false;
+    let idleId: number | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const enable = () => {
+      if (!cancelled) setTradePanelReady(true);
+    };
+
+    const rafId = window.requestAnimationFrame(() => {
+      const ric = window.requestIdleCallback?.bind(window);
+      if (ric) {
+        idleId = ric(enable, { timeout: 400 });
+      } else {
+        timeoutId = setTimeout(enable, 0);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(rafId);
+      if (idleId != null) window.cancelIdleCallback?.(idleId);
+      if (timeoutId != null) clearTimeout(timeoutId);
+    };
+  }, [isComingSoon, tradePanelReady]);
+
   return (
     <aside className="flex flex-col">
       <div
@@ -54,21 +109,25 @@ export function SailMarketActionPanel({
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <SailManageModal
-              embedded
-              isOpen
-              onClose={() => {}}
-              marketId={marketId}
-              market={market}
-              initialTab={initialTab}
-              onSuccess={onSuccess}
-              leveragedTokenPriceUSD={leveragedTokenPriceUSD}
-              ethPrice={ethPrice}
-              wstETHPrice={wstETHPrice}
-              fxSAVEPrice={fxSAVEPrice}
-              marketFees={marketFees}
-              depositsPaused={depositsPaused}
-            />
+            {tradePanelReady ? (
+              <SailManageModal
+                embedded
+                isOpen
+                onClose={() => {}}
+                marketId={marketId}
+                market={market}
+                initialTab={initialTab}
+                onSuccess={onSuccess}
+                leveragedTokenPriceUSD={leveragedTokenPriceUSD}
+                ethPrice={ethPrice}
+                wstETHPrice={wstETHPrice}
+                fxSAVEPrice={fxSAVEPrice}
+                marketFees={marketFees}
+                depositsPaused={depositsPaused}
+              />
+            ) : (
+              <SailTradePanelSkeleton />
+            )}
           </div>
         )}
       </div>
