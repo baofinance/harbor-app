@@ -175,7 +175,7 @@ export default function SailPage() {
           <SailMarksSubgraphErrorBanner error={sailMarksError} />
         ) : null}
 
-        {isLoadingReads ? null : isReadsError ? (
+        {isReadsError ? (
           <IndexMarketsLoadError onRetry={() => refetchReads()} />
         ) : (
           <SailAdvancedLayout
@@ -202,6 +202,7 @@ export default function SailPage() {
             ethPrice={sailPageEthPrice}
             wstETHPrice={sailPageWstETHPrice}
             fxSAVEPrice={sailPageFxSAVEPrice}
+            isLoadingMarketData={isLoadingReads}
             walletStats={{
               isConnected,
               sailUserStats,

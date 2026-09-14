@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DefinedMarket } from "@/config/markets";
+import { isSailSoonUi } from "@/config/markets";
 import { useMarketQueryParam } from "@/hooks/useMarketQueryParam";
 import type { SailContractReads } from "@/types/sail";
 import { isValidContractAddress } from "@/utils/isValidContractAddress";
@@ -173,11 +174,22 @@ export function useSailSelectedMarket({
   ]);
 
   useEffect(() => {
-    if (!readsReady || markets.length === 0) return;
+    if (markets.length === 0) return;
 
     const urlMarket = marketParam;
     if (urlMarket && markets.some(([id]) => id === urlMarket)) {
       setSelectedMarketIdState(urlMarket);
+      return;
+    }
+
+    // Keep a provisional market selected before reads resolve so the advanced
+    // layout stays mounted (Earn-style) instead of null-gating the page.
+    if (!readsReady) {
+      setSelectedMarketIdState((prev) => {
+        if (prev && markets.some(([id]) => id === prev)) return prev;
+        const live = markets.find(([, market]) => !isSailSoonUi(market));
+        return live?.[0] ?? markets[0]?.[0] ?? null;
+      });
       return;
     }
 
