@@ -12,14 +12,18 @@ import { usePathname } from "next/navigation";
 
 type HarborNavLinkProps = ComponentProps<typeof Link>;
 
+/** Soft-nav into /sail can take >1s; keep this above that so we don't hard-reload early. */
+const SOFT_NAV_FAILSAFE_MS = 2500;
+
 function pathMatchesHref(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 /**
- * App Router soft-nav can no-op after Earn↔Leverage revisits (Link preventDefaults
- * but never pushStates). Fail over to a full navigation if the URL does not move.
+ * Soft App Router navigation for primary nav (`prefetch` off).
+ * If the App Router wedges (Link preventDefaults, no pushState — common into
+ * `/sail`), hard-navigate after a short wait so the app stays usable.
  */
 export const HarborNavLink = forwardRef<HTMLAnchorElement, HarborNavLinkProps>(
   function HarborNavLink(
@@ -63,7 +67,7 @@ export const HarborNavLink = forwardRef<HTMLAnchorElement, HarborNavLinkProps>(
         if (!pathMatchesHref(window.location.pathname, hrefString)) {
           window.location.assign(hrefString);
         }
-      }, 1000);
+      }, SOFT_NAV_FAILSAFE_MS);
     };
 
     return (

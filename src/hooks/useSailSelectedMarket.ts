@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DefinedMarket } from "@/config/markets";
+import { isSailSoonUi } from "@/config/markets";
 import { useMarketQueryParam } from "@/hooks/useMarketQueryParam";
 import type { SailContractReads } from "@/types/sail";
 import { isValidContractAddress } from "@/utils/isValidContractAddress";
@@ -173,11 +174,31 @@ export function useSailSelectedMarket({
   ]);
 
   useEffect(() => {
-    if (!readsReady || markets.length === 0) return;
+    if (markets.length === 0) return;
 
     const urlMarket = marketParam;
+    // Explicit deep-link wins, including coming-soon markets.
     if (urlMarket && markets.some(([id]) => id === urlMarket)) {
       setSelectedMarketIdState(urlMarket);
+      return;
+    }
+
+    const firstLiveId =
+      markets.find(([, market]) => !isSailSoonUi(market))?.[0] ?? null;
+
+    // Keep a provisional market selected before reads resolve so the advanced
+    // layout stays mounted (Earn-style) instead of null-gating the page.
+    if (!readsReady) {
+      setSelectedMarketIdState((prev) => {
+        if (prev) {
+          const prevMarket = markets.find(([id]) => id === prev)?.[1];
+          // Prefer keeping a non-soon provisional; upgrade away from soon when possible.
+          if (prevMarket && !isSailSoonUi(prevMarket)) return prev;
+          if (firstLiveId) return firstLiveId;
+          if (prevMarket) return prev;
+        }
+        return firstLiveId ?? markets[0]?.[0] ?? null;
+      });
       return;
     }
 
@@ -193,9 +214,22 @@ export function useSailSelectedMarket({
       );
     }
 
+    const defaultId = pickDefaultSailMarketId(
+      markets,
+      tvlByMarketId,
+      leverageByMarketId
+    );
+
     setSelectedMarketIdState((prev) => {
-      if (prev && markets.some(([id]) => id === prev)) return prev;
-      return pickDefaultSailMarketId(markets, tvlByMarketId, leverageByMarketId);
+      if (prev && markets.some(([id]) => id === prev)) {
+        const prevMarket = markets.find(([id]) => id === prev)?.[1];
+        // Don't stick on coming-soon once a live default exists (URL not set).
+        if (prevMarket && isSailSoonUi(prevMarket) && defaultId && defaultId !== prev) {
+          return defaultId;
+        }
+        return prev;
+      }
+      return defaultId;
     });
   }, [
     readsReady,

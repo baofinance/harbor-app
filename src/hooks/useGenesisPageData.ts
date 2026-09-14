@@ -1,16 +1,12 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { markets } from "@/config/markets";
-import { FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
-import {
-  buildNetworkFilterOptions,
-  filterBySelectedNetworks,
-} from "@/utils/networkFilter";
 import {
   useAllHarborMarks,
   useAllMaidenVoyageCampaignIndex,
 } from "@/hooks/useHarborMarks";
+import { useMarketIndexFilters } from "@/hooks/useMarketIndexFilters";
 import { formatGenesisMarketDisplayName } from "@/utils/genesisDisplay";
 import { isGenesisHiddenFromIndex } from "@/config/markets";
 
@@ -19,8 +15,6 @@ import { isGenesisHiddenFromIndex } from "@/config/markets";
  * Heavy Wagmi reads and UI state stay in `genesis/page.tsx` until further split.
  */
 export function useGenesisPageData() {
-  const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
-
   const genesisMarkets = useMemo(
     () =>
       Object.entries(markets).filter(([, mkt]) => {
@@ -36,10 +30,14 @@ export function useGenesisPageData() {
     []
   );
 
-  const genesisChainOptions = useMemo(
-    () => buildNetworkFilterOptions(genesisMarkets, ([, m]) => m),
-    [genesisMarkets]
-  );
+  const {
+    chainFilterSelected,
+    setChainFilterSelected,
+    chainOptions: genesisChainOptions,
+    displayedMarkets: displayedGenesisMarkets,
+  } = useMarketIndexFilters({
+    markets: genesisMarkets,
+  });
 
   const comingSoonMarkets = useMemo(
     () =>
@@ -153,16 +151,6 @@ export function useGenesisPageData() {
     return list;
   }, [marksResults]);
   const hasOraclePricingError = marketsWithOraclePricingError.length > 0;
-
-  const displayedGenesisMarkets = useMemo(() => {
-    if (chainFilterSelected.includes(FILTER_NONE_SENTINEL)) return [];
-    if (chainFilterSelected.length === 0) return genesisMarkets;
-    return filterBySelectedNetworks(
-      genesisMarkets,
-      chainFilterSelected,
-      ([, m]) => m
-    );
-  }, [genesisMarkets, chainFilterSelected]);
 
   return {
     chainFilterSelected,

@@ -133,8 +133,9 @@ export default function SailPage() {
       refetchRebalanceReads(),
     ]);
     queryClient.invalidateQueries({ queryKey: ["sailPositionPnL"] });
-    queryClient.invalidateQueries({ queryKey: ["sailPositionsPnLSummary"] });
-    queryClient.invalidateQueries({ queryKey: ["sailPositionsForPnL"] });
+    queryClient.invalidateQueries({
+      queryKey: ["sailPositionsForIndex"],
+    });
   }, [
     queryClient,
     refetchMinterConfigs,
@@ -175,7 +176,7 @@ export default function SailPage() {
           <SailMarksSubgraphErrorBanner error={sailMarksError} />
         ) : null}
 
-        {isLoadingReads ? null : isReadsError ? (
+        {isReadsError ? (
           <IndexMarketsLoadError onRetry={() => refetchReads()} />
         ) : (
           <SailAdvancedLayout
@@ -202,6 +203,7 @@ export default function SailPage() {
             ethPrice={sailPageEthPrice}
             wstETHPrice={sailPageWstETHPrice}
             fxSAVEPrice={sailPageFxSAVEPrice}
+            isLoadingMarketData={isLoadingReads}
             walletStats={{
               isConnected,
               sailUserStats,

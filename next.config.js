@@ -24,6 +24,15 @@ const nextConfig = {
       : "",
   // Transpile ESM packages that Next.js has trouble with
   transpilePackages: ["ox", "@noble/curves", "@noble/hashes"],
+  // Avoid reusing cached App Router segments on revisit. Cached /sail soft-nav
+  // has wedged subsequent router.push (Link preventDefaults, no pushState).
+  experimental: {
+    staleTimes: {
+      dynamic: 0,
+      static: 0,
+    },
+    optimisticClientCache: false,
+  },
   webpack: (config, { isServer }) => {
     // Fix for @noble/curves ESM import issues
     if (!isServer) {

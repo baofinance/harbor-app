@@ -53,6 +53,8 @@ export type SailAdvancedLayoutProps = {
   wstETHPrice?: number | null;
   fxSAVEPrice?: number | null;
   walletStats: SailWalletStatsStripProps;
+  /** When true, keep the shell mounted and show loading instead of unmounting. */
+  isLoadingMarketData?: boolean;
 };
 
 export function SailAdvancedLayout({
@@ -77,6 +79,7 @@ export function SailAdvancedLayout({
   wstETHPrice,
   fxSAVEPrice,
   walletStats,
+  isLoadingMarketData = false,
 }: SailAdvancedLayoutProps) {
   const [tradeTab, setTradeTab] = useState<"mint" | "redeem">("mint");
 
@@ -162,6 +165,13 @@ export function SailAdvancedLayout({
   );
 
   if (!selectedMarketId || !selectedMarket) {
+    if (isLoadingMarketData) {
+      return (
+        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.06] px-4 py-8 text-center text-sm text-white/70">
+          Loading markets…
+        </div>
+      );
+    }
     return (
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.06] px-4 py-8 text-center text-sm text-white/70">
         No Sail markets match the current filters.

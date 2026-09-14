@@ -1,35 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useHarborAccount } from "@/hooks/useHarborAccount";
-import { useQuery } from "@tanstack/react-query";
-import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
-import { useMarketBoostWindows } from "@/hooks/useMarketBoostWindows";
 import { useSailContractReads } from "@/hooks/useSailContractReads";
-import { useSailPositionsPnLSummary } from "@/hooks/useSailPositionsPnLSummary";
-import { getSailPriceGraphUrlOptional, getGraphHeaders } from "@/config/graph";
-import { FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
+import { useSailWalletEnrichment } from "@/hooks/useSailWalletEnrichment";
+import { useMarketIndexFilters } from "@/hooks/useMarketIndexFilters";
 import type { SailMarketTuple } from "@/types/sail";
 import {
   filterSailActiveMarkets,
   filterSailTableMarkets,
 } from "@/utils/sailActiveMarkets";
-import {
-  isSailActiveForExtendedUi,
-} from "@/config/markets";
+import { isSailActiveForExtendedUi } from "@/config/markets";
 import { getLongSide, getShortSide } from "@/utils/marketSideLabels";
-import {
-  buildNetworkFilterOptions,
-  filterBySelectedNetworks,
-} from "@/utils/networkFilter";
-import { partitionMarketsByArchived } from "@/utils/marketPartitions";
-import type { SailDropdownPositionTone } from "@/utils/sailMarketDropdownPosition";
-import { resolveSailDropdownPositionTone } from "@/utils/sailMarketDropdownPosition";
-import { buildSailMarketDropdownPositionDisplay } from "@/utils/sailMarketDropdownPositionDisplay";
 
 /**
- * Sail index route: filters, subgraph marks/PnL, aggregates, and derived `activeMarkets`.
- * On-chain reads live in `useSailContractReads`.
+ * Sail index route: filters, shell reads, wallet enrichment, derived markets.
  * UI-only state (modal, expanded rows, layout toggle) stays in `page.tsx`.
  */
 export function useSailPageData() {
@@ -37,72 +22,6 @@ export function useSailPageData() {
 
   const [longFilterSelected, setLongFilterSelected] = useState<string[]>([]);
   const [shortFilterSelected, setShortFilterSelected] = useState<string[]>([]);
-  const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
-
-  const clearFilters = useCallback(() => {
-    setLongFilterSelected([]);
-    setShortFilterSelected([]);
-    setChainFilterSelected([]);
-  }, []);
-
-  const sailPnLSummary = useSailPositionsPnLSummary(isConnected);
-
-  const {
-    sailBalances,
-    loading: isLoadingSailMarks,
-    error: sailMarksError,
-  } = useAnchorLedgerMarks({ enabled: true });
-
-  const [totalSailMarksState, setTotalSailMarksState] = useState(0);
-
-  useEffect(() => {
-    if (!sailBalances || sailBalances.length === 0) {
-      setTotalSailMarksState(0);
-      if (process.env.NODE_ENV === "development") {
-        console.log("[Sail Page] No sail balances, setting to 0");
-      }
-      return;
-    }
-
-    const totalMarks = sailBalances.reduce(
-      (sum: number, balance: { estimatedMarks: number }) =>
-        sum + balance.estimatedMarks,
-      0
-    );
-
-    if (process.env.NODE_ENV === "development") {
-      console.log("[Sail Page] Updating totalSailMarksState", {
-        totalMarks,
-        sailBalancesCount: sailBalances.length,
-        sailBalances: sailBalances.map(
-          (b: { tokenAddress: string; estimatedMarks: number }) => ({
-            token: b.tokenAddress,
-            marks: b.estimatedMarks,
-          })
-        ),
-      });
-    }
-
-    setTotalSailMarksState(totalMarks);
-  }, [sailBalances]);
-
-  const { totalSailMarks, sailMarksPerDay } = useMemo(() => {
-    if (!sailBalances || sailBalances.length === 0) {
-      return { totalSailMarks: 0, sailMarksPerDay: 0 };
-    }
-
-    const totalMarks = totalSailMarksState;
-    const totalPerDay = sailBalances.reduce(
-      (sum: number, balance: { marksPerDay: number }) =>
-        sum + balance.marksPerDay,
-      0
-    );
-
-    return {
-      totalSailMarks: totalMarks,
-      sailMarksPerDay: totalPerDay,
-    };
-  }, [totalSailMarksState, sailBalances]);
 
   const {
     sailMarkets,
@@ -121,58 +40,47 @@ export function useSailPageData() {
     refetchUserDeposits,
   } = useSailContractReads();
 
-  const chainFilteredSailMarkets = useMemo(() => {
-    if (chainFilterSelected.includes(FILTER_NONE_SENTINEL)) return [];
-    if (chainFilterSelected.length === 0) return sailMarkets;
-    return filterBySelectedNetworks(sailMarkets, chainFilterSelected, ([, m]) => m);
-  }, [sailMarkets, chainFilterSelected]);
-
-  const { active: displayedSailMarkets, archived: displayedArchivedSailMarkets } =
-    useMemo(() => {
-      const visibilityFiltered = chainFilteredSailMarkets.filter(([, m]) =>
-        isSailActiveForExtendedUi(m)
-      );
-      return partitionMarketsByArchived(visibilityFiltered);
-    }, [chainFilteredSailMarkets]);
-
-  const sailChainOptions = useMemo(
-    () => buildNetworkFilterOptions(sailMarkets, ([, m]) => m),
-    [sailMarkets]
-  );
-
-  const sailBoostIds = useMemo(() => {
-    const ids: string[] = [];
-    for (const [, market] of sailMarkets) {
-      const leveragedTokenAddress = market.addresses?.leveragedToken as
-        | string
-        | undefined;
-      if (leveragedTokenAddress) {
-        ids.push(`sailToken-${leveragedTokenAddress.toLowerCase()}`);
-      }
-    }
-    return Array.from(new Set(ids)).filter((id) => id.includes("0x"));
-  }, [sailMarkets]);
-
-  const { data: sailBoostWindowsData } = useMarketBoostWindows({
-    enabled: sailBoostIds.length > 0,
-    ids: sailBoostIds,
-    first: 250,
+  const {
+    chainFilterSelected,
+    setChainFilterSelected,
+    clearChainFilter,
+    chainOptions: sailChainOptions,
+    displayedMarkets: displayedSailMarkets,
+    archivedMarkets: displayedArchivedSailMarkets,
+  } = useMarketIndexFilters({
+    markets: sailMarkets,
+    isVisible: isSailActiveForExtendedUi,
+    partitionArchived: true,
   });
 
-  const activeSailBoostEndTimestamp = useMemo(() => {
-    const nowSec = Math.floor(Date.now() / 1000);
-    const windows = sailBoostWindowsData?.marketBoostWindows ?? [];
-    const activeEnds = windows
-      .filter((w) => w.sourceType === "sailToken")
-      .filter((w) => Number(w.boostMultiplier) >= 2)
-      .filter(
-        (w) =>
-          nowSec >= Number(w.startTimestamp) && nowSec < Number(w.endTimestamp)
-      )
-      .map((w) => Number(w.endTimestamp));
+  const clearFilters = useCallback(() => {
+    setLongFilterSelected([]);
+    setShortFilterSelected([]);
+    clearChainFilter();
+  }, [clearChainFilter]);
 
-    return activeEnds.length ? Math.min(...activeEnds) : null;
-  }, [sailBoostWindowsData]);
+  const {
+    totalSailMarks,
+    sailMarksPerDay,
+    isLoadingSailMarks,
+    sailMarksError,
+    activeSailBoostEndTimestamp,
+    sailUserStats,
+    sailPnLSummary,
+    positionsPnLLoading,
+    pnlFromMarkets,
+    marketDropdownPositionByMarketId,
+    marketDropdownPnLToneByMarketId,
+  } = useSailWalletEnrichment({
+    isConnected,
+    address,
+    sailMarkets,
+    sailMarketIdToIndex,
+    reads,
+    marketOffsets,
+    tokenPricesByMarket,
+    userDepositMap,
+  });
 
   const uniqueLongSides = useMemo(() => {
     const sides = new Set<string>();
@@ -194,217 +102,6 @@ export function useSailPageData() {
       .filter((s) => !exclude.has(s.toLowerCase()))
       .sort();
   }, [displayedSailMarkets]);
-
-  const sailUserStats = useMemo(() => {
-    let totalPositionsUSD = 0;
-    let weightedLeverageSum = 0;
-    let positionsCount = 0;
-
-    sailMarkets.forEach(([id], marketIndex) => {
-      const userDeposit = userDepositMap.get(marketIndex);
-      if (!userDeposit || userDeposit <= 0n) return;
-
-      const baseOffset = marketOffsets.get(marketIndex) ?? 0;
-      const leverageRatio = reads?.[baseOffset]?.result as bigint | undefined;
-      const leverage = leverageRatio ? Number(leverageRatio) / 1e18 : 0;
-
-      const tokenPrices = tokenPricesByMarket[id];
-      const priceUSD = tokenPrices?.leveragedPriceUSD ?? 0;
-      if (!priceUSD || priceUSD <= 0) return;
-
-      const valueUSD = (Number(userDeposit) / 1e18) * priceUSD;
-      if (!Number.isFinite(valueUSD) || valueUSD <= 0) return;
-
-      positionsCount += 1;
-      totalPositionsUSD += valueUSD;
-      weightedLeverageSum += valueUSD * leverage;
-    });
-
-    const averageLeverage =
-      totalPositionsUSD > 0 ? weightedLeverageSum / totalPositionsUSD : 0;
-
-    return { totalPositionsUSD, averageLeverage, positionsCount };
-  }, [sailMarkets, userDepositMap, marketOffsets, reads, tokenPricesByMarket]);
-
-  const graphUrl = getSailPriceGraphUrlOptional();
-  const { data: positionsData, isLoading: positionsPnLLoading } = useQuery({
-    queryKey: ["sailPositionsForPnL", graphUrl, address],
-    queryFn: async () => {
-      if (!graphUrl || !address) {
-        return { userSailPositions: [] as Array<Record<string, unknown>> };
-      }
-
-      const response = await fetch(graphUrl, {
-        method: "POST",
-        headers: getGraphHeaders(graphUrl),
-        body: JSON.stringify({
-          query: `
-            query GetUserSailPositions($userAddress: Bytes!) {
-              userSailPositions(
-                where: { user: $userAddress, balance_gt: "0" }
-                first: 1000
-              ) {
-                tokenAddress
-                totalCostBasisUSD
-                realizedPnLUSD
-              }
-            }
-          `,
-          variables: { userAddress: address.toLowerCase() },
-        }),
-      });
-
-      const result = await response.json();
-      if (!response.ok || result?.errors) {
-        return { userSailPositions: [] };
-      }
-      return result?.data ?? { userSailPositions: [] };
-    },
-    enabled: isConnected && !!address && !!graphUrl,
-    refetchInterval: 30_000,
-    staleTime: 10_000,
-  });
-
-  const pnlFromMarkets = useMemo(() => {
-    if (!isConnected || !address) {
-      const totalPnL = sailPnLSummary.isLoading
-        ? 0
-        : sailPnLSummary.totalPnLUSD;
-      return {
-        totalPnL,
-        totalCostBasisUSD: 0,
-        pnlPercent: null as number | null,
-      };
-    }
-
-    const positions = (positionsData?.userSailPositions ?? []) as Array<{
-      tokenAddress: string;
-      totalCostBasisUSD: number;
-      realizedPnLUSD: number;
-    }>;
-
-    const positionMap = new Map<string, (typeof positions)[0]>();
-    positions.forEach((pos) => {
-      positionMap.set(pos.tokenAddress.toLowerCase(), pos);
-    });
-
-    let totalRealizedPnL = 0;
-    let totalUnrealizedPnL = 0;
-    let totalCostBasisUSD = 0;
-
-    sailMarkets.forEach(([id, market], marketIndex) => {
-      const userDeposit = userDepositMap.get(marketIndex);
-      if (!userDeposit || userDeposit <= 0n) return;
-
-      const leveragedTokenAddress = (market as { addresses?: { leveragedToken?: `0x${string}` } })
-        .addresses?.leveragedToken as `0x${string}` | undefined;
-      if (!leveragedTokenAddress) return;
-
-      const position = positionMap.get(leveragedTokenAddress.toLowerCase());
-      if (!position) return;
-
-      const tokenPrices = tokenPricesByMarket[id];
-      const currentPriceUSD = tokenPrices?.leveragedPriceUSD ?? 0;
-      if (!currentPriceUSD || currentPriceUSD <= 0) return;
-
-      const currentValueUSD = (Number(userDeposit) / 1e18) * currentPriceUSD;
-
-      const costBasisUSD = Number(position.totalCostBasisUSD) || 0;
-      totalCostBasisUSD += costBasisUSD;
-
-      const unrealizedPnL = currentValueUSD - costBasisUSD;
-
-      const realizedPnL = Number(position.realizedPnLUSD) || 0;
-
-      totalRealizedPnL += realizedPnL;
-      totalUnrealizedPnL += unrealizedPnL;
-    });
-
-    const totalPnL = totalRealizedPnL + totalUnrealizedPnL;
-    const pnlPercent =
-      totalCostBasisUSD > 0 ? (totalPnL / totalCostBasisUSD) * 100 : null;
-
-    return { totalPnL, totalCostBasisUSD, pnlPercent };
-  }, [
-    isConnected,
-    address,
-    sailMarkets,
-    userDepositMap,
-    tokenPricesByMarket,
-    positionsData,
-    sailPnLSummary,
-  ]);
-
-  const marketDropdownPositionByMarketId = useMemo(() => {
-    const map: Record<
-      string,
-      { label?: string; tone: SailDropdownPositionTone }
-    > = {};
-    if (!isConnected) return map;
-
-    const positions = (positionsData?.userSailPositions ?? []) as Array<{
-      tokenAddress: string;
-      totalCostBasisUSD: number;
-      realizedPnLUSD: number;
-    }>;
-
-    const positionMap = new Map<string, (typeof positions)[0]>();
-    for (const pos of positions) {
-      positionMap.set(pos.tokenAddress.toLowerCase(), pos);
-    }
-
-    for (const [marketId, market] of sailMarkets) {
-      const globalIndex = sailMarketIdToIndex.get(marketId);
-      const userDeposit =
-        globalIndex !== undefined ? userDepositMap.get(globalIndex) : undefined;
-      if (!userDeposit || userDeposit <= 0n) continue;
-
-      const leveragedTokenAddress = market.addresses?.leveragedToken as
-        | `0x${string}`
-        | undefined;
-      const position = leveragedTokenAddress
-        ? positionMap.get(leveragedTokenAddress.toLowerCase())
-        : undefined;
-      const costBasisUSD =
-        position != null ? Number(position.totalCostBasisUSD) : undefined;
-
-      const display = buildSailMarketDropdownPositionDisplay({
-        market,
-        userDeposit,
-        leveragedPriceUSD:
-          tokenPricesByMarket[marketId]?.leveragedPriceUSD ?? undefined,
-        costBasisUSD,
-        pnlLoading: positionsPnLLoading,
-      });
-
-      if (display.hasPosition) {
-        map[marketId] = {
-          label: display.label,
-          tone: display.tone ?? "pending",
-        };
-      }
-    }
-
-    return map;
-  }, [
-    isConnected,
-    sailMarkets,
-    sailMarketIdToIndex,
-    userDepositMap,
-    tokenPricesByMarket,
-    positionsData,
-    positionsPnLLoading,
-  ]);
-
-  const marketDropdownPnLToneByMarketId = useMemo(() => {
-    const tones: Record<string, SailDropdownPositionTone> = {};
-    for (const [marketId, position] of Object.entries(
-      marketDropdownPositionByMarketId,
-    )) {
-      tones[marketId] = position.tone;
-    }
-    return tones;
-  }, [marketDropdownPositionByMarketId]);
 
   const activeMarkets = useMemo((): SailMarketTuple[] => {
     if (!reads) return [];

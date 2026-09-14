@@ -1,11 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { formatEther } from "viem";
 import {
   markets,
   isAnchorActiveForExtendedUi,
 } from "@/config/markets";
-import { partitionMarketsByArchived } from "@/utils/marketPartitions";
-import { FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
 import { useStaggeredReady } from "@/hooks/useStaggeredReady";
 import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
 import { useProjectedAPR } from "@/hooks/useProjectedAPR";
@@ -24,43 +22,31 @@ import { useAnchorMarks } from "@/hooks/anchor/useAnchorMarks";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import { useAnchorUserDeposits } from "@/hooks/anchor/useAnchorUserDeposits";
 import { useAnchorTokenMetadata } from "@/hooks/anchor/useAnchorTokenMetadata";
+import { useMarketIndexFilters } from "@/hooks/useMarketIndexFilters";
 import { calculateReadOffset } from "@/utils/anchor/calculateReadOffset";
 import type { AnchorMarketTuple } from "@/types/anchor";
-import {
-  buildNetworkFilterOptions,
-  filterBySelectedNetworks,
-} from "@/utils/networkFilter";
 /**
  * Composes Anchor index data reads + derived market state (Phase 2–3 refactor).
  * Includes protocol-level `anchorStats` for the strip; keeps [`page.tsx`](../../app/anchor/page.tsx) thinner over time.
  */
 export function useAnchorPageData(address: `0x${string}` | undefined) {
-  const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
-
   const anchorMarkets = useMemo(
     () =>
       Object.entries(markets).filter(([_, m]) => m.peggedToken) as AnchorMarketTuple[],
     []
   );
 
-  const chainFilteredAnchorMarkets = useMemo(() => {
-    if (chainFilterSelected.includes(FILTER_NONE_SENTINEL)) return [];
-    if (chainFilterSelected.length === 0) return anchorMarkets;
-    return filterBySelectedNetworks(anchorMarkets, chainFilterSelected, ([, m]) => m);
-  }, [anchorMarkets, chainFilterSelected]);
-
-  const { active: displayedAnchorMarkets, archived: displayedArchivedAnchorMarkets } =
-    useMemo(() => {
-      const visibilityFiltered = chainFilteredAnchorMarkets.filter(([, m]) =>
-        isAnchorActiveForExtendedUi(m)
-      );
-      return partitionMarketsByArchived(visibilityFiltered);
-    }, [chainFilteredAnchorMarkets]);
-
-  const anchorChainOptions = useMemo(
-    () => buildNetworkFilterOptions(anchorMarkets, ([, m]) => m),
-    [anchorMarkets]
-  );
+  const {
+    chainFilterSelected,
+    setChainFilterSelected,
+    chainOptions: anchorChainOptions,
+    displayedMarkets: displayedAnchorMarkets,
+    archivedMarkets: displayedArchivedAnchorMarkets,
+  } = useMarketIndexFilters({
+    markets: anchorMarkets,
+    isVisible: isAnchorActiveForExtendedUi,
+    partitionArchived: true,
+  });
 
   const volProtectionMarketsConfig = useMemo(
     () =>

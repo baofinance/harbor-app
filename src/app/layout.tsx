@@ -1,11 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Suspense } from "react";
 import "./globals.css";
 import ContextProvider from "@/contexts";
 import { AppBackgroundProvider } from "@/contexts/AppBackgroundContext";
 import { headers } from "next/headers";
 import Navigation from "@/components/Navigation";
-import FadeContent from "@/components/FadeContent";
 import { MobileTradeBarScrollClearance } from "@/components/MobileTradeBarScrollClearance";
 import { DocumentTextIcon, ScaleIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { SiDiscord, SiX } from "react-icons/si";
@@ -91,21 +89,12 @@ export default async function RootLayout({
  <ContextProvider cookies={cookies}>
             <AppBackgroundProvider>
                 {/*
-                  Keep Navigation outside the Suspense that wraps pages so a
-                  suspending page cannot remount the nav shell.
+                  Keep Navigation as a layout sibling of the App Router outlet.
+                  Do not wrap `{children}` in Suspense or extra client shells —
+                  those have wedged soft navigation after revisiting Sail.
                 */}
                 <Navigation />
-                <Suspense fallback={null}>
-                  <FadeContent
-                    blur={false}
-                    duration={500}
-                    easing="ease-out"
-                    initialOpacity={0}
-                    className="flex-1 min-h-0 flex flex-col"
-                  >
-                    {children}
-                  </FadeContent>
-                </Suspense>
+                <div className="flex min-h-0 flex-1 flex-col">{children}</div>
               </AppBackgroundProvider>
  <footer className="mt-auto flex-shrink-0 border-t border-white/20">
    <div className="w-full max-w-[1300px] mx-auto px-4 sm:px-10 py-6">
