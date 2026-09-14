@@ -13,34 +13,39 @@ import { useAppNotificationsOptional } from "@/contexts/AppNotificationsContext"
 
 const AUTO_DISMISS_MS = 10_000;
 
-/** Bell control for the top nav (left of the burger). Hidden when nothing is registered. */
+/** Bell control for the top nav (left of the burger). Always visible; inert when empty. */
 export function NavNotificationBell({ className = "" }: { className?: string }) {
   const ctx = useAppNotificationsOptional();
-  if (!ctx?.source) return null;
+  const source = ctx?.source ?? null;
+  const expanded = ctx?.expanded ?? false;
+  const toggleExpanded = ctx?.toggleExpanded;
+  const count = source?.count ?? 0;
+  const hasNotifications = count > 0;
 
-  const { source, expanded, toggleExpanded } = ctx;
-  const badgeSeverity = pickHeaviestDepositModalNotificationBadge(
-    source.badgeSeverities ?? ["navy"]
-  );
-  const count = source.count;
+  const badgeSeverity = hasNotifications
+    ? pickHeaviestDepositModalNotificationBadge(
+        source?.badgeSeverities ?? ["navy"]
+      )
+    : null;
 
   return (
     <button
       type="button"
-      onClick={toggleExpanded}
-      className={`relative ${HARBOR_NAV_ICON_BUTTON_CLASS} ${
-        expanded ? "bg-white/20" : ""
+      onClick={hasNotifications ? toggleExpanded : undefined}
+      disabled={!hasNotifications}
+      className={`relative ${HARBOR_NAV_ICON_BUTTON_CLASS} disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent ${
+        hasNotifications && expanded ? "bg-white/20" : ""
       } ${className}`.trim()}
-      aria-expanded={expanded}
-      aria-controls="app-notifications-panel"
+      aria-expanded={hasNotifications ? expanded : undefined}
+      aria-controls={hasNotifications ? "app-notifications-panel" : undefined}
       aria-label={
-        count > 0
+        hasNotifications
           ? `Notifications, ${count} alert${count === 1 ? "" : "s"}`
-          : "Notifications"
+          : "No notifications"
       }
     >
       <Bell className="size-5" aria-hidden />
-      {count > 0 ? (
+      {hasNotifications && badgeSeverity ? (
         <span
           className={`absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[10px] font-bold ring-2 ring-[#1E4775] ${depositModalNotificationBadgeClass[badgeSeverity]}`}
         >

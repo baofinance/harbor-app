@@ -210,6 +210,9 @@ export function SailAdvancedLayout({
       }
       tradePanelId={SAIL_TRADE_PANEL_ID}
       gridClassName={SAIL_ADVANCED_MAIN_GRID_CLASS}
+      // Do not stretch the trade column to the chart height — a stretched
+      // overflow panel traps page scroll and can block sticky nav clicks.
+      actionClassName="order-2 flex min-h-0 w-full min-w-0 flex-col scroll-mt-20 lg:order-none lg:self-start"
       primary={
         <div className="flex min-h-[22rem] flex-1 flex-col sm:min-h-[26rem] lg:min-h-0">
           <SailMarketChartColumn

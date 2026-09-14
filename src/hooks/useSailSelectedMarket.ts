@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { DefinedMarket } from "@/config/markets";
+import { useMarketQueryParam } from "@/hooks/useMarketQueryParam";
 import type { SailContractReads } from "@/types/sail";
 import { isValidContractAddress } from "@/utils/isValidContractAddress";
 import {
@@ -57,9 +57,7 @@ export function useSailSelectedMarket({
   fxSAVEPrice,
   isCoinGeckoLoading = false,
 }: UseSailSelectedMarketArgs) {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
+  const { marketParam, setMarketParam } = useMarketQueryParam();
   const [selectedMarketId, setSelectedMarketIdState] = useState<string | null>(
     null
   );
@@ -177,7 +175,7 @@ export function useSailSelectedMarket({
   useEffect(() => {
     if (!readsReady || markets.length === 0) return;
 
-    const urlMarket = searchParams.get("market");
+    const urlMarket = marketParam;
     if (urlMarket && markets.some(([id]) => id === urlMarket)) {
       setSelectedMarketIdState(urlMarket);
       return;
@@ -202,7 +200,7 @@ export function useSailSelectedMarket({
   }, [
     readsReady,
     markets,
-    searchParams,
+    marketParam,
     tvlByMarketId,
     reads,
     sailMarketIdToIndex,
@@ -212,12 +210,9 @@ export function useSailSelectedMarket({
   const setSelectedMarketId = useCallback(
     (marketId: string) => {
       setSelectedMarketIdState(marketId);
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("market", marketId);
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      setMarketParam(marketId);
     },
-    [pathname, router, searchParams]
+    [setMarketParam]
   );
 
   const selectedMarket = useMemo(() => {

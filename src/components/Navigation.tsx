@@ -20,8 +20,8 @@ import {
 } from "@headlessui/react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { usePathname } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
+import { HarborNavLink } from "@/components/HarborNavLink";
 import { ConnectWallet } from "@/components/Wallet";
 import { PageLayoutToggle } from "@/components/PageLayoutToggle";
 import { useAppBackground } from "@/contexts/AppBackgroundContext";
@@ -91,32 +91,32 @@ export default function Example() {
             />
           </a>
           <div className="hidden min-w-0 sm:flex sm:items-center sm:justify-center sm:gap-x-1.5 md:gap-x-2 lg:gap-x-3">
-            <Link
+            <HarborNavLink
               href="/anchor"
               className={`${linkClass("/anchor")} flex shrink-0 items-center justify-center`}
               aria-current={isActive("/anchor") ? "page" : undefined}
             >
               Earn
-            </Link>
-            <Link
+            </HarborNavLink>
+            <HarborNavLink
               href="/sail"
               className={`${linkClass("/sail")} flex shrink-0 items-center justify-center`}
               aria-current={isActive("/sail") ? "page" : undefined}
             >
               Leverage
-            </Link>
+            </HarborNavLink>
             <span
               aria-hidden="true"
               className="mx-0.5 h-5 w-px shrink-0 bg-white/20"
             />
-            <Link
+            <HarborNavLink
               href="/dashboard"
               className={`${linkClass("/dashboard")} flex shrink-0 items-center justify-center`}
               aria-current={isActive("/dashboard") ? "page" : undefined}
             >
               Dashboard
-            </Link>
-            <Link
+            </HarborNavLink>
+            <HarborNavLink
               href="/genesis"
               className={`${linkClass("/genesis")} flex shrink-0 items-center justify-center gap-1`}
               aria-current={isActive("/genesis") ? "page" : undefined}
@@ -131,14 +131,14 @@ export default function Example() {
               >
                 2.0
               </span>
-            </Link>
-            <Link
+            </HarborNavLink>
+            <HarborNavLink
               href="/tide"
               className={`${linkClass("/tide")} flex shrink-0 items-center justify-center`}
               aria-current={isActive("/tide") ? "page" : undefined}
             >
               Tide
-            </Link>
+            </HarborNavLink>
           </div>
           <div className="flex items-center justify-end gap-2 lg:gap-3">
             <div className="hidden items-center gap-2 sm:flex lg:gap-3">
@@ -160,7 +160,7 @@ export default function Example() {
                   className={`z-[100] w-56 origin-top-right overflow-hidden rounded-lg py-1 outline-none transition data-closed:scale-95 data-closed:opacity-0 ${HARBOR_NAV_POPOVER_SHELL_CLASS}`}
                 >
                   {MORE_NAV.map(({ href, label }) => (
-                    <Link
+                    <HarborNavLink
                       key={href}
                       href={href}
                       className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
@@ -171,7 +171,7 @@ export default function Example() {
                       aria-current={isActive(href) ? "page" : undefined}
                     >
                       {label}
-                    </Link>
+                    </HarborNavLink>
                   ))}
                   {IMPERSONATION_ENABLED ? (
                     <>
@@ -236,7 +236,7 @@ export default function Example() {
           </div>
           <div className="flex flex-col w-full items-stretch justify-center space-y-2.5 py-2">
             <DisclosureButton
-              as={Link}
+              as={HarborNavLink}
               href="/anchor"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/anchor")
@@ -248,7 +248,7 @@ export default function Example() {
               Earn
             </DisclosureButton>
             <DisclosureButton
-              as={Link}
+              as={HarborNavLink}
               href="/sail"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/sail")
@@ -261,7 +261,7 @@ export default function Example() {
             </DisclosureButton>
             <div className="my-1 w-full max-w-sm mx-auto border-t border-white/15" />
             <DisclosureButton
-              as={Link}
+              as={HarborNavLink}
               href="/dashboard"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/dashboard")
@@ -273,7 +273,7 @@ export default function Example() {
               Dashboard
             </DisclosureButton>
             <DisclosureButton
-              as={Link}
+              as={HarborNavLink}
               href="/genesis"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/genesis")
@@ -296,7 +296,7 @@ export default function Example() {
               </span>
             </DisclosureButton>
             <DisclosureButton
-              as={Link}
+              as={HarborNavLink}
               href="/tide"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/tide")
@@ -315,7 +315,7 @@ export default function Example() {
                 {MORE_NAV.map(({ href, label }) => (
                   <DisclosureButton
                     key={href}
-                    as={Link}
+                    as={HarborNavLink}
                     href={href}
                     className={`block w-full px-6 py-3.5 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                       isActive(href)
