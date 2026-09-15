@@ -73,13 +73,49 @@ export function SailMarketPriceChart({
   const [windowPerformance, setWindowPerformance] =
     useState<SailChartWindowPerformance | null>(null);
 
-  const handleConfigReady = useCallback((config: SailMarketChartConfig) => {
-    setChartConfig(config);
+  const handleConfigReady = useCallback((next: SailMarketChartConfig) => {
+    setChartConfig((prev) => {
+      if (
+        prev &&
+        prev.defaultMetricLabel === next.defaultMetricLabel &&
+        prev.longLabel === next.longLabel &&
+        prev.shortLabel === next.shortLabel &&
+        prev.longPegAsset === next.longPegAsset &&
+        prev.shortPegAsset === next.shortPegAsset
+      ) {
+        return prev;
+      }
+      return next;
+    });
   }, []);
 
   const handleLiveDefaultRatioChange = useCallback((value: number | null) => {
-    setLiveDefaultRatio(value);
+    setLiveDefaultRatio((prev) => (prev === value ? prev : value));
   }, []);
+
+  const handleHasHsPriceDataChange = useCallback((value: boolean) => {
+    setHasHsOverlayData((prev) => (prev === value ? prev : value));
+  }, []);
+
+  const handleWindowPerformanceChange = useCallback(
+    (next: SailChartWindowPerformance | null) => {
+      setWindowPerformance((prev) => {
+        if (prev === next) return prev;
+        if (prev == null || next == null) return next;
+        if (
+          prev.marketPerformancePct === next.marketPerformancePct &&
+          prev.leverageTokenPerformancePct ===
+            next.leverageTokenPerformancePct &&
+          prev.leverageTokenVsMarketPct === next.leverageTokenVsMarketPct &&
+          prev.leverageTokenIsNet === next.leverageTokenIsNet
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    },
+    []
+  );
 
   const primaryDisplay =
     chartConfig != null
@@ -124,9 +160,11 @@ export function SailMarketPriceChart({
           showHsPriceOverlay={showPriceHeader ? showHsOverlay : undefined}
           onShowHsPriceOverlayChange={showPriceHeader ? setShowHsOverlay : undefined}
           hideLegend={showPriceHeader}
-          onHasHsPriceDataChange={showPriceHeader ? setHasHsOverlayData : undefined}
+          onHasHsPriceDataChange={
+            showPriceHeader ? handleHasHsPriceDataChange : undefined
+          }
           onWindowPerformanceChange={
-            showPriceHeader ? setWindowPerformance : undefined
+            showPriceHeader ? handleWindowPerformanceChange : undefined
           }
         />
       </div>
