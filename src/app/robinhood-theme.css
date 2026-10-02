@@ -1,0 +1,185 @@
+/*
+ * Robinhood Chain theme. Applied only while body has .app-bg-robinhood.
+ * Remaps Harbor's existing surfaces and type colors. Layout and components stay put.
+ */
+
+body.app-bg-robinhood {
+  --rh-neon: #ccff00;
+  --rh-neon-hover: #d6ff4a;
+  --rh-ink: #050505;
+  --rh-text: #ffffff;
+  --rh-muted: rgba(255, 255, 255, 0.62);
+  --rh-faint: rgba(255, 255, 255, 0.4);
+  --rh-line: rgba(255, 255, 255, 0.1);
+  --rh-surface: rgba(17, 17, 17, 0.94);
+  --rh-surface-solid: #111111;
+  --rh-elevated: #151515;
+  background-color: #050505;
+  color: var(--rh-text);
+  background-image:
+    radial-gradient(ellipse at center, rgba(5, 5, 5, 0.72) 0%, rgba(5, 5, 5, 0.38) 62%, rgba(5, 5, 5, 0.22) 100%),
+    linear-gradient(180deg, rgba(5, 5, 5, 0.5) 0%, rgba(5, 5, 5, 0.28) 46%, rgba(5, 5, 5, 0.55) 100%),
+    url("/backgrounds/robinhood-chain-bg.jpg");
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center 35%;
+  background-attachment: fixed;
+}
+
+html:has(body.app-bg-robinhood) {
+  background-color: #050505;
+}
+
+body.app-bg-robinhood .app-nav-shell {
+  background-color: #080808;
+  border-bottom: 1px solid var(--rh-line);
+}
+
+/* Bright Harbor cards become dark terminal panels. */
+body.app-bg-robinhood [class~="bg-white"],
+body.app-bg-robinhood [class*="bg-white/9"],
+body.app-bg-robinhood [class*="bg-white/8"],
+body.app-bg-robinhood [class*="bg-white/7"],
+body.app-bg-robinhood [class*="bg-white/6"],
+body.app-bg-robinhood [class*="bg-white/5"],
+body.app-bg-robinhood [class*="bg-white/4"],
+body.app-bg-robinhood [class*="bg-white/[0.11]"],
+body.app-bg-robinhood [class*="bg-[#e2e8f0]"],
+body.app-bg-robinhood [class*="bg-[#F8FAFC]"],
+body.app-bg-robinhood [class*="bg-gray-100"],
+body.app-bg-robinhood [class*="bg-gray-50"] {
+  background-color: var(--rh-surface) !important;
+  color: var(--rh-text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body.app-bg-robinhood [class*="text-[#1E4775]/"] {
+  color: var(--rh-muted) !important;
+}
+
+body.app-bg-robinhood [class*="text-[#1E4775]"]:not([class*="text-[#1E4775]/"]) {
+  color: var(--rh-text) !important;
+}
+
+body.app-bg-robinhood [class*="placeholder:text-[#1E4775]"]::placeholder {
+  color: var(--rh-faint);
+}
+
+body.app-bg-robinhood [class*="border-[#1E4775]"] {
+  border-color: var(--rh-line) !important;
+}
+
+body.app-bg-robinhood [class*="ring-[#1E4775]"] {
+  --tw-ring-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.app-bg-robinhood [class*="divide-[#1E4775]"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--rh-line);
+}
+
+/* Positive figures and the yield series use the neon accent. Losses stay red. */
+body.app-bg-robinhood [class*="text-[#1f8a68]"],
+body.app-bg-robinhood [class*="text-[#6bc4a8]"],
+body.app-bg-robinhood [class*="text-[#8fd9c0]"],
+body.app-bg-robinhood [class*="text-[#2d6b5c]"],
+body.app-bg-robinhood [class*="text-[#2A7A5E]"],
+body.app-bg-robinhood [class*="text-emerald"] {
+  color: var(--rh-neon) !important;
+}
+
+/* Primary filled actions. Disabled and tinted navy buttons stay quiet. */
+body.app-bg-robinhood :is(button, a)[class*="bg-[#1E4775]"]:not([class*="bg-[#1E4775]/"]):not(:disabled),
+body.app-bg-robinhood :is(button, a)[class*="bg-[#4A9784]"]:not(:disabled),
+body.app-bg-robinhood :is(button, a)[class*="bg-harbor-blue"]:not(:disabled) {
+  background-color: var(--rh-neon) !important;
+  border-color: var(--rh-neon) !important;
+  color: var(--rh-ink) !important;
+  box-shadow: none;
+  transition: background-color 180ms ease, border-color 180ms ease;
+}
+
+body.app-bg-robinhood :is(button, a)[class*="bg-[#1E4775]"]:not([class*="bg-[#1E4775]/"]):not(:disabled):hover,
+body.app-bg-robinhood :is(button, a)[class*="bg-[#4A9784]"]:not(:disabled):hover,
+body.app-bg-robinhood :is(button, a)[class*="bg-harbor-blue"]:not(:disabled):hover {
+  background-color: var(--rh-neon-hover) !important;
+  border-color: var(--rh-neon-hover) !important;
+  color: var(--rh-ink) !important;
+}
+
+body.app-bg-robinhood :is(button, a):disabled[class*="bg-gray-300"] {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+body.app-bg-robinhood :is(button, a):disabled[class*="bg-[#1E4775]"],
+body.app-bg-robinhood :is(button, a):disabled[class*="bg-[#4A9784]"] {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: var(--rh-faint) !important;
+  box-shadow: none;
+}
+
+/* Selected tab / frosted control on a dark track. */
+body.app-bg-robinhood button[class*="shadow-[inset_0_1px_0_0_rgba(255,255,255,0.72)"] {
+  color: var(--rh-neon) !important;
+  box-shadow: inset 0 -1px 0 var(--rh-neon) !important;
+}
+
+/* Navy chrome that is not a button (tab track, shells) goes charcoal, not neon. */
+body.app-bg-robinhood :is(div, nav, header, section)[class*="bg-[#1E4775]"] {
+  background-color: #0d0d0d !important;
+}
+
+body.app-bg-robinhood .app-nav-shell {
+  background-color: #080808 !important;
+}
+
+body.app-bg-robinhood .app-nav-shell a[aria-current="page"] {
+  background-color: transparent !important;
+  color: var(--rh-neon) !important;
+  box-shadow: inset 0 -1px 0 var(--rh-neon) !important;
+  border-color: transparent !important;
+}
+
+body.app-bg-robinhood .app-nav-shell a[aria-current="page"] [class*="text-[#1E4775]"] {
+  color: var(--rh-neon) !important;
+  border-color: rgba(204, 255, 0, 0.45) !important;
+  background-color: rgba(204, 255, 0, 0.08) !important;
+}
+
+/* Charts: one neon series, gray support, thin grid. */
+body.app-bg-robinhood .recharts-cartesian-grid line {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+body.app-bg-robinhood .recharts-text {
+  fill: rgba(255, 255, 255, 0.5);
+}
+
+body.app-bg-robinhood .recharts-area .recharts-curve {
+  stroke: var(--rh-neon);
+}
+
+body.app-bg-robinhood .recharts-area-area {
+  fill: rgba(204, 255, 0, 0.14);
+  stroke: none;
+}
+
+body.app-bg-robinhood .recharts-wrapper:has(.recharts-line) .recharts-area .recharts-curve {
+  stroke: rgba(255, 255, 255, 0.55);
+}
+
+body.app-bg-robinhood .recharts-wrapper:has(.recharts-line) .recharts-area-area {
+  fill: rgba(255, 255, 255, 0.06);
+}
+
+body.app-bg-robinhood .recharts-wrapper:has(.recharts-line) .recharts-line .recharts-curve {
+  stroke: var(--rh-neon);
+}
+
+body.app-bg-robinhood .recharts-line .recharts-curve {
+  stroke: var(--rh-neon);
+}

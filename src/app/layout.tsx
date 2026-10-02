@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./robinhood-theme.css";
 import ContextProvider from "@/contexts";
 import { AppBackgroundProvider } from "@/contexts/AppBackgroundContext";
 import { headers } from "next/headers";

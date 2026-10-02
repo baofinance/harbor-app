@@ -2683,25 +2683,24 @@
     "@walletconnect/window-getters" "^1.0.1"
     tslib "1.14.1"
 
-"@web3icons/common@0.11.19":
-  version "0.11.19"
-  resolved "https://registry.npmjs.org/@web3icons/common/-/common-0.11.19.tgz"
-  integrity sha512-V+pSW/w0Vr6AOM4XwGQZO1HCaJkCABq3oQcssQ1APLxA7HyyQGTy+eeAYHYyyWx6g8uEEocXqxBGBLCAArHwPw==
+"@web3icons/common@0.11.52":
+  version "0.11.52"
+  resolved "https://registry.yarnpkg.com/@web3icons/common/-/common-0.11.52.tgz#082cd5c4c7bf886d583e71d673b11f89efefdb52"
+  integrity sha512-Eb99SrwGyw7wwcQkLwz07+zh3IJaEhoUuvMuIoteUh8PgVKrar/GrWKc/aw28y1FLj5PWMfJWA9JzYHnEcAR2Q==
 
-"@web3icons/core@^4.0.14":
-  version "4.0.24"
-  resolved "https://registry.npmjs.org/@web3icons/core/-/core-4.0.24.tgz"
-  integrity sha512-CR4g/z0TVhMmYXQ3dpdnKHel+OmcyOqlelRheTrGz+GPK58nbSxNY2PZLOYbUdU7nyk6vmnbaKXqFKK9mAg4cA==
+"@web3icons/core@^4.0.57":
+  version "4.0.57"
+  resolved "https://registry.yarnpkg.com/@web3icons/core/-/core-4.0.57.tgz#dccc59fa35349db52ee8b57cc5e253c062eabc10"
+  integrity sha512-GFBJgH6hNie49rT1iMrLTXP0TtZnZXg6bWrTgNa7D7/P/KqQs7xKuL0Hu3ZRavTy1NxiMF2cgF1vj/d2aLtJrg==
   dependencies:
-    "@web3icons/common" "0.11.19"
+    "@web3icons/common" "0.11.52"
 
-"@web3icons/react@^4.0.14":
-  version "4.0.25"
-  resolved "https://registry.npmjs.org/@web3icons/react/-/react-4.0.25.tgz"
-  integrity sha512-Ol0TcjiQ7PvWwUFzUm1XOQHQVwqJLMjgFBEzmUYI81VjT+jp5DcKLgBTZVvz4uGmiZ7rKWf7uuCOAdduz+JjaA==
+"@web3icons/react@^4.1.23":
+  version "4.1.23"
+  resolved "https://registry.yarnpkg.com/@web3icons/react/-/react-4.1.23.tgz#6c5301a4e8b394865f4382dca63c342a11271f74"
+  integrity sha512-ljD/wIQm42hCTc/nZo2IutfvCjUx76MyN2xatFY1qTt0qXk8Bc1hhfax18J84FRYrwpAhIsDRwJz2uSLIkAxVQ==
   dependencies:
-    "@web3icons/common" "0.11.19"
-    react "^18.2.0"
+    "@web3icons/common" "0.11.52"
 
 abitype@1.0.8:
   version "1.0.8"
@@ -5204,7 +5203,7 @@ log-update@^6.1.0:
     strip-ansi "^7.1.0"
     wrap-ansi "^9.0.0"
 
-loose-envify@^1.1.0, loose-envify@^1.4.0:
+loose-envify@^1.4.0:
   version "1.4.0"
   resolved "https://registry.npmjs.org/loose-envify/-/loose-envify-1.4.0.tgz"
   integrity sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==
@@ -6105,13 +6104,6 @@ react-transition-group@^4.4.5:
     dom-helpers "^5.0.1"
     loose-envify "^1.4.0"
     prop-types "^15.6.2"
-
-react@^18.2.0:
-  version "18.3.1"
-  resolved "https://registry.npmjs.org/react/-/react-18.3.1.tgz"
-  integrity sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==
-  dependencies:
-    loose-envify "^1.1.0"
 
 react@^19.1.1:
   version "19.1.1"

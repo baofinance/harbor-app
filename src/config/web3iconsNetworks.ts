@@ -16,6 +16,9 @@ const CHAIN_NAME_TO_WEB3ICONS_ID: Record<string, string> = {
   base: "base",
   Monad: "monad",
   monad: "monad",
+  "Robinhood Chain": "robinhood",
+  Robinhood: "robinhood",
+  robinhood: "robinhood",
 };
 
 /**
