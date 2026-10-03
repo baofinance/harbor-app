@@ -20,13 +20,13 @@ import { DepositModalShell } from "@/components/DepositModalShell";
 import { DepositModalFlowOverview } from "@/components/DepositModalFlowOverview";
 import { DepositModalTabHeader } from "@/components/DepositModalTabHeader";
 import { DepositModalLayout } from "@/components/deposit/DepositModalLayout";
+import { DepositBalanceStrip } from "@/components/deposit/DepositBalanceStrip";
 import { DepositTransactionOverview } from "@/components/deposit/DepositTransactionOverview";
 import { ProductAdvancedLayoutShell } from "@/components/deposit/ProductAdvancedLayoutShell";
 import {
   ANCHOR_MODAL_FOOTER_CHROME,
   DEPOSIT_AMOUNT_CARD_CLASS,
   DEPOSIT_AMOUNT_MAX_BUTTON_CLASS,
-  DEPOSIT_BALANCE_STRIP_CLASS,
   DEPOSIT_EMBEDDED_CONTENT_CLASS,
   DEPOSIT_EMBEDDED_PANEL_HEIGHT,
   DEPOSIT_OVERVIEW_CARD_CLASS,
@@ -249,10 +249,9 @@ function TradePanel({
                     MAX
                   </button>
                 </div>
-                <div className={`${DEPOSIT_BALANCE_STRIP_CLASS} mt-1`}>
-                  <span className="text-[#1E4775]/55">Balance</span>
-                  <span className="font-mono text-[#1E4775]/70">—</span>
-                </div>
+                <DepositBalanceStrip className="mt-1" ariaLabel="Balance">
+                  —
+                </DepositBalanceStrip>
               </div>
             }
             overview={
