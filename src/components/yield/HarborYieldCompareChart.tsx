@@ -124,10 +124,17 @@ export function HarborYieldCompareChart({
       ytdSinceTimestamp,
     );
 
-  const nowSec = Math.floor(Date.now() / 1000);
-  const sourceHistory = isUsd
-    ? usdPegHistory(Math.min(chartSinceTimestamp, ytdSinceTimestamp), nowSec)
-    : priceHistory;
+  const nowSec = useMemo(
+    () => Math.floor(Date.now() / 1000),
+    [chartSinceTimestamp, market.id],
+  );
+  const sourceHistory = useMemo(
+    () =>
+      isUsd
+        ? usdPegHistory(Math.min(chartSinceTimestamp, ytdSinceTimestamp), nowSec)
+        : priceHistory,
+    [chartSinceTimestamp, isUsd, nowSec, priceHistory, ytdSinceTimestamp],
+  );
   const statsHistory = isUsd
     ? sourceHistory
     : needsSeparateYtdFetch && ytdHistory.length > 0

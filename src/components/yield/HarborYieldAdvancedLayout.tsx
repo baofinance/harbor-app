@@ -14,6 +14,7 @@ import {
   harborYieldMarketById,
   type HarborYieldMarket,
 } from "@/config/harborYieldMarkets";
+import { useAmountInput } from "@/hooks/useAmountInput";
 import { useMarketQueryParam } from "@/hooks/useMarketQueryParam";
 import { usePegTargetPrices } from "@/hooks/usePegTargetPrices";
 import { DepositModalShell } from "@/components/DepositModalShell";
@@ -151,25 +152,31 @@ function TradePanel({
   onModeChange: (mode: "mint" | "redeem") => void;
 }) {
   const [amount, setAmount] = useState("");
+  const { handleChange } = useAmountInput(amount, setAmount, {
+    decimals: 18,
+    balance: undefined,
+    capAtBalance: false,
+  });
 
   useEffect(() => {
     setAmount("");
   }, [market.id, mode]);
 
   const parsed = Number(amount);
-  const hasAmount = Number.isFinite(parsed) && parsed > 0;
+  const sharePrice = market.sharePriceInPeg > 0 ? market.sharePriceInPeg : 1;
+  const hasAmount = amount !== "" && Number.isFinite(parsed) && parsed > 0;
   const paySymbol = mode === "mint" ? market.haSymbol : market.symbol;
   const receiveSymbol = mode === "mint" ? market.symbol : market.haSymbol;
   const receiveAmount = hasAmount
     ? mode === "mint"
-      ? parsed / market.sharePriceInPeg
-      : parsed * market.sharePriceInPeg
+      ? parsed / sharePrice
+      : parsed * sharePrice
     : null;
 
   const rateLine =
     mode === "mint"
-      ? `1 ${market.haSymbol} mints ${(1 / market.sharePriceInPeg).toFixed(2)} ${market.symbol}`
-      : `1 ${market.symbol} redeems ${market.sharePriceInPeg.toFixed(2)} ${market.haSymbol}`;
+      ? `1 ${market.haSymbol} mints ${(1 / sharePrice).toFixed(2)} ${market.symbol}`
+      : `1 ${market.symbol} redeems ${sharePrice.toFixed(2)} ${market.haSymbol}`;
 
   return (
     <aside className="flex w-full min-w-0 flex-col">
@@ -237,7 +244,7 @@ function TradePanel({
                   <input
                     inputMode="decimal"
                     value={amount}
-                    onChange={(event) => setAmount(event.target.value)}
+                    onChange={handleChange}
                     placeholder="0.0"
                     className={depositAmountInputClass()}
                   />
@@ -315,8 +322,10 @@ export function HarborYieldAdvancedLayout() {
   }, [market.id]);
 
   useEffect(() => {
-    if (marketParam !== market.id) setMarketParam(market.id);
-  }, [market.id, marketParam, setMarketParam]);
+    if (marketParam == null) return;
+    const known = HARBOR_YIELD_MARKETS.some((option) => option.id === marketParam);
+    if (!known) setMarketParam(HARBOR_YIELD_MARKETS[0].id);
+  }, [marketParam, setMarketParam]);
 
   const scrollToTrade = useCallback((next: "mint" | "redeem") => {
     setMode(next);
