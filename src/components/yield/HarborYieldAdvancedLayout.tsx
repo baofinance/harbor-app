@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import Image from "next/image";
 import {
   ArrowPathIcon,
@@ -151,6 +151,7 @@ function TradePanel({
   mode: "mint" | "redeem";
   onModeChange: (mode: "mint" | "redeem") => void;
 }) {
+  const amountInputId = useId();
   const [amount, setAmount] = useState("");
   const { handleChange } = useAmountInput(amount, setAmount, {
     decimals: 18,
@@ -237,11 +238,15 @@ function TradePanel({
                     <span className="truncate font-medium">{paySymbol}</span>
                   </div>
                 </div>
-                <span className={`${DEPOSIT_SECTION_LABEL_CLASS} mb-1.5 block`}>
+                <label
+                  htmlFor={amountInputId}
+                  className={`${DEPOSIT_SECTION_LABEL_CLASS} mb-1.5 block`}
+                >
                   Amount
-                </span>
+                </label>
                 <div className="relative">
                   <input
+                    id={amountInputId}
                     inputMode="decimal"
                     value={amount}
                     onChange={handleChange}

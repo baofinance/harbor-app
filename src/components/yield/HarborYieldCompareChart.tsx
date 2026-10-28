@@ -117,12 +117,11 @@ export function HarborYieldCompareChart({
     !isUsd,
     chartSinceTimestamp,
   );
-  const { priceHistory: ytdHistory, isLoading: isYtdLoading } =
-    useChainlinkUsdHistory(
-      market.asset,
-      !isUsd && needsSeparateYtdFetch,
-      ytdSinceTimestamp,
-    );
+  const { priceHistory: ytdHistory } = useChainlinkUsdHistory(
+    market.asset,
+    !isUsd && needsSeparateYtdFetch,
+    ytdSinceTimestamp,
+  );
 
   const nowSec = useMemo(
     () => Math.floor(Date.now() / 1000),
@@ -135,6 +134,8 @@ export function HarborYieldCompareChart({
         : priceHistory,
     [chartSinceTimestamp, isUsd, nowSec, priceHistory, ytdSinceTimestamp],
   );
+  const ytdHistoryMissing =
+    !isUsd && needsSeparateYtdFetch && ytdHistory.length === 0;
   const statsHistory = isUsd
     ? sourceHistory
     : needsSeparateYtdFetch && ytdHistory.length > 0
@@ -189,10 +190,11 @@ export function HarborYieldCompareChart({
   );
 
   const rangeChangePct = computePegChartRangeChangePct(hyFilteredHistory);
-  const periodChanges = useMemo(
-    () => computePegChartPeriodChanges(hyStatsHistory, liveHy),
-    [hyStatsHistory, liveHy],
-  );
+  const periodChanges = useMemo(() => {
+    const changes = computePegChartPeriodChanges(hyStatsHistory, liveHy);
+    if (!ytdHistoryMissing) return changes;
+    return { ...changes, changeYtdPct: null };
+  }, [hyStatsHistory, liveHy, ytdHistoryMissing]);
 
   const formatTimestamp = useMemo(
     () => (timestamp: number) => formatSailChartAxisTimestamp(timestamp, timeRange),
@@ -242,12 +244,15 @@ export function HarborYieldCompareChart({
       <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-3 text-[10px] text-[#1E4775]/70">
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-0.5 w-4 rounded-full bg-[#1E4775]" aria-hidden />
+            <span
+              className="hy-compare-swatch-ha h-0.5 w-4 rounded-full bg-[#1E4775]"
+              aria-hidden
+            />
             {market.haSymbol}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span
-              className="h-0.5 w-4 rounded-full border-t-2 border-dashed border-[#1f8a68]"
+              className="hy-compare-swatch-hy h-0.5 w-4 rounded-full border-t-2 border-dashed border-[#1f8a68]"
               aria-hidden
             />
             {market.symbol}
@@ -372,9 +377,7 @@ export function HarborYieldCompareChart({
               { label: `24h ${market.symbol}`, value: periodChanges.change24hPct },
               {
                 label: `YTD ${market.symbol}`,
-                value: !isUsd && needsSeparateYtdFetch && isYtdLoading
-                  ? null
-                  : periodChanges.changeYtdPct,
+                value: periodChanges.changeYtdPct,
               },
             ] as const
           ).map((item) => (

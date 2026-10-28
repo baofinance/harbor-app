@@ -25,7 +25,7 @@ export function PageLayoutToggle({
   const backgroundOptions = [
     { id: "eth" as const, label: "Ethereum", icon: "ethereum" },
     { id: "megaeth" as const, label: "MegaETH", icon: "mega-eth" },
-    { id: "robinhood" as const, label: "Robinhood Chain", icon: "robinhood" },
+    { id: "robinhood" as const, label: "Robinhood", icon: "robinhood" },
   ];
   const selectedBackground =
     backgroundOptions.find((option) => option.id === backgroundMode) ??
@@ -70,7 +70,7 @@ export function PageLayoutToggle({
             >
               <NetworkIconClient name={option.icon} size={20} variant="branded" />
               <span className="min-w-0 flex-1 truncate text-[11px] font-medium leading-none">
-                {option.id === "robinhood" ? "Robinhood Chain" : "Theme"}
+                {option.label}
               </span>
               <CheckIcon className="hidden h-3 w-3 shrink-0 text-[#1E4775] group-data-[selected]:block" />
             </ListboxOption>

@@ -183,3 +183,12 @@ body.app-bg-robinhood .recharts-wrapper:has(.recharts-line) .recharts-line .rech
 body.app-bg-robinhood .recharts-line .recharts-curve {
   stroke: var(--rh-neon);
 }
+
+/* Yield compare legend matches the remapped series: white area, neon line. */
+body.app-bg-robinhood .hy-compare-swatch-ha {
+  background-color: rgba(255, 255, 255, 0.55) !important;
+}
+
+body.app-bg-robinhood .hy-compare-swatch-hy {
+  border-color: var(--rh-neon) !important;
+}
