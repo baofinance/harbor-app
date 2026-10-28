@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 
-export type AppBackgroundMode = "eth" | "megaeth";
+export type AppBackgroundMode = "eth" | "megaeth" | "robinhood";
 
 type AppBackgroundContextValue = {
   mode: AppBackgroundMode;
@@ -20,10 +20,16 @@ type AppBackgroundContextValue = {
 const STORAGE_KEY = "appBackgroundMode";
 const AppBackgroundContext = createContext<AppBackgroundContextValue | null>(null);
 
+function bodyClassForMode(mode: AppBackgroundMode): string {
+  if (mode === "megaeth") return "app-bg-megaeth";
+  if (mode === "robinhood") return "app-bg-robinhood";
+  return "app-bg-eth";
+}
+
 function applyBodyBackgroundClass(mode: AppBackgroundMode) {
   if (typeof document === "undefined") return;
-  document.body.classList.remove("app-bg-eth", "app-bg-megaeth");
-  document.body.classList.add(mode === "megaeth" ? "app-bg-megaeth" : "app-bg-eth");
+  document.body.classList.remove("app-bg-eth", "app-bg-megaeth", "app-bg-robinhood");
+  document.body.classList.add(bodyClassForMode(mode));
 }
 
 export function AppBackgroundProvider({ children }: { children: ReactNode }) {
@@ -32,7 +38,8 @@ export function AppBackgroundProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = window.localStorage.getItem(STORAGE_KEY);
-    const nextMode: AppBackgroundMode = stored === "megaeth" ? "megaeth" : "eth";
+    const nextMode: AppBackgroundMode =
+      stored === "megaeth" || stored === "robinhood" ? stored : "eth";
     setModeState(nextMode);
     applyBodyBackgroundClass(nextMode);
   }, []);

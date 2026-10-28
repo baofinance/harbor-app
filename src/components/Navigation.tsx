@@ -37,7 +37,6 @@ import { IMPERSONATION_ENABLED } from "@/config/impersonation";
 /** Desktop popover + mobile “More”: lower-traffic destinations only. */
 const MORE_NAV: ReadonlyArray<{ href: string; label: string }> = [
   { href: "/ledger-marks", label: "Leaderboard" },
-  { href: "/hytoken", label: "Harbor Yield" },
   { href: "/transparency", label: "Transparency" },
 ];
 
@@ -47,7 +46,11 @@ export default function Example() {
   const { isImpersonating } = useImpersonation();
   const [impersonateOpen, setImpersonateOpen] = useState(false);
   const navBgClass =
-    backgroundMode === "megaeth" ? "bg-[#10141A]" : "bg-[#1E4775]";
+    backgroundMode === "megaeth"
+      ? "bg-[#10141A]"
+      : backgroundMode === "robinhood"
+        ? "bg-[#080808]"
+        : "bg-[#1E4775]";
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -97,6 +100,13 @@ export default function Example() {
               aria-current={isActive("/anchor") ? "page" : undefined}
             >
               Earn
+            </HarborNavLink>
+            <HarborNavLink
+              href="/hytoken"
+              className={`${linkClass("/hytoken")} flex shrink-0 items-center justify-center`}
+              aria-current={isActive("/hytoken") ? "page" : undefined}
+            >
+              Harbor Yield
             </HarborNavLink>
             <HarborNavLink
               href="/sail"
@@ -246,6 +256,18 @@ export default function Example() {
               aria-current={isActive("/anchor") ? "page" : undefined}
             >
               Earn
+            </DisclosureButton>
+            <DisclosureButton
+              as={HarborNavLink}
+              href="/hytoken"
+              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+                isActive("/hytoken")
+                  ? HARBOR_NAV_LINK_ACTIVE_CLASS
+                  : HARBOR_NAV_MOBILE_LINK_IDLE_CLASS
+              }`}
+              aria-current={isActive("/hytoken") ? "page" : undefined}
+            >
+              Harbor Yield
             </DisclosureButton>
             <DisclosureButton
               as={HarborNavLink}

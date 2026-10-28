@@ -1,6 +1,6 @@
 'use client'
 
-import { TokenIcon } from '@web3icons/react'
+import { TokenIcon } from '@web3icons/react/dynamic'
 import TokenIconLocal from '@/components/TokenIcon'
 import { getLogoPath } from '@/lib/logos'
 
