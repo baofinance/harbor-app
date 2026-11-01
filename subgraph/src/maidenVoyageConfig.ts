@@ -37,6 +37,7 @@ export const GEN_BTC_STETH_T2 = Address.fromString("0x9ae0b57ceada0056dbe21edcd6
 export const GEN_ETH_FXUSD_ALT = Address.fromString("0x1454707877cdb966e29cea8a190c2169eeca4b8c");
 export const GEN_STETH_USD = Address.fromString("0x40ff767ff4055d53b1bc1b0141221a37b25905fd");
 export const GEN_STETH_USD_MEGA = Address.fromString("0x004c7091051bbd43dd1c26e3e37c85f869a987e7");
+export const GEN_STETH_EUR2 = Address.fromString("0x40c0518cB6638D1A22c815f852d68206aC0D4952");
 
 // Minters
 export const MINT_ETH_FXUSD = Address.fromString("0xd6E2F8e57b4aFB51C6fA4cbC012e1cE6aEad989F");
@@ -79,6 +80,7 @@ export const HS_STETH_SILVER = Address.fromString("0x5bb5672be4553e648c1d20f0938
 export function getMaidenVoyageCapUSD(genesis: Address): BigDecimal {
   if (genesis.equals(GEN_STETH_USD)) return NEW_MARKET_CAP_USD;
   if (genesis.equals(GEN_STETH_USD_MEGA)) return NEW_MARKET_CAP_USD;
+  if (genesis.equals(GEN_STETH_EUR2)) return BigDecimal.fromString("10");
   if (isLegacyMaidenVoyageGenesis(genesis)) return LEGACY_CAP_USD;
   return BigDecimal.fromString("0");
 }
@@ -173,6 +175,7 @@ export function isKnownMaidenVoyageGenesis(genesis: Address): boolean {
   const g = genesis.toHexString().toLowerCase();
   if (g == GEN_STETH_USD.toHexString().toLowerCase()) return true;
   if (g == GEN_STETH_USD_MEGA.toHexString().toLowerCase()) return true;
+  if (g == GEN_STETH_EUR2.toHexString().toLowerCase()) return true;
   return false;
 }
 
