@@ -67,6 +67,7 @@ export function getFeaturedVoyageNumber(marketId?: string): number {
 export function getGenesisMarketTypeLabel(pegTarget?: string): string {
   if (!pegTarget) return "Market";
   if (pegTarget.toUpperCase() === "USD") return "USD Market";
+  if (pegTarget.toUpperCase() === "EUR2") return "haEUR2";
   return `${pegTarget.toUpperCase()} Market`;
 }
 

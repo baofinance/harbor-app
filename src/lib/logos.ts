@@ -39,6 +39,7 @@ const ICONS: Record<string, string> = {
     haeth: "/icons/haETH.png",
     habtc: "/icons/haBTC.png",
     haeur: "/icons/haEUR.png",
+    haeur2: "/icons/haEUR.png",
     hapb: "/icons/haETH.png",
     // Harbor tokens - hs (leveraged) tokens
     "hsfxusd-eth": "/icons/hsUSDETH.png",
@@ -57,6 +58,8 @@ const ICONS: Record<string, string> = {
     hsstethbtc: "/icons/hsETHBTC.png",
     "hssteth-eur": "/icons/hsSTETHEUR.png",
     hsstetheur: "/icons/hsSTETHEUR.png",
+    "hssteth-eur2": "/icons/hsSTETHEUR.png",
+    hsstetheur2: "/icons/hsSTETHEUR.png",
     "hsfxusd-eur": "/icons/hsUSDeur.png",
     hsfxusdeur: "/icons/hsUSDeur.png",
     hseth: "/icons/hsUSDETH.png", // Fallback for hsETH

@@ -10,7 +10,11 @@ import {
   filterSailActiveMarkets,
   filterSailTableMarkets,
 } from "@/utils/sailActiveMarkets";
-import { isSailActiveForExtendedUi } from "@/config/markets";
+import {
+  isMarketListedAfterGenesis,
+  isSailActiveForExtendedUi,
+} from "@/config/markets";
+import { useReleasedGenesisAddresses } from "@/hooks/useReleasedGenesisAddresses";
 import { getLongSide, getShortSide } from "@/utils/marketSideLabels";
 
 /**
@@ -40,6 +44,14 @@ export function useSailPageData() {
     refetchUserDeposits,
   } = useSailContractReads();
 
+  const releasedGenesisAddresses = useReleasedGenesisAddresses();
+  const isSailVisible = useCallback(
+    (market: SailMarketTuple[1]) =>
+      isSailActiveForExtendedUi(market) ||
+      isMarketListedAfterGenesis(market, releasedGenesisAddresses),
+    [releasedGenesisAddresses]
+  );
+
   const {
     chainFilterSelected,
     setChainFilterSelected,
@@ -49,7 +61,7 @@ export function useSailPageData() {
     archivedMarkets: displayedArchivedSailMarkets,
   } = useMarketIndexFilters({
     markets: sailMarkets,
-    isVisible: isSailActiveForExtendedUi,
+    isVisible: isSailVisible,
     partitionArchived: true,
   });
 

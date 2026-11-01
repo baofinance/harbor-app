@@ -447,7 +447,9 @@ export const SailMarketRow = React.memo(function SailMarketRow({
                 />
               </SimpleTooltip>
               <span className={`font-medium text-xs font-mono ${isComingSoon ? "text-[#64748b]" : "text-[#1E4775]"}`}>
-                {market.leveragedToken.symbol}
+                {(market as { test?: boolean }).test
+                  ? `${market.leveragedToken.symbol} test`
+                  : market.leveragedToken.symbol}
               </span>
               {isComingSoon ? (
                 <span className="shrink-0 rounded-md bg-[#f1f5f9] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#64748b] ring-1 ring-[#1E4775]/10">

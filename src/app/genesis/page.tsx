@@ -250,6 +250,14 @@ export default function GenesisIndexPage() {
   );
 
   useEffect(() => {
+    if (typeof window === "undefined" || genesisMarkets.length === 0) return;
+    const requested = new URLSearchParams(window.location.search).get("market");
+    if (requested && genesisMarkets.some(([id]) => id === requested)) {
+      setFeaturedMarketId(requested);
+    }
+  }, [genesisMarkets]);
+
+  useEffect(() => {
     if (genesisMarkets.length === 0) return;
     const stillValid = genesisMarkets.some(([id]) => id === featuredMarketId);
     if (stillValid) return;
