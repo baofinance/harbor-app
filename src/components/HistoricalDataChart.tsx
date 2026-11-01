@@ -10,6 +10,7 @@ import {
  Tooltip,
  ResponsiveContainer,
 } from "recharts";
+import { HARBOR_TOKEN_SERIES_COLOR } from "@/components/charts/chartSeriesColors";
 import TimeRangeSelector from "./TimeRangeSelector";
 import { TimeRange } from "../config/types";
 import type { TooltipProps } from "recharts";
@@ -189,8 +190,8 @@ const HistoricalDataChart = ({ marketId }: { marketId: string }) => {
  >
  <defs>
  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
- <stop offset="5%" stopColor="#1E4775" stopOpacity={0.45} />
- <stop offset="95%" stopColor="#1E4775" stopOpacity={0} />
+ <stop offset="5%" stopColor={HARBOR_TOKEN_SERIES_COLOR} stopOpacity={0.45} />
+ <stop offset="95%" stopColor={HARBOR_TOKEN_SERIES_COLOR} stopOpacity={0} />
  </linearGradient>
  </defs>
  <CartesianGrid
@@ -220,7 +221,7 @@ const HistoricalDataChart = ({ marketId }: { marketId: string }) => {
  <Area
  type="monotone"
  dataKey="value"
- stroke="#1E4775"
+ stroke={HARBOR_TOKEN_SERIES_COLOR}
  strokeWidth={2}
  fillOpacity={1}
  fill="url(#colorValue)"
@@ -228,8 +229,8 @@ const HistoricalDataChart = ({ marketId }: { marketId: string }) => {
  activeDot={{
  r: 5,
  strokeWidth: 2,
- fill:"#1E4775",
- stroke:"#1E4775",
+ fill: HARBOR_TOKEN_SERIES_COLOR,
+ stroke: HARBOR_TOKEN_SERIES_COLOR,
  }}
  />
  </AreaChart>

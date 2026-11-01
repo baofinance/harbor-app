@@ -150,45 +150,11 @@ body.app-bg-robinhood .app-nav-shell a[aria-current="page"] [class*="text-[#1E47
   background-color: rgba(204, 255, 0, 0.08) !important;
 }
 
-/* Charts: one neon series, gray support, thin grid. */
+/* Chart chrome only. Series colors stay the same on every theme. */
 body.app-bg-robinhood .recharts-cartesian-grid line {
   stroke: rgba(255, 255, 255, 0.08);
 }
 
 body.app-bg-robinhood .recharts-text {
   fill: rgba(255, 255, 255, 0.5);
-}
-
-body.app-bg-robinhood .recharts-area .recharts-curve {
-  stroke: var(--rh-neon);
-}
-
-body.app-bg-robinhood .recharts-area-area {
-  fill: rgba(204, 255, 0, 0.14);
-  stroke: none;
-}
-
-body.app-bg-robinhood .recharts-wrapper:has(.recharts-line) .recharts-area .recharts-curve {
-  stroke: rgba(255, 255, 255, 0.55);
-}
-
-body.app-bg-robinhood .recharts-wrapper:has(.recharts-line) .recharts-area-area {
-  fill: rgba(255, 255, 255, 0.06);
-}
-
-body.app-bg-robinhood .recharts-wrapper:has(.recharts-line) .recharts-line .recharts-curve {
-  stroke: var(--rh-neon);
-}
-
-body.app-bg-robinhood .recharts-line .recharts-curve {
-  stroke: var(--rh-neon);
-}
-
-/* Yield compare legend matches the remapped series: white area, neon line. */
-body.app-bg-robinhood .hy-compare-swatch-ha {
-  background-color: rgba(255, 255, 255, 0.55) !important;
-}
-
-body.app-bg-robinhood .hy-compare-swatch-hy {
-  border-color: var(--rh-neon) !important;
 }

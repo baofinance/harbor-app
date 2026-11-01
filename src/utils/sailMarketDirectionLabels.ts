@@ -5,6 +5,7 @@ const PAIR_BY_HS_SYMBOL: Record<string, { long: string; short: string }> = {
   "HSFXUSD-BTC": { long: "USD", short: "BTC" },
   "HSSTETH-BTC": { long: "ETH", short: "BTC" },
   "HSSTETH-EUR": { long: "ETH", short: "EUR" },
+  "HSSTETH-EUR2": { long: "ETH", short: "EUR2" },
   "HSFXUSD-EUR": { long: "USD", short: "EUR" },
   "HSSTETH-USD": { long: "ETH", short: "USD" },
 };
@@ -67,7 +68,8 @@ export function formatSailMarketPairTitle(
     longSide,
     shortSide
   );
-  return `${longLabel}/${shortLabel}`;
+  const title = `${longLabel}/${shortLabel}`;
+  return (market as { test?: boolean }).test ? `${title} test` : title;
 }
 
 /** Dropdown / picker title — e.g. "USD/ETH". */

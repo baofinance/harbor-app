@@ -555,6 +555,93 @@ export const markets = {
       },
     },
   },
+  // pre1_3 EUR/stETH minter. Staging only. Direct wstETH deposits; no zap contracts.
+  ...(isStaging && getContractMarket("steth-eur-pre1")
+    ? {
+        "steth-eur-pre1": {
+          name: "stETH - haEUR2",
+          maintenance: false,
+          // Genesis only until genesisIsEnded(). Then Earn and Leverage list it as haEUR2.
+          anchorActive: false,
+          sailActive: false,
+          releaseAfterGenesis: true,
+          status: "genesis" as const,
+          genesisActive: true as GenesisActiveSetting,
+          pegTarget: "EUR2",
+          chainId: 1,
+          zapper: false,
+          anyswap: false,
+          chain: {
+            name: "Ethereum",
+            logo: "icons/eth.png",
+          },
+          collateral: {
+            symbol: "wstETH",
+            name: "Wrapped stETH",
+            underlyingSymbol: "stETH",
+          },
+          underlyingCoinGeckoId: "wrapped-steth",
+          acceptedAssets: [{ symbol: "wstETH", name: "Wrapped stETH" }],
+          rewardTokens: {
+            default: ["wstETH"],
+            additional: [],
+          },
+          addresses: {
+            minter: contractsMarkets["steth-eur-pre1"].addresses.minter,
+            peggedToken: contractsMarkets["steth-eur-pre1"].addresses.peggedToken,
+            leveragedToken: contractsMarkets["steth-eur-pre1"].addresses.leveragedToken,
+            reservePool: contractsMarkets["steth-eur-pre1"].addresses.reservePool,
+            stabilityPoolManager:
+              contractsMarkets["steth-eur-pre1"].addresses.stabilityPoolManager,
+            stabilityPoolCollateral:
+              contractsMarkets["steth-eur-pre1"].addresses.stabilityPoolCollateral,
+            stabilityPoolLeveraged:
+              contractsMarkets["steth-eur-pre1"].addresses.stabilityPoolLeveraged,
+            genesis: contractsMarkets["steth-eur-pre1"].addresses.genesis,
+            priceOracle: contractsMarkets["steth-eur-pre1"].addresses.priceOracle,
+            collateralPrice: contractsMarkets["steth-eur-pre1"].addresses.collateralPrice,
+            feeReceiver: contractsMarkets["steth-eur-pre1"].addresses.feeReceiver,
+            collateralToken: contractsMarkets["steth-eur-pre1"].addresses.collateralToken,
+            wrappedCollateralToken:
+              contractsMarkets["steth-eur-pre1"].addresses.wrappedCollateralToken,
+          },
+          startBlock: contractsMarkets["steth-eur-pre1"].startBlock,
+          peggedToken: {
+            name: "Harbor Anchored EUR 2",
+            symbol: "haEUR2",
+            description: "Second haEUR deployment (pre1_3)",
+          },
+          leveragedToken: {
+            name: "Harbor Sail stETH-EUR 2",
+            symbol: "hsSTETH-EUR2",
+            description: "Leveraged token for the haEUR2 minter",
+          },
+          rewardPoints: {
+            pointsPerDollar: 100,
+            description: "100 ledger marks per dollar deposited at the end of genesis",
+          },
+          marksCampaign: {
+            id: "eur-pre1-test",
+            label: "haEUR2",
+          },
+          coinGeckoId: "wrapped-steth",
+          genesis: {
+            startDate: contractsMarkets["steth-eur-pre1"].genesis.startDate,
+            endDate: contractsMarkets["steth-eur-pre1"].genesis.endDate,
+            tokenDistribution: {
+              pegged: {
+                ratio: 0.5,
+                description: "50% of your deposit as pegged tokens",
+              },
+              leveraged: {
+                ratio: 0.5,
+                description: "50% of your deposit as leveraged tokens",
+              },
+            },
+          },
+        },
+      }
+    : {}),
   "fxusd-eur": {
     name: "fxUSD - EUR",
     maintenance: false,
@@ -1338,6 +1425,28 @@ export function isAnchorActiveForBasicUi(mkt: unknown): boolean {
   if (!mkt || typeof mkt !== "object") return false;
   const a = (mkt as { anchorActive?: boolean | "soon" }).anchorActive;
   return a === true || a === "soon";
+}
+
+/** Earn and Leverage stay hidden until this market's genesis has ended. */
+export function releasesAfterGenesis(mkt: unknown): boolean {
+  return Boolean(
+    mkt &&
+      typeof mkt === "object" &&
+      (mkt as { releaseAfterGenesis?: boolean }).releaseAfterGenesis === true
+  );
+}
+
+export function isMarketListedAfterGenesis(
+  mkt: unknown,
+  endedGenesisAddresses: ReadonlySet<string>
+): boolean {
+  if (!releasesAfterGenesis(mkt)) return false;
+  if (isGenesisCompletedUi(mkt)) return true;
+  const genesis = (mkt as { addresses?: { genesis?: string } }).addresses?.genesis;
+  return (
+    typeof genesis === "string" &&
+    endedGenesisAddresses.has(genesis.toLowerCase())
+  );
 }
 
 /** Peg symbols kept on UI+ (extended table) after UI− deprecation. */

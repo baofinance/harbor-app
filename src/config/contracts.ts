@@ -601,6 +601,48 @@ const productionMarkets: Markets = {
       leverageRatio: 2 * 1e18,
     },
   },
+  // Staging-only pre1_3 EUR/stETH minter. No zap contracts. UI entry is gated in markets.ts.
+  "steth-eur-pre1": {
+    id: "steth-eur-pre1",
+    name: "stETH - EUR test",
+    description: "Staging test market for the pre1_3 EUR/stETH minter",
+    startBlock: 26315304,
+    addresses: {
+      wrappedCollateralToken: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0", // wstETH
+      collateralToken: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0", // wstETH
+      underlyingCollateralToken: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", // stETH
+      feeReceiver: "0x9bABfC1A1952a6ed2caC1922BFfE80c0506364a2",
+      genesis: "0x40c0518cB6638D1A22c815f852d68206aC0D4952",
+      leveragedToken: "0x97c9c86D33F7B1C55593532100D5efF5622c2B9e",
+      minter: "0x72Ea842c586Dc6A76E3ccA96922c017cE30D9FDB",
+      owner: "0x9bABfC1A1952a6ed2caC1922BFfE80c0506364a2",
+      peggedToken: "0x8415371e36bee02b99059C30049F4bbFE8e55785",
+      priceOracle: "0x5e27965689B4B8B425d98fbc676fE22d74caf7C7",
+      stabilityPoolCollateral: "0x63501E3a00f1eDA929eCaa28EC1A4147c0b565B6",
+      stabilityPoolLeveraged: "0x0D3AF830C0AC64047a69950fd7BE543d89D3b2dd",
+      stabilityPoolManager: "0x2B1E2850D5247F936c3306721AE43FC9C725b4F3",
+      reservePool: "0x571fa8614D6951EAB84428Be36c77D8F06818739",
+      rebalancePoolCollateral: "0x0000000000000000000000000000000000000000",
+      rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000",
+      collateralPrice: "0x5e27965689B4B8B425d98fbc676fE22d74caf7C7",
+    },
+    genesis: {
+      startDate: "2026-10-31T21:14:01Z",
+      endDate: "2026-12-31T17:00:00Z",
+      rewards: {
+        pegged: {
+          symbol: "haEUR2",
+          amount: "1000000",
+        },
+        leveraged: {
+          symbol: "hsSTETH-EUR2",
+          amount: "1000000",
+        },
+      },
+      collateralRatio: 1.0,
+      leverageRatio: 2 * 1e18,
+    },
+  },
 };
 
 // Export markets and contracts based on environment variable

@@ -522,7 +522,7 @@ export function useAnchorPrices(
       const pegTarget = (m as any)?.pegTarget?.toLowerCase() || "";
       const isETHPegged = pegTarget === "eth" || pegTarget === "ethereum" || peggedTokenSymbol.includes("eth") || peggedTokenSymbol === "haeth";
       const isBTCPegged = pegTarget === "btc" || pegTarget === "bitcoin" || peggedTokenSymbol.includes("btc") || peggedTokenSymbol === "habtc";
-      const isEURPegged = pegTarget === "eur" || pegTarget === "euro" || peggedTokenSymbol.includes("eur") || peggedTokenSymbol === "haeur";
+      const isEURPegged = pegTarget === "eur" || pegTarget === "eur2" || pegTarget === "euro" || peggedTokenSymbol.includes("eur") || peggedTokenSymbol === "haeur" || peggedTokenSymbol === "haeur2";
       const isGOLDPegged = pegTarget === "gold" || peggedTokenSymbol.includes("gold") || peggedTokenSymbol === "hagold";
       const isSILVERPegged = pegTarget === "silver" || peggedTokenSymbol.includes("silver") || peggedTokenSymbol === "hasilver";
       if (isDebug) {

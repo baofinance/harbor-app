@@ -206,7 +206,7 @@ function BackingOptionRow({
   showChain: boolean;
   onSelect: () => void;
 }) {
-  const { market, backingLabel, apyLabel, isComingSoon } = option;
+  const { market, backingLabel, apyLabel, isComingSoon, isTest } = option;
 
   return (
     <li>
@@ -226,7 +226,7 @@ function BackingOptionRow({
               isComingSoon ? "text-[#64748b]" : ""
             }`}
           >
-            {backingLabel}
+            {isTest ? `${backingLabel} test` : backingLabel}
           </span>
           <span className={SUBTITLE_CLASS}>
             {showChain
@@ -387,7 +387,9 @@ export function AnchorPegBackingSelectors({
                 selectedBacking.isComingSoon ? "text-[#64748b]" : ""
               }`}
             >
-              {selectedBacking.backingLabel}
+              {selectedBacking.isTest
+                ? `${selectedBacking.backingLabel} test`
+                : selectedBacking.backingLabel}
             </span>
             {!selectedBacking.isComingSoon && selectedBacking.apyLabel ? (
               <ApyBadge apyLabel={selectedBacking.apyLabel} className="shrink-0" />

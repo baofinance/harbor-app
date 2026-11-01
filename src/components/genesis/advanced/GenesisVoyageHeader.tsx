@@ -47,7 +47,9 @@ export function GenesisVoyageHeader({
   userDepositUsd = null,
 }: GenesisVoyageHeaderProps) {
   const pegLabel =
-    selectedMarket?.pegTarget?.toUpperCase() ||
+    selectedMarket?.pegTarget?.toUpperCase() === "EUR2"
+      ? "haEUR2"
+      : selectedMarket?.pegTarget?.toUpperCase() ||
     getGenesisMarketTypeLabel(selectedMarket?.pegTarget).replace(
       / Market$/i,
       "",

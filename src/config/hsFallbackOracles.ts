@@ -1,6 +1,7 @@
 export const HS_FALLBACK_ORACLES_MAINNET: Record<string, `0x${string}`> = {
   "fxusd-eur": "0x657bE7a2b91F95222D163Bee3B5F4C27bed598C5",
   "steth-eur": "0x777BD12e1f61B8cac19Cbd30c0233C46B4683C00",
+  "steth-eur-pre1": "0x777BD12e1f61B8cac19Cbd30c0233C46B4683C00",
   "btc-steth": "0xFf37Db6dea33228A5D84546250a5D0D0da942fd7",
   "btc-fxusd": "0xF36648F44763eFE7c528140a2f804b2124CC3FE1",
   "eth-fxusd": "0xA8643E35Ef119F983B09C322039e8AA49A3e3372",

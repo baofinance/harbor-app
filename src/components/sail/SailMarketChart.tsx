@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { DefinedMarket } from "@/config/markets";
 import { markets } from "@/config/markets";
+import { CHART_BENCHMARK_SERIES_COLOR } from "@/components/charts/chartSeriesColors";
 import InfoTooltip from "@/components/InfoTooltip";
 import { usePegTargetPrices } from "@/hooks/usePegTargetPrices";
 import { useChainlinkUsdHistory } from "@/hooks/useChainlinkUsdHistory";
@@ -336,7 +337,7 @@ export function SailMarketChart({
             setShowPerpBenchmark((current) => !current);
             if (!showHsPriceUsd) setShowHsPriceUsd(true);
           }}
-          color="#6D5BD0"
+          color={CHART_BENCHMARK_SERIES_COLOR}
           disabled={!hasHsPriceData && !isBlockingLoading}
         />
         <div className="flex min-w-0 flex-1 items-center gap-2 text-xs text-[#1E4775]/60">

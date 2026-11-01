@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { HARBOR_TOKEN_SERIES_COLOR } from "@/components/charts/chartSeriesColors";
 import type { HarborYieldMarket } from "@/config/harborYieldMarkets";
 import { useChainlinkUsdHistory } from "@/hooks/useChainlinkUsdHistory";
 import { usePegTargetPrices } from "@/hooks/usePegTargetPrices";
@@ -35,8 +36,8 @@ import {
 } from "@/utils/pegAssetChart";
 
 const MIN_CHART_POINTS = 2;
-const HA_COLOR = "#1E4775";
-const HY_COLOR = "#1f8a68";
+const HA_COLOR = HARBOR_TOKEN_SERIES_COLOR;
+const HY_COLOR = HARBOR_TOKEN_SERIES_COLOR;
 
 type ChartRow = {
   timestamp: number;
@@ -81,10 +82,13 @@ function CompareTooltip({
   return (
     <div className="rounded-lg bg-[#0c0c0c] p-3 shadow-lg">
       <p className="text-xs text-white/70">{when}</p>
-      <p className="mt-1 font-mono text-sm font-semibold text-white">
+      <p
+        className="mt-1 font-mono text-sm font-semibold"
+        style={{ color: HA_COLOR }}
+      >
         {haSymbol} {formatPegUsdPrice(typeof ha === "number" ? ha : null, asset)}
       </p>
-      <p className="font-mono text-sm font-semibold text-[#8fd9c0]">
+      <p className="font-mono text-sm font-semibold" style={{ color: HY_COLOR }}>
         {hySymbol} {formatPegUsdPrice(typeof hy === "number" ? hy : null, asset)}
       </p>
     </div>
@@ -209,18 +213,30 @@ export function HarborYieldCompareChart({
       <div className="mb-2 flex shrink-0 flex-wrap items-end justify-between gap-3 border-b border-[#1E4775]/10 pb-2">
         <div className="flex min-w-0 flex-wrap gap-x-5 gap-y-1">
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-wide text-[#1E4775]/50">
+            <p
+              className="text-[10px] font-medium uppercase tracking-wide"
+              style={{ color: HA_COLOR }}
+            >
               {market.haSymbol}
             </p>
-            <p className="font-mono text-sm font-semibold tabular-nums text-[#1E4775] sm:text-base">
+            <p
+              className="font-mono text-sm font-semibold tabular-nums sm:text-base"
+              style={{ color: HA_COLOR }}
+            >
               {formatPegUsdPrice(liveHa, market.asset)}
             </p>
           </div>
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-wide text-[#1f8a68]">
+            <p
+              className="text-[10px] font-medium uppercase tracking-wide"
+              style={{ color: HY_COLOR }}
+            >
               {market.symbol}
             </p>
-            <p className="font-mono text-sm font-semibold tabular-nums text-[#1f8a68] sm:text-base">
+            <p
+              className="font-mono text-sm font-semibold tabular-nums sm:text-base"
+              style={{ color: HY_COLOR }}
+            >
               {formatPegUsdPrice(liveHy, market.asset)}
             </p>
           </div>
@@ -245,14 +261,16 @@ export function HarborYieldCompareChart({
         <div className="flex flex-wrap items-center gap-3 text-[10px] text-[#1E4775]/70">
           <span className="inline-flex items-center gap-1.5">
             <span
-              className="hy-compare-swatch-ha h-0.5 w-4 rounded-full bg-[#1E4775]"
+              className="h-0.5 w-4 rounded-full"
+              style={{ backgroundColor: HA_COLOR }}
               aria-hidden
             />
             {market.haSymbol}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span
-              className="hy-compare-swatch-hy h-0.5 w-4 rounded-full border-t-2 border-dashed border-[#1f8a68]"
+              className="h-0.5 w-4 rounded-full border-t-2 border-dashed"
+              style={{ borderColor: HY_COLOR }}
               aria-hidden
             />
             {market.symbol}

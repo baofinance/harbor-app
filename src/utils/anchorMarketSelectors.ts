@@ -12,6 +12,7 @@ export type AnchorBackingOption = {
   chainKey: string;
   apyLabel?: string;
   isComingSoon: boolean;
+  isTest: boolean;
 };
 
 export type AnchorPegGroup = {
@@ -69,6 +70,7 @@ export function buildAnchorPegGroups(
       chainKey: marketChainKey(market),
       apyLabel: options?.apyByMarketId?.get(marketId),
       isComingSoon: isAnchorSoonUi(market),
+      isTest: (market as { test?: boolean }).test === true,
     };
     const list = byPeg.get(pegKey) ?? [];
     list.push(entry);

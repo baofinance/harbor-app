@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { formatEther } from "viem";
 import {
   markets,
   isAnchorActiveForExtendedUi,
+  isMarketListedAfterGenesis,
 } from "@/config/markets";
+import { useReleasedGenesisAddresses } from "@/hooks/useReleasedGenesisAddresses";
 import { useStaggeredReady } from "@/hooks/useStaggeredReady";
 import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
 import { useProjectedAPR } from "@/hooks/useProjectedAPR";
@@ -36,6 +38,14 @@ export function useAnchorPageData(address: `0x${string}` | undefined) {
     []
   );
 
+  const releasedGenesisAddresses = useReleasedGenesisAddresses();
+  const isAnchorVisible = useCallback(
+    (market: AnchorMarketTuple[1]) =>
+      isAnchorActiveForExtendedUi(market) ||
+      isMarketListedAfterGenesis(market, releasedGenesisAddresses),
+    [releasedGenesisAddresses]
+  );
+
   const {
     chainFilterSelected,
     setChainFilterSelected,
@@ -44,7 +54,7 @@ export function useAnchorPageData(address: `0x${string}` | undefined) {
     archivedMarkets: displayedArchivedAnchorMarkets,
   } = useMarketIndexFilters({
     markets: anchorMarkets,
-    isVisible: isAnchorActiveForExtendedUi,
+    isVisible: isAnchorVisible,
     partitionArchived: true,
   });
 
