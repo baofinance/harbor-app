@@ -12,6 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { CHART_BENCHMARK_SERIES_COLOR } from "@/components/charts/chartSeriesColors";
 import type { SailMarketChartConfig, SailMarketChartPoint } from "@/utils/sailMarketChartSeries";
 import {
   formatSailChartDefaultValue,
@@ -40,7 +41,7 @@ interface SailMarketMultiSeriesChartProps {
 const SERIES_COLORS = {
   defaultRatio: SAIL_CHART_BASELINE_COLOR,
   hsPriceUsd: SAIL_CHART_HS_COLOR,
-  perpReturnPct: "#6D5BD0",
+  perpReturnPct: CHART_BENCHMARK_SERIES_COLOR,
 } as const;
 
 function MultiSeriesTooltip({

@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { HARBOR_TOKEN_SERIES_COLOR } from "@/components/charts/chartSeriesColors";
 import { useChainlinkUsdHistory } from "@/hooks/useChainlinkUsdHistory";
 import { usePegTargetPrices } from "@/hooks/usePegTargetPrices";
 import {
@@ -285,8 +286,8 @@ export function PegTargetUsdChart({ asset, className = "" }: PegTargetUsdChartPr
             >
               <defs>
                 <linearGradient id={CHART_GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#1E4775" stopOpacity={0.35} />
-                  <stop offset="95%" stopColor="#1E4775" stopOpacity={0} />
+                  <stop offset="5%" stopColor={HARBOR_TOKEN_SERIES_COLOR} stopOpacity={0.35} />
+                  <stop offset="95%" stopColor={HARBOR_TOKEN_SERIES_COLOR} stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid
@@ -331,7 +332,7 @@ export function PegTargetUsdChart({ asset, className = "" }: PegTargetUsdChartPr
               <Area
                 type="monotone"
                 dataKey="price"
-                stroke="#1E4775"
+                stroke={HARBOR_TOKEN_SERIES_COLOR}
                 strokeWidth={2}
                 fillOpacity={1}
                 fill={`url(#${CHART_GRADIENT_ID})`}
@@ -340,7 +341,7 @@ export function PegTargetUsdChart({ asset, className = "" }: PegTargetUsdChartPr
                   r: 4,
                   strokeWidth: 2,
                   fill: "#0c0c0c",
-                  stroke: "#1E4775",
+                  stroke: HARBOR_TOKEN_SERIES_COLOR,
                 }}
               />
             </AreaChart>
