@@ -311,6 +311,21 @@ export const STABILITY_POOL_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  // v3: shares a deposit would credit. v2 pools revert; the review falls back.
+  {
+    inputs: [{ name: "assetAmount", type: "uint256" }],
+    name: "previewDeposit",
+    outputs: [{ name: "assetsDeposited", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "symbol",
+    outputs: [{ name: "", type: "string" }],
+    stateMutability: "view",
+    type: "function",
+  },
   {
     inputs: [],
     name: "totalAssets",

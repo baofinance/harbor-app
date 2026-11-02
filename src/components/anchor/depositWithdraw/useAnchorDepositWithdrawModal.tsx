@@ -10850,6 +10850,54 @@ export function useAnchorDepositWithdrawModal({
       earlyWithdraw1PctEnabled,
     ]);
 
+  // Shares the pool would credit. v3 previewDeposit; absent on v2.
+  const poolSharePreviewAmount = useMemo(() => {
+    if (activeTab !== "deposit" || mintOnly || !stabilityPoolAddress) return undefined;
+    if (isDirectPeggedDeposit) {
+      if (!amount || parseFloat(amount) <= 0) return undefined;
+      try {
+        return parseEther(amount);
+      } catch {
+        return undefined;
+      }
+    }
+    if (expectedMintOutput && expectedMintOutput > 0n) return expectedMintOutput;
+    return undefined;
+  }, [
+    activeTab,
+    mintOnly,
+    stabilityPoolAddress,
+    isDirectPeggedDeposit,
+    amount,
+    expectedMintOutput,
+  ]);
+
+  const { data: previewDepositShares, isError: previewDepositError } = useContractRead({
+    address: stabilityPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "previewDeposit",
+    args: poolSharePreviewAmount ? [poolSharePreviewAmount] : undefined,
+    query: {
+      enabled:
+        !!stabilityPoolAddress &&
+        !!poolSharePreviewAmount &&
+        poolSharePreviewAmount > 0n &&
+        isActive &&
+        activeTab === "deposit",
+      retry: 1,
+    },
+  });
+
+  const { data: poolShareSymbol } = useContractRead({
+    address: stabilityPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "symbol",
+    query: {
+      enabled: !!stabilityPoolAddress && isActive && activeTab === "deposit" && !mintOnly,
+      retry: 1,
+    },
+  });
+
   const mintReviewModel = useMemo(() => {
     const bands: Array<{
       role: "from" | "route" | "receive" | "meta";
@@ -10931,13 +10979,33 @@ export function useAnchorDepositWithdrawModal({
 
     const enteredAmount =
       amount && parseFloat(amount) > 0 ? parseFloat(amount) : null;
-    // A direct ha deposit does not mint. The mint dry run prices the entered
-    // amount as if it were collateral, which overstates what the pool takes.
-    const receiveRaw = isDirectPeggedDeposit
-      ? enteredAmount
-      : expectedMintOutput && expectedMintOutput > 0n
+    const depositingToPool = !mintOnly && !!selectedStabilityPool;
+    const shareSymbol =
+      typeof poolShareSymbol === "string" && poolShareSymbol.length > 0
+        ? poolShareSymbol
+        : null;
+    const previewShares =
+      typeof previewDepositShares === "bigint" && previewDepositShares > 0n
+        ? previewDepositShares
+        : null;
+    const mintedHa =
+      expectedMintOutput && expectedMintOutput > 0n
         ? Number(formatEther(expectedMintOutput))
         : null;
+    // A pool deposit credits hsp shares from previewDeposit. The mint dry run
+    // prices the typed amount as collateral, so it must not fill this line.
+    let receiveRaw: number | null = null;
+    let receiveSymbol = peggedTokenSymbol;
+    if (depositingToPool && previewShares != null) {
+      receiveRaw = Number(formatEther(previewShares));
+      if (shareSymbol) receiveSymbol = shareSymbol;
+    } else if (depositingToPool && !previewDepositError) {
+      receiveRaw = null;
+    } else if (isDirectPeggedDeposit) {
+      receiveRaw = enteredAmount;
+    } else {
+      receiveRaw = mintedHa;
+    }
     const receiveFormatted =
       receiveRaw != null ? formatUiAmount(receiveRaw) : { text: "—" };
     const peggedPriceUSD =
@@ -10955,10 +11023,10 @@ export function useAnchorDepositWithdrawModal({
       secondary: receiveUsd ?? undefined,
       value:
         receiveRaw != null
-          ? `${receiveFormatted.text} ${peggedTokenSymbol}`
+          ? `${receiveFormatted.text} ${receiveSymbol}`
           : "—",
       valueTitle: receiveFormatted.title
-        ? `${receiveFormatted.title} ${peggedTokenSymbol}`
+        ? `${receiveFormatted.title} ${receiveSymbol}`
         : undefined,
     });
 
@@ -11042,6 +11110,9 @@ export function useAnchorDepositWithdrawModal({
     isDirectPeggedDeposit,
     peggedTokenSymbol,
     expectedMintOutput,
+    previewDepositShares,
+    previewDepositError,
+    poolShareSymbol,
     peggedTokenPriceUsdWei,
     mintOnly,
     selectedStabilityPool,
