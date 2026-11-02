@@ -5,7 +5,7 @@ const PAIR_BY_HS_SYMBOL: Record<string, { long: string; short: string }> = {
   "HSFXUSD-BTC": { long: "USD", short: "BTC" },
   "HSSTETH-BTC": { long: "ETH", short: "BTC" },
   "HSSTETH-EUR": { long: "ETH", short: "EUR" },
-  "HSSTETH-EUR2": { long: "ETH", short: "EUR2" },
+  "HSSTETH-EUR2": { long: "ETH", short: "EUR" },
   "HSFXUSD-EUR": { long: "USD", short: "EUR" },
   "HSSTETH-USD": { long: "ETH", short: "USD" },
 };

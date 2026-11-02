@@ -75,6 +75,9 @@ export function filterSailActiveMarkets(
       return false;
     }
     if (isSailSoonUi(m)) return true;
+    if ((m as { listWithEmptyCollateral?: boolean }).listWithEmptyCollateral) {
+      return true;
+    }
     return includeLiveMarketByCollateral(
       id,
       sailMarketIdToIndex,
@@ -105,6 +108,9 @@ export function filterSailTableMarkets(
     }
     if (isSailSoonUi(m)) return true;
     if (isSailDeprecatedExtendedUi(m)) return true;
+    if ((m as { listWithEmptyCollateral?: boolean }).listWithEmptyCollateral) {
+      return true;
+    }
     if (!reads) return true;
     return includeLiveMarketByCollateral(
       id,

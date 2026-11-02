@@ -17,7 +17,7 @@ export function pegTargetToAssetKey(
   if (normalized === "USD") return "USD";
   if (normalized === "ETH" || normalized === "ETHEREUM") return "ETH";
   if (normalized === "BTC" || normalized === "BITCOIN") return "BTC";
-  if (normalized === "EUR" || normalized === "EURO") return "EUR";
+  if (normalized === "EUR" || normalized === "EURO" || normalized === "EUR2") return "EUR";
   if (normalized === "GOLD" || normalized === "XAU") return "XAU";
   if (normalized === "SILVER" || normalized === "XAG") return "XAG";
   return null;

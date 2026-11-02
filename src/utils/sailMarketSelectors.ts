@@ -17,8 +17,10 @@ export type SailTokenGroup = {
   pairOptions: SailPairOption[];
 };
 
-/** hsFXUSD-ETH → hsFXUSD */
+/** hsFXUSD-ETH → hsFXUSD. haEUR2 stays out of the live hsSTETH menu. */
 export function getSailTokenFamily(market: DefinedMarket): string {
+  const peg = market.peggedToken?.symbol?.trim();
+  if (peg?.toUpperCase() === "HAEUR2") return peg;
   const sym = market.leveragedToken?.symbol ?? "";
   const dash = sym.indexOf("-");
   if (dash > 0) return sym.slice(0, dash);

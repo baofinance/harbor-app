@@ -1,6 +1,7 @@
 "use client";
 
 import type { DefinedMarket } from "@/config/markets";
+import { getAnchorPegTarget } from "@/utils/anchorMarketSelectors";
 
 const TAGLINE_CLASS =
   "min-w-0 text-center text-xl font-bold leading-snug text-white/90 sm:text-2xl lg:text-3xl";
@@ -30,7 +31,7 @@ export function AnchorMarketTagline({
   className = "",
   layout = "default",
 }: AnchorMarketTaglineProps) {
-  const pegTarget = market.pegTarget || market.peggedToken?.symbol || "asset";
+  const pegTarget = getAnchorPegTarget(market);
   const haSymbol = market.peggedToken?.symbol || "haToken";
   const inline = layout === "inline";
 
