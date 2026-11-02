@@ -28,14 +28,16 @@ export type AnchorPegGroup = {
   multiChain: boolean;
 };
 
-const PEG_SORT_ORDER = ["ETH", "BTC", "EUR", "USD", "GOLD", "SILVER", "MCAP"];
+const PEG_SORT_ORDER = ["ETH", "BTC", "EUR", "EUR2", "USD", "GOLD", "SILVER", "MCAP"];
 
 export function getAnchorPegLabel(market: DefinedMarket): string {
   return market.peggedToken?.symbol || `ha${market.pegTarget ?? ""}` || "—";
 }
 
 export function getAnchorPegTarget(market: DefinedMarket): string {
-  return market.pegTarget || market.peggedToken?.symbol?.replace(/^ha/i, "") || "—";
+  const target =
+    market.pegTarget || market.peggedToken?.symbol?.replace(/^ha/i, "") || "—";
+  return target.toUpperCase() === "EUR2" ? "EUR" : target;
 }
 
 export function getAnchorBackingLabel(market: DefinedMarket): string {

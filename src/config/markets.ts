@@ -561,10 +561,10 @@ export const markets = {
         "steth-eur-pre1": {
           name: "stETH - haEUR2",
           maintenance: false,
-          // Genesis only until genesisIsEnded(). Then Earn and Leverage list it as haEUR2.
-          anchorActive: false,
-          sailActive: false,
-          releaseAfterGenesis: true,
+          // Own peg on Earn and Leverage. Genesis stays open until the voyage ends.
+          anchorActive: true,
+          sailActive: true,
+          listWithEmptyCollateral: true,
           status: "genesis" as const,
           genesisActive: true as GenesisActiveSetting,
           pegTarget: "EUR2",

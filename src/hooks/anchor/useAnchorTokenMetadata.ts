@@ -191,15 +191,15 @@ export function useAnchorTokenMetadata(
       if (meta.peggedSymbol || meta.peggedName) {
         m.peggedToken = {
           ...(m.peggedToken || {}),
-          symbol: meta.peggedSymbol || m.peggedToken?.symbol,
-          name: meta.peggedName || m.peggedToken?.name,
+          symbol: m.peggedToken?.symbol || meta.peggedSymbol,
+          name: m.peggedToken?.name || meta.peggedName,
         };
       }
       if (meta.leveragedSymbol || meta.leveragedName) {
         m.leveragedToken = {
           ...(m.leveragedToken || {}),
-          symbol: meta.leveragedSymbol || m.leveragedToken?.symbol,
-          name: meta.leveragedName || m.leveragedToken?.name,
+          symbol: m.leveragedToken?.symbol || meta.leveragedSymbol,
+          name: m.leveragedToken?.name || meta.leveragedName,
         };
       }
     });
