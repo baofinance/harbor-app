@@ -35,13 +35,28 @@ export function useWithdrawalRequests(poolAddresses: `0x${string}`[]) {
 
       for (const poolAddress of poolAddresses) {
         try {
-          // Read the withdrawal window for this user
-          const [start, end] = (await client.readContract({
-            address: poolAddress,
-            abi: STABILITY_POOL_ABI,
-            functionName: "getWithdrawalRequest",
-            args: [address],
-          })) as [bigint, bigint];
+          // v3 name first. v2 pools revert it and still answer getWithdrawalRequest.
+          let start = 0n;
+          let end = 0n;
+          try {
+            const request = (await client.readContract({
+              address: poolAddress,
+              abi: STABILITY_POOL_ABI,
+              functionName: "withdrawalRequest",
+              args: [address],
+            })) as [bigint, bigint];
+            start = BigInt(request[0]);
+            end = BigInt(request[1]);
+          } catch {
+            const request = (await client.readContract({
+              address: poolAddress,
+              abi: STABILITY_POOL_ABI,
+              functionName: "getWithdrawalRequest",
+              args: [address],
+            })) as [bigint, bigint];
+            start = BigInt(request[0]);
+            end = BigInt(request[1]);
+          }
 
           // If no request, skip
           if (!start || !end || (start === 0n && end === 0n)) {
@@ -54,11 +69,18 @@ export function useWithdrawalRequests(poolAddresses: `0x${string}`[]) {
             earlyWithdrawFee = (await client.readContract({
               address: poolAddress,
               abi: STABILITY_POOL_ABI,
-              functionName: "getEarlyWithdrawalFee",
-              args: [],
+              functionName: "earlyWithdrawalFeeRatio",
             })) as bigint;
           } catch {
-            earlyWithdrawFee = 0n;
+            try {
+              earlyWithdrawFee = (await client.readContract({
+                address: poolAddress,
+                abi: STABILITY_POOL_ABI,
+                functionName: "getEarlyWithdrawalFee",
+              })) as bigint;
+            } catch {
+              earlyWithdrawFee = 0n;
+            }
           }
 
           // Determine status

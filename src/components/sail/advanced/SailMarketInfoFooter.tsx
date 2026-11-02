@@ -38,7 +38,7 @@ export function SailMarketInfoFooter() {
         <FooterColumn
           icon={ShieldCheckIcon}
           title="How Sail Leverage Works"
-          body="Sail tokens give amplified exposure through variable leverage that auto-rebalances at protocol thresholds — no funding fees or manual margin calls."
+          body="Harbor Sail (hs) tokens give amplified exposure through variable leverage that auto-rebalances at protocol thresholds — no funding fees or manual margin calls."
         />
         <FooterColumn
           icon={BanknotesIcon}

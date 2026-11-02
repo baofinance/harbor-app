@@ -127,6 +127,19 @@ import {
 import { getAcceptedDepositAssets } from "@/utils/anchor";
 import { buildDepositTokenDropdownGroups } from "@/utils/depositTokenDropdownOptions";
 import type { AnchorDepositWithdrawModalProps } from "./types";
+import { useStabilityPoolReadPair } from "@/hooks/useStabilityPoolReadPair";
+import {
+  asUintPair,
+  estimateStabilityPoolWithdrawal,
+  harborTokenWithTitle,
+  isWithdrawalWindowOpen,
+  pickDefinedBigint,
+  stabilityPoolShareLabel,
+} from "@/utils/stabilityPoolCompat";
+
+function pickEarlyWithdrawalFee(v3Fee: unknown, v2Fee: unknown): bigint | undefined {
+  return pickDefinedBigint(v3Fee, v2Fee);
+}
 import { debugTx } from "./debugTx";
 import { parseRedeemFeePercentage } from "./redeemDryRunParsing";
 import type {
@@ -329,6 +342,11 @@ export function useAnchorDepositWithdrawModal({
   }>({});
 
   const [progressConfig, setProgressConfig] = useState(defaultProgressConfig);
+  const txTokenNamesRef = useRef({
+    peg: "ha",
+    share: "hsp",
+    collateral: "collateral",
+  });
   const progress = useTransactionProgress();
 
   // Track the last non-error step so the progress modal can highlight the step that actually failed.
@@ -563,33 +581,44 @@ export function useAnchorDepositWithdrawModal({
         );
       }
       if (progressConfig.includeMint) {
+        const names = txTokenNamesRef.current;
         const mintLabel =
           (progressConfig.zapAndDeposit && progressConfig.useZap && progressConfig.zapAsset) ||
           (progressConfig.wrappedZapAndDeposit && progressConfig.wrappedZapAsset)
-            ? `Zap ${(progressConfig.zapAsset || progressConfig.wrappedZapAsset)!.toUpperCase()} & deposit to stability pool`
+            ? `Zap ${(progressConfig.zapAsset || progressConfig.wrappedZapAsset)!.toUpperCase()} to ${names.peg} for ${names.share}`
             : progressConfig.useZap && progressConfig.zapAsset
-              ? `Zap ${progressConfig.zapAsset.toUpperCase()} to anchor token`
-              : "Mint anchor token";
+              ? `Zap ${progressConfig.zapAsset.toUpperCase()} to ${names.peg}`
+              : `Mint ${names.peg}`;
         addStep("mint", mintLabel, txHashes.mint);
       }
       if (progressConfig.includeApprovePegged) {
         addStep(
           "approve-pegged",
-          "Approve anchor token for deposit",
+          `Approve ${txTokenNamesRef.current.peg} for deposit`,
           txHashes.approvePegged
         );
       }
       if (progressConfig.includeDeposit) {
-        addStep("deposit", "Deposit to stability pool", txHashes.deposit);
+        const names = txTokenNamesRef.current;
+        addStep(
+          "deposit",
+          `Deposit ${names.peg} for ${names.share}`,
+          txHashes.deposit,
+        );
       }
     } else if (progressConfig.mode === "direct") {
       if (progressConfig.includeDirectApprove) {
-        addStep("approve-direct", "Approve anchor token for deposit", txHashes.directApprove);
+        addStep(
+          "approve-direct",
+          `Approve ${txTokenNamesRef.current.peg} for deposit`,
+          txHashes.directApprove,
+        );
       }
       if (progressConfig.includeDirectDeposit) {
+        const names = txTokenNamesRef.current;
         addStep(
           "deposit-direct",
-          "Deposit to stability pool",
+          `Deposit ${names.peg} for ${names.share}`,
           txHashes.directDeposit
         );
       }
@@ -618,13 +647,24 @@ export function useAnchorDepositWithdrawModal({
         );
       }
       if (progressConfig.includePermitRedeem) {
-        addStep("permit-redeem", "Sign permit for anchor token (no gas)");
+        addStep(
+          "permit-redeem",
+          `Sign permit for ${txTokenNamesRef.current.peg} (no gas)`,
+        );
       }
       if (progressConfig.includeApproveRedeem || hasApproveRedeemTx) {
-        addStep("approve-redeem", "Approve anchor token for redeem", txHashes.approveRedeem);
+        addStep(
+          "approve-redeem",
+          `Approve ${txTokenNamesRef.current.peg} for redeem`,
+          txHashes.approveRedeem,
+        );
       }
       if (progressConfig.includeRedeem || hasRedeemTx) {
-        addStep("redeem", "Redeem anchor token for collateral", txHashes.redeem);
+        addStep(
+          "redeem",
+          `Redeem ${txTokenNamesRef.current.peg} for ${txTokenNamesRef.current.collateral}`,
+          txHashes.redeem,
+        );
       }
     }
 
@@ -1116,6 +1156,12 @@ export function useAnchorDepositWithdrawModal({
   const leveragedTokenAddress = selectedMarket?.addresses?.leveragedToken;
   const collateralSymbol = selectedMarket?.collateral?.symbol || "ETH";
   const peggedTokenSymbol = selectedMarket?.peggedToken?.symbol || "ha";
+  const poolShareSymbolForPeg = stabilityPoolShareLabel(peggedTokenSymbol);
+  txTokenNamesRef.current = {
+    peg: peggedTokenSymbol,
+    share: poolShareSymbolForPeg ?? peggedTokenSymbol,
+    collateral: collateralSymbol,
+  };
 
   // Get accepted deposit assets for "any token" functionality
   const acceptedDepositAssets = React.useMemo(
@@ -2346,9 +2392,33 @@ export function useAnchorDepositWithdrawModal({
     },
   });
 
-  const collateralPoolEarlyFee = useAnvilForPeggedBalance
-    ? anvilCollateralPoolFeeResult.data
-    : wagmiCollateralPoolFeeResult.data;
+  const anvilCollateralPoolFeeRatioResult = useContractRead({
+    address: collateralPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "earlyWithdrawalFeeRatio",
+    enabled: !!collateralPoolAddress && isActive && useAnvilForPeggedBalance,
+    refetchInterval: 30000,
+  });
+
+  const wagmiCollateralPoolFeeRatioResult = useContractRead({
+    address: collateralPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "earlyWithdrawalFeeRatio",
+    query: {
+      enabled: !!collateralPoolAddress && isActive && !useAnvilForPeggedBalance,
+      refetchInterval: 30000,
+      allowFailure: true,
+    },
+  });
+
+  const collateralPoolEarlyFee = pickEarlyWithdrawalFee(
+    useAnvilForPeggedBalance
+      ? anvilCollateralPoolFeeRatioResult.data
+      : wagmiCollateralPoolFeeRatioResult.data,
+    useAnvilForPeggedBalance
+      ? anvilCollateralPoolFeeResult.data
+      : wagmiCollateralPoolFeeResult.data,
+  );
 
   const anvilSailPoolFeeResult = useContractRead({
     address: sailPoolAddress,
@@ -2369,9 +2439,33 @@ export function useAnchorDepositWithdrawModal({
     },
   });
 
-  const sailPoolEarlyFee = useAnvilForPeggedBalance
-    ? anvilSailPoolFeeResult.data
-    : wagmiSailPoolFeeResult.data;
+  const anvilSailPoolFeeRatioResult = useContractRead({
+    address: sailPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "earlyWithdrawalFeeRatio",
+    enabled: !!sailPoolAddress && isActive && useAnvilForPeggedBalance,
+    refetchInterval: 30000,
+  });
+
+  const wagmiSailPoolFeeRatioResult = useContractRead({
+    address: sailPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "earlyWithdrawalFeeRatio",
+    query: {
+      enabled: !!sailPoolAddress && isActive && !useAnvilForPeggedBalance,
+      refetchInterval: 30000,
+      allowFailure: true,
+    },
+  });
+
+  const sailPoolEarlyFee = pickEarlyWithdrawalFee(
+    useAnvilForPeggedBalance
+      ? anvilSailPoolFeeRatioResult.data
+      : wagmiSailPoolFeeRatioResult.data,
+    useAnvilForPeggedBalance
+      ? anvilSailPoolFeeResult.data
+      : wagmiSailPoolFeeResult.data,
+  );
 
   // Read withdrawal window data from both pools
   const anvilCollateralWindowResult = useContractRead({
@@ -2392,9 +2486,17 @@ export function useAnchorDepositWithdrawModal({
     },
   });
 
-  const collateralPoolWindow = useAnvilForPeggedBalance
-    ? anvilCollateralWindowResult.data
-    : wagmiCollateralWindowResult.data;
+  const collateralPoolWindowRead = useStabilityPoolReadPair({
+    address: collateralPoolAddress as `0x${string}` | undefined,
+    enabled: !!collateralPoolAddress && isActive,
+    v3FunctionName: "withdrawalWindow",
+    v2FunctionName: "getWithdrawalWindow",
+  });
+  const collateralPoolWindow =
+    asUintPair(collateralPoolWindowRead.data) ??
+    (useAnvilForPeggedBalance
+      ? asUintPair(anvilCollateralWindowResult.data)
+      : asUintPair(wagmiCollateralWindowResult.data));
 
   const anvilSailWindowResult = useContractRead({
     address: sailPoolAddress,
@@ -2414,9 +2516,17 @@ export function useAnchorDepositWithdrawModal({
     },
   });
 
-  const sailPoolWindow = useAnvilForPeggedBalance
-    ? anvilSailWindowResult.data
-    : wagmiSailWindowResult.data;
+  const sailPoolWindowRead = useStabilityPoolReadPair({
+    address: sailPoolAddress as `0x${string}` | undefined,
+    enabled: !!sailPoolAddress && isActive,
+    v3FunctionName: "withdrawalWindow",
+    v2FunctionName: "getWithdrawalWindow",
+  });
+  const sailPoolWindow =
+    asUintPair(sailPoolWindowRead.data) ??
+    (useAnvilForPeggedBalance
+      ? asUintPair(anvilSailWindowResult.data)
+      : asUintPair(wagmiSailWindowResult.data));
 
   // Read withdrawal request data for both pools to check if fee-free window is open
   const anvilCollateralRequestResult = useContractRead({
@@ -2440,9 +2550,18 @@ export function useAnchorDepositWithdrawModal({
     },
   });
 
-  const collateralPoolRequest: readonly [bigint, bigint] | undefined = useAnvilForPeggedBalance
-    ? (anvilCollateralRequestResult.data as readonly [bigint, bigint] | undefined)
-    : (wagmiCollateralRequestResult.data as readonly [bigint, bigint] | undefined);
+  const collateralPoolRequestRead = useStabilityPoolReadPair({
+    address: collateralPoolAddress as `0x${string}` | undefined,
+    enabled: !!collateralPoolAddress && !!address && isActive && (activeTab === "withdraw" || activeTab === "deposit"),
+    v3FunctionName: "withdrawalRequest",
+    v2FunctionName: "getWithdrawalRequest",
+    args: address ? [address] : undefined,
+  });
+  const collateralPoolRequest: readonly [bigint, bigint] | undefined =
+    asUintPair(collateralPoolRequestRead.data) ??
+    (useAnvilForPeggedBalance
+      ? asUintPair(anvilCollateralRequestResult.data)
+      : asUintPair(wagmiCollateralRequestResult.data));
 
   const anvilSailRequestResult = useContractRead({
     address: sailPoolAddress,
@@ -2465,9 +2584,41 @@ export function useAnchorDepositWithdrawModal({
     },
   });
 
-  const sailPoolRequest: readonly [bigint, bigint] | undefined = useAnvilForPeggedBalance
-    ? (anvilSailRequestResult.data as readonly [bigint, bigint] | undefined)
-    : (wagmiSailRequestResult.data as readonly [bigint, bigint] | undefined);
+  const sailPoolRequestRead = useStabilityPoolReadPair({
+    address: sailPoolAddress as `0x${string}` | undefined,
+    enabled: !!sailPoolAddress && !!address && isActive && (activeTab === "withdraw" || activeTab === "deposit"),
+    v3FunctionName: "withdrawalRequest",
+    v2FunctionName: "getWithdrawalRequest",
+    args: address ? [address] : undefined,
+  });
+  const sailPoolRequest: readonly [bigint, bigint] | undefined =
+    asUintPair(sailPoolRequestRead.data) ??
+    (useAnvilForPeggedBalance
+      ? asUintPair(anvilSailRequestResult.data)
+      : asUintPair(wagmiSailRequestResult.data));
+
+  const collateralFeeFreeRead = useStabilityPoolReadPair({
+    address: collateralPoolAddress as `0x${string}` | undefined,
+    enabled: !!collateralPoolAddress && !!address && isActive,
+    v3FunctionName: "withdrawalFeeFreeAmount",
+    args: address ? [address] : undefined,
+  });
+  const sailFeeFreeRead = useStabilityPoolReadPair({
+    address: sailPoolAddress as `0x${string}` | undefined,
+    enabled: !!sailPoolAddress && !!address && isActive,
+    v3FunctionName: "withdrawalFeeFreeAmount",
+    args: address ? [address] : undefined,
+  });
+  const collateralHeadroomRead = useStabilityPoolReadPair({
+    address: collateralPoolAddress as `0x${string}` | undefined,
+    enabled: !!collateralPoolAddress && isActive,
+    v3FunctionName: "maxAssetLoss",
+  });
+  const sailHeadroomRead = useStabilityPoolReadPair({
+    address: sailPoolAddress as `0x${string}` | undefined,
+    enabled: !!sailPoolAddress && isActive,
+    v3FunctionName: "maxAssetLoss",
+  });
 
   // Helper function to format seconds to hours
   const formatDuration = (seconds: bigint | number): string => {
@@ -2683,6 +2834,38 @@ export function useAnchorDepositWithdrawModal({
     isWindowOpen,
   ]);
 
+  const quotePoolWithdraw = useCallback(
+    (poolType: "collateral" | "sail", amount: bigint) => {
+      const isCollateral = poolType === "collateral";
+      const feeFreeRead = isCollateral ? collateralFeeFreeRead : sailFeeFreeRead;
+      const headroom = isCollateral
+        ? collateralHeadroomRead.data
+        : sailHeadroomRead.data;
+      return estimateStabilityPoolWithdrawal({
+        amount,
+        headroom: typeof headroom === "bigint" ? headroom : undefined,
+        feeRatio: isCollateral ? collateralPoolEarlyFee : sailPoolEarlyFee,
+        windowOpen: isWithdrawalWindowOpen(
+          isCollateral ? collateralPoolRequest : sailPoolRequest,
+        ),
+        feeFreeAmount:
+          feeFreeRead.fromV3 && typeof feeFreeRead.data === "bigint"
+            ? feeFreeRead.data
+            : undefined,
+      });
+    },
+    [
+      collateralFeeFreeRead,
+      sailFeeFreeRead,
+      collateralHeadroomRead.data,
+      sailHeadroomRead.data,
+      collateralPoolEarlyFee,
+      sailPoolEarlyFee,
+      collateralPoolRequest,
+      sailPoolRequest,
+    ],
+  );
+
   // Calculate early withdrawal fee amounts based on withdrawal amounts
   const earlyWithdrawalFees = useMemo(() => {
     const fees: Array<{
@@ -2690,59 +2873,62 @@ export function useAnchorDepositWithdrawModal({
       amount: bigint;
       feePercent: number;
       withdrawalAmount: bigint;
+      netAmount: bigint;
     }> = [];
 
-    // Collateral pool fee
-    if (
-      selectedPositions.collateralPool &&
-      positionAmounts.collateralPool &&
-      withdrawalMethods.collateralPool === "immediate" &&
-      !isWindowOpen(collateralPoolRequest) &&
-      collateralPoolEarlyFee &&
-      collateralPoolFeePercent !== undefined
-    ) {
-      const withdrawalAmount = parseEther(positionAmounts.collateralPool);
-      const feeAmount =
-        (withdrawalAmount * collateralPoolEarlyFee) / parseEther("1");
+    const push = (
+      poolType: "collateral" | "sail",
+      amountStr: string | undefined,
+      method: string | undefined,
+      feePercent: number | undefined,
+    ) => {
+      if (!amountStr || method !== "immediate" || feePercent === undefined) return;
+      const withdrawalAmount = parseEther(amountStr);
+      const quote = quotePoolWithdraw(poolType, withdrawalAmount);
+      if (quote.feeAmount <= 0n) return;
       fees.push({
-        poolType: "collateral",
-        amount: feeAmount,
-        feePercent: collateralPoolFeePercent,
+        poolType,
+        amount: quote.feeAmount,
+        feePercent,
         withdrawalAmount,
+        netAmount: quote.netAmount,
       });
-    }
+    };
 
-    // Sail pool fee
-    if (
-      selectedPositions.sailPool &&
-      positionAmounts.sailPool &&
-      withdrawalMethods.sailPool === "immediate" &&
-      !isWindowOpen(sailPoolRequest) &&
-      sailPoolEarlyFee &&
-      sailPoolFeePercent !== undefined
-    ) {
-      const withdrawalAmount = parseEther(positionAmounts.sailPool);
-      const feeAmount = (withdrawalAmount * sailPoolEarlyFee) / parseEther("1");
-      fees.push({
-        poolType: "sail",
-        amount: feeAmount,
-        feePercent: sailPoolFeePercent,
-        withdrawalAmount,
-      });
-    }
+    push(
+      "collateral",
+      selectedPositions.collateralPool ? positionAmounts.collateralPool : undefined,
+      withdrawalMethods.collateralPool,
+      collateralPoolFeePercent,
+    );
+    push(
+      "sail",
+      selectedPositions.sailPool ? positionAmounts.sailPool : undefined,
+      withdrawalMethods.sailPool,
+      sailPoolFeePercent,
+    );
 
     return fees;
   }, [
-    selectedPositions,
-    positionAmounts,
-    withdrawalMethods,
-    collateralPoolEarlyFee,
+    positionAmounts.collateralPool,
+    positionAmounts.sailPool,
+    withdrawalMethods.collateralPool,
+    withdrawalMethods.sailPool,
     collateralPoolFeePercent,
-    sailPoolEarlyFee,
     sailPoolFeePercent,
+    selectedPositions.collateralPool,
+    selectedPositions.sailPool,
+    collateralPoolEarlyFee,
+    sailPoolEarlyFee,
     collateralPoolRequest,
     sailPoolRequest,
-    isWindowOpen,
+    collateralFeeFreeRead.fromV3,
+    collateralFeeFreeRead.data,
+    sailFeeFreeRead.fromV3,
+    sailFeeFreeRead.data,
+    collateralHeadroomRead.data,
+    sailHeadroomRead.data,
+    quotePoolWithdraw,
   ]);
 
   const showEarlyWithdrawalFees =
@@ -2760,27 +2946,50 @@ export function useAnchorDepositWithdrawModal({
 
     const poolConfig = selectedPositions.collateralPool
       ? {
+          poolType: "collateral" as const,
           method: withdrawalMethods.collateralPool,
           request: collateralPoolRequest,
           feePercent: collateralPoolFeePercent,
+          amount: positionAmounts.collateralPool,
+          fromV3: collateralFeeFreeRead.fromV3,
         }
       : selectedPositions.sailPool
         ? {
+            poolType: "sail" as const,
             method: withdrawalMethods.sailPool,
             request: sailPoolRequest,
             feePercent: sailPoolFeePercent,
+            amount: positionAmounts.sailPool,
+            fromV3: sailFeeFreeRead.fromV3,
           }
         : null;
 
     if (!poolConfig) return null;
 
-    if (poolConfig.method === "request" || isWindowOpen(poolConfig.request)) {
+    if (poolConfig.method === "request") {
       return { displayValue: "0%", percent: 0 };
     }
 
-    const pct = poolConfig.feePercent ?? 1;
+    if (isWindowOpen(poolConfig.request)) {
+      let covered = !poolConfig.fromV3;
+      if (poolConfig.amount) {
+        try {
+          const quote = quotePoolWithdraw(
+            poolConfig.poolType,
+            parseEther(poolConfig.amount),
+          );
+          covered = quote.feeAmount === 0n;
+        } catch {
+          covered = !poolConfig.fromV3;
+        }
+      }
+      if (covered) return { displayValue: "0%", percent: 0 };
+    }
+
+    if (poolConfig.feePercent == null) return null;
+    const pct = poolConfig.feePercent;
     return {
-      displayValue: `${pct.toFixed(0)}%`,
+      displayValue: `${pct.toFixed(2)}%`,
       percent: pct,
     };
   }, [
@@ -2794,6 +3003,11 @@ export function useAnchorDepositWithdrawModal({
     sailPoolRequest,
     collateralPoolFeePercent,
     sailPoolFeePercent,
+    positionAmounts.collateralPool,
+    positionAmounts.sailPool,
+    collateralFeeFreeRead.fromV3,
+    sailFeeFreeRead.fromV3,
+    quotePoolWithdraw,
     isWindowOpen,
   ]);
 
@@ -2908,11 +3122,6 @@ export function useAnchorDepositWithdrawModal({
           abi: stabilityPoolABI,
           functionName: "GAUGE_REWARD_TOKEN",
         });
-        contracts.push({
-          address: pool.address,
-          abi: stabilityPoolABI,
-          functionName: "LIQUIDATION_TOKEN",
-        });
       }
     });
     return contracts;
@@ -2928,7 +3137,7 @@ export function useAnchorDepositWithdrawModal({
     },
   });
 
-  // Map pool data to pools (3 reads per pool: TVL, gaugeRewardToken, liquidationToken). APR = emission fallback below.
+  // Map pool data to pools (2 reads per pool: TVL, gaugeRewardToken). APR = emission fallback below.
   const poolsWithData = useMemo(() => {
     if (!allPoolData || allPoolData.length === 0) {
       if (isActive && simpleMode) {
@@ -2970,17 +3179,13 @@ export function useAnchorDepositWithdrawModal({
       const gaugeRewardToken = allPoolData[cursor + 1]?.result as
         | `0x${string}`
         | undefined;
-      const liquidationToken = allPoolData[cursor + 2]?.result as
-        | `0x${string}`
-        | undefined;
-      cursor += 3;
+      cursor += 2;
 
       return {
         ...pool,
         apr: undefined,
         tvl,
         gaugeRewardToken,
-        liquidationToken,
       };
     });
   }, [allPoolData, allStabilityPools, isActive, simpleMode]);
@@ -3814,7 +4019,7 @@ export function useAnchorDepositWithdrawModal({
       }
       steps.push({
         label: "Pool withdraw",
-        detail: `~${formatTokenAmount18(netPool, 4)} ${peggedTokenSymbol}`,
+        detail: `~${formatTokenAmount18(netPool, 4)} ${harborTokenWithTitle(stabilityPoolShareLabel(peggedTokenSymbol) ?? peggedTokenSymbol)} returns as ${harborTokenWithTitle(peggedTokenSymbol)}`,
       });
     }
 
@@ -5665,7 +5870,7 @@ export function useAnchorDepositWithdrawModal({
           !selectedStabilityPool ||
           selectedStabilityPool.poolType === "none"
         ) {
-          setError("Please select a stability pool for anchor token deposit");
+          setError(`Please select a stability pool for ${peggedTokenSymbol}`);
           if (process.env.NODE_ENV === "development") {
             console.log("[handleMint] No stability pool selected");
           }
@@ -5673,7 +5878,7 @@ export function useAnchorDepositWithdrawModal({
         }
       } else {
         if (!stabilityPoolAddress) {
-          setError("Please select a stability pool for anchor token deposit");
+          setError(`Please select a stability pool for ${peggedTokenSymbol}`);
           if (process.env.NODE_ENV === "development") {
             console.log(
               "[handleMint] No stability pool address in advanced mode"
@@ -5893,7 +6098,7 @@ export function useAnchorDepositWithdrawModal({
           includeDeposit: false,
           includeDirectApprove: needsDirectApproval,
           includeDirectDeposit: true,
-          title: "Deposit anchor token to pool",
+          title: `Deposit ${peggedTokenSymbol} for ${stabilityPoolShareLabel(peggedTokenSymbol) ?? peggedTokenSymbol}`,
         });
         // Show progress modal for transaction feedback
         progress.show();
@@ -6002,6 +6207,12 @@ export function useAnchorDepositWithdrawModal({
                 const minimum = revert.args[1] as bigint;
                 throw new Error(
                   `Deposit amount too small. Minimum deposit is ${formatEther(minimum)} ${peggedTokenSymbol}.`
+                );
+              }
+              if (revert?.errorName === "DepositAmountExceedsMaximum" && revert?.args?.length === 2) {
+                const ceiling = revert.args[1] as bigint;
+                throw new Error(
+                  `This deposit would exceed the pool ceiling of ${formatEther(ceiling)} ${peggedTokenSymbol}.`
                 );
               }
             } catch (decodedErr) {
@@ -8597,6 +8808,12 @@ export function useAnchorDepositWithdrawModal({
                   `Deposit amount too small. Minimum deposit is ${formatEther(minimum)} ${peggedTokenSymbol}.`
                 );
               }
+              if (revert?.errorName === "DepositAmountExceedsMaximum" && revert?.args?.length === 2) {
+                const ceiling = revert.args[1] as bigint;
+                throw new Error(
+                  `This deposit would exceed the pool ceiling of ${formatEther(ceiling)} ${peggedTokenSymbol}.`
+                );
+              }
             } catch (decodedErr) {
               throw decodedErr;
             }
@@ -8698,8 +8915,18 @@ export function useAnchorDepositWithdrawModal({
             errorMessage = "The minted amount would be too small. Please deposit a larger amount.";
           } else if (errorName === "MintZeroAmount") {
             errorMessage = "Invalid deposit amount. Please check your input.";
-          } else if (errorName === "InvalidOraclePrice" || errorName === "ZeroOraclePrice") {
+          } else if (
+            errorName === "InvalidOraclePrice" ||
+            errorName === "ZeroOraclePrice" ||
+            errorName === "ZeroPeggedTokenPrice"
+          ) {
             errorMessage = "Oracle price unavailable. Please try again in a few moments.";
+          } else if (errorName === "BelowMinimumCollateralRatio") {
+            errorMessage = "This deposit would bring the collateral ratio below the minimum allowed. Please deposit a smaller amount or try again later when market conditions improve.";
+          } else if (errorName === "RequestedSubsidyNotGiven") {
+            errorMessage = "The mint incentive could not be paid. Try a different amount.";
+          } else if (errorName === "UnrecognisedImpairment") {
+            errorMessage = "This market has an unrecognised impairment. Please try again later.";
           } else {
             errorMessage = `Contract error: ${errorName || "Unknown error"}`;
           }
@@ -9009,12 +9236,12 @@ export function useAnchorDepositWithdrawModal({
         includeRedeem: shouldAutoRedeem && redeemableTotal > 0n,
         withdrawCollateralLabel:
           withdrawalMethods.collateralPool === "request"
-            ? "Request withdrawal (collateral pool)"
-            : "Withdraw from collateral pool",
+            ? `Request withdrawal of ${stabilityPoolShareLabel(peggedTokenSymbol) ?? peggedTokenSymbol}`
+            : `Withdraw ${stabilityPoolShareLabel(peggedTokenSymbol) ?? peggedTokenSymbol} as ${peggedTokenSymbol}`,
         withdrawSailLabel:
           withdrawalMethods.sailPool === "request"
-            ? "Request withdrawal (sail pool)"
-            : "Withdraw from sail pool",
+            ? `Request withdrawal of ${stabilityPoolShareLabel(peggedTokenSymbol) ?? peggedTokenSymbol}`
+            : `Withdraw ${stabilityPoolShareLabel(peggedTokenSymbol) ?? peggedTokenSymbol} as ${peggedTokenSymbol}`,
         title: progressTitle,
       }));
       // Show progress modal for transaction feedback
@@ -9214,11 +9441,19 @@ export function useAnchorDepositWithdrawModal({
             // Immediate withdrawal - use direct withdraw function
             setStep("withdrawingCollateral");
 
+            const collateralQuote = quotePoolWithdraw(
+              "collateral",
+              withdrawFromCollateral,
+            );
             const collateralWithdrawHash = await writeContractAsync({
               address: collateralPoolAddress as `0x${string}`,
               abi: STABILITY_POOL_ABI,
               functionName: "withdraw",
-              args: [withdrawFromCollateral, address as `0x${string}`, 0n], // assetAmount, receiver, minAmount
+              args: [
+                withdrawFromCollateral,
+                address as `0x${string}`,
+                collateralQuote.netAmount,
+              ],
             });
             setTxHash(collateralWithdrawHash);
             setTxHashes((prev) => ({
@@ -9228,7 +9463,7 @@ export function useAnchorDepositWithdrawModal({
             await txClient?.waitForTransactionReceipt({
               hash: collateralWithdrawHash,
             });
-            peggedTokensReceived += withdrawFromCollateral;
+            peggedTokensReceived += collateralQuote.netAmount;
         }
       }
 
@@ -9276,11 +9511,16 @@ export function useAnchorDepositWithdrawModal({
             // Immediate withdrawal - use direct withdraw function
             setStep("withdrawingSail");
 
+            const sailQuote = quotePoolWithdraw("sail", withdrawFromSail);
             const sailWithdrawHash = await writeContractAsync({
               address: sailPoolAddress as `0x${string}`,
               abi: STABILITY_POOL_ABI,
               functionName: "withdraw",
-              args: [withdrawFromSail, address as `0x${string}`, 0n], // assetAmount, receiver, minAmount
+              args: [
+                withdrawFromSail,
+                address as `0x${string}`,
+                sailQuote.netAmount,
+              ],
             });
             setTxHash(sailWithdrawHash);
             setTxHashes((prev) => ({
@@ -9290,7 +9530,7 @@ export function useAnchorDepositWithdrawModal({
             await txClient?.waitForTransactionReceipt({
               hash: sailWithdrawHash,
             });
-            peggedTokensReceived += withdrawFromSail;
+            peggedTokensReceived += sailQuote.netAmount;
           }
       }
 
@@ -9585,7 +9825,7 @@ export function useAnchorDepositWithdrawModal({
       return;
     }
     if (redeemAmount > peggedBalance) {
-      handleTxError("Insufficient anchor token balance in wallet");
+      handleTxError(`Insufficient ${peggedTokenSymbol} balance in wallet`);
       return;
     }
 
@@ -10374,11 +10614,19 @@ export function useAnchorDepositWithdrawModal({
 
     if (isDirectPeggedDeposit) {
       const receiveUsd = depositAmount * depositTokenPriceUSD;
+      const poolShareSymbol =
+        !mintOnly && selectedStabilityPool
+          ? stabilityPoolShareLabel(
+              marketForDepositAsset?.peggedToken?.symbol || peggedTokenSymbol,
+            )
+          : null;
       return {
         receiveAmount: depositFormatted ? depositFormatted.text : null,
         receiveAmountTitle: depositFormatted?.title,
         receiveSymbol:
-          marketForDepositAsset?.peggedToken?.symbol || peggedTokenSymbol,
+          poolShareSymbol ||
+          marketForDepositAsset?.peggedToken?.symbol ||
+          peggedTokenSymbol,
         receiveUsd: receiveUsd > 0 ? receiveUsd : undefined,
         sourceLine: undefined as string | undefined,
         emptyMessage: "Enter an amount to see what you'll deposit.",
@@ -10424,7 +10672,10 @@ export function useAnchorDepositWithdrawModal({
         mintValidation.status === "blocked" || mintValidation.status === "pending"
           ? undefined
           : peggedFormatted?.title,
-      receiveSymbol: peggedTokenSymbol,
+      receiveSymbol:
+        (!mintOnly && selectedStabilityPool
+          ? stabilityPoolShareLabel(peggedTokenSymbol)
+          : null) || peggedTokenSymbol,
       receiveUsd:
         mintValidation.status === "blocked" || mintValidation.status === "pending"
           ? undefined
@@ -10461,6 +10712,7 @@ export function useAnchorDepositWithdrawModal({
     collateralSymbol,
     amount,
     isDirectPeggedDeposit,
+    mintOnly,
     marketForDepositAsset,
     peggedTokenSymbol,
     expectedMintOutput,
@@ -10580,13 +10832,8 @@ export function useAnchorDepositWithdrawModal({
 
       // Same source as the footer fee tag — don't rely only on amount-based earlyFee
       // (that can be missing when on-chain fee params are still loading).
-      const withdrawFeePercent = earlyWithdraw1PctEnabled
-        ? (earlyFee?.feePercent ??
-          (selectedPoolEarlyWithdrawFee?.percent &&
-          selectedPoolEarlyWithdrawFee.percent > 0
-            ? selectedPoolEarlyWithdrawFee.percent
-            : 1))
-        : (earlyFee?.feePercent ?? selectedPoolEarlyWithdrawFee?.percent ?? 0);
+      const withdrawFeePercent =
+        earlyFee?.feePercent ?? selectedPoolEarlyWithdrawFee?.percent ?? 0;
 
       const buildPoolWithdrawPreview = (
         receiveLabel: string,
@@ -10898,6 +11145,26 @@ export function useAnchorDepositWithdrawModal({
     },
   });
 
+  const { data: poolTotalSupply } = useContractRead({
+    address: stabilityPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "totalAssetSupply",
+    query: {
+      enabled: !!stabilityPoolAddress && isActive && activeTab === "deposit" && !mintOnly,
+      retry: 1,
+    },
+  });
+
+  const { data: poolSupplyFloor } = useContractRead({
+    address: stabilityPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "MIN_TOTAL_ASSET_SUPPLY",
+    query: {
+      enabled: !!stabilityPoolAddress && isActive && activeTab === "deposit" && !mintOnly,
+      retry: 1,
+    },
+  });
+
   const mintReviewModel = useMemo(() => {
     const bands: Array<{
       role: "from" | "route" | "receive" | "meta";
@@ -10967,7 +11234,7 @@ export function useAnchorDepositWithdrawModal({
         title: anyTokenDeposit.needsSwap
           ? `Mint ${peggedTokenSymbol}`
           : `Mint ${peggedTokenSymbol} from ${paySym}`,
-        detail: `Create ${peggedTokenSymbol} from wrapped collateral.`,
+        detail: `Create ${harborTokenWithTitle(peggedTokenSymbol)} from wrapped collateral.`,
         feeLabel:
           feePercentage !== undefined
             ? `${feePercentage.toFixed(2)}% fee`
@@ -10994,17 +11261,21 @@ export function useAnchorDepositWithdrawModal({
         : null;
     // A pool deposit credits hsp shares from previewDeposit. The mint dry run
     // prices the typed amount as collateral, so it must not fill this line.
+    const labeledShare = stabilityPoolShareLabel(peggedTokenSymbol);
     let receiveRaw: number | null = null;
-    let receiveSymbol = peggedTokenSymbol;
+    let receiveSymbol = labeledShare ?? peggedTokenSymbol;
     if (depositingToPool && previewShares != null) {
       receiveRaw = Number(formatEther(previewShares));
-      if (shareSymbol) receiveSymbol = shareSymbol;
+      receiveSymbol = labeledShare ?? shareSymbol ?? peggedTokenSymbol;
     } else if (depositingToPool && !previewDepositError) {
       receiveRaw = null;
     } else if (isDirectPeggedDeposit) {
       receiveRaw = enteredAmount;
     } else {
       receiveRaw = mintedHa;
+    }
+    if (depositingToPool && labeledShare && receiveRaw != null) {
+      receiveSymbol = labeledShare;
     }
     const receiveFormatted =
       receiveRaw != null ? formatUiAmount(receiveRaw) : { text: "—" };
@@ -11058,19 +11329,19 @@ export function useAnchorDepositWithdrawModal({
         secondary: [
           selectedRewardToken ? `Reward ${selectedRewardToken}` : null,
           poolAprHint,
-          peggedTokenSymbol,
+          labeledShare ?? peggedTokenSymbol,
         ]
           .filter(Boolean)
           .join(" · "),
         value: poolLabel,
-        chip: selectedRewardToken || peggedTokenSymbol,
+        chip: selectedRewardToken || labeledShare || peggedTokenSymbol,
       });
       steps.push({
         title:
           selectedStabilityPool.poolType === "sail"
             ? "Deposit to Sail pool"
             : "Deposit to Collateral pool",
-        detail: `${peggedTokenSymbol} enters the ${poolLabel.toLowerCase()}.`,
+        detail: `Deposit ${harborTokenWithTitle(peggedTokenSymbol)}. You receive ${harborTokenWithTitle(labeledShare ?? peggedTokenSymbol)}.`,
       });
     }
 
@@ -11090,14 +11361,45 @@ export function useAnchorDepositWithdrawModal({
       });
     }
 
+    const reviewNotes: string[] = [];
+    if (
+      depositingToPool &&
+      previewShares != null &&
+      typeof poolTotalSupply === "bigint" &&
+      typeof poolSupplyFloor === "bigint" &&
+      poolSharePreviewAmount &&
+      poolTotalSupply + poolSharePreviewAmount < poolSupplyFloor
+    ) {
+      reviewNotes.push(
+        `The first deposit must bring this pool to at least ${formatEther(poolSupplyFloor)} ${harborTokenWithTitle(peggedTokenSymbol)}.`,
+      );
+    }
+    const depositRequest =
+      selectedStabilityPool?.poolType === "sail"
+        ? sailPoolRequest
+        : collateralPoolRequest;
+    const depositFeeFree =
+      selectedStabilityPool?.poolType === "sail"
+        ? sailFeeFreeRead
+        : collateralFeeFreeRead;
+    if (depositingToPool && depositFeeFree.fromV3 && depositRequest && depositRequest[0] !== 0n) {
+      reviewNotes.push(
+        isWithdrawalWindowOpen(depositRequest)
+          ? "This deposit is not added to the fee-free amount. Request again to cover it, which restarts the delay."
+          : "A withdrawal request covers the balance as it stands now. A deposit does not add to that amount.",
+      );
+    }
+
     return {
       bands,
       fees,
       steps,
-      footerHint:
+      footerHint: [
         steps.length > 1
           ? `${steps.length} on-chain steps · review wallet prompts.`
           : "Review wallet prompts before confirming.",
+        ...reviewNotes,
+      ].join(" "),
     };
   }, [
     selectedDepositAsset,
@@ -11113,6 +11415,15 @@ export function useAnchorDepositWithdrawModal({
     previewDepositShares,
     previewDepositError,
     poolShareSymbol,
+    poolTotalSupply,
+    poolSupplyFloor,
+    poolSharePreviewAmount,
+    collateralPoolRequest,
+    sailPoolRequest,
+    collateralFeeFreeRead.fromV3,
+    collateralFeeFreeRead.data,
+    sailFeeFreeRead.fromV3,
+    sailFeeFreeRead.data,
     peggedTokenPriceUsdWei,
     mintOnly,
     selectedStabilityPool,
@@ -11144,6 +11455,10 @@ export function useAnchorDepositWithdrawModal({
       feeTone?: "coral" | "mint" | "neutral";
     }> = [];
 
+    const positionSymbol =
+      selectedRedeemPositionDisplay?.kind === "pool"
+        ? stabilityPoolShareLabel(peggedTokenSymbol) ?? peggedTokenSymbol
+        : peggedTokenSymbol;
     const fromLabel =
       selectedRedeemPositionDisplay?.kind === "wallet"
         ? "Wallet"
@@ -11165,11 +11480,11 @@ export function useAnchorDepositWithdrawModal({
       role: "from",
       label: "From",
       primary: fromLabel,
-      value: `${amt} ${peggedTokenSymbol}`,
+      value: `${amt} ${positionSymbol}`,
       valueTitle: amtFormatted?.title
-        ? `${amtFormatted.title} ${peggedTokenSymbol}`
+        ? `${amtFormatted.title} ${positionSymbol}`
         : undefined,
-      iconSymbol: peggedTokenSymbol,
+      iconSymbol: positionSymbol,
     });
 
     if (redeemStepActionKind === "request" && !earlyWithdraw1PctEnabled) {
@@ -11182,7 +11497,7 @@ export function useAnchorDepositWithdrawModal({
       });
       steps.push({
         title: "Request withdrawal from stability pool",
-        detail: "Start the fee-free withdrawal window.",
+        detail: `Start the fee-free window for ${harborTokenWithTitle(positionSymbol)}.`,
       });
       return {
         bands,
@@ -11197,17 +11512,11 @@ export function useAnchorDepositWithdrawModal({
       (redeemStepActionKind === "withdrawAndRedeem" ||
         earlyWithdraw1PctEnabled)
     ) {
-      const earlyFeePct =
-        selectedPoolEarlyWithdrawFee?.percent &&
-        selectedPoolEarlyWithdrawFee.percent > 0
-          ? selectedPoolEarlyWithdrawFee.percent
-          : earlyWithdraw1PctEnabled
-            ? 1
-            : 0;
+      const earlyFeePct = selectedPoolEarlyWithdrawFee?.percent ?? 0;
       const earlyFeeLabel = `${earlyFeePct.toFixed(2)}% fee`;
       steps.push({
         title: "Withdraw from pool",
-        detail: `${peggedTokenSymbol} leaves the ${fromLabel.toLowerCase()}.`,
+        detail: `${harborTokenWithTitle(positionSymbol)} leaves the ${fromLabel.toLowerCase()} as ${harborTokenWithTitle(peggedTokenSymbol)}.`,
         feeLabel: earlyFeeLabel,
         feeTone: earlyFeePct > 0 ? "coral" : "mint",
       });
@@ -11294,7 +11603,7 @@ export function useAnchorDepositWithdrawModal({
           : undefined;
       steps.push({
         title: `Redeem ${peggedTokenSymbol} → ${receiveSym}`,
-        detail: `Convert into ${receiveSym}.`,
+        detail: `Redeem ${harborTokenWithTitle(peggedTokenSymbol)} into ${receiveSym}.`,
         feeLabel: redeemFeeLabel,
         feeTone:
           redeemFeePercentage !== undefined && redeemFeePercentage > 0
@@ -11304,11 +11613,7 @@ export function useAnchorDepositWithdrawModal({
     }
 
     if (earlyWithdraw1PctEnabled) {
-      const earlyFeePct =
-        selectedPoolEarlyWithdrawFee?.percent &&
-        selectedPoolEarlyWithdrawFee.percent > 0
-          ? selectedPoolEarlyWithdrawFee.percent
-          : 1;
+      const earlyFeePct = selectedPoolEarlyWithdrawFee?.percent ?? 0;
       fees.push({
         label: "Withdraw fee",
         value: `${earlyFeePct.toFixed(2)}%`,
@@ -11519,7 +11824,9 @@ export function useAnchorDepositWithdrawModal({
       : undefined;
   const outputSymbol =
     activeTab === "deposit"
-      ? peggedTokenSymbol // Always use selected market's pegged token
+      ? !mintOnly && (depositInStabilityPool || selectedStabilityPool)
+        ? stabilityPoolShareLabel(peggedTokenSymbol) || peggedTokenSymbol
+        : peggedTokenSymbol
       : (activeTab === "withdraw" && !withdrawOnly) || activeTab === "sell"
       ? redeemCollateralSymbol
       : undefined;

@@ -157,7 +157,7 @@ export function GenesisClaimPanel({
           {hasClaimable
             ? "One on-chain claim · review wallet prompts."
             : isConnected
-              ? "No claimable Anchor or Sail tokens for this voyage."
+              ? "No claimable Harbor Anchored (ha) or Harbor Sail (hs) tokens for this voyage."
               : "Connect your wallet to see claimable amounts."}
         </p>
       </div>

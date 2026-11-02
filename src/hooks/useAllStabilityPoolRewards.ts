@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { formatEther } from "viem";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { ERC20_ABI } from "@/config/contracts";
+import { readStabilityPoolClaimable } from "@/utils/stabilityPoolCompat";
 import { getPriceFeedAddress, queryChainlinkPrice } from "@/utils/priceFeeds";
 import { DEBUG_ANCHOR } from "@/config/debug";
 
@@ -185,12 +186,13 @@ export function useAllStabilityPoolRewards({
                 // Get claimable amount (only if wallet connected; otherwise treat as 0)
                 let claimable = 0n;
                 if (address) {
-                  claimable = (await client.readContract({
-                    address: pool.address,
-                    abi: stabilityPoolABI,
-                    functionName: "claimable",
-                    args: [address, tokenAddress],
-                  })) as bigint;
+                  claimable = await readStabilityPoolClaimable(
+                    client,
+                    pool.address,
+                    address,
+                    tokenAddress,
+                    stabilityPoolABI,
+                  );
                 }
 
                 // Get token symbol

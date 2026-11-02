@@ -11,6 +11,10 @@ import { amountToUSD } from "@/utils/tokenPriceToUSD";
 import type {
   AnchorDepositWithdrawTab,
 } from "./types";
+import {
+  harborTokenWithTitle,
+  stabilityPoolShareLabel,
+} from "@/utils/stabilityPoolCompat";
 import Image from "next/image";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import {
@@ -1237,6 +1241,9 @@ export function AnchorDepositWithdrawModalView(
                                 ?.state !== "open"
                             }
                             earlyWithdrawEnabled={earlyWithdraw1PctEnabled}
+                            earlyWithdrawFeePercent={
+                              selectedPoolEarlyWithdrawFee?.percent
+                            }
                             onEnableEarlyWithdraw={enableRedeemEarlyWithdraw}
                             onDisableEarlyWithdraw={disableRedeemEarlyWithdraw}
                             showWithdrawOnlyToggle={
@@ -1607,7 +1614,7 @@ export function AnchorDepositWithdrawModalView(
                               depositInStabilityPool
                                 ? `You'll receive:`
                                 : activeTab === "withdraw" && withdrawOnly
-                                ? "You will receive (anchor tokens):"
+                                ? `You will receive (${peggedTokenSymbol}):`
                                 : "You will receive:"}
                             </span>
                             <span className="text-lg font-bold text-[#1E4775] font-mono">
@@ -2144,31 +2151,22 @@ export function AnchorDepositWithdrawModalView(
                           <p className="text-xs text-[#1E4775]/80 leading-relaxed">
                             {stabilityPoolType === "collateral" ? (
                               <>
-                                <span className="font-semibold">
-                                  Collateral stability pool
-                                </span>
-                                {" "}
-                                converts anchor tokens to{" "}
-                                <span className="font-semibold">
-                                  market collateral
-                                </span>
-                                {" "}
-                                at market rates when the market reaches its
-                                minimum collateral ratio.
+                                Holds {harborTokenWithTitle(peggedTokenSymbol)}. Your position is{" "}
+                                {harborTokenWithTitle(
+                                  stabilityPoolShareLabel(peggedTokenSymbol) ?? peggedTokenSymbol,
+                                )}
+                                . A liquidation converts {peggedTokenSymbol} into {collateralSymbol}.
                               </>
                             ) : (
                               <>
-                                <span className="font-semibold">
-                                  Sail stability pool
-                                </span>
-                                {" "}
-                                converts anchor tokens to{" "}
-                                <span className="font-semibold">
-                                  Sail tokens
-                                </span>
-                                {" "}
-                                at market rates when the market reaches its
-                                minimum collateral ratio.
+                                Holds {harborTokenWithTitle(peggedTokenSymbol)}. Your position is{" "}
+                                {harborTokenWithTitle(
+                                  stabilityPoolShareLabel(peggedTokenSymbol) ?? peggedTokenSymbol,
+                                )}
+                                . A liquidation converts {peggedTokenSymbol} into{" "}
+                                {harborTokenWithTitle(selectedMarket?.leveragedToken?.symbol) ||
+                                  "Harbor Sail"}
+                                .
                               </>
                             )}
                           </p>
@@ -2235,29 +2233,22 @@ export function AnchorDepositWithdrawModalView(
                       <p className="text-xs text-[#1E4775]/80 leading-relaxed">
                         {stabilityPoolType === "collateral" ? (
                           <>
-                            <span className="font-semibold">
-                              Collateral stability pool
-                            </span>
-                            {" "}
-                            converts anchor tokens to{" "}
-                            <span className="font-semibold">
-                              market collateral
-                            </span>
-                            {" "}
-                            at market rates when the market reaches its minimum
-                            collateral ratio.
+                            Holds {harborTokenWithTitle(peggedTokenSymbol)}. Your position is{" "}
+                            {harborTokenWithTitle(
+                              stabilityPoolShareLabel(peggedTokenSymbol) ?? peggedTokenSymbol,
+                            )}
+                            . A liquidation converts {peggedTokenSymbol} into {collateralSymbol}.
                           </>
                         ) : (
                           <>
-                            <span className="font-semibold">
-                              Sail stability pool
-                            </span>
-                            {" "}
-                            converts anchor tokens to{" "}
-                            <span className="font-semibold">Sail tokens</span>
-                            {" "}
-                            at market rates when the market reaches its minimum
-                            collateral ratio.
+                            Holds {harborTokenWithTitle(peggedTokenSymbol)}. Your position is{" "}
+                            {harborTokenWithTitle(
+                              stabilityPoolShareLabel(peggedTokenSymbol) ?? peggedTokenSymbol,
+                            )}
+                            . A liquidation converts {peggedTokenSymbol} into{" "}
+                            {harborTokenWithTitle(selectedMarket?.leveragedToken?.symbol) ||
+                              "Harbor Sail"}
+                            .
                           </>
                         )}
                       </p>

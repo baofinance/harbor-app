@@ -3,6 +3,7 @@ import { useAccount } from "wagmi";
 import { markets as marketsConfig } from "@/config/markets";
 import { minterABI } from "@/abis/minter";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
+import { asUintPair } from "@/utils/stabilityPoolCompat";
 import {
   STABILITY_POOL_MANAGER_ABI,
   WRAPPED_PRICE_ORACLE_ABI,
@@ -85,8 +86,8 @@ export interface TransparencyData {
 
 // Number of contract reads per market
 const READS_PER_MARKET = 16;
-// Number of pool reads per market (2 pools * 4 reads each)
-const POOL_READS_PER_MARKET = 8;
+// Pool reads per market: 8 legacy reads, then 4 v3 fee/window reads.
+const POOL_READS_PER_MARKET = 12;
 // Number of user reads per market (2 pools * 2 reads each)
 const USER_READS_PER_MARKET = 4;
 
@@ -152,6 +153,11 @@ export function useTransparencyData(): TransparencyData {
       { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "activeRewardTokens", chainId: cid },
       { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "getEarlyWithdrawalFee", chainId: cid },
       { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "getWithdrawalWindow", chainId: cid },
+      // v3 names. v2 pools revert these; parsers keep indexes 0-7 and prefer a successful v3 read.
+      { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "earlyWithdrawalFeeRatio", chainId: cid },
+      { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "withdrawalWindow", chainId: cid },
+      { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "earlyWithdrawalFeeRatio", chainId: cid },
+      { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "withdrawalWindow", chainId: cid },
     ];
   });
 
@@ -240,6 +246,24 @@ export function useTransparencyData(): TransparencyData {
     };
   });
 
+  const succeeded = <T,>(index: number): T | undefined => {
+    const result = data?.[index];
+    if (result?.status === "success" && result.result !== undefined) {
+      return result.result as T;
+    }
+    return undefined;
+  };
+
+  const poolWindow = (v3Index: number, v2Index: number) => {
+    const pair =
+      asUintPair(succeeded(v3Index)) ??
+      asUintPair(parseResult(v2Index, [0n, 0n] as const));
+    return {
+      startDelay: pair?.[0] ?? 0n,
+      endWindow: pair?.[1] ?? 0n,
+    };
+  };
+
   // Parse all pools
   const poolBaseIndex = marketEntries.length * READS_PER_MARKET;
   const pools: PoolTransparencyData[] = marketEntries.flatMap(([marketId, market], marketIndex) => {
@@ -254,20 +278,8 @@ export function useTransparencyData(): TransparencyData {
         type: "collateral" as const,
         tvl: parseResult(baseIndex + 0, 0n),
         activeRewardTokens: parseResult(baseIndex + 1, []),
-        earlyWithdrawalFee: parseResult(baseIndex + 2, 0n),
-        withdrawWindow: (() => {
-          const res = parseResult<any>(baseIndex + 3, [0n, 0n] as const);
-          if (Array.isArray(res)) {
-            return { startDelay: res[0] as bigint, endWindow: res[1] as bigint };
-          }
-          if (res && typeof res === "object") {
-            return {
-              startDelay: (res as any).startDelay ?? 0n,
-              endWindow: (res as any).endWindow ?? 0n,
-            };
-          }
-          return { startDelay: 0n, endWindow: 0n };
-        })(),
+        earlyWithdrawalFee: succeeded<bigint>(baseIndex + 8) ?? parseResult(baseIndex + 2, 0n),
+        withdrawWindow: poolWindow(baseIndex + 9, baseIndex + 3),
       },
       {
         address: stabilityPoolLeveraged,
@@ -275,20 +287,8 @@ export function useTransparencyData(): TransparencyData {
         type: "leveraged" as const,
         tvl: parseResult(baseIndex + 4, 0n),
         activeRewardTokens: parseResult(baseIndex + 5, []),
-        earlyWithdrawalFee: parseResult(baseIndex + 6, 0n),
-        withdrawWindow: (() => {
-          const res = parseResult<any>(baseIndex + 7, [0n, 0n] as const);
-          if (Array.isArray(res)) {
-            return { startDelay: res[0] as bigint, endWindow: res[1] as bigint };
-          }
-          if (res && typeof res === "object") {
-            return {
-              startDelay: (res as any).startDelay ?? 0n,
-              endWindow: (res as any).endWindow ?? 0n,
-            };
-          }
-          return { startDelay: 0n, endWindow: 0n };
-        })(),
+        earlyWithdrawalFee: succeeded<bigint>(baseIndex + 10) ?? parseResult(baseIndex + 6, 0n),
+        withdrawWindow: poolWindow(baseIndex + 11, baseIndex + 7),
       },
     ];
   });

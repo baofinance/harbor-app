@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useContractReads } from "wagmi";
 import { STABILITY_POOL_ABI } from "@/abis";
+import { asUintPair } from "@/utils/stabilityPoolCompat";
 import {
   anchorSimpleRedeemPositionFlowParts,
   anchorSimpleSellFlowParts,
@@ -62,16 +63,23 @@ export function useRedeemPositionFlow({
 }: UseRedeemPositionFlowParams) {
   const redeemWindowContracts = useMemo(() => {
     if (!simpleMode) return [];
+    const account = address ?? "0x0000000000000000000000000000000000000000";
     return groupedPoolPositions
       .filter((row) => row.balance > 0n && row.poolAddress)
-      .map((row) => ({
-        address: row.poolAddress as `0x${string}`,
-        abi: STABILITY_POOL_ABI,
-        functionName: "getWithdrawalRequest" as const,
-        args: address
-          ? ([address] as const)
-          : (["0x0000000000000000000000000000000000000000"] as const),
-      }));
+      .flatMap((row) => [
+        {
+          address: row.poolAddress as `0x${string}`,
+          abi: STABILITY_POOL_ABI,
+          functionName: "withdrawalRequest" as const,
+          args: [account] as const,
+        },
+        {
+          address: row.poolAddress as `0x${string}`,
+          abi: STABILITY_POOL_ABI,
+          functionName: "getWithdrawalRequest" as const,
+          args: [account] as const,
+        },
+      ]);
   }, [simpleMode, groupedPoolPositions, address]);
 
   const { data: redeemWindowReads } = useContractReads({
@@ -101,40 +109,49 @@ export function useRedeemPositionFlow({
     return () => window.clearInterval(id);
   }, [simpleMode, activeTab]);
 
+  const redeemRequestByPoolAddress = useMemo(() => {
+    const map = new Map<string, readonly [bigint, bigint] | undefined>();
+    for (let i = 0; i < redeemWindowContracts.length; i += 2) {
+      const pool = redeemWindowContracts[i]?.address;
+      if (!pool) continue;
+      const v3 = redeemWindowReads?.[i];
+      const v2 = redeemWindowReads?.[i + 1];
+      const chosen =
+        v3?.status === "success"
+          ? v3.result
+          : v2?.status === "success"
+            ? v2.result
+            : undefined;
+      map.set(pool.toLowerCase(), asUintPair(chosen));
+    }
+    return map;
+  }, [redeemWindowContracts, redeemWindowReads]);
+
   const redeemWindowOpenByPoolAddress = useMemo(() => {
     const map = new Map<string, boolean>();
-    redeemWindowContracts.forEach((c, i) => {
-      const result = redeemWindowReads?.[i]?.result as
-        | readonly [bigint, bigint]
-        | undefined;
+    redeemRequestByPoolAddress.forEach((result, pool) => {
       if (!result) {
-        map.set(c.address.toLowerCase(), false);
+        map.set(pool, false);
         return;
       }
       const [start, end] = result;
       if (start === 0n && end === 0n) {
-        map.set(c.address.toLowerCase(), false);
+        map.set(pool, false);
         return;
       }
       const now = BigInt(redeemCountdownNowSec);
-      map.set(c.address.toLowerCase(), now >= start && now <= end);
+      map.set(pool, now >= start && now <= end);
     });
     return map;
-  }, [redeemWindowContracts, redeemWindowReads, redeemCountdownNowSec]);
+  }, [redeemRequestByPoolAddress, redeemCountdownNowSec]);
 
   const redeemRequestStatusByPoolAddress = useMemo(() => {
     const map = new Map<string, AnchorRedeemRequestStatus | undefined>();
-    redeemWindowContracts.forEach((c, i) => {
-      const result = redeemWindowReads?.[i]?.result as
-        | readonly [bigint, bigint]
-        | undefined;
-      map.set(
-        c.address.toLowerCase(),
-        deriveRedeemRequestStatus(result, redeemCountdownNowSec),
-      );
+    redeemRequestByPoolAddress.forEach((result, pool) => {
+      map.set(pool, deriveRedeemRequestStatus(result, redeemCountdownNowSec));
     });
     return map;
-  }, [redeemWindowContracts, redeemWindowReads, redeemCountdownNowSec]);
+  }, [redeemRequestByPoolAddress, redeemCountdownNowSec]);
 
   const redeemPositionsBase = useMemo(
     () =>

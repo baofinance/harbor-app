@@ -13,6 +13,10 @@ import type { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
 import type { MintValidation } from "@/utils/anchorMintValidation";
 import type { AnchorModalMarket, AnchorModalMarketEntry } from "./modalHookTypes";
 import type { AnchorDepositWithdrawTab } from "./types";
+import {
+  harborTokenWithTitle,
+  stabilityPoolShareLabel,
+} from "@/utils/stabilityPoolCompat";
 
 export type AnchorModalNotificationSeverity = "navy" | "green" | "amber" | "coral";
 
@@ -183,9 +187,13 @@ export function useModalNotifications({
             title="Info:"
             icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
           >
-            Select positions to withdraw. If you include wallet tokens and/or do
-            immediate pool withdrawals, we will automatically redeem the resulting
-            anchor tokens to collateral.
+            Select positions to withdraw. Pool positions are{" "}
+            {harborTokenWithTitle(
+              stabilityPoolShareLabel(peggedTokenSymbol) ?? peggedTokenSymbol,
+            )}
+            . Withdrawing returns {harborTokenWithTitle(peggedTokenSymbol)}, which
+            we redeem to collateral when you include a wallet balance or an
+            immediate withdrawal.
           </InfoCallout>
           {showWithdrawRedemptionCapNotice && redeemPreview && (
             <InfoCallout
@@ -232,8 +240,10 @@ export function useModalNotifications({
             title="Info:"
             icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
           >
-            You&apos;ll receive anchor tokens directly to your wallet. No stability
-            pool deposit required.
+            You&apos;ll receive {harborTokenWithTitle(peggedTokenSymbol)} in your
+            wallet. This does not deposit {harborTokenWithTitle(
+              stabilityPoolShareLabel(peggedTokenSymbol) ?? peggedTokenSymbol,
+            )}.
           </InfoCallout>
         )}
         {!isCollateralOnlyChain && !needsSwap && (

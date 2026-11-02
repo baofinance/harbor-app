@@ -25,7 +25,7 @@ export function SailHeroIntroCards() {
           <h2 className={HARBOR_STAT_TILE_INTRO_TITLE_CLASS}>Mint</h2>
         </div>
         <p className={HARBOR_STAT_TILE_INTRO_BODY_CLASS}>
-          Mint leveraged tokens with amplified exposure to price movements
+          Mint Harbor Sail (hs) tokens with amplified exposure to price movements
         </p>
       </HarborStatTile>
 
@@ -63,7 +63,7 @@ export function SailHeroIntroCards() {
           <h2 className={HARBOR_STAT_TILE_INTRO_TITLE_CLASS}>Redeem</h2>
         </div>
         <p className={HARBOR_STAT_TILE_INTRO_BODY_CLASS}>
-          Redeem sail tokens for collateral at any time
+          Redeem Harbor Sail (hs) tokens for collateral at any time
         </p>
       </HarborStatTile>
     </div>

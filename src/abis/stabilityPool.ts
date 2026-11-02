@@ -280,6 +280,57 @@ export const stabilityPoolABI = [
   },
   {
     type: "function",
+    name: "claimable",
+    inputs: [
+      { name: "account", type: "address", internalType: "address" },
+      { name: "tokens", type: "address[]", internalType: "address[]" },
+    ],
+    outputs: [{ name: "amounts", type: "uint256[]", internalType: "uint256[]" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "earlyWithdrawalFeeRatio",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "withdrawalRequest",
+    inputs: [{ name: "account", type: "address", internalType: "address" }],
+    outputs: [
+      { name: "start", type: "uint64", internalType: "uint64" },
+      { name: "end", type: "uint64", internalType: "uint64" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "withdrawalWindow",
+    inputs: [],
+    outputs: [
+      { name: "startDelay", type: "uint64", internalType: "uint64" },
+      { name: "endWindow", type: "uint64", internalType: "uint64" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "withdrawalFeeFreeAmount",
+    inputs: [{ name: "account", type: "address", internalType: "address" }],
+    outputs: [{ name: "amount", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "maxAssetLoss",
+    inputs: [],
+    outputs: [{ name: "amount", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "rewardData",
     inputs: [{ name: "rewardToken", type: "address", internalType: "address" }],
     outputs: [

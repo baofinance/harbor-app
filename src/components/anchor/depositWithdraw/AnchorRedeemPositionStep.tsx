@@ -158,6 +158,8 @@ export type AnchorRedeemPositionStepProps = {
   /** From getWithdrawalWindow — shown in the request info box. */
   withdrawalDelayLabel?: string;
   withdrawalDurationLabel?: string;
+  /** On-chain early-withdrawal fee, in percent. */
+  earlyWithdrawFeePercent?: number;
 };
 
 export function AnchorRedeemPositionStep({
@@ -180,7 +182,12 @@ export function AnchorRedeemPositionStep({
   helperText,
   withdrawalDelayLabel = "1 hour",
   withdrawalDurationLabel = "24 hours",
+  earlyWithdrawFeePercent,
 }: AnchorRedeemPositionStepProps) {
+  const earlyFeeLabel =
+    earlyWithdrawFeePercent != null && earlyWithdrawFeePercent > 0
+      ? `${earlyWithdrawFeePercent.toFixed(2)}% fee`
+      : undefined;
   const canToggleSpeed =
     showEarlyWithdrawToggle &&
     !!onEnableEarlyWithdraw &&
@@ -205,10 +212,12 @@ export function AnchorRedeemPositionStep({
             label={
               earlyWithdrawEnabled ? "Fast withdrawal" : "Free withdrawal"
             }
-            badge={earlyWithdrawEnabled ? "1.00% fee" : undefined}
+            badge={earlyWithdrawEnabled ? earlyFeeLabel : undefined}
             tooltip={
               earlyWithdrawEnabled
-                ? "Withdraw immediately with a 1.00% fee."
+                ? earlyFeeLabel
+                  ? `Withdraw immediately with a ${earlyFeeLabel}.`
+                  : "Withdraw immediately. The pool fee is still loading."
                 : `Request now for free. Window opens after ~${withdrawalDelayLabel} and lasts ~${withdrawalDurationLabel}.`
             }
             enabled={earlyWithdrawEnabled}

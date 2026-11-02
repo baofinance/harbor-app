@@ -31,8 +31,8 @@ const SAIL_MARKS_TOOLTIP = (
     <div>
       <h3 className="mb-2 text-lg font-bold">Anchor Ledger Marks</h3>
       <p className="leading-relaxed text-white/90">
-        Anchor Ledger Marks are earned by holding anchor tokens and depositing
-        into stability pools.
+        Anchor Ledger Marks are earned by holding Harbor Anchored (ha) tokens and
+        depositing Harbor Stability Pool (hsp) shares.
       </p>
     </div>
 

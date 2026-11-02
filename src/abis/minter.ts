@@ -1301,6 +1301,31 @@ export const minterABI = [
   },
   {
     type: "error",
+    name: "RequestedSubsidyNotGiven",
+    inputs: [
+      { name: "requested", type: "uint256", internalType: "uint256" },
+      { name: "available", type: "uint256", internalType: "uint256" },
+    ],
+  },
+  {
+    type: "error",
+    name: "BelowMinimumCollateralRatio",
+    inputs: [
+      { name: "collateralRatio", type: "uint256", internalType: "uint256" },
+      { name: "minimum", type: "uint256", internalType: "uint256" },
+    ],
+  },
+  {
+    type: "error",
+    name: "UnrecognisedImpairment",
+    inputs: [
+      { name: "recorded", type: "uint256", internalType: "uint256" },
+      { name: "held", type: "uint256", internalType: "uint256" },
+    ],
+  },
+  { type: "error", name: "ZeroPeggedTokenPrice", inputs: [] },
+  {
+    type: "error",
     name: "ReturnInsufficientAmount",
     inputs: [
       { name: "returningToken", type: "address", internalType: "address" },

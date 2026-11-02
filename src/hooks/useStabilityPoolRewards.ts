@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { formatEther } from "viem";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { ERC20_ABI } from "@/config/contracts";
+import { readStabilityPoolClaimable } from "@/utils/stabilityPoolCompat";
 
 export interface RewardTokenData {
   address: `0x${string}`;
@@ -109,12 +110,13 @@ export function useStabilityPoolRewards({
           rewardTokenAddresses.map(async (tokenAddress) => {
             try {
               // Get claimable amount
-              const claimable = (await client.readContract({
-                address: poolAddress,
-                abi: stabilityPoolABI,
-                functionName: "claimable",
-                args: [address, tokenAddress],
-              })) as bigint;
+              const claimable = await readStabilityPoolClaimable(
+                client,
+                poolAddress,
+                address,
+                tokenAddress,
+                stabilityPoolABI,
+              );
 
               // Get token symbol
               let symbol = "UNKNOWN";

@@ -407,6 +407,66 @@ export const STABILITY_POOL_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  // StabilityPool v3 name for the same 1e18-scaled ratio. v2 pools revert.
+  {
+    inputs: [],
+    name: "earlyWithdrawalFeeRatio",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "account", type: "address" }],
+    name: "withdrawalRequest",
+    outputs: [
+      { name: "start", type: "uint64" },
+      { name: "end", type: "uint64" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "withdrawalWindow",
+    outputs: [
+      { name: "startDelay", type: "uint64" },
+      { name: "endWindow", type: "uint64" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "account", type: "address" }],
+    name: "withdrawalFeeFreeAmount",
+    outputs: [{ name: "amount", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "maxAssetLoss",
+    outputs: [{ name: "amount", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "account", type: "address" },
+      { name: "tokens", type: "address[]" },
+    ],
+    name: "claimable",
+    outputs: [{ name: "amounts", type: "uint256[]" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    type: "error",
+    name: "DepositAmountExceedsMaximum",
+    inputs: [
+      { name: "total", type: "uint256" },
+      { name: "ceiling", type: "uint256" },
+    ],
+  },
   {
     inputs: [],
     name: "getWithdrawalWindow",
