@@ -3477,11 +3477,9 @@ export function useAnchorDepositWithdrawModal({
       return inputAmount;
     }
     
-    // If depositing pegged token (fxUSD or haETH), convert to wrapped collateral
+    // Direct ha deposits are not collateral. Do not convert them into a mint input.
     if (depositAsset === peggedTokenSymbol) {
-      // fxSAVE = fxUSD / rate OR wstETH = haETH / rate
-      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
-      return (inputAmount * 10n**18n) / wrappedRate;
+      return undefined;
     }
     
     // If depositing USDC (for USD market), convert USDC → fxUSD → fxSAVE
@@ -3581,7 +3579,8 @@ export function useAnchorDepositWithdrawModal({
       !!accurateDepositAmountInWrappedCollateral &&
       accurateDepositAmountInWrappedCollateral > 0n &&
       isActive &&
-      activeTab === "deposit",
+      activeTab === "deposit" &&
+      !isDirectPeggedDeposit,
   });
 
   const { data: regularExpectedMintOutput } = useContractRead({
@@ -3597,7 +3596,8 @@ export function useAnchorDepositWithdrawModal({
         !!accurateDepositAmountInWrappedCollateral &&
         accurateDepositAmountInWrappedCollateral > 0n &&
         isActive &&
-        activeTab === "deposit",
+        activeTab === "deposit" &&
+        !isDirectPeggedDeposit,
       retry: 1,
       allowFailure: true,
     },
@@ -10929,12 +10929,15 @@ export function useAnchorDepositWithdrawModal({
       });
     }
 
-    const receiveRaw =
-      expectedMintOutput && expectedMintOutput > 0n
+    const enteredAmount =
+      amount && parseFloat(amount) > 0 ? parseFloat(amount) : null;
+    // A direct ha deposit does not mint. The mint dry run prices the entered
+    // amount as if it were collateral, which overstates what the pool takes.
+    const receiveRaw = isDirectPeggedDeposit
+      ? enteredAmount
+      : expectedMintOutput && expectedMintOutput > 0n
         ? Number(formatEther(expectedMintOutput))
-        : isDirectPeggedDeposit && amount && parseFloat(amount) > 0
-          ? parseFloat(amount)
-          : null;
+        : null;
     const receiveFormatted =
       receiveRaw != null ? formatUiAmount(receiveRaw) : { text: "—" };
     const peggedPriceUSD =
