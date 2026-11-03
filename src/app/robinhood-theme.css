@@ -8,7 +8,7 @@ body.app-bg-robinhood {
   --rh-neon-hover: #d6ff4a;
   --rh-ink: #050505;
   --rh-text: #ffffff;
-  --rh-muted: rgba(255, 255, 255, 0.62);
+  --rh-muted: rgba(255, 255, 255, 0.78);
   --rh-faint: rgba(255, 255, 255, 0.4);
   --rh-line: rgba(255, 255, 255, 0.1);
   --rh-surface: rgba(17, 17, 17, 0.94);
@@ -156,5 +156,69 @@ body.app-bg-robinhood .recharts-cartesian-grid line {
 }
 
 body.app-bg-robinhood .recharts-text {
-  fill: rgba(255, 255, 255, 0.5);
+  fill: rgba(255, 255, 255, 0.72);
+}
+
+/* Navy token used by dashboard rows and voyage table headers. On a dark panel it disappears. */
+body.app-bg-robinhood [class*="text-harbor-blue/"] {
+  color: rgba(255, 255, 255, 0.78) !important;
+}
+
+body.app-bg-robinhood [class*="text-harbor-blue"]:not([class*="text-harbor-blue/"]) {
+  color: var(--rh-text) !important;
+}
+
+body.app-bg-robinhood [class*="border-harbor-blue"] {
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+/* Charcoal copy written for light cards (fee ranges, current CR, lifecycle pills). */
+body.app-bg-robinhood [class*="text-[#10141A]/"] {
+  color: rgba(255, 255, 255, 0.88) !important;
+}
+
+body.app-bg-robinhood [class*="text-[#10141A]"]:not([class*="text-[#10141A]/"]):not([class*="bg-[#D8DADF]"]):not([class*="bg-[#B8EBD5]"]) {
+  color: var(--rh-text) !important;
+}
+
+/* Completed lifecycle chip: faint seafoam and near-black type. */
+body.app-bg-robinhood [class*="bg-[#B8EBD5]"] {
+  background-color: rgba(204, 255, 0, 0.16) !important;
+  color: var(--rh-neon) !important;
+  box-shadow: none !important;
+}
+
+body.app-bg-robinhood [class*="text-[#3d8f7a]"] {
+  color: var(--rh-neon) !important;
+}
+
+/* Fee-band rows were a 4% navy wash, so the range read as an empty bar. */
+body.app-bg-robinhood [class*="bg-[#1E4775]/[0.04]"] {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Ledger hero and toolbar glass was 50% navy over the photo. */
+body.app-bg-robinhood [class*="bg-[#0a1628]/50"] {
+  background-color: rgba(12, 12, 12, 0.94) !important;
+  border-color: rgba(204, 255, 0, 0.22) !important;
+}
+
+/* Tide "Target reached": dark green type on a dim mint fill. */
+body.app-bg-robinhood [class*="bg-harbor-mint/35"][class*="text-[#1A5C45]"] {
+  background-color: var(--rh-neon) !important;
+  border-color: var(--rh-neon) !important;
+  color: var(--rh-ink) !important;
+}
+
+body.app-bg-robinhood .rh-stage-label-active {
+  color: var(--rh-neon) !important;
+}
+
+body.app-bg-robinhood .rh-stage-label-idle {
+  color: rgba(255, 255, 255, 0.88) !important;
+}
+
+body.app-bg-robinhood .rh-stage-index-active {
+  background-color: var(--rh-neon) !important;
+  color: var(--rh-ink) !important;
 }

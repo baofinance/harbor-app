@@ -98,7 +98,7 @@ function StageStripItem({
       <span
         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold tabular-nums sm:h-6 sm:w-6 sm:text-[11px] ${
           isActive
-            ? "bg-white/90 backdrop-blur-sm text-[#0a1628] shadow-sm"
+            ? "rh-stage-index-active bg-white/90 backdrop-blur-sm text-[#0a1628] shadow-sm"
             : "bg-black text-white/75 ring-1 ring-white/15"
         }`}
       >
@@ -106,7 +106,9 @@ function StageStripItem({
       </span>
       <span
         className={`w-full px-0.5 text-center text-[9px] font-medium leading-tight tracking-wide sm:text-[10px] ${
-          isActive ? "text-white" : "text-white/50"
+          isActive
+            ? "rh-stage-label-active text-white"
+            : "rh-stage-label-idle text-white/50"
         }`}
       >
         {stage.label}
@@ -145,7 +147,7 @@ export function GenesisMaidenVoyageStageStrip({
               <span
                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold tabular-nums ${
                   isActive
-                    ? "bg-white/90 text-[#0a1628] shadow-sm backdrop-blur-sm"
+                    ? "rh-stage-index-active bg-white/90 text-[#0a1628] shadow-sm backdrop-blur-sm"
                     : "bg-black text-white/75 ring-1 ring-white/15"
                 }`}
               >
@@ -153,7 +155,9 @@ export function GenesisMaidenVoyageStageStrip({
               </span>
               <span
                 className={`w-full text-center text-[9px] font-medium leading-tight tracking-wide ${
-                  isActive ? "text-white" : "text-white/50"
+                  isActive
+                    ? "rh-stage-label-active text-white"
+                    : "rh-stage-label-idle text-white/50"
                 }`}
               >
                 {stage.label}
