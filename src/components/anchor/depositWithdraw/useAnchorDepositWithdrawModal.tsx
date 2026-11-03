@@ -4781,11 +4781,13 @@ export function useAnchorDepositWithdrawModal({
     if (!selectedDepositAsset) return "";
     return selectedDepositAsset;
   }, [selectedDepositAsset]);
-  // Get balances from contract reads (fallback)
-  const collateralPoolBalanceContract = collateralPoolBalanceData || 0n;
-  const sailPoolBalanceContract = sailPoolBalanceData || 0n;
+  // Live assetBalanceOf is the hsp balance, including after a transfer.
+  // The subgraph row is only a stand-in until that read settles.
+  const collateralPoolBalanceContract =
+    typeof collateralPoolBalanceData === "bigint" ? collateralPoolBalanceData : undefined;
+  const sailPoolBalanceContract =
+    typeof sailPoolBalanceData === "bigint" ? sailPoolBalanceData : undefined;
 
-  // Get balances from subgraph (preferred, same as expanded view)
   const collateralPoolAddressLower = collateralPoolAddress?.toLowerCase();
   const sailPoolAddressLower = sailPoolAddress?.toLowerCase();
 
@@ -4800,16 +4802,17 @@ export function useAnchorDepositWithdrawModal({
       d.poolType === "sail"
   );
 
-  // Use subgraph balances if available, otherwise fallback to contract reads
-  const collateralPoolBalance = subgraphCollateralDeposit
-    ? parseEther(subgraphCollateralDeposit.balance)
-    : collateralPoolBalanceContract;
-  const sailPoolBalance = subgraphSailDeposit
-    ? parseEther(subgraphSailDeposit.balance)
-    : sailPoolBalanceContract;
+  const collateralPoolBalance =
+    collateralPoolBalanceContract ??
+    (subgraphCollateralDeposit
+      ? parseEther(subgraphCollateralDeposit.balance)
+      : 0n);
+  const sailPoolBalance =
+    sailPoolBalanceContract ??
+    (subgraphSailDeposit ? parseEther(subgraphSailDeposit.balance) : 0n);
 
   const withdrawPoolRowsForActiveRail = useMemo(() => {
-    const allRows =
+    const sourceRows =
       groupedPoolPositions.length > 0
         ? groupedPoolPositions
         : [
@@ -4836,6 +4839,19 @@ export function useAnchorDepositWithdrawModal({
                 ]
               : []),
           ];
+
+    const liveByPool = new Map<string, bigint>();
+    if (collateralPoolAddressLower && collateralPoolBalanceContract !== undefined) {
+      liveByPool.set(collateralPoolAddressLower, collateralPoolBalanceContract);
+    }
+    if (sailPoolAddressLower && sailPoolBalanceContract !== undefined) {
+      liveByPool.set(sailPoolAddressLower, sailPoolBalanceContract);
+    }
+    const allRows = sourceRows.map((row) => {
+      const addr = "poolAddress" in row ? row.poolAddress?.toLowerCase() : undefined;
+      const live = addr ? liveByPool.get(addr) : undefined;
+      return live === undefined ? row : { ...row, balance: live };
+    });
 
     const collateralTypes = new Set(
       allRows
@@ -4870,6 +4886,10 @@ export function useAnchorDepositWithdrawModal({
     selectedMarketId,
     collateralPoolBalance,
     sailPoolBalance,
+    collateralPoolBalanceContract,
+    sailPoolBalanceContract,
+    collateralPoolAddressLower,
+    sailPoolAddressLower,
     withdrawPoolCollateralTab,
   ]);
 
