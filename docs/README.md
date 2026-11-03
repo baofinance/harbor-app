@@ -15,10 +15,11 @@ Technical and operational notes for this repo. **Route-specific** write-ups live
 
 | File | App route |
 |------|-----------|
-| [`routes/anchor.md`](routes/anchor.md) | `/anchor` |
-| [`routes/sail.md`](routes/sail.md) | `/sail` |
-| [`routes/genesis.md`](routes/genesis.md) | `/genesis` |
-| [`routes/earn.md`](routes/earn.md) | `/earn` (stability pools; not the same as the nav “Earn” → `/anchor`) |
+| [`routes/anchor.md`](routes/anchor.md) | `/anchor` — nav **Earn**. `/` and `/earn` redirect here |
+| [`routes/sail.md`](routes/sail.md) | `/sail` — nav **Leverage** |
+| [`routes/genesis.md`](routes/genesis.md) | `/genesis` — nav **Maiden Voyage** |
+| [`routes/earn.md`](routes/earn.md) | `/earn/[marketId]/[poolType]` pool detail. `/earn` itself redirects to `/anchor` |
+| [`routes/hytoken.md`](routes/hytoken.md) | `/hytoken` — nav **Harbor Yield**. `/harbor` redirects here |
 
 ## Theming / UX proposals
 
@@ -39,7 +40,7 @@ Technical and operational notes for this repo. **Route-specific** write-ups live
 
 ## Protocol / product notes
 
-Examples: [`APR_CALCULATION_DOCUMENTATION.md`](APR_CALCULATION_DOCUMENTATION.md), [`CONTRACT_ADDRESSES.md`](CONTRACT_ADDRESSES.md), [`SAIL_MINT_USD_FORMULA.md`](SAIL_MINT_USD_FORMULA.md), [`MINT_REDEEM_FEES.md`](MINT_REDEEM_FEES.md), [`MAP_ROOM_VOTING.md`](MAP_ROOM_VOTING.md), [`HARBOR_MARKS_SETUP.md`](HARBOR_MARKS_SETUP.md), [`EARLY_DEPOSIT_BONUS.md`](EARLY_DEPOSIT_BONUS.md), [`EUR_PRICE_CALCULATION_FLOW.md`](EUR_PRICE_CALCULATION_FLOW.md), [`NUMBER_FORMATTING_GUIDE.md`](NUMBER_FORMATTING_GUIDE.md), [`STABILITY_POOL_MIN_DEPOSITS.md`](STABILITY_POOL_MIN_DEPOSITS.md), [`TEST2_SETUP.md`](TEST2_SETUP.md) / [`TEST2_CONTRACTS.md`](TEST2_CONTRACTS.md), [`AnchorDepositWithdrawModal-optimization-plan.md`](AnchorDepositWithdrawModal-optimization-plan.md), and other `*.md` files in this directory.
+Examples: [`APR_CALCULATION_DOCUMENTATION.md`](APR_CALCULATION_DOCUMENTATION.md), [`CONTRACT_ADDRESSES.md`](CONTRACT_ADDRESSES.md), [`SAIL_MINT_USD_FORMULA.md`](SAIL_MINT_USD_FORMULA.md), [`MINT_REDEEM_FEES.md`](MINT_REDEEM_FEES.md), [`MAP_ROOM_VOTING.md`](MAP_ROOM_VOTING.md), [`HARBOR_MARKS_SETUP.md`](HARBOR_MARKS_SETUP.md), [`EARLY_DEPOSIT_BONUS.md`](EARLY_DEPOSIT_BONUS.md), [`EUR_PRICE_CALCULATION_FLOW.md`](EUR_PRICE_CALCULATION_FLOW.md), [`NUMBER_FORMATTING_GUIDE.md`](NUMBER_FORMATTING_GUIDE.md), [`STABILITY_POOL_MIN_DEPOSITS.md`](STABILITY_POOL_MIN_DEPOSITS.md), [`STABILITY_POOL_V3_APP_PLAN.md`](STABILITY_POOL_V3_APP_PLAN.md), [`TEST2_SETUP.md`](TEST2_SETUP.md) / [`TEST2_CONTRACTS.md`](TEST2_CONTRACTS.md), [`AnchorDepositWithdrawModal-optimization-plan.md`](AnchorDepositWithdrawModal-optimization-plan.md), and other `*.md` files in this directory.
 
 ## Archive
 
@@ -49,7 +50,7 @@ Superseded implementation plans, one-off fix write-ups, and snapshots that are n
 |------|----------------|
 | [`archive/SIMPLE_VIEW_PROPOSAL.md`](archive/SIMPLE_VIEW_PROPOSAL.md) | Product proposal; not implemented (UI−/UI+ used instead) |
 | [`archive/ANCHOR_LAYOUT_OPTIONS.md`](archive/ANCHOR_LAYOUT_OPTIONS.md) | Historical Anchor layout options |
-| [`archive/ABI_CONSOLIDATION_PLAN.md`](archive/ABI_CONSOLIDATION_PLAN.md) | Phases completed |
+| [`archive/ABI_CONSOLIDATION_PLAN.md`](archive/ABI_CONSOLIDATION_PLAN.md) | Finished plan; it still names deleted ABI slices. Use [`SINGLE_SOURCES.md`](SINGLE_SOURCES.md) |
 | [`archive/admin-deposit-rewards-target-apr-plan.md`](archive/admin-deposit-rewards-target-apr-plan.md) | Shipped in admin rewards UI |
 | [`archive/MARKS_BOOST_IMPLEMENTATION_PLAN.md`](archive/MARKS_BOOST_IMPLEMENTATION_PLAN.md) | Boost logic in subgraph |
 | [`archive/UNDERLYING_APR_IMPLEMENTATION_PLAN.md`](archive/UNDERLYING_APR_IMPLEMENTATION_PLAN.md) | `useWstETHAPR` / `useFxSAVEAPR` |

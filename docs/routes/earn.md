@@ -1,18 +1,11 @@
 # Earn (`/earn`)
 
-**Primary Earn UX** lives at [`/anchor`](./anchor.md) (nav label **Earn**). The `/earn` route **re-exports** that page:
-
-```ts
-// src/app/earn/page.tsx
-export { default } from "@/app/anchor/page";
-```
-
-Legacy **per-pool** deep links remain for older links:
+**Primary Earn UX** lives at [`/anchor`](./anchor.md) (nav label **Earn**). `/earn` redirects there from `next.config.js`. There is no `src/app/earn/page.tsx`.
 
 | Path | Purpose |
 |------|---------|
-| `/earn` | Same Sail-style Earn dashboard as `/anchor`. |
-| `/earn/[marketId]/[poolType]` | Legacy pool detail (`collateral` or `leveraged`); static paths from `generateStaticParams`. |
+| `/earn` | Redirects to `/anchor`. |
+| `/earn/[marketId]/[poolType]` | Pool detail (`collateral` or `leveraged`); static paths from `generateStaticParams`. |
 
 ---
 
@@ -20,7 +13,7 @@ Legacy **per-pool** deep links remain for older links:
 
 | File | Role |
 |------|------|
-| [`page.tsx`](../../src/app/earn/page.tsx) | Re-exports Anchor Earn dashboard. |
+| [`layout.tsx`](../../src/app/earn/layout.tsx) | Metadata for the pool routes. |
 | [`[marketId]/[poolType]/page.tsx`](../../src/app/earn/[marketId]/[poolType]/page.tsx) | Server wrapper → `PoolClient`. |
 | [`PoolClient.tsx`](../../src/app/earn/[marketId]/[poolType]/PoolClient.tsx) | Legacy pool UI (balances, deposit/withdraw, mock chart history). |
 

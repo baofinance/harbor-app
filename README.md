@@ -14,19 +14,18 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying [`src/app/page.tsx`](src/app/page.tsx). The page auto-updates as you edit the file.
+Open [http://localhost:3000](http://localhost:3000). `/` redirects to `/anchor`. [`src/app/page.tsx`](src/app/page.tsx) does the same redirect.
 
 ## Documentation
 
 - **[`docs/README.md`](docs/README.md)** — index of internal docs (routes, ops, security, subgraph app notes).
-- **[`docs/INDEX_PAGE_PATTERN.md`](docs/INDEX_PAGE_PATTERN.md)** — handbook for Genesis / Anchor / Sail index UX (UI−/UI+, shared files, porting steps).
-- **Route deep-dives:** [`docs/routes/`](docs/routes/) (`anchor.md`, `sail.md`, `genesis.md`, `earn.md`). Each `src/app/<segment>/` folder also has a short README pointing here.
+- **[`docs/SINGLE_SOURCES.md`](docs/SINGLE_SOURCES.md)** — which ABI, config, and helper file to extend.
+- **[`docs/INDEX_PAGE_PATTERN.md`](docs/INDEX_PAGE_PATTERN.md)** — handbook for Genesis / Earn / Sail index UX (UI−/UI+, shared files, porting steps).
+- **Route notes:** [`docs/routes/`](docs/routes/) (`anchor.md`, `sail.md`, `genesis.md`, `earn.md`, `hytoken.md`).
 
-The [subgraph](subgraph/) package keeps its own Markdown guides next to the subgraph code.
+Nav routes: **Earn** [`/anchor`](src/app/anchor/page.tsx) (`/` and `/earn` redirect here), **Harbor Yield** [`/hytoken`](src/app/hytoken/page.tsx) (`/harbor` redirects here), **Leverage** [`/sail`](src/app/sail/page.tsx), **Maiden Voyage** [`/genesis`](src/app/genesis/page.tsx), **Tide** [`/tide`](src/app/tide/page.tsx). Pool detail stays at `/earn/[marketId]/[poolType]`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The [subgraph](subgraph/) package keeps its own Markdown guides next to the subgraph code. App fonts are Geo and Space Grotesk (`src/utils/fonts.ts`).
 
 ## Learn More
 
