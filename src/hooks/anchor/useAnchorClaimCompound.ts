@@ -1,14 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { stabilityPoolABI } from "@/abis/stabilityPool";
+import { minterABI } from "@/abis/minter";
 import { useAccount, usePublicClient, useSendTransaction, useWriteContract } from "wagmi";
 import { rewardsABI } from "@/abis/rewards";
-import {
-  ERC20_ABI,
-  MINTER_ABI_EXTENDED,
-  STABILITY_POOL_ABI,
-  WRAPPED_PRICE_ORACLE_ABI,
-} from "@/abis/shared";
+import { ERC20_ABI, WRAPPED_PRICE_ORACLE_ABI } from "@/abis/shared";
 
 const wrappedPriceOracleABI = WRAPPED_PRICE_ORACLE_ABI;
 import {
@@ -26,7 +23,6 @@ import {
   type BuyTideResumeState,
 } from "@/utils/anchorBuyTideFlow";
 
-const minterABI = MINTER_ABI_EXTENDED;
 
 export type UseAnchorClaimCompoundParams = {
   anchorMarkets: AnchorMarketTuple[];
@@ -1285,7 +1281,7 @@ export function useAnchorClaimCompound({
         const minDepositAmount = (poolDepositAmount * 99n) / 100n;
         const depositHash = await writeContractAsync({
           address: targetPoolAddress,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "deposit",
           args: [poolDepositAmount, address, minDepositAmount],
         });
@@ -2513,7 +2509,7 @@ export function useAnchorClaimCompound({
           await ensureAllowance(peggedTokenAddress, poolAddress, amt);
           const depositHash = await writeContractAsync({
             address: poolAddress,
-            abi: STABILITY_POOL_ABI,
+            abi: stabilityPoolABI,
             functionName: "deposit",
             args: [amt, address, 0n],
           });
@@ -3347,7 +3343,7 @@ export function useAnchorClaimCompound({
 
             const depositHash = await writeContractAsync({
               address: poolAddress,
-              abi: STABILITY_POOL_ABI,
+              abi: stabilityPoolABI,
               functionName: "deposit",
               args: [amt, address, 0n],
             });

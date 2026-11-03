@@ -1,16 +1,13 @@
 import { useMemo } from "react";
+import { minterABI } from "@/abis/minter";
+import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { useContractReads } from "wagmi";
 import { useHarborAccount } from "@/hooks/useHarborAccount";
 import type { AnchorContractReads, AnchorMarketTuple } from "@/types/anchor";
 import type { DefinedMarket } from "@/config/markets";
 import { POLLING_INTERVALS } from "@/config/polling";
 import { rewardsABI } from "@/abis/rewards";
-import { 
-  STABILITY_POOL_ABI, 
-  MINTER_ABI,
-  STABILITY_POOL_MANAGER_ABI,
-  WRAPPED_PRICE_ORACLE_ABI,
-} from "@/abis/shared";
+import { STABILITY_POOL_MANAGER_ABI, WRAPPED_PRICE_ORACLE_ABI } from "@/abis/shared";
 
 
 /**
@@ -53,43 +50,43 @@ export function useAnchorContractReads(
       const contracts = [
         {
           address: minter,
-          abi: MINTER_ABI,
+          abi: minterABI,
           functionName: "collateralRatio" as const,
           chainId: mktChainId,
         },
         {
           address: minter,
-          abi: MINTER_ABI,
+          abi: minterABI,
           functionName: "collateralTokenBalance" as const,
           chainId: mktChainId,
         },
         {
           address: minter,
-          abi: MINTER_ABI,
+          abi: minterABI,
           functionName: "peggedTokenBalance" as const,
           chainId: mktChainId,
         },
         {
           address: minter,
-          abi: MINTER_ABI,
+          abi: minterABI,
           functionName: "peggedTokenPrice" as const,
           chainId: mktChainId,
         },
         {
           address: minter,
-          abi: MINTER_ABI,
+          abi: minterABI,
           functionName: "leveragedTokenBalance" as const,
           chainId: mktChainId,
         },
         {
           address: minter,
-          abi: MINTER_ABI,
+          abi: minterABI,
           functionName: "leveragedTokenPrice" as const,
           chainId: mktChainId,
         },
         {
           address: minter,
-          abi: MINTER_ABI,
+          abi: minterABI,
           functionName: "config" as const,
           chainId: mktChainId,
         },
@@ -123,13 +120,13 @@ export function useAnchorContractReads(
         contracts.push(
           {
             address: collateralStabilityPool,
-            abi: STABILITY_POOL_ABI as any,
+            abi: stabilityPoolABI as any,
             functionName: "totalAssets" as any,
             chainId: mktChainId,
           } as any,
           {
             address: collateralStabilityPool,
-            abi: STABILITY_POOL_ABI as any,
+            abi: stabilityPoolABI as any,
             functionName: "totalAssetSupply" as any,
             chainId: mktChainId,
           } as any,
@@ -144,7 +141,7 @@ export function useAnchorContractReads(
           } as any,
           {
             address: collateralStabilityPool,
-            abi: STABILITY_POOL_ABI as any,
+            abi: stabilityPoolABI as any,
             functionName: "assetBalanceOf" as any,
             args: address
               ? [address as `0x${string}`]
@@ -156,7 +153,7 @@ export function useAnchorContractReads(
         if (peggedTokenAddress) {
           contracts.push({
             address: collateralStabilityPool,
-            abi: STABILITY_POOL_ABI as any,
+            abi: stabilityPoolABI as any,
             functionName: "rewardData" as any,
             args: [peggedTokenAddress],
             chainId: mktChainId,
@@ -174,13 +171,13 @@ export function useAnchorContractReads(
         contracts.push(
           {
             address: sailStabilityPool,
-            abi: STABILITY_POOL_ABI as any,
+            abi: stabilityPoolABI as any,
             functionName: "totalAssets" as any,
             chainId: mktChainId,
           } as any,
           {
             address: sailStabilityPool,
-            abi: STABILITY_POOL_ABI as any,
+            abi: stabilityPoolABI as any,
             functionName: "totalAssetSupply" as any,
             chainId: mktChainId,
           } as any,
@@ -195,7 +192,7 @@ export function useAnchorContractReads(
           } as any,
           {
             address: sailStabilityPool,
-            abi: STABILITY_POOL_ABI as any,
+            abi: stabilityPoolABI as any,
             functionName: "assetBalanceOf" as any,
             args: address
               ? [address as `0x${string}`]
@@ -207,7 +204,7 @@ export function useAnchorContractReads(
         if (peggedTokenAddress) {
           contracts.push({
             address: sailStabilityPool,
-            abi: STABILITY_POOL_ABI as any,
+            abi: stabilityPoolABI as any,
             functionName: "rewardData" as any,
             args: [peggedTokenAddress],
             chainId: mktChainId,

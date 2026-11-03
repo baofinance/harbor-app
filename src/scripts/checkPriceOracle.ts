@@ -1,4 +1,5 @@
 import { createPublicClient, http } from "viem";
+import { CHAINLINK_AGGREGATOR_ABI } from "../abis/chainlink";
 import { markets } from "../config/contracts";
 
 const client = createPublicClient({
@@ -19,7 +20,7 @@ const client = createPublicClient({
   transport: http("http://127.0.0.1:8545"),
 });
 
-import { CHAINLINK_ORACLE_ABI } from "../abis/shared";
+
 
 async function checkPriceOracle() {
   const market = markets["steth-usd"];
@@ -42,7 +43,7 @@ async function checkPriceOracle() {
     // Get decimals
     const decimals = await client.readContract({
       address: oracleAddress as `0x${string}`,
-      abi: CHAINLINK_ORACLE_ABI,
+      abi: CHAINLINK_AGGREGATOR_ABI,
       functionName: "decimals",
     });
 
@@ -51,7 +52,7 @@ async function checkPriceOracle() {
     // Get latest answer
     const price = await client.readContract({
       address: oracleAddress as `0x${string}`,
-      abi: CHAINLINK_ORACLE_ABI,
+      abi: CHAINLINK_AGGREGATOR_ABI,
       functionName: "latestAnswer",
     });
 

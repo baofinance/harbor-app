@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useContractReads } from "wagmi";
-import { STABILITY_POOL_ABI } from "@/abis";
+import { stabilityPoolABI } from "@/abis";
 import { asUintPair } from "@/utils/stabilityPoolCompat";
 import {
   anchorSimpleRedeemPositionFlowParts,
@@ -69,13 +69,13 @@ export function useRedeemPositionFlow({
       .flatMap((row) => [
         {
           address: row.poolAddress as `0x${string}`,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "withdrawalRequest" as const,
           args: [account] as const,
         },
         {
           address: row.poolAddress as `0x${string}`,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "getWithdrawalRequest" as const,
           args: [account] as const,
         },

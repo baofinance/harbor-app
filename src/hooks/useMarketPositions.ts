@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
+import { minterABI } from "@/abis/minter";
+import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { useContractReads } from "./useContractReads";
-import { ERC20_ABI, STABILITY_POOL_ABI, MINTER_ABI } from "@/abis/shared";
+import { ERC20_ABI } from "@/abis/shared";
 
 export type MarketPositionBreakdown = {
   walletHa: bigint;
@@ -85,7 +87,7 @@ export function useMarketPositions(
         idxMap.set(items.length, { marketId: config.marketId, kind: "collateralPool" });
         items.push({
           address: config.collateralPoolAddress,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "assetBalanceOf",
           args: [userAddress],
         });
@@ -95,7 +97,7 @@ export function useMarketPositions(
         idxMap.set(items.length, { marketId: config.marketId, kind: "sailPool" });
         items.push({
           address: config.sailPoolAddress,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "assetBalanceOf",
           args: [userAddress],
         });
@@ -105,7 +107,7 @@ export function useMarketPositions(
         idxMap.set(items.length, { marketId: config.marketId, kind: "price" });
         items.push({
           address: config.minterAddress,
-          abi: MINTER_ABI,
+          abi: minterABI,
           functionName: "peggedTokenPrice",
         });
       }

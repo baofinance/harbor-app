@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { encodeFunctionData, formatUnits, isAddress, parseUnits, toHex } from "viem";
+import { minterABI } from "@/abis/minter";
 import { useAccount, useContractReads, useReadContract } from "wagmi";
 import SafeAppsSDK from "@safe-global/safe-apps-sdk";
 import { markets } from "@/config/markets";
@@ -13,7 +14,7 @@ import {
   isHaDepositTokenSymbol,
   isPrimaryRewardTokenSymbol,
 } from "@/utils/adminRewardTokenPrices";
-import { MINTER_ABI, WRAPPED_PRICE_ORACLE_ABI } from "@/abis/shared";
+import { WRAPPED_PRICE_ORACLE_ABI } from "@/abis/shared";
 import { useFxSAVEAPR } from "@/hooks/useFxSAVEAPR";
 import { useWstETHAPR } from "@/hooks/useWstETHAPR";
 import {
@@ -361,7 +362,7 @@ function MarketCollateralYieldPanel({
 
   const minterQuery = useReadContract({
     address: group.minterAddress ?? undefined,
-    abi: MINTER_ABI,
+    abi: minterABI,
     functionName: "collateralTokenBalance",
     query: { enabled: !!group.minterAddress },
   });

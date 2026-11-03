@@ -19,9 +19,8 @@ import {
   ADMIN_MINTER_ABI,
   MOCK_PRICE_FEED_ABI,
   STABILITY_POOL_REWARDS_ABI,
-  STABILITY_POOL_MANAGER_ABI,
 } from "@/abis/admin";
-import { ERC20_ABI } from "@/abis/shared";
+import { ERC20_ABI, STABILITY_POOL_MANAGER_ABI } from "@/abis/shared";
 import { computeHarborHarvestSplit } from "@/utils/harborHarvestSplit";
 
 // Add a helper function to safely parse numbers

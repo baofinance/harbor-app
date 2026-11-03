@@ -1,19 +1,8 @@
-// Contract addresses for mainnet deployment (production v1)
-// Updated from DeployLog/harbor_v1__*.json files
-// Legacy contracts object - kept for backward compatibility but deprecated
-// Use markets["eth-fxusd"] or markets["btc-fxusd"] instead
-//
-// NOTE: To use test2 contracts, set NEXT_PUBLIC_USE_TEST2_CONTRACTS=true
-// This file will automatically switch to test2 contracts when that env var is set
-// See contracts.test2.ts for test2 addresses
+// Production contract addresses (mainnet v1).
+// Updated from DeployLog/harbor_v1__*.json files.
+// Test, MegaETH, and the active market list are chosen in contracts.index.ts.
 
-// Import test2 config if needed
-import { markets as test2Markets, contracts as test2Contracts } from "./contracts.test2";
 import { mainnetUsdMarkets } from "./contracts.mainnetUsd";
-
-// Check if we should use test2 contracts
-// NEXT_PUBLIC_ variables are available on both server and client in Next.js
-const useTest2 = process.env.NEXT_PUBLIC_USE_TEST2_CONTRACTS === "true";
 
 // Production contracts (default)
 const productionContracts = {
@@ -29,21 +18,45 @@ const productionContracts = {
   wrappedCollateralToken: "0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39", // fxSAVE
 } as const;
 
-// Legacy CONTRACTS constant for backward compatibility (DEPRECATED - use markets config instead)
+// ETH/fxUSD address bag. Ledger filtering still reads these names.
+// Values come from productionMarkets below; this file used to copy them by hand.
+const ethFxusdAddresses = {
+  wrappedCollateralToken: "0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39",
+  collateralToken: "0x085780639CC2cACd35E474e71f4d000e2405d8f6",
+  underlyingCollateralToken: "0x085780639CC2cACd35E474e71f4d000e2405d8f6",
+  feeReceiver: "0xdC903fe5ebCE440f22578D701b95424363D20881",
+  genesis: "0xC9df4f62474Cf6cdE6c064DB29416a9F4f27EBdC",
+  leveragedToken: "0x0Cd6BB1a0cfD95e2779EDC6D17b664B481f2EB4C",
+  minter: "0xd6E2F8e57b4aFB51C6fA4cbC012e1cE6aEad989F",
+  owner: "0x9bABfC1A1952a6ed2caC1922BFfE80c0506364a2",
+  peggedToken: "0x7A53EBc85453DD006824084c4f4bE758FcF8a5B5",
+  priceOracle: "0x71437C90F1E0785dd691FD02f7bE0B90cd14c097",
+  stabilityPoolCollateral: "0x1F985CF7C10A81DE1940da581208D2855D263D72",
+  stabilityPoolLeveraged: "0x438B29EC7a1770dDbA37D792F1A6e76231Ef8E06",
+  stabilityPoolManager: "0xE39165aDE355988EFb24dA4f2403971101134CAB",
+  reservePool: "0x7A5c4ca972CE2168d5215d252946dDbd1cAd2015",
+  rebalancePoolCollateral: "0x0000000000000000000000000000000000000000",
+  rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000",
+  collateralPrice: "0x71437C90F1E0785dd691FD02f7bE0B90cd14c097",
+  genesisZap: "0x424D373141a845eB2822B2a8e5ED0f529Ece4F7a",
+  peggedTokenZap: "0xdb4E78f6F76cd9B188043448AAD95066914B3c51",
+  leveragedTokenZap: "0xdb4E78f6F76cd9B188043448AAD95066914B3c51",
+} as const;
+
 export const CONTRACTS = {
-  MINTER: "0xd6E2F8e57b4aFB51C6fA4cbC012e1cE6aEad989F",
-  PEGGED_TOKEN: "0x7A53EBc85453DD006824084c4f4bE758FcF8a5B5",
-  LEVERAGED_TOKEN: "0x0Cd6BB1a0cfD95e2779EDC6D17b664B481f2EB4C",
-  GENESIS: "0xC9df4f62474Cf6cdE6c064DB29416a9F4f27EBdC",
-  STABILITY_POOL_MANAGER: "0xE39165aDE355988EFb24dA4f2403971101134CAB",
-  STABILITY_POOL_COLLATERAL: "0x1F985CF7C10A81DE1940da581208D2855D263D72",
-  STABILITY_POOL_PEGGED: "0x438B29EC7a1770dDbA37D792F1A6e76231Ef8E06",
-  PRICE_ORACLE: "0x71437C90F1E0785dd691FD02f7bE0B90cd14c097",
-  TOKEN_DISTRIBUTOR: "0xdC903fe5ebCE440f22578D701b95424363D20881",
-  RESERVE_POOL: "0x7A5c4ca972CE2168d5215d252946dDbd1cAd2015",
-  CHAIN_ID: 1, // Mainnet
+  MINTER: ethFxusdAddresses.minter,
+  PEGGED_TOKEN: ethFxusdAddresses.peggedToken,
+  LEVERAGED_TOKEN: ethFxusdAddresses.leveragedToken,
+  GENESIS: ethFxusdAddresses.genesis,
+  STABILITY_POOL_MANAGER: ethFxusdAddresses.stabilityPoolManager,
+  STABILITY_POOL_COLLATERAL: ethFxusdAddresses.stabilityPoolCollateral,
+  STABILITY_POOL_PEGGED: ethFxusdAddresses.stabilityPoolLeveraged,
+  PRICE_ORACLE: ethFxusdAddresses.priceOracle,
+  TOKEN_DISTRIBUTOR: ethFxusdAddresses.feeReceiver,
+  RESERVE_POOL: ethFxusdAddresses.reservePool,
+  CHAIN_ID: 1,
   RPC_URL:
-    process.env.NEXT_PUBLIC_MAINNET_RPC_URL || "https://eth.llamarpc.com", // Mainnet RPC (set in env for production)
+    process.env.NEXT_PUBLIC_MAINNET_RPC_URL || "https://eth.llamarpc.com",
 } as const;
 
 export type MarketConfig = {
@@ -122,28 +135,7 @@ const productionMarkets: Markets = {
     name: "fxUSD - ETH",
     description: "ETH pegged to fxUSD collateral",
     startBlock: 24049488,
-    addresses: {
-      wrappedCollateralToken: "0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39", // fxSAVE (deposited)
-      collateralToken: "0x085780639CC2cACd35E474e71f4d000e2405d8f6", // fxUSD
-      underlyingCollateralToken: "0x085780639CC2cACd35E474e71f4d000e2405d8f6", // fxUSD (underlying)
-      feeReceiver: "0xdC903fe5ebCE440f22578D701b95424363D20881", // minterFeeReceiver
-      genesis: "0xC9df4f62474Cf6cdE6c064DB29416a9F4f27EBdC",
-      leveragedToken: "0x0Cd6BB1a0cfD95e2779EDC6D17b664B481f2EB4C", // hsFXUSD-ETH
-      minter: "0xd6E2F8e57b4aFB51C6fA4cbC012e1cE6aEad989F",
-      owner: "0x9bABfC1A1952a6ed2caC1922BFfE80c0506364a2",
-      peggedToken: "0x7A53EBc85453DD006824084c4f4bE758FcF8a5B5", // haETH
-      priceOracle: "0x71437C90F1E0785dd691FD02f7bE0B90cd14c097",
-      stabilityPoolCollateral: "0x1F985CF7C10A81DE1940da581208D2855D263D72",
-      stabilityPoolLeveraged: "0x438B29EC7a1770dDbA37D792F1A6e76231Ef8E06",
-      stabilityPoolManager: "0xE39165aDE355988EFb24dA4f2403971101134CAB",
-      reservePool: "0x7A5c4ca972CE2168d5215d252946dDbd1cAd2015",
-      rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // Not deployed yet
-      rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // Not deployed yet
-      collateralPrice: "0x71437C90F1E0785dd691FD02f7bE0B90cd14c097", // Using priceOracle
-      genesisZap: "0x424D373141a845eB2822B2a8e5ED0f529Ece4F7a", // GenesisUSDCZap_v2 for ETH/fxUSD
-      peggedTokenZap: "0xdb4E78f6F76cd9B188043448AAD95066914B3c51" as `0x${string}`, // MinterUSDCZap_v1 for ETH/fxUSD
-      leveragedTokenZap: "0xdb4E78f6F76cd9B188043448AAD95066914B3c51" as `0x${string}`, // MinterUSDCZap_v1 for ETH/fxUSD (same contract)
-    },
+    addresses: ethFxusdAddresses,
     genesis: {
       startDate: "2025-12-19T22:00:59Z", // From deployment timestamp
       endDate: "2026-01-04T20:00:00Z", // January 4th at 8pm GMT
@@ -645,24 +637,11 @@ const productionMarkets: Markets = {
   },
 };
 
-// Export markets and contracts based on environment variable
-export const markets: Markets = useTest2
-  ? test2Markets
-  : { ...productionMarkets, ...mainnetUsdMarkets };
-export const contracts = useTest2 ? test2Contracts : productionContracts;
+export const markets: Markets = { ...productionMarkets, ...mainnetUsdMarkets };
+export const contracts = productionContracts;
 
-// For backward compatibility and convenience
-// Default to ETH/fxUSD market (primary new deployment)
 export const marketConfig = markets["eth-fxusd"];
 export const contractAddresses = markets["eth-fxusd"].addresses;
-
-// Log which config is being used (only in development)
-if (process.env.NODE_ENV === "development") {
-  console.log(`[Contracts] Using ${useTest2 ? "TEST2" : "PRODUCTION"} contracts`);
-  if (useTest2) {
-    console.log(`[Contracts] Test2 markets: ${Object.keys(test2Markets).join(", ")}`);
-  }
-}
 
 // ============================================================================
 // Contract ABIs and Types

@@ -1,7 +1,7 @@
 "use client";
 
 import { useContractRead } from "wagmi";
-import { STABILITY_POOL_ABI } from "@/abis";
+import { stabilityPoolABI } from "@/abis";
 
 type PairArgs = {
   address: `0x${string}` | undefined;
@@ -30,7 +30,7 @@ export function useStabilityPoolReadPair({
   const canRead = Boolean(address) && enabled;
   const v3 = useContractRead({
     address,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: v3FunctionName as never,
     args: args as never,
     query: {
@@ -41,7 +41,7 @@ export function useStabilityPoolReadPair({
   });
   const v2 = useContractRead({
     address,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: (v2FunctionName ?? v3FunctionName) as never,
     args: args as never,
     query: {

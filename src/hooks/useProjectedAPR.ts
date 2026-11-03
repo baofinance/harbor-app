@@ -1,17 +1,13 @@
 import { useMemo } from "react";
+import { CHAINLINK_AGGREGATOR_ABI } from "@/abis/chainlink";
+import { stabilityPoolABI } from "@/abis/stabilityPool";
+import { minterABI } from "@/abis/minter";
 import { useContractReads } from "./useContractReads";
 import { useContractRead } from "./useContractRead";
 import { formatEther } from "viem";
 import { markets } from "@/config/markets";
-import { contracts, GENESIS_ABI } from "@/config/contracts";
-import {
-  MINTER_ABI,
-  STABILITY_POOL_ABI,
-  STABILITY_POOL_MANAGER_ABI,
-  WSTETH_ABI,
-  ERC20_ABI,
-  CHAINLINK_ORACLE_ABI,
-} from "@/abis/shared";
+import { contracts, GENESIS_ABI } from "@/config/contracts.index";
+import { STABILITY_POOL_MANAGER_ABI, WSTETH_ABI, ERC20_ABI } from "@/abis/shared";
 import { computeHarborHarvestSplit } from "@/utils/harborHarvestSplit";
 
 // Constants
@@ -67,12 +63,12 @@ export function useProjectedAPR(
         // Minter reads
         {
           address: minterAddress as `0x${string}`,
-          abi: MINTER_ABI,
+          abi: minterABI,
           functionName: "harvestable",
         },
         {
           address: minterAddress as `0x${string}`,
-          abi: MINTER_ABI,
+          abi: minterABI,
           functionName: "WRAPPED_COLLATERAL_TOKEN",
         },
         // Stability Pool Manager reads
@@ -89,13 +85,13 @@ export function useProjectedAPR(
         // Collateral pool reads
         {
           address: collateralPoolAddress as `0x${string}`,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "totalAssetSupply",
         },
         // Leveraged pool reads
         {
           address: leveragedPoolAddress as `0x${string}`,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "totalAssetSupply",
         },
         // Genesis status
@@ -107,12 +103,12 @@ export function useProjectedAPR(
         // Price oracle
         {
           address: priceOracleAddress as `0x${string}`,
-          abi: CHAINLINK_ORACLE_ABI,
+          abi: CHAINLINK_AGGREGATOR_ABI,
           functionName: "latestAnswer",
         },
         {
           address: priceOracleAddress as `0x${string}`,
-          abi: CHAINLINK_ORACLE_ABI,
+          abi: CHAINLINK_AGGREGATOR_ABI,
           functionName: "decimals",
         },
       ],
@@ -155,19 +151,19 @@ export function useProjectedAPR(
       contracts: [
         {
           address: collateralPoolAddress as `0x${string}`,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "rewardData",
           args: wrappedCollateralToken ? [wrappedCollateralToken] : undefined,
         },
         {
           address: leveragedPoolAddress as `0x${string}`,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "rewardData",
           args: wrappedCollateralToken ? [wrappedCollateralToken] : undefined,
         },
         {
           address: collateralPoolAddress as `0x${string}`,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "REWARD_PERIOD_LENGTH",
         },
       ],
@@ -563,13 +559,13 @@ export function useUserProjectedAPR(
       contracts: [
         {
           address: collateralPoolAddress as `0x${string}`,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "assetBalanceOf",
           args: userAddress ? [userAddress] : undefined,
         },
         {
           address: leveragedPoolAddress as `0x${string}`,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "assetBalanceOf",
           args: userAddress ? [userAddress] : undefined,
         },

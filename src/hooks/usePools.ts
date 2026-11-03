@@ -1,5 +1,5 @@
 import { pools, poolsByAddress, Pool } from "@/config/pools";
-import { markets, MarketConfig } from "@/config/contracts";
+import { markets, type MarketConfig } from "@/config/contracts.index";
 
 export const usePools = () => {
   const getAllPools = (): Pool[] => {

@@ -29,10 +29,9 @@ import {
   ERC20_ABI,
   ERC20_PERMIT_ABI,
   GENESIS_ABI,
-  STABILITY_POOL_ABI,
-  MINTER_PEGGED_ABI,
+  stabilityPoolABI,
+  minterABI,
 } from "@/abis";
-import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { ZAP_ABI, USDC_ZAP_ABI, WSTETH_ABI } from "@/abis";
 import { MINTER_ETH_ZAP_V3_ABI, MINTER_ETH_ZAP_V1_ABI } from "@/abis";
 import { MINTER_USDC_ZAP_V3_ABI } from "@/abis";
@@ -1014,7 +1013,7 @@ export function useAnchorDepositWithdrawModal({
           });
           items.push({
             address: collateralAddr,
-            abi: STABILITY_POOL_ABI,
+            abi: stabilityPoolABI,
             functionName: "assetBalanceOf",
             args: [address as `0x${string}`],
           });
@@ -1026,7 +1025,7 @@ export function useAnchorDepositWithdrawModal({
           });
           items.push({
             address: sailAddr,
-            abi: STABILITY_POOL_ABI,
+            abi: stabilityPoolABI,
             functionName: "assetBalanceOf",
             args: [address as `0x${string}`],
           });
@@ -1453,7 +1452,7 @@ export function useAnchorDepositWithdrawModal({
 
     const contracts: Array<{
       address: `0x${string}`;
-      abi: typeof MINTER_PEGGED_ABI;
+      abi: typeof minterABI;
       functionName: "mintPeggedTokenDryRun";
       args: [bigint];
       marketId: string;
@@ -1473,7 +1472,7 @@ export function useAnchorDepositWithdrawModal({
         
         contracts.push({
           address: minterAddr as `0x${string}`,
-          abi: MINTER_PEGGED_ABI,
+          abi: minterABI,
           functionName: "mintPeggedTokenDryRun" as const,
           args: [wrappedAmount] as const,
           marketId,
@@ -1563,7 +1562,7 @@ export function useAnchorDepositWithdrawModal({
 
     const contracts: Array<{
       address: `0x${string}`;
-      abi: typeof MINTER_PEGGED_ABI;
+      abi: typeof minterABI;
       functionName: "redeemPeggedTokenDryRun";
       args: [bigint];
       marketId: string;
@@ -1579,7 +1578,7 @@ export function useAnchorDepositWithdrawModal({
       ) {
         contracts.push({
           address: minterAddr as `0x${string}`,
-          abi: MINTER_PEGGED_ABI,
+          abi: minterABI,
           functionName: "redeemPeggedTokenDryRun" as const,
           args: [parseEther("1.0")] as const,
           marketId,
@@ -2256,7 +2255,7 @@ export function useAnchorDepositWithdrawModal({
   // ---------------------------------------------------------------------------
   const { data: collateralPoolTotalSupply } = useContractRead({
     address: collateralPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "totalAssetSupply",
     query: {
       enabled: !!collateralPoolAddress && isActive && activeTab === "withdraw",
@@ -2267,7 +2266,7 @@ export function useAnchorDepositWithdrawModal({
 
   const { data: collateralPoolMinTotalSupply } = useContractRead({
     address: collateralPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "MIN_TOTAL_ASSET_SUPPLY",
     query: {
       enabled: !!collateralPoolAddress && isActive && activeTab === "withdraw",
@@ -2278,7 +2277,7 @@ export function useAnchorDepositWithdrawModal({
 
   const { data: sailPoolTotalSupply } = useContractRead({
     address: sailPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "totalAssetSupply",
     query: {
       enabled: !!sailPoolAddress && isActive && activeTab === "withdraw",
@@ -2289,7 +2288,7 @@ export function useAnchorDepositWithdrawModal({
 
   const { data: sailPoolMinTotalSupply } = useContractRead({
     address: sailPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "MIN_TOTAL_ASSET_SUPPLY",
     query: {
       enabled: !!sailPoolAddress && isActive && activeTab === "withdraw",
@@ -2301,7 +2300,7 @@ export function useAnchorDepositWithdrawModal({
   // Collateral pool balance - use Anvil hook when on local chain
   const anvilCollateralPoolResult = useContractRead({
     address: collateralPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "assetBalanceOf",
     args: address ? [address] : undefined,
     enabled:
@@ -2315,7 +2314,7 @@ export function useAnchorDepositWithdrawModal({
 
   const wagmiCollateralPoolResult = useContractRead({
     address: collateralPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "assetBalanceOf",
     args: address ? [address] : undefined,
     query: {
@@ -2338,7 +2337,7 @@ export function useAnchorDepositWithdrawModal({
   // Sail pool balance - use Anvil hook when on local chain
   const anvilSailPoolResult = useContractRead({
     address: sailPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "assetBalanceOf",
     args: address ? [address] : undefined,
     enabled:
@@ -2352,7 +2351,7 @@ export function useAnchorDepositWithdrawModal({
 
   const wagmiSailPoolResult = useContractRead({
     address: sailPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "assetBalanceOf",
     args: address ? [address] : undefined,
     query: {
@@ -2375,7 +2374,7 @@ export function useAnchorDepositWithdrawModal({
   // Early withdrawal fees - read from both pools
   const anvilCollateralPoolFeeResult = useContractRead({
     address: collateralPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "getEarlyWithdrawalFee",
     enabled: !!collateralPoolAddress && isActive && useAnvilForPeggedBalance,
     refetchInterval: 30000,
@@ -2383,7 +2382,7 @@ export function useAnchorDepositWithdrawModal({
 
   const wagmiCollateralPoolFeeResult = useContractRead({
     address: collateralPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "getEarlyWithdrawalFee",
     query: {
       enabled: !!collateralPoolAddress && isActive && !useAnvilForPeggedBalance,
@@ -2394,7 +2393,7 @@ export function useAnchorDepositWithdrawModal({
 
   const anvilCollateralPoolFeeRatioResult = useContractRead({
     address: collateralPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "earlyWithdrawalFeeRatio",
     enabled: !!collateralPoolAddress && isActive && useAnvilForPeggedBalance,
     refetchInterval: 30000,
@@ -2402,7 +2401,7 @@ export function useAnchorDepositWithdrawModal({
 
   const wagmiCollateralPoolFeeRatioResult = useContractRead({
     address: collateralPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "earlyWithdrawalFeeRatio",
     query: {
       enabled: !!collateralPoolAddress && isActive && !useAnvilForPeggedBalance,
@@ -2422,7 +2421,7 @@ export function useAnchorDepositWithdrawModal({
 
   const anvilSailPoolFeeResult = useContractRead({
     address: sailPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "getEarlyWithdrawalFee",
     enabled: !!sailPoolAddress && isActive && useAnvilForPeggedBalance,
     refetchInterval: 30000,
@@ -2430,7 +2429,7 @@ export function useAnchorDepositWithdrawModal({
 
   const wagmiSailPoolFeeResult = useContractRead({
     address: sailPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "getEarlyWithdrawalFee",
     query: {
       enabled: !!sailPoolAddress && isActive && !useAnvilForPeggedBalance,
@@ -2441,7 +2440,7 @@ export function useAnchorDepositWithdrawModal({
 
   const anvilSailPoolFeeRatioResult = useContractRead({
     address: sailPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "earlyWithdrawalFeeRatio",
     enabled: !!sailPoolAddress && isActive && useAnvilForPeggedBalance,
     refetchInterval: 30000,
@@ -2449,7 +2448,7 @@ export function useAnchorDepositWithdrawModal({
 
   const wagmiSailPoolFeeRatioResult = useContractRead({
     address: sailPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "earlyWithdrawalFeeRatio",
     query: {
       enabled: !!sailPoolAddress && isActive && !useAnvilForPeggedBalance,
@@ -2470,7 +2469,7 @@ export function useAnchorDepositWithdrawModal({
   // Read withdrawal window data from both pools
   const anvilCollateralWindowResult = useContractRead({
     address: collateralPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "getWithdrawalWindow",
     enabled: !!collateralPoolAddress && isActive && useAnvilForPeggedBalance,
     refetchInterval: 30000,
@@ -2478,7 +2477,7 @@ export function useAnchorDepositWithdrawModal({
 
   const wagmiCollateralWindowResult = useContractRead({
     address: collateralPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "getWithdrawalWindow",
     query: {
       enabled: !!collateralPoolAddress && isActive && !useAnvilForPeggedBalance,
@@ -2500,7 +2499,7 @@ export function useAnchorDepositWithdrawModal({
 
   const anvilSailWindowResult = useContractRead({
     address: sailPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "getWithdrawalWindow",
     enabled: !!sailPoolAddress && isActive && useAnvilForPeggedBalance,
     refetchInterval: 30000,
@@ -2508,7 +2507,7 @@ export function useAnchorDepositWithdrawModal({
 
   const wagmiSailWindowResult = useContractRead({
     address: sailPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "getWithdrawalWindow",
     query: {
       enabled: !!sailPoolAddress && isActive && !useAnvilForPeggedBalance,
@@ -2531,7 +2530,7 @@ export function useAnchorDepositWithdrawModal({
   // Read withdrawal request data for both pools to check if fee-free window is open
   const anvilCollateralRequestResult = useContractRead({
     address: collateralPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "getWithdrawalRequest",
     args: address ? [address] : undefined,
     enabled: !!collateralPoolAddress && !!address && isActive && useAnvilForPeggedBalance && activeTab === "withdraw",
@@ -2540,7 +2539,7 @@ export function useAnchorDepositWithdrawModal({
 
   const wagmiCollateralRequestResult = useContractRead({
     address: collateralPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "getWithdrawalRequest",
     args: address ? [address] : undefined,
     query: {
@@ -2565,7 +2564,7 @@ export function useAnchorDepositWithdrawModal({
 
   const anvilSailRequestResult = useContractRead({
     address: sailPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "getWithdrawalRequest",
     args: address ? [address] : undefined,
     enabled: !!sailPoolAddress && !!address && isActive && useAnvilForPeggedBalance && activeTab === "withdraw",
@@ -2574,7 +2573,7 @@ export function useAnchorDepositWithdrawModal({
 
   const wagmiSailRequestResult = useContractRead({
     address: sailPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "getWithdrawalRequest",
     args: address ? [address] : undefined,
     query: {
@@ -3079,7 +3078,7 @@ export function useAnchorDepositWithdrawModal({
   // Get pegged token price to calculate USD value
   const { data: peggedTokenPrice } = useContractRead({
     address: minterAddressForPrice as `0x${string}`,
-    abi: MINTER_PEGGED_ABI,
+    abi: minterABI,
     functionName: "peggedTokenPrice",
     query: {
       enabled:
@@ -3113,7 +3112,7 @@ export function useAnchorDepositWithdrawModal({
         // TVL
         contracts.push({
           address: pool.address,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "totalAssetSupply",
         });
         // Reward tokens
@@ -3243,7 +3242,7 @@ export function useAnchorDepositWithdrawModal({
     useContractReads({
     contracts: rewardDataMeta.map((m) => ({
       address: m.poolAddress,
-      abi: STABILITY_POOL_ABI,
+      abi: stabilityPoolABI,
       functionName: "rewardData",
       args: [m.tokenAddress],
     })),
@@ -3498,12 +3497,12 @@ export function useAnchorDepositWithdrawModal({
         ? [
             {
               address: stabilityPoolAddress as `0x${string}`,
-              abi: STABILITY_POOL_ABI,
+              abi: stabilityPoolABI,
               functionName: "totalAssetSupply",
             },
             {
               address: stabilityPoolAddress as `0x${string}`,
-              abi: STABILITY_POOL_ABI,
+              abi: stabilityPoolABI,
               functionName: "rewardData",
               args: [wrappedForAdvancedApr],
             },
@@ -3774,7 +3773,7 @@ export function useAnchorDepositWithdrawModal({
   // Calculate expected output based on active tab - use Anvil hook when on Anvil
   const { data: anvilExpectedMintOutput } = useContractRead({
     address: minterAddress as `0x${string}`,
-    abi: MINTER_PEGGED_ABI,
+    abi: minterABI,
     functionName: "mintPeggedTokenDryRun",
     args: accurateDepositAmountInWrappedCollateral ? [accurateDepositAmountInWrappedCollateral] : undefined,
     enabled:
@@ -3790,7 +3789,7 @@ export function useAnchorDepositWithdrawModal({
 
   const { data: regularExpectedMintOutput } = useContractRead({
     address: minterAddress as `0x${string}`,
-    abi: MINTER_PEGGED_ABI,
+    abi: minterABI,
     functionName: "mintPeggedTokenDryRun",
     args: accurateDepositAmountInWrappedCollateral ? [accurateDepositAmountInWrappedCollateral] : undefined,
     query: {
@@ -3888,7 +3887,7 @@ export function useAnchorDepositWithdrawModal({
     isFetching: swapDryRunFetching,
   } = useContractRead({
     address: minterAddress as `0x${string}`,
-    abi: MINTER_PEGGED_ABI,
+    abi: minterABI,
     functionName: "mintPeggedTokenDryRun",
     args: swappedAmountForDryRun ? [swappedAmountForDryRun] : undefined,
     query: {
@@ -4069,7 +4068,7 @@ export function useAnchorDepositWithdrawModal({
       : isValidMinterAddress
       ? (minterAddress as `0x${string}`)
       : undefined,
-    abi: MINTER_PEGGED_ABI,
+    abi: minterABI,
     functionName: "calculateRedeemPeggedTokenOutput",
     args: redeemInputAmount ? [redeemInputAmount] : undefined,
     query: {
@@ -5961,7 +5960,7 @@ export function useAnchorDepositWithdrawModal({
           userAddress,
           balanceBeforeMint,
           erc20Abi: ERC20_ABI,
-          stabilityPoolAbi: STABILITY_POOL_ABI,
+          stabilityPoolAbi: stabilityPoolABI,
           onApprovingPegged: () => setStep("approvingPegged"),
           onDepositing: () => setStep("depositing"),
           onApproveTx: (hash) =>
@@ -6031,7 +6030,7 @@ export function useAnchorDepositWithdrawModal({
         try {
           const poolAssetToken = (await directDepositClient?.readContract({
             address: targetPoolAddress,
-            abi: STABILITY_POOL_ABI,
+            abi: stabilityPoolABI,
             functionName: "ASSET_TOKEN",
           })) as `0x${string}` | undefined;
 
@@ -6207,7 +6206,7 @@ export function useAnchorDepositWithdrawModal({
             });
             await directDepositClient?.simulateContract({
               address: targetPoolAddress,
-              abi: STABILITY_POOL_ABI,
+              abi: stabilityPoolABI,
               functionName: "deposit",
               args: [amountBigInt, address as `0x${string}`, 0n],
               account: address as `0x${string}`,
@@ -6266,7 +6265,7 @@ export function useAnchorDepositWithdrawModal({
 
           const poolDepositHash = await writeContractAsync({
             address: targetPoolAddress,
-            abi: STABILITY_POOL_ABI,
+            abi: stabilityPoolABI,
             functionName: "deposit",
             args: [amountBigInt, address as `0x${string}`, 0n],
           });
@@ -6517,7 +6516,7 @@ export function useAnchorDepositWithdrawModal({
                     // Read dry run synchronously with actual wstETH amount
                     const dryRunResult = await publicClient.readContract({
                       address: marketForDryRun.addresses.minter as `0x${string}`,
-                      abi: MINTER_PEGGED_ABI,
+                      abi: minterABI,
                       functionName: "mintPeggedTokenDryRun",
                       args: [wstEthAmount as bigint],
             });
@@ -6540,7 +6539,7 @@ export function useAnchorDepositWithdrawModal({
                       const wstEthAmount = (swappedAmount * 10n ** 18n) / wrappedRate;
                       const dryRunResult = await publicClient.readContract({
                         address: marketForDryRun.addresses.minter as `0x${string}`,
-                        abi: MINTER_PEGGED_ABI,
+                        abi: minterABI,
                         functionName: "mintPeggedTokenDryRun",
                         args: [wstEthAmount],
                       });
@@ -8353,7 +8352,7 @@ export function useAnchorDepositWithdrawModal({
           });
           mintHash = await writeContractAsync({
             address: minterAddress as `0x${string}`,
-            abi: MINTER_PEGGED_ABI,
+            abi: minterABI,
             functionName: "mintPeggedToken",
             args: [amountBigInt, userAddress, minPeggedOut],
           });
@@ -8376,7 +8375,7 @@ export function useAnchorDepositWithdrawModal({
 
           mintHash = await writeContractAsync({
             address: minterAddress as `0x${string}`,
-            abi: MINTER_PEGGED_ABI,
+            abi: minterABI,
             functionName: "mintPeggedToken",
             args: [amountBigInt, address as `0x${string}`, minPeggedOut],
           });
@@ -8756,7 +8755,7 @@ export function useAnchorDepositWithdrawModal({
             try {
               const poolAssetToken = (await readClient?.readContract({
                 address: stabilityPoolAddress,
-                abi: STABILITY_POOL_ABI,
+                abi: stabilityPoolABI,
                 functionName: "ASSET_TOKEN",
               })) as `0x${string}` | undefined;
 
@@ -8796,7 +8795,7 @@ export function useAnchorDepositWithdrawModal({
             });
             await readClient?.simulateContract({
               address: stabilityPoolAddress,
-              abi: STABILITY_POOL_ABI,
+              abi: stabilityPoolABI,
               functionName: "deposit",
               args: [depositAmount, address as `0x${string}`, 0n],
               account: address as `0x${string}`,
@@ -8862,7 +8861,7 @@ export function useAnchorDepositWithdrawModal({
 
           const poolDepositHash = await writeContractAsync({
             address: stabilityPoolAddress,
-            abi: STABILITY_POOL_ABI,
+            abi: stabilityPoolABI,
             functionName: "deposit",
             args: [depositAmount, address as `0x${string}`, 0n],
             account: address as `0x${string}`,
@@ -9030,7 +9029,7 @@ export function useAnchorDepositWithdrawModal({
 
       const depositHash = await writeContractAsync({
         address: stabilityPoolAddress,
-        abi: STABILITY_POOL_ABI,
+        abi: stabilityPoolABI,
         functionName: "deposit",
         args: [amountBigInt, address as `0x${string}`, 0n],
         account: address as `0x${string}`,
@@ -9444,7 +9443,7 @@ export function useAnchorDepositWithdrawModal({
             );
             const requestHash = await writeContractAsync({
               address: collateralPoolAddress as `0x${string}`,
-              abi: STABILITY_POOL_ABI,
+              abi: stabilityPoolABI,
               functionName: "requestWithdrawal",
               args: [],
             });
@@ -9467,7 +9466,7 @@ export function useAnchorDepositWithdrawModal({
             );
             const collateralWithdrawHash = await writeContractAsync({
               address: collateralPoolAddress as `0x${string}`,
-              abi: STABILITY_POOL_ABI,
+              abi: stabilityPoolABI,
               functionName: "withdraw",
               args: [
                 withdrawFromCollateral,
@@ -9517,7 +9516,7 @@ export function useAnchorDepositWithdrawModal({
             );
             const requestHash = await writeContractAsync({
               address: sailPoolAddress as `0x${string}`,
-              abi: STABILITY_POOL_ABI,
+              abi: stabilityPoolABI,
               functionName: "requestWithdrawal",
               args: [],
             });
@@ -9534,7 +9533,7 @@ export function useAnchorDepositWithdrawModal({
             const sailQuote = quotePoolWithdraw("sail", withdrawFromSail);
             const sailWithdrawHash = await writeContractAsync({
               address: sailPoolAddress as `0x${string}`,
-              abi: STABILITY_POOL_ABI,
+              abi: stabilityPoolABI,
               functionName: "withdraw",
               args: [
                 withdrawFromSail,
@@ -9734,7 +9733,7 @@ export function useAnchorDepositWithdrawModal({
         try {
           const freshDryRunResult = (await client.readContract({
             address: targetRedeemMinterAddress as `0x${string}`,
-            abi: MINTER_PEGGED_ABI,
+            abi: minterABI,
             functionName: "redeemPeggedTokenDryRun",
               args: [redeemAmount],
             })) as [bigint, bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
@@ -9749,7 +9748,7 @@ export function useAnchorDepositWithdrawModal({
         try {
           redeemHash = await writeContractAsync({
             address: targetRedeemMinterAddress as `0x${string}`,
-            abi: MINTER_PEGGED_ABI,
+            abi: minterABI,
             functionName: "redeemPeggedToken",
               args: [redeemAmount, address as `0x${string}`, minCollateralOut],
           });
@@ -9760,7 +9759,7 @@ export function useAnchorDepositWithdrawModal({
           );
           redeemHash = await writeContractAsync({
             address: targetRedeemMinterAddress as `0x${string}`,
-            abi: MINTER_PEGGED_ABI,
+            abi: minterABI,
             functionName: "redeemPeggedToken",
               args: [redeemAmount, address as `0x${string}`, 0n],
           });
@@ -10041,7 +10040,7 @@ export function useAnchorDepositWithdrawModal({
       try {
         redeemHash = await writeContractAsync({
           address: targetMinterAddress as `0x${string}`,
-          abi: MINTER_PEGGED_ABI,
+          abi: minterABI,
           functionName: "redeemPeggedToken",
           args: [redeemAmount, address as `0x${string}`, minCollateralOut],
         });
@@ -10056,7 +10055,7 @@ export function useAnchorDepositWithdrawModal({
           }
           redeemHash = await writeContractAsync({
             address: targetMinterAddress as `0x${string}`,
-            abi: MINTER_PEGGED_ABI,
+            abi: minterABI,
             functionName: "redeemPeggedToken",
             args: [redeemAmount, address as `0x${string}`, 0n],
           });
@@ -11141,7 +11140,7 @@ export function useAnchorDepositWithdrawModal({
 
   const { data: previewDepositShares, isError: previewDepositError } = useContractRead({
     address: stabilityPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "previewDeposit",
     args: poolSharePreviewAmount ? [poolSharePreviewAmount] : undefined,
     query: {
@@ -11157,7 +11156,7 @@ export function useAnchorDepositWithdrawModal({
 
   const { data: poolShareSymbol } = useContractRead({
     address: stabilityPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "symbol",
     query: {
       enabled: !!stabilityPoolAddress && isActive && activeTab === "deposit" && !mintOnly,
@@ -11167,7 +11166,7 @@ export function useAnchorDepositWithdrawModal({
 
   const { data: poolTotalSupply } = useContractRead({
     address: stabilityPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "totalAssetSupply",
     query: {
       enabled: !!stabilityPoolAddress && isActive && activeTab === "deposit" && !mintOnly,
@@ -11177,7 +11176,7 @@ export function useAnchorDepositWithdrawModal({
 
   const { data: poolSupplyFloor } = useContractRead({
     address: stabilityPoolAddress,
-    abi: STABILITY_POOL_ABI,
+    abi: stabilityPoolABI,
     functionName: "MIN_TOTAL_ASSET_SUPPLY",
     query: {
       enabled: !!stabilityPoolAddress && isActive && activeTab === "deposit" && !mintOnly,

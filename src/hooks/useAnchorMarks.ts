@@ -1,15 +1,12 @@
 "use client";
 
 import { useAccount } from "wagmi";
+import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { useContractReads } from "./useContractReads";
 import { markets } from "@/config/markets";
 import { useMemo } from "react";
 
-import {
-  ERC20_ABI,
-  STABILITY_POOL_ABI,
-  WRAPPED_PRICE_ORACLE_ABI,
-} from "@/abis/shared";
+import { ERC20_ABI, WRAPPED_PRICE_ORACLE_ABI } from "@/abis/shared";
 
 export interface AnchorMarksData {
   // ha token holdings
@@ -77,7 +74,7 @@ export function useAnchorMarks() {
       if (config.stabilityPoolCollateral) {
         reads.push({
           address: config.stabilityPoolCollateral,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "assetBalanceOf",
           args: [address],
         });
@@ -87,7 +84,7 @@ export function useAnchorMarks() {
       if (config.stabilityPoolLeveraged) {
         reads.push({
           address: config.stabilityPoolLeveraged,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "assetBalanceOf",
           args: [address],
         });

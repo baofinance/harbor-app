@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { parseEther } from "viem";
 import { useContractRead } from "wagmi";
-import { MINTER_PEGGED_ABI } from "@/abis";
+import { minterABI } from "@/abis";
 import type { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
 import {
   parseMintDryRunResult,
@@ -151,7 +151,7 @@ export function useMintDryRunAndValidation({
     isFetching: anvilDryRunFetching,
   } = useContractRead({
     address: feeMinterAddress as `0x${string}`,
-    abi: MINTER_PEGGED_ABI,
+    abi: minterABI,
     functionName: "mintPeggedTokenDryRun",
     args: amountForFeeDryRun ? [amountForFeeDryRun] : undefined,
     enabled: shouldUseAnvilHook && dryRunEnabled && !!amountForFeeDryRun,
@@ -164,7 +164,7 @@ export function useMintDryRunAndValidation({
     isFetching: regularDryRunFetching,
   } = useContractRead({
     address: feeMinterAddress as `0x${string}`,
-    abi: MINTER_PEGGED_ABI,
+    abi: minterABI,
     functionName: "mintPeggedTokenDryRun",
     args: amountForFeeDryRun ? [amountForFeeDryRun] : undefined,
     query: {
@@ -274,8 +274,8 @@ export function useMintDryRunAndValidation({
       if (obj.incentiveRatio !== undefined) {
         dryRunResult = [
           BigInt(obj.incentiveRatio || 0),
-          BigInt(obj.fee || 0),
-          BigInt(obj.discount || 0),
+          BigInt(obj.wrappedFee ?? obj.fee ?? 0),
+          BigInt(obj.wrappedCollateralTaken ?? obj.discount ?? 0),
           BigInt(obj.peggedMinted || 0),
           BigInt(obj.price || 0),
           BigInt(obj.rate || 0),

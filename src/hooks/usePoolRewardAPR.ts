@@ -1,7 +1,8 @@
 import { useAccount, usePublicClient } from "wagmi";
+import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { useQuery } from "@tanstack/react-query";
 import { formatEther } from "viem";
-import { STABILITY_POOL_ABI, ERC20_ABI } from "@/abis/shared";
+import { ERC20_ABI } from "@/abis/shared";
 
 interface UsePoolRewardAPRParams {
   poolAddress: `0x${string}` | undefined;
@@ -58,7 +59,7 @@ export function usePoolRewardAPR({
         // Get all active reward tokens
         const rewardTokenAddresses = (await client.readContract({
           address: poolAddress,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "activeRewardTokens",
           args: [],
         })) as `0x${string}`[];
@@ -75,7 +76,7 @@ export function usePoolRewardAPR({
               const [lastUpdate, finishAt, rate, queued] =
                 (await client.readContract({
                   address: poolAddress,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
                   functionName: "rewardData",
                   args: [tokenAddress],
                 })) as [bigint, bigint, bigint, bigint];

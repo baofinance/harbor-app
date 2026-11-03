@@ -1,11 +1,9 @@
 import { useCallback, useRef } from "react";
+import { stabilityPoolABI } from "@/abis/stabilityPool";
 import type { AnchorContractReads, AnchorMarketTuple } from "@/types/anchor";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { rewardsABI } from "@/abis/rewards";
-import {
-  STABILITY_POOL_ABI,
-  WRAPPED_PRICE_ORACLE_ABI,
-} from "@/abis/shared";
+import { WRAPPED_PRICE_ORACLE_ABI } from "@/abis/shared";
 import { minterABI as fullMinterABI } from "@/abis/minter";
 import { TransactionStep, FeeInfo } from "@/components/CompoundConfirmationModal";
 import { PoolOption } from "@/components/CompoundPoolSelectionModal";
@@ -185,7 +183,7 @@ export function useAnchorTransactions({
 
         const tx = await writeContractAsync({
           address: poolAddress,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: fn,
           args,
         });

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { flushSync } from "react-dom";
+import { minterABI } from "@/abis/minter";
 import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
 import {
  useAccount,
@@ -14,7 +15,7 @@ import {
  useChainId,
 } from "wagmi";
 import { BaseError, ContractFunctionRevertedError } from "viem";
-import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
+import { ERC20_ABI } from "@/abis/shared";
 import { ERC20_PERMIT_ABI } from "@/abis/permit";
 import { WSTETH_ABI } from "@/abis";
 import { MINTER_ETH_ZAP_V3_ABI, MINTER_ETH_ZAP_V1_ABI } from "@/abis";
@@ -618,7 +619,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
 
  const { data: mintDryRunResult, error: mintDryRunErr } = useContractRead({
  address: minterAddress,
- abi: MINTER_ABI,
+ abi: minterABI,
  functionName:"mintLeveragedTokenDryRun",
  args: amountForDryRun ? [amountForDryRun] : undefined,
  chainId: marketChainId,
@@ -637,7 +638,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  const { data: redeemDryRunResult, error: redeemDryRunErr } =
  useContractRead({
  address: minterAddress,
- abi: MINTER_ABI,
+ abi: minterABI,
  functionName:"redeemLeveragedTokenDryRun",
  args: parsedAmount ? [parsedAmount] : undefined,
  chainId: marketChainId,
@@ -1593,7 +1594,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
      }
      mintHash = await writeContractAsync({
        address: minterAddress,
-       abi: MINTER_ABI,
+       abi: minterABI,
        functionName:"mintLeveragedToken",
        args: [parsedAmount, address, minOutput],
        chainId: marketChainId,
@@ -1829,7 +1830,7 @@ if (needsApproval) {
 
 const redeemHash = await writeContractAsync({
   address: minterAddress,
-  abi: MINTER_ABI,
+  abi: minterABI,
   functionName: "redeemLeveragedToken",
   args: [parsedAmount, address, minOutput],
   chainId: marketChainId,

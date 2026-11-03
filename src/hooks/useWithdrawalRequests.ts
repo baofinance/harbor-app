@@ -1,7 +1,8 @@
 import { usePublicClient } from "wagmi";
+import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { useHarborAccount } from "@/hooks/useHarborAccount";
 import { useQuery } from "@tanstack/react-query";
-import { STABILITY_POOL_ABI } from "@/abis/shared";
+
 import { redactForLog } from "@/utils/redactUrl";
 
 export type WithdrawalStatus = "waiting" | "window" | "expired";
@@ -41,7 +42,7 @@ export function useWithdrawalRequests(poolAddresses: `0x${string}`[]) {
           try {
             const request = (await client.readContract({
               address: poolAddress,
-              abi: STABILITY_POOL_ABI,
+              abi: stabilityPoolABI,
               functionName: "withdrawalRequest",
               args: [address],
             })) as [bigint, bigint];
@@ -50,7 +51,7 @@ export function useWithdrawalRequests(poolAddresses: `0x${string}`[]) {
           } catch {
             const request = (await client.readContract({
               address: poolAddress,
-              abi: STABILITY_POOL_ABI,
+              abi: stabilityPoolABI,
               functionName: "getWithdrawalRequest",
               args: [address],
             })) as [bigint, bigint];
@@ -68,14 +69,14 @@ export function useWithdrawalRequests(poolAddresses: `0x${string}`[]) {
           try {
             earlyWithdrawFee = (await client.readContract({
               address: poolAddress,
-              abi: STABILITY_POOL_ABI,
+              abi: stabilityPoolABI,
               functionName: "earlyWithdrawalFeeRatio",
             })) as bigint;
           } catch {
             try {
               earlyWithdrawFee = (await client.readContract({
                 address: poolAddress,
-                abi: STABILITY_POOL_ABI,
+                abi: stabilityPoolABI,
                 functionName: "getEarlyWithdrawalFee",
               })) as bigint;
             } catch {

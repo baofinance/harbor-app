@@ -1,4 +1,4 @@
-import { markets } from "./contracts";
+import { markets } from "./contracts.index";
 import { arbitrum, mainnet } from "viem/chains";
 
 // TODO: URGENT - Update steamedUSD and BTC icons once final token assets are available

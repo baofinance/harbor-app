@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
+import { CHAINLINK_AGGREGATOR_ABI } from "@/abis/chainlink";
 import { useContractRead } from "wagmi";
 import { parseUnits } from "viem";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { CHAINLINK_FEEDS } from "@/config/chainlink";
-import { CHAINLINK_ORACLE_ABI } from "@/abis/shared";
+
 
 /**
  * Central hook for peg target USD prices (ETH, BTC, EUR, gold, silver).
@@ -20,7 +21,7 @@ export function usePegTargetPrices() {
 
   const { data: chainlinkEthData } = useContractRead({
     address: CHAINLINK_FEEDS.ETH_USD,
-    abi: CHAINLINK_ORACLE_ABI,
+    abi: CHAINLINK_AGGREGATOR_ABI,
     functionName: "latestAnswer",
     chainId: 1,
     query: { staleTime: 60_000, gcTime: 300_000 },
@@ -28,7 +29,7 @@ export function usePegTargetPrices() {
 
   const { data: chainlinkBtcData } = useContractRead({
     address: CHAINLINK_FEEDS.BTC_USD,
-    abi: CHAINLINK_ORACLE_ABI,
+    abi: CHAINLINK_AGGREGATOR_ABI,
     functionName: "latestAnswer",
     chainId: 1,
     query: { staleTime: 60_000, gcTime: 300_000 },
@@ -36,7 +37,7 @@ export function usePegTargetPrices() {
 
   const { data: chainlinkEurData } = useContractRead({
     address: CHAINLINK_FEEDS.EUR_USD,
-    abi: CHAINLINK_ORACLE_ABI,
+    abi: CHAINLINK_AGGREGATOR_ABI,
     functionName: "latestAnswer",
     chainId: 1,
     query: { staleTime: 60_000, gcTime: 300_000 },
@@ -44,7 +45,7 @@ export function usePegTargetPrices() {
 
   const { data: chainlinkGoldData } = useContractRead({
     address: CHAINLINK_FEEDS.XAU_USD,
-    abi: CHAINLINK_ORACLE_ABI,
+    abi: CHAINLINK_AGGREGATOR_ABI,
     functionName: "latestAnswer",
     chainId: 1,
     query: { staleTime: 60_000, gcTime: 300_000 },
@@ -52,7 +53,7 @@ export function usePegTargetPrices() {
 
   const { data: chainlinkSilverData } = useContractRead({
     address: CHAINLINK_FEEDS.XAG_USD,
-    abi: CHAINLINK_ORACLE_ABI,
+    abi: CHAINLINK_AGGREGATOR_ABI,
     functionName: "latestAnswer",
     chainId: 1,
     query: { staleTime: 60_000, gcTime: 300_000 },

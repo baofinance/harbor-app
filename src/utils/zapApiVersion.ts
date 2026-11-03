@@ -1,5 +1,7 @@
+import type { ZapApiVersion } from "@/config/markets";
+
 /** Zap contract API generation deployed for a market. */
-export type ZapApiVersion = "legacy" | "v1";
+export type { ZapApiVersion };
 
 export function marketUsesZapV1(
   market: { zapApiVersion?: ZapApiVersion } | null | undefined

@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useContractRead } from "wagmi";
-import { MINTER_PEGGED_ABI } from "@/abis";
+import { minterABI } from "@/abis";
 import type { AnchorModalMarketEntry } from "./modalHookTypes";
 import type { AnchorDepositWithdrawTab } from "./types";
 
@@ -46,7 +46,7 @@ export function useStabilityPoolCollateralRatio({
   // Fetch collateral ratio for the stability pool's market (only when pool is selected)
   const { data: collateralRatioData } = useContractRead({
     address: stabilityPoolMinterAddress as `0x${string}`,
-    abi: MINTER_PEGGED_ABI,
+    abi: minterABI,
     functionName: "collateralRatio",
     query: {
       enabled:
@@ -63,7 +63,7 @@ export function useStabilityPoolCollateralRatio({
   // Fetch config to get minimum collateral ratio for the stability pool's market
   const { data: minterConfigData } = useContractRead({
     address: stabilityPoolMinterAddress as `0x${string}`,
-    abi: MINTER_PEGGED_ABI,
+    abi: minterABI,
     functionName: "config",
     query: {
       enabled:

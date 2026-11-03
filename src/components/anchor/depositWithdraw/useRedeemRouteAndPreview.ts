@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { formatEther, parseEther } from "viem";
 import { useContractRead, useContractReads } from "wagmi";
-import { ERC20_ABI, MINTER_PEGGED_ABI } from "@/abis";
+import { ERC20_ABI, minterABI } from "@/abis";
 import type {
   AnchorModalFlowPage,
   AnchorModalMarketEntry,
@@ -245,7 +245,7 @@ export function useRedeemRouteAndPreview({
   const { data: anvilRedeemDryRunData, error: anvilRedeemDryRunError } =
     useContractRead({
       address: redeemDryRunAddress,
-      abi: MINTER_PEGGED_ABI,
+      abi: minterABI,
       functionName: "redeemPeggedTokenDryRun",
       args: redeemInputAmount && redeemInputAmount > 0n ? [redeemInputAmount] : undefined,
       enabled: shouldUseAnvilHook && redeemDryRunEnabled && !!redeemInputAmount && redeemInputAmount > 0n,
@@ -254,7 +254,7 @@ export function useRedeemRouteAndPreview({
   const { data: regularRedeemDryRunData, error: regularRedeemDryRunError } =
     useContractRead({
       address: redeemDryRunAddress,
-      abi: MINTER_PEGGED_ABI,
+      abi: minterABI,
       functionName: "redeemPeggedTokenDryRun",
       args: redeemInputAmount && redeemInputAmount > 0n ? [redeemInputAmount] : undefined,
       query: {
@@ -343,7 +343,7 @@ export function useRedeemRouteAndPreview({
     useMemo(() => {
       const contracts: Array<{
         address: `0x${string}`;
-        abi: typeof MINTER_PEGGED_ABI;
+        abi: typeof minterABI;
         functionName: "peggedTokenBalance" | "redeemPeggedTokenDryRun";
         args?: readonly [bigint];
       }> = [];
@@ -377,13 +377,13 @@ export function useRedeemRouteAndPreview({
         indexMap.set(contracts.length, { marketId, kind: "supply" });
         contracts.push({
           address: addr,
-          abi: MINTER_PEGGED_ABI,
+          abi: minterABI,
           functionName: "peggedTokenBalance",
         });
         indexMap.set(contracts.length, { marketId, kind: "dryRun" });
         contracts.push({
           address: addr,
-          abi: MINTER_PEGGED_ABI,
+          abi: minterABI,
           functionName: "redeemPeggedTokenDryRun",
           args: [redeemInputAmount],
         });
