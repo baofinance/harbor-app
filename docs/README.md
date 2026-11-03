@@ -9,6 +9,7 @@ Technical and operational notes for this repo. **Route-specific** write-ups live
 | [`INDEX_PAGE_PATTERN.md`](INDEX_PAGE_PATTERN.md) | Index pages (Genesis, Sail, Anchor): UI−/UI+, shared components, port checklist |
 | [`INDEX_PAGE_REFACTOR_PLAYBOOK.md`](INDEX_PAGE_REFACTOR_PLAYBOOK.md) | Deep refactor checklist (Sail → Anchor depth) |
 | [`routes-genesis-earn-sail-ledger-transparency.md`](routes-genesis-earn-sail-ledger-transparency.md) | Large-route inventory (line counts, hooks, cross-cutting UI) |
+| [`SINGLE_SOURCES.md`](SINGLE_SOURCES.md) | Which ABI, config, and helper file to extend so a second copy is not added |
 
 ## Route docs (`routes/`)
 
