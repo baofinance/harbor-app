@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
+import { stabilityPoolABI } from "@/abis/stabilityPool";
+import { minterABI } from "@/abis/minter";
 import { useContractReads } from "./useContractReads";
 
-import { MINTER_ABI, STABILITY_POOL_ABI } from "@/abis/shared";
+
 
 export interface VolatilityProtectionData {
   /** The calculated volatility protection percentage string (e.g., "49.8%", ">100%", "0%") */
@@ -146,17 +148,17 @@ export function useVolatilityProtection(
       // Minter reads
       {
         address: minterAddress,
-        abi: MINTER_ABI,
+        abi: minterABI,
         functionName: "collateralRatio" as const,
       },
       {
         address: minterAddress,
-        abi: MINTER_ABI,
+        abi: minterABI,
         functionName: "peggedTokenBalance" as const,
       },
       {
         address: minterAddress,
-        abi: MINTER_ABI,
+        abi: minterABI,
         functionName: "collateralTokenBalance" as const,
       },
     ];
@@ -165,7 +167,7 @@ export function useVolatilityProtection(
     if (collateralPoolAddress) {
       contractCalls.push({
         address: collateralPoolAddress,
-        abi: STABILITY_POOL_ABI,
+        abi: stabilityPoolABI,
         functionName: "totalAssetSupply" as const,
       });
     }
@@ -174,7 +176,7 @@ export function useVolatilityProtection(
     if (sailPoolAddress) {
       contractCalls.push({
         address: sailPoolAddress,
-        abi: STABILITY_POOL_ABI,
+        abi: stabilityPoolABI,
         functionName: "totalAssetSupply" as const,
       });
     }
@@ -285,17 +287,17 @@ export function useMultipleVolatilityProtection(
       const contractCalls: any[] = [
         {
           address: market.minterAddress,
-          abi: MINTER_ABI,
+          abi: minterABI,
           functionName: "collateralRatio" as const,
         },
         {
           address: market.minterAddress,
-          abi: MINTER_ABI,
+          abi: minterABI,
           functionName: "peggedTokenBalance" as const,
         },
         {
           address: market.minterAddress,
-          abi: MINTER_ABI,
+          abi: minterABI,
           functionName: "collateralTokenBalance" as const,
         },
       ];
@@ -303,7 +305,7 @@ export function useMultipleVolatilityProtection(
       if (market.collateralPoolAddress) {
         contractCalls.push({
           address: market.collateralPoolAddress,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "totalAssetSupply" as const,
         });
       }
@@ -311,7 +313,7 @@ export function useMultipleVolatilityProtection(
       if (market.sailPoolAddress) {
         contractCalls.push({
           address: market.sailPoolAddress,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "totalAssetSupply" as const,
         });
       }

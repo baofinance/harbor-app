@@ -1,11 +1,9 @@
 import { useContractReads } from "./useContractReads";
-import {
-  CHAINLINK_ORACLE_ABI,
-  HARBOR_ORACLE_WITH_DECIMALS_ABI,
-} from "@/abis/shared";
+import { CHAINLINK_AGGREGATOR_ABI } from "@/abis/chainlink";
+import { HARBOR_ORACLE_WITH_DECIMALS_ABI } from "@/abis/shared";
 
 /** Re-export for backwards compatibility */
-export { CHAINLINK_ORACLE_ABI };
+export { CHAINLINK_AGGREGATOR_ABI };
 /** Harbor-style oracle (decimals + tuple latestAnswer) */
 export const HARBOR_ORACLE_ABI = HARBOR_ORACLE_WITH_DECIMALS_ABI;
 
@@ -43,7 +41,7 @@ export function usePriceOracle({
   isHarborOracle = false,
   defaultDecimals = 18,
 }: UsePriceOracleOptions): PriceOracleResult {
-  const abi = isHarborOracle ? HARBOR_ORACLE_ABI : CHAINLINK_ORACLE_ABI;
+  const abi = isHarborOracle ? HARBOR_ORACLE_ABI : CHAINLINK_AGGREGATOR_ABI;
 
   const { data, isLoading, error, refetch } = useContractReads({
     contracts: [
@@ -125,7 +123,7 @@ export function useMultiplePriceOracles(
     if (!oracle.address) return [];
     const abi = oracle.isHarborOracle
       ? HARBOR_ORACLE_ABI
-      : CHAINLINK_ORACLE_ABI;
+      : CHAINLINK_AGGREGATOR_ABI;
     return [
       {
         address: oracle.address as `0x${string}`,

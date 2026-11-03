@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
+import { minterABI } from "@/abis/minter";
 import { useContractReads } from "wagmi";
-import { MINTER_ABI, WRAPPED_PRICE_ORACLE_ABI } from "@/abis/shared";
+import { WRAPPED_PRICE_ORACLE_ABI } from "@/abis/shared";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import {
   computeMarketYieldPlan,
@@ -23,7 +24,7 @@ type GroupReadIndices = {
 function buildGroupReadContracts(groups: MarketGroupLike[]) {
   const contracts: Array<{
     address: `0x${string}`;
-    abi: typeof MINTER_ABI | typeof stabilityPoolABI | typeof WRAPPED_PRICE_ORACLE_ABI;
+    abi: typeof minterABI | typeof stabilityPoolABI | typeof WRAPPED_PRICE_ORACLE_ABI;
     functionName: string;
   }> = [];
   const layouts: GroupReadIndices[] = [];
@@ -42,7 +43,7 @@ function buildGroupReadContracts(groups: MarketGroupLike[]) {
       layout.minter = contracts.length;
       contracts.push({
         address: group.minterAddress,
-        abi: MINTER_ABI,
+        abi: minterABI,
         functionName: "collateralTokenBalance",
       });
     }

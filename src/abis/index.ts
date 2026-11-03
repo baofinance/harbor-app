@@ -4,7 +4,6 @@
  */
 
 export * from "./shared";
-export * from "./erc20";
 export * from "./minter";
 export * from "./stabilityPool";
 export * from "./rewards";
@@ -15,8 +14,6 @@ export * from "./minterUsdcZapV3";
 export * from "./minterEthZapV3";
 export * from "./genesisEthZapV1Abi";
 export * from "./minterEthZapV1Abi";
-export * from "./minterPegged";
-export * from "./oracleFeeds";
 export * from "./permit";
 export * from "./permitZaps";
 export * from "./chainlink";
@@ -26,7 +23,6 @@ export {
   ADMIN_MINTER_ABI,
   MOCK_PRICE_FEED_ABI,
   STABILITY_POOL_REWARDS_ABI,
-  STABILITY_POOL_MANAGER_ABI as ADMIN_STABILITY_POOL_MANAGER_ABI,
 } from "./admin";
 
 

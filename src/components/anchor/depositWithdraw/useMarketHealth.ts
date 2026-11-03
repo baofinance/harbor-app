@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
+import { minterABI } from "@/abis/minter";
 import { formatEther } from "viem";
 import { useContractRead } from "wagmi";
-import { MINTER_PEGGED_ABI } from "@/abis";
-import { MINTER_ABI } from "@/abis/shared";
+
 import {
   MARKET_HEALTH_MINT_PROBE_WEI,
   MAX_UINT256,
@@ -62,8 +62,7 @@ export function useMarketHealth({
     isFetching: marketHealthCrFetching,
   } = useContractRead({
     address: feeMinterAddress as `0x${string}`,
-    // Same ABI Transparency / Earn market cards use — MINTER_PEGGED_ABI lacks collateralRatio.
-    abi: MINTER_ABI,
+    abi: minterABI,
     functionName: "collateralRatio",
     query: {
       enabled: marketHealthReadsEnabled,
@@ -73,7 +72,7 @@ export function useMarketHealth({
 
   const { data: marketHealthMinterConfig } = useContractRead({
     address: feeMinterAddress as `0x${string}`,
-    abi: MINTER_ABI,
+    abi: minterABI,
     functionName: "config",
     query: {
       enabled: marketHealthReadsEnabled,
@@ -83,7 +82,7 @@ export function useMarketHealth({
 
   const { data: marketHealthPeggedBalance } = useContractRead({
     address: feeMinterAddress as `0x${string}`,
-    abi: MINTER_ABI,
+    abi: minterABI,
     functionName: "peggedTokenBalance",
     query: {
       enabled: marketHealthReadsEnabled,
@@ -93,7 +92,7 @@ export function useMarketHealth({
 
   const { data: marketHealthCollateralBalance } = useContractRead({
     address: feeMinterAddress as `0x${string}`,
-    abi: MINTER_ABI,
+    abi: minterABI,
     functionName: "collateralTokenBalance",
     query: {
       enabled: marketHealthReadsEnabled,
@@ -106,7 +105,7 @@ export function useMarketHealth({
     isFetching: marketHealthCapacityFetching,
   } = useContractRead({
     address: feeMinterAddress as `0x${string}`,
-    abi: MINTER_PEGGED_ABI,
+    abi: minterABI,
     functionName: "mintPeggedTokenDryRun",
     args: [MARKET_HEALTH_MINT_PROBE_WEI],
     query: {

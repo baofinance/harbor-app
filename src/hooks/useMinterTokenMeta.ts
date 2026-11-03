@@ -1,6 +1,7 @@
 import { useMemo } from "react";
+import { minterABI } from "@/abis/minter";
 import { useContractReads } from "./useContractReads";
-import { MINTER_ABI, ERC20_ABI } from "@/abis/shared";
+import { ERC20_ABI } from "@/abis/shared";
 
 export interface MinterTokenMetaResult {
   pegged?: { address: `0x${string}`; symbol?: string; name?: string };
@@ -26,12 +27,12 @@ export function useMinterTokenMeta(
       ? ([
           {
             address: minterAddress,
-            abi: MINTER_ABI,
+            abi: minterABI,
             functionName: "PEGGED_TOKEN",
           },
           {
             address: minterAddress,
-            abi: MINTER_ABI,
+            abi: minterABI,
             functionName: "LEVERAGED_TOKEN",
           },
         ] as const)

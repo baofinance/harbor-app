@@ -1,7 +1,8 @@
 import { useMemo, useEffect } from "react";
+import { minterABI } from "@/abis/minter";
 import type { AnchorMarketTuple } from "@/types/anchor";
 import { useContractReads } from "wagmi";
-import { MINTER_ABI, ERC20_ABI } from "@/abis/shared";
+import { ERC20_ABI } from "@/abis/shared";
 import { markets } from "@/config/markets";
 
 const TOKEN_KIND_PEGGED = "pegged" as const;
@@ -54,7 +55,7 @@ export function useAnchorTokenMetadata(
       }
       contracts.push({
         address: minter,
-        abi: MINTER_ABI,
+        abi: minterABI,
         functionName: "PEGGED_TOKEN" as const,
         chainId: mktChainId,
       });
@@ -62,7 +63,7 @@ export function useAnchorTokenMetadata(
 
       contracts.push({
         address: minter,
-        abi: MINTER_ABI,
+        abi: minterABI,
         functionName: "LEVERAGED_TOKEN" as const,
         chainId: mktChainId,
       });

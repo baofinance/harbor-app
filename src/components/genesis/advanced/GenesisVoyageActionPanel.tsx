@@ -9,7 +9,7 @@ import { GenesisClaimPanel } from "@/components/genesis/GenesisClaimPanel";
 import { DepositModalTabHeader } from "@/components/DepositModalTabHeader";
 import { InfoCallout } from "@/components/InfoCallout";
 import { useRegisterAppNotifications } from "@/contexts/AppNotificationsContext";
-import { getAcceptedDepositAssets } from "@/utils/markets";
+import { getAcceptedDepositAssets } from "@/utils/anchor";
 import type { GenesisMarketConfig } from "@/types/genesisMarket";
 import { isMarketArchived } from "@/config/markets";
 import { GENESIS_ABI } from "@/abis/shared";

@@ -2,6 +2,7 @@
 
 import React, { useState, use } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { CHAINLINK_AGGREGATOR_ABI } from "@/abis/chainlink";
 import Link from "next/link";
 import {
  useAccount,
@@ -11,7 +12,7 @@ import {
 } from "wagmi";
 import { formatEther, parseEther } from "viem";
 import { markets, type Market, isMarketArchived } from "../../../config/markets";
-import { GENESIS_ABI, ERC20_ABI, CHAINLINK_ORACLE_ABI } from "@/abis/shared";
+import { GENESIS_ABI, ERC20_ABI } from "@/abis/shared";
 import { formatUSD, formatToken, formatDateTime } from "@/utils/formatters";
 import { EtherscanLink, TokenLogo, getLogoPath } from "@/components/shared";
 import InfoTooltip from "@/components/InfoTooltip";
@@ -522,12 +523,12 @@ export default function GenesisMarketPage({ params }: PageProps) {
  ? [
  {
  address: oracleAddress,
- abi: CHAINLINK_ORACLE_ABI,
+ abi: CHAINLINK_AGGREGATOR_ABI,
  functionName:"decimals",
  },
  {
  address: oracleAddress,
- abi: CHAINLINK_ORACLE_ABI,
+ abi: CHAINLINK_AGGREGATOR_ABI,
  functionName:"latestAnswer",
  },
  ]

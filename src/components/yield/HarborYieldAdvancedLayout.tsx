@@ -23,6 +23,7 @@ import { DepositModalTabHeader } from "@/components/DepositModalTabHeader";
 import { DepositModalLayout } from "@/components/deposit/DepositModalLayout";
 import { DepositBalanceStrip } from "@/components/deposit/DepositBalanceStrip";
 import { DepositTransactionOverview } from "@/components/deposit/DepositTransactionOverview";
+import { FrostedMarketDropdown } from "@/components/shared/FrostedMarketDropdown";
 import { ProductAdvancedLayoutShell } from "@/components/deposit/ProductAdvancedLayoutShell";
 import {
   ANCHOR_MODAL_FOOTER_CHROME,
@@ -313,6 +314,7 @@ export function HarborYieldAdvancedLayout() {
   const { marketParam, setMarketParam } = useMarketQueryParam();
   const market = harborYieldMarketById(marketParam);
   const pegTargetPrices = usePegTargetPrices();
+  const [yieldMenuOpen, setYieldMenuOpen] = useState(false);
   const [metricsOpen, setMetricsOpen] = useState(true);
   const [mode, setMode] = useState<"mint" | "redeem">("mint");
 
@@ -345,33 +347,47 @@ export function HarborYieldAdvancedLayout() {
         <div className="grid min-w-0 gap-4 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center lg:gap-8">
           <div className={MARKET_SELECTOR_ROW_CLASS}>
             <div className={MARKET_SELECTOR_TOKEN_FIELD_CLASS}>
-              <span className={MARKET_SELECTOR_FIELD_LABEL_CLASS}>Yield</span>
-              <label className="sr-only" htmlFor="harbor-yield-market">
-                Harbor Yield market
-              </label>
-              <div className="relative">
-                <div className={`${MARKET_SELECTOR_TRIGGER_CLASS} pointer-events-none`}>
+              <FrostedMarketDropdown
+                label="Yield"
+                className="min-w-[9.5rem]"
+                open={yieldMenuOpen}
+                onOpenChange={setYieldMenuOpen}
+                trigger={
                   <span className={MARKET_SELECTOR_TRIGGER_INNER_CLASS}>
                     <TokenMark src={market.icon} alt="" />
                     <span className={MARKET_SELECTOR_TRIGGER_TITLE_CLASS}>
                       {market.symbol}
                     </span>
                   </span>
-                  <ChevronDownIcon className="h-4 w-4 text-[#1E4775]/50" aria-hidden />
-                </div>
-                <select
-                  id="harbor-yield-market"
-                  className="absolute inset-0 cursor-pointer opacity-0"
-                  value={market.id}
-                  onChange={(event) => setMarketParam(event.target.value)}
-                >
-                  {HARBOR_YIELD_MARKETS.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.symbol}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                }
+              >
+                {HARBOR_YIELD_MARKETS.map((option) => {
+                  const active = option.id === market.id;
+                  return (
+                    <li key={option.id}>
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={active}
+                        onClick={() => {
+                          setMarketParam(option.id);
+                          setYieldMenuOpen(false);
+                        }}
+                        className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-left transition ${
+                          active
+                            ? "bg-[#1E4775]/10"
+                            : "hover:bg-[#1E4775]/[0.06]"
+                        }`}
+                      >
+                        <TokenMark src={option.icon} alt="" />
+                        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[#1E4775]">
+                          {option.symbol}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </FrostedMarketDropdown>
             </div>
             <div className={MARKET_SELECTOR_PAIR_FIELD_CLASS}>
               <span className={MARKET_SELECTOR_FIELD_LABEL_CLASS}>Peg</span>
@@ -435,7 +451,7 @@ export function HarborYieldAdvancedLayout() {
         </div>
       </header>
     ),
-    [haPriceLabel, hyPriceLabel, market, setMarketParam],
+    [haPriceLabel, hyPriceLabel, market, setMarketParam, yieldMenuOpen],
   );
 
   return (

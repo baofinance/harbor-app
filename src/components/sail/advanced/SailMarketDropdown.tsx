@@ -1,23 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { useMemo } from "react";
 import type { DefinedMarket } from "@/config/markets";
-import { SAIL_ADVANCED_FROSTED_LIGHT_PANEL, MARKET_SELECTOR_TRIGGER_CLASS } from "./sailAdvancedStyles";
+import { SectionedMarketMenu } from "@/components/shared/FrostedMarketDropdown";
+import { MARKET_SELECTOR_TRIGGER_CLASS } from "./sailAdvancedStyles";
 import {
   SailMarketDropdownOptionRowContent,
   SailMarketDropdownTriggerContent,
 } from "./SailMarketDropdownOptionContent";
-
-const SAIL_DROPDOWN_MENU_CLASS =
-  `absolute left-0 right-0 top-[calc(100%+0.35rem)] z-50 max-h-72 overflow-y-auto rounded-xl shadow-xl ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL} p-1`;
+import type { SailDropdownPositionTone } from "@/utils/sailMarketDropdownPosition";
 
 const SAIL_DROPDOWN_TRIGGER_CLASS = MARKET_SELECTOR_TRIGGER_CLASS;
 
 const SAIL_DROPDOWN_OPTION_ACTIVE_CLASS = "bg-[#1E4775]/10";
 const SAIL_DROPDOWN_OPTION_HOVER_CLASS = "hover:bg-[#1E4775]/[0.06]";
-const SAIL_DROPDOWN_SECTION_LABEL_CLASS =
-  "px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/45";
 
 export type SailMarketDropdownOption = {
   marketId: string;
@@ -88,12 +84,9 @@ export function SailMarketDropdown({
   options,
   onSelect,
 }: SailMarketDropdownProps) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-
   const selected = options.find((o) => o.marketId === selectedMarketId);
 
-  const groupedOptions = useMemo(() => {
+  const sections = useMemo(() => {
     const active: SailMarketDropdownOption[] = [];
     const comingSoon: SailMarketDropdownOption[] = [];
     const paused: SailMarketDropdownOption[] = [];
@@ -102,28 +95,30 @@ export function SailMarketDropdown({
       else if (option.isDepositsPaused) paused.push(option);
       else active.push(option);
     }
-    return { active, comingSoon, paused };
+    return [
+      { items: active },
+      { label: "Coming soon", items: comingSoon },
+      { label: "Paused markets", items: paused },
+    ];
   }, [options]);
-
-  useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
 
   if (!selected) return null;
 
   return (
-    <div ref={rootRef} className={`relative min-w-0 ${open ? "z-50" : ""}`}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={SAIL_DROPDOWN_TRIGGER_CLASS}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-      >
+    <SectionedMarketMenu
+      triggerClassName={SAIL_DROPDOWN_TRIGGER_CLASS}
+      chevronClassName="ml-0.5 h-4 w-4 shrink-0 text-[#1E4775]/40 transition"
+      itemKey={(option) => option.marketId}
+      sections={sections}
+      renderItem={(option, close) => (
+        <DropdownOptionRow
+          option={option}
+          selectedMarketId={selectedMarketId}
+          onSelect={onSelect}
+          onClose={close}
+        />
+      )}
+      trigger={
         <SailMarketDropdownTriggerContent
           market={selected.market}
           leverageRatio={selected.leverageRatio}
@@ -134,62 +129,7 @@ export function SailMarketDropdown({
           isComingSoon={selected.isComingSoon}
           isDepositsPaused={selected.isDepositsPaused}
         />
-        <ChevronDownIcon
-          className={`ml-0.5 h-4 w-4 shrink-0 text-[#1E4775]/40 transition ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {open ? (
-        <ul role="listbox" className={SAIL_DROPDOWN_MENU_CLASS}>
-          {groupedOptions.active.map((option) => (
-            <DropdownOptionRow
-              key={option.marketId}
-              option={option}
-              selectedMarketId={selectedMarketId}
-              onSelect={onSelect}
-              onClose={() => setOpen(false)}
-            />
-          ))}
-          {groupedOptions.comingSoon.length > 0 ? (
-            <>
-              <li
-                className={SAIL_DROPDOWN_SECTION_LABEL_CLASS}
-                role="presentation"
-              >
-                Coming soon
-              </li>
-              {groupedOptions.comingSoon.map((option) => (
-                <DropdownOptionRow
-                  key={option.marketId}
-                  option={option}
-                  selectedMarketId={selectedMarketId}
-                  onSelect={onSelect}
-                  onClose={() => setOpen(false)}
-                />
-              ))}
-            </>
-          ) : null}
-          {groupedOptions.paused.length > 0 ? (
-            <>
-              <li
-                className={SAIL_DROPDOWN_SECTION_LABEL_CLASS}
-                role="presentation"
-              >
-                Paused markets
-              </li>
-              {groupedOptions.paused.map((option) => (
-                <DropdownOptionRow
-                  key={option.marketId}
-                  option={option}
-                  selectedMarketId={selectedMarketId}
-                  onSelect={onSelect}
-                  onClose={() => setOpen(false)}
-                />
-              ))}
-            </>
-          ) : null}
-        </ul>
-      ) : null}
-    </div>
+      }
+    />
   );
 }

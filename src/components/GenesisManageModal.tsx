@@ -10,7 +10,7 @@ import { InfoCallout } from "@/components/InfoCallout";
 import { AlertTriangle, Info, RefreshCw } from "lucide-react";
 import { useContractRead } from "wagmi";
 import { useAccount } from "wagmi";
-import { getAcceptedDepositAssets } from "@/utils/markets";
+import { getAcceptedDepositAssets } from "@/utils/anchor";
 import { isMarketArchived } from "@/config/markets";
 import { GENESIS_ABI } from "@/abis/shared";
 

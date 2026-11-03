@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
+import { minterABI } from "@/abis/minter";
 import { useContractReads } from "./useContractReads";
-import { MINTER_ABI } from "@/abis/shared";
+
 
 export interface PeggedPriceConfig {
   marketId: string;
@@ -37,7 +38,7 @@ export function usePeggedTokenPrices(
         map.set(items.length, cfg.marketId);
         items.push({
           address: cfg.minterAddress,
-          abi: MINTER_ABI,
+          abi: minterABI,
           functionName: "peggedTokenPrice",
         });
       }

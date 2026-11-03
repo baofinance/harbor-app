@@ -27,11 +27,7 @@ export function formatToken(
   });
 }
 
-export function formatRatio(value: bigint | undefined): string {
-  if (value === undefined) return "-";
-  const percentage = Number(value) / 1e16;
-  return `${percentage.toFixed(2)}%`;
-}
+export { formatRatio } from "./anchor";
 
 export function formatLeverage(value: bigint | undefined): string {
   if (!value) return "-";

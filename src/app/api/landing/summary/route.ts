@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { CHAINLINK_AGGREGATOR_ABI } from "@/abis/chainlink";
 import { markets } from "@/config/markets";
 import { getRpcClient } from "@/config/rpc";
-import { ERC20_ABI, CHAINLINK_ORACLE_ABI } from "@/abis/shared";
+import { ERC20_ABI } from "@/abis/shared";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { minterABI } from "@/abis/minter";
 import { getPriceFeedAddress, queryChainlinkPrice } from "@/utils/priceFeeds";
@@ -184,12 +185,12 @@ async function fetchChainlinkPrice(
     const [decimals, latestAnswer] = await Promise.all([
       publicClient.readContract({
         address,
-        abi: CHAINLINK_ORACLE_ABI,
+        abi: CHAINLINK_AGGREGATOR_ABI,
         functionName: "decimals",
       }),
       publicClient.readContract({
         address,
-        abi: CHAINLINK_ORACLE_ABI,
+        abi: CHAINLINK_AGGREGATOR_ABI,
         functionName: "latestAnswer",
       }),
     ]);

@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { useAccount, useContractReads, useWriteContract } from "wagmi";
 import { parseEther } from "viem";
 import { usePools } from "@/hooks/usePools";
 import Link from "next/link";
 import TokenIcon from "@/components/TokenIcon";
 import { usePoolData } from "@/hooks/usePoolData";
-import { STABILITY_POOL_ABI, ERC20_ABI } from "@/abis/shared";
+import { ERC20_ABI } from "@/abis/shared";
 import { rewardsABI } from "@/abis/rewards";
 import InfoTooltip from "@/components/InfoTooltip";
 import { useCurrency } from "@/contexts/CurrencyContext";
@@ -538,7 +539,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
       setIsDepositLoading(true);
       await writeContractAsync({
         address: poolAddress as `0x${string}`,
-        abi: STABILITY_POOL_ABI,
+        abi: stabilityPoolABI,
         functionName: "deposit",
         args: [amount, address as `0x${string}`, 0n],
       });
@@ -560,7 +561,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
       const amount = parseEther(withdrawAmount);
       await writeContractAsync({
         address: poolAddress as `0x${string}`,
-        abi: STABILITY_POOL_ABI,
+        abi: stabilityPoolABI,
         functionName: "withdraw",
         args: [amount, address as `0x${string}`, 0n],
       });

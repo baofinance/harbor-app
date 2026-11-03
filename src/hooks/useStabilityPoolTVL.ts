@@ -1,13 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
+import { CHAINLINK_AGGREGATOR_ABI } from "@/abis/chainlink";
+import { minterABI } from "@/abis/minter";
+import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { useContractReads } from "./useContractReads";
 import { POLLING_INTERVALS } from "@/config/polling";
-import {
-  STABILITY_POOL_ABI,
-  MINTER_ABI,
-  CHAINLINK_ORACLE_ABI,
-} from "@/abis/shared";
+
 
 type TVLConfig = {
   poolAddress?: `0x${string}`;
@@ -45,17 +44,17 @@ export function useStabilityPoolTVLs(configs: TVLConfig[]) {
         // Prefer totalAssets (some deployments) and fallback to totalAssetSupply
         items.push({
           address: cfg.poolAddress,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "totalAssets" as const,
         });
         items.push({
           address: cfg.poolAddress,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "totalAssetSupply" as const,
         });
         items.push({
           address: cfg.poolAddress,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "ASSET_TOKEN" as const,
         });
       }
@@ -64,17 +63,17 @@ export function useStabilityPoolTVLs(configs: TVLConfig[]) {
         // CR-aware peg pricing inputs
         items.push({
           address: cfg.minterAddress,
-          abi: MINTER_ABI,
+          abi: minterABI,
           functionName: "collateralTokenBalance" as const,
         });
         items.push({
           address: cfg.minterAddress,
-          abi: MINTER_ABI,
+          abi: minterABI,
           functionName: "collateralRatio" as const,
         });
         items.push({
           address: cfg.minterAddress,
-          abi: MINTER_ABI,
+          abi: minterABI,
           functionName: "peggedTokenBalance" as const,
         });
       }
@@ -82,7 +81,7 @@ export function useStabilityPoolTVLs(configs: TVLConfig[]) {
       if (cfg.priceOracleAddress) {
         items.push({
           address: cfg.priceOracleAddress,
-          abi: CHAINLINK_ORACLE_ABI,
+          abi: CHAINLINK_AGGREGATOR_ABI,
           functionName: "latestAnswer" as const,
         });
       }

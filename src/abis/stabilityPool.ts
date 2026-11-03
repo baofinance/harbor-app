@@ -225,8 +225,8 @@ export const stabilityPoolABI = [
     name: "getWithdrawalWindow",
     inputs: [],
     outputs: [
-      { name: "startDelay", type: "uint256", internalType: "uint256" },
-      { name: "endWindow", type: "uint256", internalType: "uint256" },
+      { name: "startDelay", type: "uint64", internalType: "uint64" },
+      { name: "endWindow", type: "uint64", internalType: "uint64" },
     ],
     stateMutability: "view",
   },
@@ -523,4 +523,77 @@ export const stabilityPoolABI = [
     ],
   },
   { type: "error", name: "WithdrawZeroAmount", inputs: [] },
+  {
+    type: "function",
+    name: "MIN_TOTAL_ASSET_SUPPLY",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "previewDeposit",
+    inputs: [{ name: "assetAmount", type: "uint256", internalType: "uint256" }],
+    outputs: [{ name: "assetsDeposited", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "symbol",
+    inputs: [],
+    outputs: [{ name: "", type: "string", internalType: "string" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "totalAssets",
+    inputs: [],
+    outputs: [{ name: "assets", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "redeem",
+    inputs: [
+      { name: "sharesIn", type: "uint256", internalType: "uint256" },
+      { name: "receiver", type: "address", internalType: "address" },
+    ],
+    outputs: [{ name: "assetsOut", type: "uint256", internalType: "uint256" }],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "claim",
+    inputs: [{ name: "receiver", type: "address", internalType: "address" }],
+    outputs: [
+      { name: "rewardTokens", type: "address[]", internalType: "address[]" },
+      { name: "amounts", type: "uint256[]", internalType: "uint256[]" },
+    ],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "requestWithdrawal",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "getWithdrawalRequest",
+    inputs: [{ name: "account", type: "address", internalType: "address" }],
+    outputs: [
+      { name: "start", type: "uint64", internalType: "uint64" },
+      { name: "end", type: "uint64", internalType: "uint64" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "error",
+    name: "DepositAmountExceedsMaximum",
+    inputs: [
+      { name: "total", type: "uint256", internalType: "uint256" },
+      { name: "ceiling", type: "uint256", internalType: "uint256" },
+    ],
+  },
 ] as const;

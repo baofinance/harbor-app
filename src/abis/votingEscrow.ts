@@ -1,6 +1,6 @@
 /**
- * Curve-style voting escrow ABI (ve-token model)
- * Used for locking governance tokens to earn voting power on /stake and /staking
+ * Curve-style voting escrow ABI (ve-token model).
+ * Tide claim still reads this contract.
  */
 export const VOTING_ESCROW_ABI = [
   {

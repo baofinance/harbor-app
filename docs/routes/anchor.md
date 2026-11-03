@@ -2,7 +2,7 @@
 
 **Nav “Earn”** destination. Single-market Sail-style dashboard for haToken / stability-pool deposits: market picker, wallet + this-market stats, USD chart placeholder, embedded deposit/withdraw panel, collapsible metrics, haToken explainer cards, and archived pegged markets.
 
-**Also:** `/earn` re-exports this page. Legacy per-pool routes remain under [`/earn/[marketId]/[poolType]`](./earn.md).
+**Also:** `/` and `/earn` redirect here from `next.config.js`. Pool detail stays under [`/earn/[marketId]/[poolType]`](./earn.md).
 
 ---
 
@@ -39,7 +39,7 @@ Mirror reference: Sail UI+ on [`/sail`](./sail.md) (`SailAdvancedLayout`).
 |------|------|--------|
 | `/anchor` | [`page.tsx`](../../src/app/anchor/page.tsx) | Earn single-market dashboard. |
 | `/anchor/[symbol]` | `[symbol]/page.tsx` | Per-symbol landing. |
-| `/earn` | re-exports `/anchor` | Same UI as Earn nav. |
+| `/earn` | redirect in `next.config.js` | Lands on this page. |
 
 ---
 

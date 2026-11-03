@@ -1,8 +1,9 @@
 "use client";
 
 import { useContractReads } from "wagmi";
+import { minterABI } from "@/abis/minter";
 import { markets } from "../config/markets";
-import { MINTER_ABI, ERC20_ABI } from "@/abis/shared";
+import { ERC20_ABI } from "@/abis/shared";
 
 interface ContractInfoProps {
  marketId?: string;
@@ -17,7 +18,7 @@ export default function ContractInfo({
  contracts: [
  {
  address: addresses.minter as `0x${string}`,
- abi: MINTER_ABI,
+ abi: minterABI,
  functionName:"collateralRatio",
  },
  ],
@@ -28,7 +29,7 @@ export default function ContractInfo({
  contracts: [
  {
  address: addresses.minter as `0x${string}`,
- abi: MINTER_ABI,
+ abi: minterABI,
  functionName:"leverageRatio",
  },
  ],
@@ -39,7 +40,7 @@ export default function ContractInfo({
  contracts: [
  {
  address: addresses.minter as `0x${string}`,
- abi: MINTER_ABI,
+ abi: minterABI,
  functionName:"leveragedTokenPrice",
  },
  ],
@@ -50,7 +51,7 @@ export default function ContractInfo({
  contracts: [
  {
  address: addresses.minter as `0x${string}`,
- abi: MINTER_ABI,
+ abi: minterABI,
  functionName:"peggedTokenPrice",
  },
  ],
@@ -61,7 +62,7 @@ export default function ContractInfo({
  contracts: [
  {
  address: addresses.minter as `0x${string}`,
- abi: MINTER_ABI,
+ abi: minterABI,
  functionName:"leveragedToken",
  },
  ],
@@ -72,7 +73,7 @@ export default function ContractInfo({
  contracts: [
  {
  address: addresses.minter as `0x${string}`,
- abi: MINTER_ABI,
+ abi: minterABI,
  functionName:"peggedToken",
  },
  ],
@@ -83,7 +84,7 @@ export default function ContractInfo({
  contracts: [
  {
  address: addresses.minter as `0x${string}`,
- abi: MINTER_ABI,
+ abi: minterABI,
  functionName:"mintPeggedTokenIncentiveRatio",
  },
  ],
