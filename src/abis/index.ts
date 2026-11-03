@@ -16,7 +16,6 @@ export * from "./minterEthZapV3";
 export * from "./genesisEthZapV1Abi";
 export * from "./minterEthZapV1Abi";
 export * from "./minterPegged";
-export * from "./oracleFeeds";
 export * from "./permit";
 export * from "./permitZaps";
 export * from "./chainlink";

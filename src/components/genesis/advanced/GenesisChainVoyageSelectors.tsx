@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { useMemo, useState } from "react";
 import { TokenLogo } from "@/components/shared";
+import { FrostedMarketDropdown } from "@/components/shared/FrostedMarketDropdown";
 import NetworkIconCell from "@/components/NetworkIconCell";
 import type { GenesisMarketConfig } from "@/types/genesisMarket";
 import {
@@ -13,18 +13,13 @@ import { getMaidenVoyageActiveStageLabel } from "@/components/genesis/GenesisMai
 import type { ActiveVoyageStatus } from "@/utils/activeVoyageStatus";
 import { chainFromMarketId } from "@/components/dashboard/dashboardRowPresentation";
 import {
-  MARKET_SELECTOR_FIELD_LABEL_CLASS,
   MARKET_SELECTOR_ICON_SIZE,
   MARKET_SELECTOR_PAIR_FIELD_CLASS,
   MARKET_SELECTOR_ROW_CLASS,
   MARKET_SELECTOR_TOKEN_FIELD_CLASS,
-  MARKET_SELECTOR_TRIGGER_CLASS,
   MARKET_SELECTOR_TRIGGER_INNER_CLASS,
   MARKET_SELECTOR_TRIGGER_TITLE_CLASS,
-  SAIL_ADVANCED_FROSTED_LIGHT_PANEL,
 } from "./genesisAdvancedStyles";
-
-const DROPDOWN_MENU_CLASS = `absolute left-0 top-[calc(100%+0.35rem)] z-[120] min-w-full w-max max-w-[min(100vw-2rem,26rem)] max-h-80 overflow-y-auto rounded-xl shadow-2xl ${SAIL_ADVANCED_FROSTED_LIGHT_PANEL} p-1.5`;
 const OPTION_ACTIVE = "bg-[#1E4775]/10";
 const OPTION_HOVER = "hover:bg-[#1E4775]/[0.06]";
 const TITLE_CLASS = "truncate text-sm font-semibold text-[#1E4775]";
@@ -49,69 +44,6 @@ export type GenesisChainVoyageSelectorsProps = {
   selectedMarketId: string | null;
   onSelectMarket: (marketId: string) => void;
 };
-
-function useCloseOnOutsideClick(
-  open: boolean,
-  onClose: () => void,
-  rootRef: React.RefObject<HTMLDivElement | null>,
-) {
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) onClose();
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open, onClose, rootRef]);
-}
-
-function FrostedDropdown({
-  label,
-  trigger,
-  children,
-  className = "",
-  open,
-  onOpenChange,
-}: {
-  label: string;
-  trigger: ReactNode;
-  children: ReactNode;
-  className?: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const rootRef = useRef<HTMLDivElement>(null);
-  useCloseOnOutsideClick(open, () => onOpenChange(false), rootRef);
-
-  return (
-    <div
-      ref={rootRef}
-      className={`relative min-w-0 ${open ? "z-[110]" : ""} ${className}`.trim()}
-    >
-      <p className={MARKET_SELECTOR_FIELD_LABEL_CLASS}>{label}</p>
-      <button
-        type="button"
-        onClick={() => onOpenChange(!open)}
-        className={`${MARKET_SELECTOR_TRIGGER_CLASS} w-full`}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-      >
-        {trigger}
-        <ChevronDownIcon
-          className={`ml-0.5 h-4 w-4 shrink-0 text-[#1E4775]/40 transition-transform ${
-            open ? "rotate-180" : ""
-          }`}
-          aria-hidden
-        />
-      </button>
-      {open ? (
-        <ul className={DROPDOWN_MENU_CLASS} role="listbox">
-          {children}
-        </ul>
-      ) : null}
-    </div>
-  );
-}
 
 function chainMeta(marketId: string, market: GenesisMarketConfig) {
   const fromConfig = chainFromMarketId(marketId);
@@ -196,7 +128,7 @@ export function GenesisChainVoyageSelectors({
 
   return (
     <div className={MARKET_SELECTOR_ROW_CLASS}>
-      <FrostedDropdown
+      <FrostedMarketDropdown
         label="Chain"
         className={MARKET_SELECTOR_TOKEN_FIELD_CLASS}
         open={chainOpen}
@@ -250,9 +182,9 @@ export function GenesisChainVoyageSelectors({
             </li>
           );
         })}
-      </FrostedDropdown>
+      </FrostedMarketDropdown>
 
-      <FrostedDropdown
+      <FrostedMarketDropdown
         label="Voyage"
         className={MARKET_SELECTOR_PAIR_FIELD_CLASS}
         open={voyageOpen}
@@ -318,7 +250,7 @@ export function GenesisChainVoyageSelectors({
             </li>
           );
         })}
-      </FrostedDropdown>
+      </FrostedMarketDropdown>
     </div>
   );
 }
