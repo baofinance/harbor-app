@@ -39,12 +39,6 @@ type AnchorManageModalPayload = {
   initialDepositAsset?: string;
 };
 
-// Helper function to get accepted deposit assets from market config
-
-// Component to display reward tokens for a market group
-// RewardTokensDisplay component has been extracted to components/anchor/RewardTokensDisplay.tsx
-// Group expanded panel: [`AnchorMarketGroupExpandedSection`](../../components/anchor/AnchorMarketGroupExpandedSection.tsx).
-
 export default function AnchorPage() {
   const { address, isConnected } = useHarborAccount();
   const connectedChainId = useChainId();

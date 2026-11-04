@@ -9,13 +9,10 @@ import {
  formatLeverageRatio,
  getHealthColor,
  getWithdrawalRequestStatus,
- type MarketTransparencyData,
- type PoolTransparencyData,
  type UserPoolData,
 } from "@/hooks/useTransparencyData";
 import { formatCompactUSD } from "@/utils/anchor";
 import {
- ClipboardDocumentIcon,
  CheckIcon,
  ArrowPathIcon,
  ShieldCheckIcon,

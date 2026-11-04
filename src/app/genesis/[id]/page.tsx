@@ -13,8 +13,7 @@ import {
 import { formatEther, parseEther } from "viem";
 import { markets, type Market, isMarketArchived } from "../../../config/markets";
 import { GENESIS_ABI, ERC20_ABI } from "@/abis/shared";
-import { formatUSD, formatToken, formatDateTime } from "@/utils/formatters";
-import { EtherscanLink, TokenLogo, getLogoPath } from "@/components/shared";
+import { EtherscanLink, getLogoPath } from "@/components/shared";
 import InfoTooltip from "@/components/InfoTooltip";
 import HistoricalDataChart from "@/components/HistoricalDataChart";
 import Image from "next/image";

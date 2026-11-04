@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { markets } from "@/config/markets";
 import { useAccount, useContractReads, usePublicClient, useWriteContract } from "wagmi";

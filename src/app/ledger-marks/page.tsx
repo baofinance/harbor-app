@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { HARBOR_FROSTED_INDEX_SURFACE, HARBOR_FROSTED_LIGHT_CARD_ROUNDED } from "@/components/shared/harborFrostedSurfaceStyles";
 import { useQuery } from "@tanstack/react-query";
 import { useAccount, usePublicClient } from "wagmi";
-import Image from "next/image";
 import {
   ArrowDownTrayIcon,
   WalletIcon,
@@ -261,42 +260,6 @@ function isContractAddress(address: string): boolean {
  return knownContracts.includes(normalized);
 }
 
-// Helper to get contract type from address
-function getContractType(
- contractAddress: string
-):"genesis" |"anchor" |"sail" |"unknown" {
- // Check if it's a genesis contract by looking at markets
- const genesisMarkets = Object.entries(markets).filter(([_, m]) => {
- const genesisAddr = (m as any).addresses?.genesis;
- return (
- genesisAddr && genesisAddr.toLowerCase() === contractAddress.toLowerCase()
- );
- });
- if (genesisMarkets.length > 0) return"genesis";
- 
- // Check if it's a stability pool (anchor) - collateral pool
- const anchorMarkets = Object.entries(markets).filter(([_, m]) => {
- const collateralPoolAddr = (m as any).addresses?.stabilityPoolCollateral;
- return (
- collateralPoolAddr &&
- collateralPoolAddr.toLowerCase() === contractAddress.toLowerCase()
- );
- });
- if (anchorMarkets.length > 0) return"anchor";
- 
- // Check if it's a sail pool - leveraged pool
- const sailMarkets = Object.entries(markets).filter(([_, m]) => {
- const sailPoolAddr = (m as any).addresses?.stabilityPoolLeveraged;
- return (
- sailPoolAddr &&
- sailPoolAddr.toLowerCase() === contractAddress.toLowerCase()
- );
- });
- if (sailMarkets.length > 0) return"sail";
- 
- return"unknown";
-}
-
 export default function LedgerMarksLeaderboard() {
  /** UI+ = extended: show “What are Ledger Marks?” hero (matches Anchor). */
  const graphUrl = getGraphUrl();
@@ -431,17 +394,6 @@ total += poolDeposits.reduce((sum, deposit) => sum + (deposit.estimatedMarks || 
 }
 return total;
 }, [haBalances, poolDeposits]);
-
- const totalSailLedgerMarks = useMemo(() => {
- let total = 0;
- if (sailBalances) {
- total += sailBalances.reduce(
- (sum, balance) => sum + calculateEstimatedMarks(balance, currentChainTime),
- 0
- );
- }
- return total;
- }, [sailBalances, currentChainTime]);
 
  // Calculate sail marks per day (sail token holdings only)
  const sailMarksPerDay = useMemo(() => {

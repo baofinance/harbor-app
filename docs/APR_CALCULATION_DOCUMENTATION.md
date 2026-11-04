@@ -38,18 +38,18 @@ Where:
 ```
 
 ### Code Locations
-1. `src/hooks/usePoolRewardAPR.ts` (lines 74-148) - Generic hook for any pool
+1. `src/hooks/useAllStabilityPoolRewards.ts` - Live pool reward APR
 2. `src/app/anchor/page.tsx` (lines 2072-2132) - Collateral Pool calculation
 3. `src/app/anchor/page.tsx` (lines 2241-2302) - Sail Pool calculation
 4. `src/hooks/anchor/useAnchorMarketData.ts` (lines 350-412) - Market data processing
 
 ---
 
-### Code Snippet 1: usePoolRewardAPR.ts
+### Code Snippet 1: pool reward data
 
 **On-chain call:**
 ```typescript
-// Location: src/hooks/usePoolRewardAPR.ts lines 74-81
+// Same shape as useAllStabilityPoolRewards
 // Get reward data (rate)
 const [lastUpdate, finishAt, rate, queued] =
   (await client.readContract({
@@ -62,7 +62,7 @@ const [lastUpdate, finishAt, rate, queued] =
 
 **Client-side APR calculation:**
 ```typescript
-// Location: src/hooks/usePoolRewardAPR.ts lines 132-148
+// Same formula as useAnchorMarketData reward-rate APR
 // Calculate APR from reward rate
 const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
 const ratePerTokenPerSecond = Number(rate) / Number(poolTVL);
@@ -437,8 +437,8 @@ if (safeLeveragedPoolSupply > 0n && collateralPriceUSD > 0) {
 
 | APR Type | Source | Calculation Method | Code Location |
 |----------|--------|-------------------|---------------|
-| **Live pool APR (emission)** | `rewardData()` + `totalAssetSupply()` + USD prices | Annualized reward USD ÷ TVL USD × 100; summed per active reward token | `src/hooks/useAllStabilityPoolRewards.ts`<br>`src/hooks/usePoolRewardAPR.ts`<br>`src/hooks/anchor/useAnchorMarketData.ts` |
-| **Reward Rate APR** | On-chain `rewardData()` + client calc | `(rate * seconds_per_year / TVL) * price_ratio * 100` | `src/hooks/usePoolRewardAPR.ts` lines 132-148<br>`src/hooks/anchor/useAnchorMarketData.ts` |
+| **Live pool APR (emission)** | `rewardData()` + `totalSupply()` (v2 falls back to `totalAssetSupply()`) + USD prices | Annualized reward USD ÷ TVL USD × 100; summed per active reward token | `src/hooks/useAllStabilityPoolRewards.ts`<br>`src/hooks/anchor/useAnchorMarketData.ts` |
+| **Reward Rate APR** | On-chain `rewardData()` + client calc | `(rate * seconds_per_year / TVL) * price_ratio * 100` | `src/hooks/anchor/useAnchorMarketData.ts` |
 | **Projected APR** | On-chain `harvestable()` + `rewardData()` + client calc | `(harvestable + queued) / 7 days * 365 / TVL * 100` | `src/hooks/useProjectedAPR.ts` lines 452-494 |
 
 ---
@@ -794,7 +794,7 @@ export const ERC20_ABI = [
 
 - `src/app/anchor/page.tsx` - Main anchor page with APR display
 - `src/hooks/useProjectedAPR.ts` - Projected APR calculation hook
-- `src/hooks/usePoolRewardAPR.ts` - Generic pool reward APR hook
+- `src/hooks/useAllStabilityPoolRewards.ts` - Live pool reward APR
 - `src/hooks/anchor/useAnchorMarketData.ts` - Market data processing with APR
 - `src/hooks/anchor/useAnchorContractReads.ts` - Contract reads setup
 - `src/abis/shared.ts` - Shared ABIs including STABILITY_POOL_ABI, MINTER_ABI, ERC20_ABI

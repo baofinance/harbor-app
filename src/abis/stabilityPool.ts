@@ -560,13 +560,6 @@ export const stabilityPoolABI = [
   },
   {
     type: "function",
-    name: "totalAssets",
-    inputs: [],
-    outputs: [{ name: "assets", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
     name: "redeem",
     inputs: [
       { name: "sharesIn", type: "uint256", internalType: "uint256" },
