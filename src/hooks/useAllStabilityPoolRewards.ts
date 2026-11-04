@@ -5,7 +5,10 @@ import { useMemo } from "react";
 import { formatEther } from "viem";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { ERC20_ABI } from "@/config/contracts";
-import { readStabilityPoolClaimable } from "@/utils/stabilityPoolCompat";
+import {
+  readPoolTotalSupply,
+  readStabilityPoolClaimable,
+} from "@/utils/stabilityPoolCompat";
 import { getPriceFeedAddress, queryChainlinkPrice } from "@/utils/priceFeeds";
 import { DEBUG_ANCHOR } from "@/config/debug";
 
@@ -147,12 +150,11 @@ export function useAllStabilityPoolRewards({
             // Still fetch TVL even if no reward tokens
             let poolTVL = 0n;
             try {
-              poolTVL = (await client.readContract({
-                address: pool.address,
-                abi: stabilityPoolABI,
-                functionName: "totalAssetSupply",
-                args: [],
-              })) as bigint;
+              poolTVL = await readPoolTotalSupply(
+                client,
+                pool.address,
+                stabilityPoolABI,
+              );
             } catch (e) {
               // TVL fetch failed
             }
@@ -172,12 +174,11 @@ export function useAllStabilityPoolRewards({
           }
 
           // Get pool TVL for APR calculation
-          const poolTVL = (await client.readContract({
-            address: pool.address,
-            abi: stabilityPoolABI,
-            functionName: "totalAssetSupply",
-            args: [],
-          })) as bigint;
+          const poolTVL = await readPoolTotalSupply(
+            client,
+            pool.address,
+            stabilityPoolABI,
+          );
 
           // Fetch claimable amounts (if wallet connected), prices, and reward data for each reward token
           const rewardTokensData = await Promise.all(

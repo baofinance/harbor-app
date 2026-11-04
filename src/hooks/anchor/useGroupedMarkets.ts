@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { DefinedMarket } from "@/config/markets";
 import type { AnchorContractReads, AnchorMarketTuple } from "@/types/anchor";
+import { successfulBigint } from "@/utils/stabilityPoolCompat";
 
 export type GroupedMarket = {
   symbol: string;
@@ -84,8 +85,8 @@ export function useGroupedMarkets(
             ?.stabilityPoolManager;
           offset += 5; // 4 minter calls + 1 config call
           if (prevHasStabilityPoolManager) offset += 1; // rebalanceThreshold
-          if (prevHasCollateral) offset += 4;
-          if (prevHasSail) offset += 4;
+          if (prevHasCollateral) offset += 5;
+          if (prevHasSail) offset += 5;
           if (prevHasPriceOracle) offset += 1;
         }
 
@@ -117,10 +118,10 @@ export function useGroupedMarkets(
           collateralPoolRewards = reads?.[currentOffset + 2]?.result as
             | bigint
             | undefined;
-          collateralPoolDeposit = reads?.[currentOffset + 3]?.result as
-            | bigint
-            | undefined;
-          currentOffset += 4;
+          collateralPoolDeposit =
+            successfulBigint(reads?.[currentOffset + 4]) ??
+            successfulBigint(reads?.[currentOffset + 3]);
+          currentOffset += 5;
         }
 
         if (hasSailPool) {
@@ -136,10 +137,10 @@ export function useGroupedMarkets(
           sailPoolRewards = reads?.[currentOffset + 2]?.result as
             | bigint
             | undefined;
-          sailPoolDeposit = reads?.[currentOffset + 3]?.result as
-            | bigint
-            | undefined;
-          currentOffset += 4;
+          sailPoolDeposit =
+            successfulBigint(reads?.[currentOffset + 4]) ??
+            successfulBigint(reads?.[currentOffset + 3]);
+          currentOffset += 5;
         }
 
         // Get price oracle for USD calculations

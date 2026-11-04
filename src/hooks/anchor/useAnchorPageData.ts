@@ -25,7 +25,11 @@ import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import { useAnchorUserDeposits } from "@/hooks/anchor/useAnchorUserDeposits";
 import { useAnchorTokenMetadata } from "@/hooks/anchor/useAnchorTokenMetadata";
 import { useMarketIndexFilters } from "@/hooks/useMarketIndexFilters";
-import { calculateReadOffset } from "@/utils/anchor/calculateReadOffset";
+import {
+  calculatePriceOracleOffset,
+  calculateReadOffset,
+} from "@/utils/anchor/calculateReadOffset";
+import { successfulBigint } from "@/utils/stabilityPoolCompat";
 import type { AnchorMarketTuple } from "@/types/anchor";
 /**
  * Composes Anchor index data reads + derived market state (Phase 2–3 refactor).
@@ -443,35 +447,22 @@ export function useAnchorPageData(address: `0x${string}` | undefined) {
           ?.stabilityPoolCollateral;
         const hasSailPool = !!(m as any).addresses?.stabilityPoolLeveraged;
 
-        let offset = 0;
-        for (let i = 0; i < mi; i++) {
-          const prevMarket = anchorMarkets[i][1];
-          const prevHasCollateral = !!(prevMarket as any).addresses
-            ?.stabilityPoolCollateral;
-          const prevHasSail = !!(prevMarket as any).addresses
-            ?.stabilityPoolLeveraged;
-          const prevHasPriceOracle = !!(prevMarket as any).addresses
-            ?.collateralPrice;
-          offset += 4;
-          if (prevHasCollateral) offset += 3;
-          if (prevHasSail) offset += 3;
-          if (prevHasPriceOracle) offset += 1;
-        }
-
-        const baseOffset = offset;
+        const baseOffset = calculateReadOffset(anchorMarkets, mi);
         const peggedTokenPrice = reads?.[baseOffset + 3]?.result as
           | bigint
           | undefined;
-        let currentOffset = baseOffset + 4;
+        const hasManager = !!(m as any).addresses?.stabilityPoolManager;
+        let currentOffset = baseOffset + 7 + (hasManager ? 1 : 0);
+        const peggedTokenAddress = (m as any).addresses?.peggedToken;
+        const poolReadCount = 5 + (peggedTokenAddress ? 1 : 0);
 
         const hasPriceOracle = !!(m as any).addresses?.collateralPrice;
         const collateralPriceDecimals = 18;
         let collateralPrice: bigint | undefined;
-        let priceOffset = currentOffset;
-        if (hasCollateralPool) priceOffset += 3;
-        if (hasSailPool) priceOffset += 3;
         if (hasPriceOracle) {
-          const latestAnswerResult = reads?.[priceOffset]?.result;
+          const latestAnswerResult = reads?.[
+            calculatePriceOracleOffset(anchorMarkets, mi)
+          ]?.result;
           if (latestAnswerResult !== undefined && latestAnswerResult !== null) {
             if (Array.isArray(latestAnswerResult)) {
               collateralPrice = latestAnswerResult[1] as bigint;
@@ -487,9 +478,9 @@ export function useAnchorPageData(address: `0x${string}` | undefined) {
         if (hasCollateralPool) {
           const collateralPoolAddress = (m as any).addresses
             ?.stabilityPoolCollateral as `0x${string}`;
-          const collateralPoolDeposit = reads?.[currentOffset]?.result as
-            | bigint
-            | undefined;
+          const collateralPoolDeposit =
+            successfulBigint(reads?.[currentOffset + 4]) ??
+            successfulBigint(reads?.[currentOffset + 3]);
 
           const poolReward = allPoolRewards.find(
             (pr) =>
@@ -535,15 +526,15 @@ export function useAnchorPageData(address: `0x${string}` | undefined) {
             });
           }
 
-          currentOffset += 3;
+          currentOffset += poolReadCount;
         }
 
         if (hasSailPool) {
           const sailPoolAddress = (m as any).addresses
             ?.stabilityPoolLeveraged as `0x${string}`;
-          const sailPoolDeposit = reads?.[currentOffset]?.result as
-            | bigint
-            | undefined;
+          const sailPoolDeposit =
+            successfulBigint(reads?.[currentOffset + 4]) ??
+            successfulBigint(reads?.[currentOffset + 3]);
 
           const poolReward = allPoolRewards.find(
             (pr) =>

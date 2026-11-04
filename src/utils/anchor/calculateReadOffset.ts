@@ -28,13 +28,13 @@ export function calculateReadOffset(
     offset += 7; // 7 minter calls: collateralRatio, collateralTokenBalance, peggedTokenBalance, peggedTokenPrice, leveragedTokenBalance, leveragedTokenPrice, config
     if (prevHasStabilityPoolManager) offset += 1; // rebalanceThreshold
     if (prevHasCollateral) {
-      offset += 3; // totalAssets, totalAssetSupply, getClaimableRewards
-      offset += 1; // assetBalanceOf
+      offset += 3; // totalSupply, totalAssetSupply, getClaimableRewards
+      offset += 2; // assetBalanceOf, balanceOf
       if (prevPeggedTokenAddress) offset += 1; // rewardData
     }
     if (prevHasSail) {
-      offset += 3; // totalAssets, totalAssetSupply, getClaimableRewards
-      offset += 1; // assetBalanceOf
+      offset += 3; // totalSupply, totalAssetSupply, getClaimableRewards
+      offset += 2; // assetBalanceOf, balanceOf
       if (prevPeggedTokenAddress) offset += 1; // rewardData
     }
     if (prevHasPriceOracle) {
@@ -74,13 +74,13 @@ export function calculatePriceOracleOffset(
   let priceOracleOffset = baseOffset + 7; // 7 minter reads: collateralRatio, collateralTokenBalance, peggedTokenBalance, peggedTokenPrice, leveragedTokenBalance, leveragedTokenPrice, config
   if (hasStabilityPoolManager) priceOracleOffset += 1; // rebalanceThreshold
   if (hasCollateralPool) {
-    priceOracleOffset += 3; // totalAssets, totalAssetSupply, getClaimableRewards
-    priceOracleOffset += 1; // assetBalanceOf
+    priceOracleOffset += 3; // totalSupply, totalAssetSupply, getClaimableRewards
+    priceOracleOffset += 2; // assetBalanceOf, balanceOf
     if (peggedTokenAddress) priceOracleOffset += 1; // rewardData
   }
   if (hasSailPool) {
-    priceOracleOffset += 3; // totalAssets, totalAssetSupply, getClaimableRewards
-    priceOracleOffset += 1; // assetBalanceOf
+    priceOracleOffset += 3; // totalSupply, totalAssetSupply, getClaimableRewards
+    priceOracleOffset += 2; // assetBalanceOf, balanceOf
     if (peggedTokenAddress) priceOracleOffset += 1; // rewardData
   }
   // Now priceOracleOffset points to latestAnswer (the oracle read)

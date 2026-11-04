@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { minterABI } from "@/abis/minter";
 import { useContractReads } from "./useContractReads";
+import { successfulBigint } from "@/utils/stabilityPoolCompat";
 
 
 
@@ -165,20 +166,34 @@ export function useVolatilityProtection(
 
     // Add collateral pool TVL read if address provided
     if (collateralPoolAddress) {
-      contractCalls.push({
-        address: collateralPoolAddress,
-        abi: stabilityPoolABI,
-        functionName: "totalAssetSupply" as const,
-      });
+      contractCalls.push(
+        {
+          address: collateralPoolAddress,
+          abi: stabilityPoolABI,
+          functionName: "totalSupply" as const,
+        },
+        {
+          address: collateralPoolAddress,
+          abi: stabilityPoolABI,
+          functionName: "totalAssetSupply" as const,
+        },
+      );
     }
 
     // Add sail pool TVL read if address provided
     if (sailPoolAddress) {
-      contractCalls.push({
-        address: sailPoolAddress,
-        abi: stabilityPoolABI,
-        functionName: "totalAssetSupply" as const,
-      });
+      contractCalls.push(
+        {
+          address: sailPoolAddress,
+          abi: stabilityPoolABI,
+          functionName: "totalSupply" as const,
+        },
+        {
+          address: sailPoolAddress,
+          abi: stabilityPoolABI,
+          functionName: "totalAssetSupply" as const,
+        },
+      );
     }
 
     return contractCalls;
@@ -225,17 +240,15 @@ export function useVolatilityProtection(
 
     if (collateralPoolAddress && reads[readIndex]) {
       collateralPoolTVL =
-        reads[readIndex]?.status === "success"
-          ? (reads[readIndex].result as bigint)
-          : undefined;
-      readIndex++;
+        successfulBigint(reads[readIndex]) ??
+        successfulBigint(reads[readIndex + 1]);
+      readIndex += 2;
     }
 
     if (sailPoolAddress && reads[readIndex]) {
       sailPoolTVL =
-        reads[readIndex]?.status === "success"
-          ? (reads[readIndex].result as bigint)
-          : undefined;
+        successfulBigint(reads[readIndex]) ??
+        successfulBigint(reads[readIndex + 1]);
     }
 
     // Calculate protection
@@ -303,19 +316,33 @@ export function useMultipleVolatilityProtection(
       ];
 
       if (market.collateralPoolAddress) {
-        contractCalls.push({
-          address: market.collateralPoolAddress,
-          abi: stabilityPoolABI,
-          functionName: "totalAssetSupply" as const,
-        });
+        contractCalls.push(
+          {
+            address: market.collateralPoolAddress,
+            abi: stabilityPoolABI,
+            functionName: "totalSupply" as const,
+          },
+          {
+            address: market.collateralPoolAddress,
+            abi: stabilityPoolABI,
+            functionName: "totalAssetSupply" as const,
+          },
+        );
       }
 
       if (market.sailPoolAddress) {
-        contractCalls.push({
-          address: market.sailPoolAddress,
-          abi: stabilityPoolABI,
-          functionName: "totalAssetSupply" as const,
-        });
+        contractCalls.push(
+          {
+            address: market.sailPoolAddress,
+            abi: stabilityPoolABI,
+            functionName: "totalSupply" as const,
+          },
+          {
+            address: market.sailPoolAddress,
+            abi: stabilityPoolABI,
+            functionName: "totalAssetSupply" as const,
+          },
+        );
       }
 
       return contractCalls;
@@ -376,18 +403,16 @@ export function useMultipleVolatilityProtection(
 
       if (market.collateralPoolAddress) {
         collateralPoolTVL =
-          reads[readIndex]?.status === "success"
-            ? (reads[readIndex].result as bigint)
-            : undefined;
-        readIndex++;
+          successfulBigint(reads[readIndex]) ??
+          successfulBigint(reads[readIndex + 1]);
+        readIndex += 2;
       }
 
       if (market.sailPoolAddress) {
         sailPoolTVL =
-          reads[readIndex]?.status === "success"
-            ? (reads[readIndex].result as bigint)
-            : undefined;
-        readIndex++;
+          successfulBigint(reads[readIndex]) ??
+          successfulBigint(reads[readIndex + 1]);
+        readIndex += 2;
       }
 
       const { protection, protectionPercent } = calculateVolatilityProtection(

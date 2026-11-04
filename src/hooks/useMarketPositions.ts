@@ -35,7 +35,7 @@ export interface MarketConfig {
  * 
  * Uses:
  * - ERC20 balanceOf for wallet ha token balance
- * - Stability pool assetBalanceOf for pool deposits
+ * - Stability pool balanceOf, with assetBalanceOf on v2 pools
  */
 export function useMarketPositions(
   marketConfigs: MarketConfig[],
@@ -82,7 +82,7 @@ export function useMarketPositions(
           args: [userAddress],
         });
       }
-      // Collateral pool deposit (stability pool assetBalanceOf)
+      // Collateral pool deposit. balanceOf overwrites when it succeeds; v2 keeps assetBalanceOf.
       if (config.collateralPoolAddress) {
         idxMap.set(items.length, { marketId: config.marketId, kind: "collateralPool" });
         items.push({
@@ -91,14 +91,28 @@ export function useMarketPositions(
           functionName: "assetBalanceOf",
           args: [userAddress],
         });
+        idxMap.set(items.length, { marketId: config.marketId, kind: "collateralPool" });
+        items.push({
+          address: config.collateralPoolAddress,
+          abi: stabilityPoolABI,
+          functionName: "balanceOf",
+          args: [userAddress],
+        });
       }
-      // Sail pool deposit (stability pool assetBalanceOf)
+      // Sail pool deposit. balanceOf overwrites when it succeeds; v2 keeps assetBalanceOf.
       if (config.sailPoolAddress) {
         idxMap.set(items.length, { marketId: config.marketId, kind: "sailPool" });
         items.push({
           address: config.sailPoolAddress,
           abi: stabilityPoolABI,
           functionName: "assetBalanceOf",
+          args: [userAddress],
+        });
+        idxMap.set(items.length, { marketId: config.marketId, kind: "sailPool" });
+        items.push({
+          address: config.sailPoolAddress,
+          abi: stabilityPoolABI,
+          functionName: "balanceOf",
           args: [userAddress],
         });
       }
@@ -179,10 +193,10 @@ export function useMarketPositions(
         const meta = indexMap.get(idx);
         if (!meta || meta.kind === "price") return;
 
-        const val =
-          result?.status === "success" && result.result !== undefined
-            ? BigInt(result.result as bigint)
-            : 0n;
+        const succeeded =
+          result?.status === "success" && result.result !== undefined;
+        if (!succeeded && meta.kind !== "walletHa") return;
+        const val = succeeded ? BigInt(result.result as bigint) : 0n;
 
         if (map[meta.marketId]) {
           (map[meta.marketId] as any)[meta.kind] = val;

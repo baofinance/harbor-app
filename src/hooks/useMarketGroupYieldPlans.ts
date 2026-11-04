@@ -5,6 +5,7 @@ import { minterABI } from "@/abis/minter";
 import { useContractReads } from "wagmi";
 import { WRAPPED_PRICE_ORACLE_ABI } from "@/abis/shared";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
+import { successfulBigint } from "@/utils/stabilityPoolCompat";
 import {
   computeMarketYieldPlan,
   type MarketGroupLike,
@@ -15,7 +16,9 @@ import {
 type GroupReadIndices = {
   minter?: number;
   anchorSupply: number;
+  anchorSupplyErc20: number;
   sailSupply: number;
+  sailSupplyErc20: number;
   anchorAsset: number;
   oracle?: number;
   period: number;
@@ -34,7 +37,9 @@ function buildGroupReadContracts(groups: MarketGroupLike[]) {
     const sail = group.sailPool as { poolAddress: `0x${string}` };
     const layout: GroupReadIndices = {
       anchorSupply: -1,
+      anchorSupplyErc20: -1,
       sailSupply: -1,
+      sailSupplyErc20: -1,
       anchorAsset: -1,
       period: -1,
     };
@@ -48,6 +53,12 @@ function buildGroupReadContracts(groups: MarketGroupLike[]) {
       });
     }
 
+    layout.anchorSupplyErc20 = contracts.length;
+    contracts.push({
+      address: anchor.poolAddress,
+      abi: stabilityPoolABI,
+      functionName: "totalSupply",
+    });
     layout.anchorSupply = contracts.length;
     contracts.push({
       address: anchor.poolAddress,
@@ -55,6 +66,12 @@ function buildGroupReadContracts(groups: MarketGroupLike[]) {
       functionName: "totalAssetSupply",
     });
 
+    layout.sailSupplyErc20 = contracts.length;
+    contracts.push({
+      address: sail.poolAddress,
+      abi: stabilityPoolABI,
+      functionName: "totalSupply",
+    });
     layout.sailSupply = contracts.length;
     contracts.push({
       address: sail.poolAddress,
@@ -129,13 +146,15 @@ export function useMarketGroupYieldPlans(input: {
         if (idx == null || idx < 0) return undefined;
         return data?.[idx]?.result as T | undefined;
       };
+      const readSupply = (erc20: number, asset: number) =>
+        successfulBigint(data?.[erc20]) ?? successfulBigint(data?.[asset]);
 
       return computeMarketYieldPlan({
         group,
         reads: {
           minterBalance: readAt<bigint>(layout.minter),
-          anchorSupply: readAt<bigint>(layout.anchorSupply),
-          sailSupply: readAt<bigint>(layout.sailSupply),
+          anchorSupply: readSupply(layout.anchorSupplyErc20, layout.anchorSupply),
+          sailSupply: readSupply(layout.sailSupplyErc20, layout.sailSupply),
           anchorAssetToken: readAt<`0x${string}`>(layout.anchorAsset),
           oracleAnswer: readAt<readonly [bigint, bigint, bigint, bigint]>(
             layout.oracle,

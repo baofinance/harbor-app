@@ -130,7 +130,7 @@ The simulate path already maps `DepositAmountLessThanMinimum`. The review should
 
 ## Leave as they are
 
-- Balance reads can stay on `assetBalanceOf` and `totalAssetSupply`. New code should prefer `balanceOf` and `totalSupply`. The subgraph must keep the old names.
+- The app and `DEBANK_CONTRACTS_LIST.txt` prefer `balanceOf` and `totalSupply`. v2 pools revert those names, so the app falls back to `assetBalanceOf` and `totalAssetSupply`. Listed v2 Debank pools stay on `assetBalanceOf`. The subgraph keeps `assetBalanceOf` so it can replay blocks from before v3.
 - `useProjectedAPR` reads `harvestBountyRatio` and `harvestCutRatio`. The manager’s ratios changed (harvest bounty 1% → 0.5%, cut 99% → 99.5%, rebalance bounty 1% → 0.5%). The pools’ share of the cut is what is left, which is 0 before and after. No app change.
 - Do not rename haEUR2 to hsEUR2. haEUR2 is the pegged token. hsSTETH-EUR2 is the sail token. `hspEUR(stETH)` and `hspEUR(hsSTETH)` are the pool shares.
 - No version switch per market is required once the reads use the v3 names. A paused market reverts. A live v3 market, including haEUR2, answers.

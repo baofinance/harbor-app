@@ -9,6 +9,7 @@ import { markets } from "@/config/markets";
 import { TREASURY_SAFE_ADDRESS } from "@/config/treasury";
 import { ERC20_ABI } from "@/config/contracts";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
+import { useStabilityPoolReadPair } from "@/hooks/useStabilityPoolReadPair";
 import { useAdminRewardTokenPrices } from "@/hooks/useAdminRewardTokenPrices";
 import {
   isHaDepositTokenSymbol,
@@ -367,18 +368,20 @@ function MarketCollateralYieldPanel({
     query: { enabled: !!group.minterAddress },
   });
 
-  const anchorSupplyQuery = useReadContract({
+  const anchorSupplyQuery = useStabilityPoolReadPair({
     address: group.anchorPool.poolAddress,
-    abi: stabilityPoolABI,
-    functionName: "totalAssetSupply",
-    query: { enabled: !!group.anchorPool.poolAddress },
+    enabled: !!group.anchorPool.poolAddress,
+    v3FunctionName: "totalSupply",
+    v2FunctionName: "totalAssetSupply",
+    refetchInterval: false,
   });
 
-  const sailSupplyQuery = useReadContract({
+  const sailSupplyQuery = useStabilityPoolReadPair({
     address: group.sailPool.poolAddress,
-    abi: stabilityPoolABI,
-    functionName: "totalAssetSupply",
-    query: { enabled: !!group.sailPool.poolAddress },
+    enabled: !!group.sailPool.poolAddress,
+    v3FunctionName: "totalSupply",
+    v2FunctionName: "totalAssetSupply",
+    refetchInterval: false,
   });
 
   const anchorAssetQuery = useReadContract({
@@ -917,11 +920,12 @@ function RewardDepositRow({
   });
 
   // Target APR calculator: pool TVL and period
-  const totalAssetSupplyQuery = useReadContract({
+  const totalAssetSupplyQuery = useStabilityPoolReadPair({
     address: pool.poolAddress,
-    abi: stabilityPoolABI,
-    functionName: "totalAssetSupply",
-    query: { enabled: !!pool.poolAddress && enabled },
+    enabled: !!pool.poolAddress && enabled,
+    v3FunctionName: "totalSupply",
+    v2FunctionName: "totalAssetSupply",
+    refetchInterval: false,
   });
   const rewardPeriodLengthQuery = useReadContract({
     address: pool.poolAddress,

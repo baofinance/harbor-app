@@ -6,6 +6,7 @@ import { minterABI } from "@/abis/minter";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { useContractReads } from "./useContractReads";
 import { POLLING_INTERVALS } from "@/config/polling";
+import { successfulBigint } from "@/utils/stabilityPoolCompat";
 
 
 type TVLConfig = {
@@ -15,7 +16,7 @@ type TVLConfig = {
 };
 
 export type StabilityPoolTVLResult = {
-  tvlAsset?: bigint; // totalAssetSupply in 18 decimals (ha token)
+  tvlAsset?: bigint; // pool supply in 18 decimals (ha token)
   tvlUSD?: number; // USD TVL using CR-aware peg price
   assetToken?: `0x${string}`;
 };
@@ -41,11 +42,11 @@ export function useStabilityPoolTVLs(configs: TVLConfig[]) {
 
     configs.forEach((cfg) => {
       if (cfg.poolAddress) {
-        // Prefer totalAssets (some deployments) and fallback to totalAssetSupply
+        // ERC20 totalSupply on v3. v2 falls back to totalAssetSupply.
         items.push({
           address: cfg.poolAddress,
           abi: stabilityPoolABI,
-          functionName: "totalAssets" as const,
+          functionName: "totalSupply" as const,
         });
         items.push({
           address: cfg.poolAddress,
@@ -103,7 +104,7 @@ export function useStabilityPoolTVLs(configs: TVLConfig[]) {
     }
 
     // Each config contributes up to:
-    // Pools: totalAssets, totalAssetSupply, ASSET_TOKEN
+    // Pools: totalSupply, totalAssetSupply, ASSET_TOKEN
     // Minter: collateralTokenBalance, collateralRatio, peggedTokenBalance
     // Oracle: latestAnswer
     let idx = 0;
@@ -173,8 +174,8 @@ export function useStabilityPoolTVLs(configs: TVLConfig[]) {
 
       let tvlUSD: number | undefined;
       const totalAssetSupply =
-        (totalAssetsRead?.result as bigint | undefined) ??
-        (totalAssetSupplyRead?.result as bigint | undefined);
+        successfulBigint(totalAssetsRead) ??
+        successfulBigint(totalAssetSupplyRead);
 
       // Compute CR-aware pegPriceUsd
       let pegPriceUsd: number | undefined;

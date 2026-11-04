@@ -3,6 +3,7 @@ import type { DefinedMarket } from "@/config/markets";
 import { isAnchorSoonUi } from "@/config/markets";
 import type { AnchorContractReads, AnchorMarketTuple } from "@/types/anchor";
 import { getAcceptedDepositAssets } from "@/utils/anchor";
+import { successfulBigint } from "@/utils/stabilityPoolCompat";
 import { DEBUG_ANCHOR } from "@/config/debug";
 
 export type MarketData = {
@@ -153,11 +154,11 @@ export function useAnchorMarketData(
             offset += 7; // 6 minter calls (collateralRatio, collateralTokenBalance, peggedTokenBalance, peggedTokenPrice, leveragedTokenBalance, leveragedTokenPrice) + 1 config call
             if (prevHasStabilityPoolManager) offset += 1; // rebalanceThreshold
             if (prevHasCollateral) {
-              offset += 4; // totalAssets, totalAssetSupply, getClaimableRewards, assetBalanceOf
+              offset += 5; // totalSupply, totalAssetSupply, getClaimableRewards, assetBalanceOf, balanceOf
               if (prevPeggedTokenAddress) offset += 1; // rewardData (if pegged token exists)
             }
             if (prevHasSail) {
-              offset += 4; // totalAssets, totalAssetSupply, getClaimableRewards, assetBalanceOf
+              offset += 5; // totalSupply, totalAssetSupply, getClaimableRewards, assetBalanceOf, balanceOf
               if (prevPeggedTokenAddress) offset += 1; // rewardData (if pegged token exists)
             }
             if (prevHasPriceOracle) {
@@ -304,22 +305,10 @@ export function useAnchorMarketData(
           if (hasStabilityPoolManager) currentOffset += 1; // rebalanceThreshold
 
           if (hasCollateralPool) {
-            // Read TVL from stability pool contract (prefer totalAssets, fallback to totalAssetSupply)
-            const tvlTotalAssetsRead = reads?.[currentOffset];
-            const tvlTotalAssetSupplyRead = reads?.[currentOffset + 1];
-            const tvlFromTotalAssets =
-              tvlTotalAssetsRead?.status === "success" &&
-              tvlTotalAssetsRead.result !== undefined &&
-              tvlTotalAssetsRead.result !== null
-                ? (tvlTotalAssetsRead.result as bigint)
-                : undefined;
-            const tvlFromTotalAssetSupply =
-              tvlTotalAssetSupplyRead?.status === "success" &&
-              tvlTotalAssetSupplyRead.result !== undefined &&
-              tvlTotalAssetSupplyRead.result !== null
-                ? (tvlTotalAssetSupplyRead.result as bigint)
-                : undefined;
-            collateralPoolTVL = tvlFromTotalAssets ?? tvlFromTotalAssetSupply;
+            // ERC20 totalSupply on v3, totalAssetSupply on v2. Same number on v3.
+            collateralPoolTVL =
+              successfulBigint(reads?.[currentOffset]) ??
+              successfulBigint(reads?.[currentOffset + 1]);
 
             // No on-pool getAPRBreakdown in deployed StabilityPool; APR comes from rewardData + useAllStabilityPoolRewards.
             collateralPoolAPR = undefined;
@@ -330,22 +319,15 @@ export function useAnchorMarketData(
               collateralRewardsRead.result !== null
                 ? (collateralRewardsRead.result as bigint)
                 : undefined;
-            const collateralDepositRead = reads?.[currentOffset + 3];
-            // Only use result if read was successful
-            if (
-              collateralDepositRead?.status === "success" &&
-              collateralDepositRead.result !== undefined &&
-              collateralDepositRead.result !== null
-            ) {
-              collateralPoolDeposit = collateralDepositRead.result as bigint;
-            } else {
-              collateralPoolDeposit = 0n;
-            }
+            collateralPoolDeposit =
+              successfulBigint(reads?.[currentOffset + 4]) ??
+              successfulBigint(reads?.[currentOffset + 3]) ??
+              0n;
 
             // Read reward data for APR fallback calculation
             // Only if pegged token address exists (reward data read was added)
             const collateralRewardDataRead = currentPeggedTokenAddress
-              ? reads?.[currentOffset + 4]
+              ? reads?.[currentOffset + 5]
               : undefined;
             const collateralRewardData =
               collateralRewardDataRead?.status === "success" &&
@@ -450,27 +432,15 @@ export function useAnchorMarketData(
               }
             }
 
-            currentOffset += 4; // totalAssets, totalAssetSupply, getClaimableRewards, assetBalanceOf
+            currentOffset += 5; // totalSupply, totalAssetSupply, getClaimableRewards, assetBalanceOf, balanceOf
             if (currentPeggedTokenAddress) currentOffset += 1; // rewardData (if pegged token exists)
           }
 
           if (hasSailPool) {
-            // Read TVL from stability pool contract (prefer totalAssets, fallback to totalAssetSupply)
-            const sailTvlTotalAssetsRead = reads?.[currentOffset];
-            const sailTvlTotalAssetSupplyRead = reads?.[currentOffset + 1];
-            const sailTvlFromTotalAssets =
-              sailTvlTotalAssetsRead?.status === "success" &&
-              sailTvlTotalAssetsRead.result !== undefined &&
-              sailTvlTotalAssetsRead.result !== null
-                ? (sailTvlTotalAssetsRead.result as bigint)
-                : undefined;
-            const sailTvlFromTotalAssetSupply =
-              sailTvlTotalAssetSupplyRead?.status === "success" &&
-              sailTvlTotalAssetSupplyRead.result !== undefined &&
-              sailTvlTotalAssetSupplyRead.result !== null
-                ? (sailTvlTotalAssetSupplyRead.result as bigint)
-                : undefined;
-            sailPoolTVL = sailTvlFromTotalAssets ?? sailTvlFromTotalAssetSupply;
+            // ERC20 totalSupply on v3, totalAssetSupply on v2. Same number on v3.
+            sailPoolTVL =
+              successfulBigint(reads?.[currentOffset]) ??
+              successfulBigint(reads?.[currentOffset + 1]);
 
             sailPoolAPR = undefined;
             const sailRewardsRead = reads?.[currentOffset + 2];
@@ -480,22 +450,15 @@ export function useAnchorMarketData(
               sailRewardsRead.result !== null
                 ? (sailRewardsRead.result as bigint)
                 : undefined;
-            const sailDepositRead = reads?.[currentOffset + 3];
-            // Only use result if read was successful
-            if (
-              sailDepositRead?.status === "success" &&
-              sailDepositRead.result !== undefined &&
-              sailDepositRead.result !== null
-            ) {
-              sailPoolDeposit = sailDepositRead.result as bigint;
-            } else {
-              sailPoolDeposit = 0n;
-            }
+            sailPoolDeposit =
+              successfulBigint(reads?.[currentOffset + 4]) ??
+              successfulBigint(reads?.[currentOffset + 3]) ??
+              0n;
 
             // Read reward data for APR fallback calculation
             // Only if pegged token address exists (reward data read was added)
             const sailRewardDataRead = currentPeggedTokenAddress
-              ? reads?.[currentOffset + 4]
+              ? reads?.[currentOffset + 5]
               : undefined;
             const sailRewardData =
               sailRewardDataRead?.status === "success" &&
@@ -597,7 +560,7 @@ export function useAnchorMarketData(
               }
             }
 
-            currentOffset += 4; // totalAssets, totalAssetSupply, getClaimableRewards, assetBalanceOf
+            currentOffset += 5; // totalSupply, totalAssetSupply, getClaimableRewards, assetBalanceOf, balanceOf
             if (currentPeggedTokenAddress) currentOffset += 1; // rewardData (if pegged token exists)
           }
 

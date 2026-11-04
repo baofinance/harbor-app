@@ -19,7 +19,15 @@
 0x817ADaE288eD46B8618AAEffE75ACD26A0a1b0FD  # hsSTETH-BTC (Harbor Sail stETH-BTC)
 
 # ============================================================================
-# 3. COLLATERAL STABILITY POOLS - query assetBalanceOf(userAddress)
+# STABILITY POOL BALANCES
+# v3 pools are the hsp ERC20. Query balanceOf(userAddress) and totalSupply().
+# Those return the same numbers as assetBalanceOf and totalAssetSupply.
+# v2 pools do not implement balanceOf. Sections 3 and 4 are v2 and still
+# use assetBalanceOf until those pools are upgraded.
+# ============================================================================
+
+# ============================================================================
+# 3. COLLATERAL STABILITY POOLS (v2) - query assetBalanceOf(userAddress)
 # IMPORTANT: Both collateral and leveraged pools accept ha tokens as deposits
 # Difference: Collateral pools convert to collateral tokens on rebalance
 # Also query: activeRewardTokens() and claimable(userAddress, rewardToken)
@@ -29,7 +37,7 @@
 0x667Ceb303193996697A5938cD6e17255EeAcef51  # BTC/stETH Collateral Pool (deposits: haBTC)
 
 # ============================================================================
-# 4. LEVERAGED STABILITY POOLS - query assetBalanceOf(userAddress)
+# 4. LEVERAGED STABILITY POOLS (v2) - query assetBalanceOf(userAddress)
 # IMPORTANT: Both collateral and leveraged pools accept ha tokens as deposits
 # Difference: Leveraged pools convert to leveraged tokens (hs tokens) on rebalance
 # Also query: activeRewardTokens() and claimable(userAddress, rewardToken)
@@ -37,6 +45,14 @@
 0x438B29EC7a1770dDbA37D792F1A6e76231Ef8E06  # ETH/fxUSD Leveraged Pool (deposits: haETH)
 0x9e56F1E1E80EBf165A1dAa99F9787B41cD5bFE40  # BTC/fxUSD Leveraged Pool (deposits: haBTC)
 0xCB4F3e21DE158bf858Aa03E63e4cEc7342177013  # BTC/stETH Leveraged Pool (deposits: haBTC)
+
+# ============================================================================
+# 4b. V3 STABILITY POOLS - query balanceOf(userAddress) and totalSupply()
+# Same numbers as assetBalanceOf / totalAssetSupply. Do not use assetBalanceOf
+# for these. Deposits are haEUR2.
+# ============================================================================
+0x63501E3a00f1eDA929eCaa28EC1A4147c0b565B6  # haEUR2 collateral pool hspEUR(stETH)
+0x0D3AF830C0AC64047a69950fd7BE543d89D3b2dd  # haEUR2 sail pool hspEUR(hsSTETH)
 
 # ============================================================================
 # 5. GENESIS CONTRACTS - query shares(userAddress) or claimable(userAddress)

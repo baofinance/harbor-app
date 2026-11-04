@@ -134,6 +134,7 @@ import {
   isWithdrawalWindowOpen,
   pickDefinedBigint,
   stabilityPoolShareLabel,
+  successfulBigint,
 } from "@/utils/stabilityPoolCompat";
 
 function pickEarlyWithdrawalFee(v3Fee: unknown, v2Fee: unknown): bigint | undefined {
@@ -984,7 +985,7 @@ export function useAnchorDepositWithdrawModal({
 
   // Onchain fallback for selecting the correct market in withdraw mode:
   // If the marks subgraph is pointing at a different environment (e.g., prod) it may return no deposits.
-  // In that case, we detect deposits directly via StabilityPool.assetBalanceOf across all markets in the group.
+  // In that case, we detect deposits via balanceOf, with assetBalanceOf on v2 pools.
   const { contracts: groupBalanceContracts, indexMap: groupBalanceIndexMap } =
     useMemo(() => {
       const idxMap = new Map<
@@ -1017,6 +1018,16 @@ export function useAnchorDepositWithdrawModal({
             functionName: "assetBalanceOf",
             args: [address as `0x${string}`],
           });
+          idxMap.set(items.length, {
+            marketId: entry.marketId,
+            kind: "collateralPool",
+          });
+          items.push({
+            address: collateralAddr,
+            abi: stabilityPoolABI,
+            functionName: "balanceOf",
+            args: [address as `0x${string}`],
+          });
         }
         if (sailAddr) {
           idxMap.set(items.length, {
@@ -1027,6 +1038,16 @@ export function useAnchorDepositWithdrawModal({
             address: sailAddr,
             abi: stabilityPoolABI,
             functionName: "assetBalanceOf",
+            args: [address as `0x${string}`],
+          });
+          idxMap.set(items.length, {
+            marketId: entry.marketId,
+            kind: "sailPool",
+          });
+          items.push({
+            address: sailAddr,
+            abi: stabilityPoolABI,
+            functionName: "balanceOf",
             args: [address as `0x${string}`],
           });
         }
@@ -1063,10 +1084,8 @@ export function useAnchorDepositWithdrawModal({
         collateralPool: 0n,
         sailPool: 0n,
       };
-      const val =
-        res?.status === "success" && res.result !== undefined && res.result !== null
-          ? (res.result as bigint)
-          : 0n;
+      const val = successfulBigint(res);
+      if (val === undefined) return;
       if (meta.kind === "collateralPool") prev.collateralPool = val;
       if (meta.kind === "sailPool") prev.sailPool = val;
       balancesByMarket.set(meta.marketId, prev);
@@ -2253,15 +2272,12 @@ export function useAnchorDepositWithdrawModal({
   // ---------------------------------------------------------------------------
   // Stability Pool minimum-supply floor reads (used to prevent 0-withdraw txs)
   // ---------------------------------------------------------------------------
-  const { data: collateralPoolTotalSupply } = useContractRead({
+  const { data: collateralPoolTotalSupply } = useStabilityPoolReadPair({
     address: collateralPoolAddress,
-    abi: stabilityPoolABI,
-    functionName: "totalAssetSupply",
-    query: {
-      enabled: !!collateralPoolAddress && isActive && activeTab === "withdraw",
-      retry: 1,
-      allowFailure: true,
-    },
+    enabled: !!collateralPoolAddress && isActive && activeTab === "withdraw",
+    v3FunctionName: "totalSupply",
+    v2FunctionName: "totalAssetSupply",
+    refetchInterval: false,
   });
 
   const { data: collateralPoolMinTotalSupply } = useContractRead({
@@ -2275,15 +2291,12 @@ export function useAnchorDepositWithdrawModal({
     },
   });
 
-  const { data: sailPoolTotalSupply } = useContractRead({
+  const { data: sailPoolTotalSupply } = useStabilityPoolReadPair({
     address: sailPoolAddress,
-    abi: stabilityPoolABI,
-    functionName: "totalAssetSupply",
-    query: {
-      enabled: !!sailPoolAddress && isActive && activeTab === "withdraw",
-      retry: 1,
-      allowFailure: true,
-    },
+    enabled: !!sailPoolAddress && isActive && activeTab === "withdraw",
+    v3FunctionName: "totalSupply",
+    v2FunctionName: "totalAssetSupply",
+    refetchInterval: false,
   });
 
   const { data: sailPoolMinTotalSupply } = useContractRead({
@@ -2298,36 +2311,32 @@ export function useAnchorDepositWithdrawModal({
   });
 
   // Collateral pool balance - use Anvil hook when on local chain
-  const anvilCollateralPoolResult = useContractRead({
+  const anvilCollateralPoolResult = useStabilityPoolReadPair({
     address: collateralPoolAddress,
-    abi: stabilityPoolABI,
-    functionName: "assetBalanceOf",
-    args: address ? [address] : undefined,
     enabled:
       !!address &&
       !!collateralPoolAddress &&
       isActive &&
       activeTab === "withdraw" &&
       useAnvilForPeggedBalance,
-    refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+    v3FunctionName: "balanceOf",
+    v2FunctionName: "assetBalanceOf",
+    args: address ? [address] : undefined,
+    refetchInterval: isActive ? 15000 : false,
   });
 
-  const wagmiCollateralPoolResult = useContractRead({
+  const wagmiCollateralPoolResult = useStabilityPoolReadPair({
     address: collateralPoolAddress,
-    abi: stabilityPoolABI,
-    functionName: "assetBalanceOf",
+    enabled:
+      !!address &&
+      !!collateralPoolAddress &&
+      isActive &&
+      activeTab === "withdraw" &&
+      !useAnvilForPeggedBalance,
+    v3FunctionName: "balanceOf",
+    v2FunctionName: "assetBalanceOf",
     args: address ? [address] : undefined,
-    query: {
-      enabled:
-        !!address &&
-        !!collateralPoolAddress &&
-        isActive &&
-        activeTab === "withdraw" &&
-        !useAnvilForPeggedBalance,
-      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
-      retry: 1,
-      allowFailure: true,
-    },
+    refetchInterval: isActive ? 15000 : false,
   });
 
   const collateralPoolBalanceData = useAnvilForPeggedBalance
@@ -2335,36 +2344,32 @@ export function useAnchorDepositWithdrawModal({
     : wagmiCollateralPoolResult.data;
 
   // Sail pool balance - use Anvil hook when on local chain
-  const anvilSailPoolResult = useContractRead({
+  const anvilSailPoolResult = useStabilityPoolReadPair({
     address: sailPoolAddress,
-    abi: stabilityPoolABI,
-    functionName: "assetBalanceOf",
-    args: address ? [address] : undefined,
     enabled:
       !!address &&
       !!sailPoolAddress &&
       isActive &&
       activeTab === "withdraw" &&
       useAnvilForPeggedBalance,
-    refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+    v3FunctionName: "balanceOf",
+    v2FunctionName: "assetBalanceOf",
+    args: address ? [address] : undefined,
+    refetchInterval: isActive ? 15000 : false,
   });
 
-  const wagmiSailPoolResult = useContractRead({
+  const wagmiSailPoolResult = useStabilityPoolReadPair({
     address: sailPoolAddress,
-    abi: stabilityPoolABI,
-    functionName: "assetBalanceOf",
+    enabled:
+      !!address &&
+      !!sailPoolAddress &&
+      isActive &&
+      activeTab === "withdraw" &&
+      !useAnvilForPeggedBalance,
+    v3FunctionName: "balanceOf",
+    v2FunctionName: "assetBalanceOf",
     args: address ? [address] : undefined,
-    query: {
-      enabled:
-        !!address &&
-        !!sailPoolAddress &&
-        isActive &&
-        activeTab === "withdraw" &&
-        !useAnvilForPeggedBalance,
-      refetchInterval: isActive ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
-      retry: 1,
-      allowFailure: true,
-    },
+    refetchInterval: isActive ? 15000 : false,
   });
 
   const sailPoolBalanceData = useAnvilForPeggedBalance
@@ -3109,7 +3114,12 @@ export function useAnchorDepositWithdrawModal({
         pool.address.length === 42;
 
       if (isValidAddress) {
-        // TVL
+        // TVL: ERC20 totalSupply, then v2 totalAssetSupply
+        contracts.push({
+          address: pool.address,
+          abi: stabilityPoolABI,
+          functionName: "totalSupply",
+        });
         contracts.push({
           address: pool.address,
           abi: stabilityPoolABI,
@@ -3174,11 +3184,13 @@ export function useAnchorDepositWithdrawModal({
         };
       }
 
-      const tvl = allPoolData[cursor]?.result as bigint | undefined;
-      const gaugeRewardToken = allPoolData[cursor + 1]?.result as
+      const tvl =
+        successfulBigint(allPoolData[cursor]) ??
+        successfulBigint(allPoolData[cursor + 1]);
+      const gaugeRewardToken = allPoolData[cursor + 2]?.result as
         | `0x${string}`
         | undefined;
-      cursor += 2;
+      cursor += 3;
 
       return {
         ...pool,
@@ -3498,6 +3510,11 @@ export function useAnchorDepositWithdrawModal({
             {
               address: stabilityPoolAddress as `0x${string}`,
               abi: stabilityPoolABI,
+              functionName: "totalSupply",
+            },
+            {
+              address: stabilityPoolAddress as `0x${string}`,
+              abi: stabilityPoolABI,
               functionName: "totalAssetSupply",
             },
             {
@@ -3531,17 +3548,17 @@ export function useAnchorDepositWithdrawModal({
     ) {
       return 0;
     }
-    const tvlRead = advancedStabilityPoolAprReads[0];
-    const rdRead = advancedStabilityPoolAprReads[1];
+    const tvl =
+      successfulBigint(advancedStabilityPoolAprReads[0]) ??
+      successfulBigint(advancedStabilityPoolAprReads[1]);
+    const rdRead = advancedStabilityPoolAprReads[2];
     if (
-      tvlRead?.status !== "success" ||
+      tvl === undefined ||
       rdRead?.status !== "success" ||
-      tvlRead.result === undefined ||
       rdRead.result === undefined
     ) {
       return 0;
     }
-    const tvl = tvlRead.result as bigint;
     const tuple = rdRead.result as readonly [bigint, bigint, bigint, bigint];
     const rate = tuple[2];
     if (tvl <= 0n || rate <= 0n) return 0;
@@ -4780,7 +4797,7 @@ export function useAnchorDepositWithdrawModal({
     if (!selectedDepositAsset) return "";
     return selectedDepositAsset;
   }, [selectedDepositAsset]);
-  // Live assetBalanceOf is the hsp balance, including after a transfer.
+  // Live balanceOf is the hsp balance, including after a transfer. v2 pools use assetBalanceOf.
   // The subgraph row is only a stand-in until that read settles.
   const collateralPoolBalanceContract =
     typeof collateralPoolBalanceData === "bigint" ? collateralPoolBalanceData : undefined;
@@ -11164,14 +11181,12 @@ export function useAnchorDepositWithdrawModal({
     },
   });
 
-  const { data: poolTotalSupply } = useContractRead({
+  const { data: poolTotalSupply } = useStabilityPoolReadPair({
     address: stabilityPoolAddress,
-    abi: stabilityPoolABI,
-    functionName: "totalAssetSupply",
-    query: {
-      enabled: !!stabilityPoolAddress && isActive && activeTab === "deposit" && !mintOnly,
-      retry: 1,
-    },
+    enabled: !!stabilityPoolAddress && isActive && activeTab === "deposit" && !mintOnly,
+    v3FunctionName: "totalSupply",
+    v2FunctionName: "totalAssetSupply",
+    refetchInterval: false,
   });
 
   const { data: poolSupplyFloor } = useContractRead({

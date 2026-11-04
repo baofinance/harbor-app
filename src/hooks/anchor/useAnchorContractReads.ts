@@ -121,7 +121,7 @@ export function useAnchorContractReads(
           {
             address: collateralStabilityPool,
             abi: stabilityPoolABI as any,
-            functionName: "totalAssets" as any,
+            functionName: "totalSupply" as any,
             chainId: mktChainId,
           } as any,
           {
@@ -143,6 +143,15 @@ export function useAnchorContractReads(
             address: collateralStabilityPool,
             abi: stabilityPoolABI as any,
             functionName: "assetBalanceOf" as any,
+            args: address
+              ? [address as `0x${string}`]
+              : ["0x0000000000000000000000000000000000000000"],
+            chainId: mktChainId,
+          } as any,
+          {
+            address: collateralStabilityPool,
+            abi: stabilityPoolABI as any,
+            functionName: "balanceOf" as any,
             args: address
               ? [address as `0x${string}`]
               : ["0x0000000000000000000000000000000000000000"],
@@ -172,7 +181,7 @@ export function useAnchorContractReads(
           {
             address: sailStabilityPool,
             abi: stabilityPoolABI as any,
-            functionName: "totalAssets" as any,
+            functionName: "totalSupply" as any,
             chainId: mktChainId,
           } as any,
           {
@@ -194,6 +203,15 @@ export function useAnchorContractReads(
             address: sailStabilityPool,
             abi: stabilityPoolABI as any,
             functionName: "assetBalanceOf" as any,
+            args: address
+              ? [address as `0x${string}`]
+              : ["0x0000000000000000000000000000000000000000"],
+            chainId: mktChainId,
+          } as any,
+          {
+            address: sailStabilityPool,
+            abi: stabilityPoolABI as any,
+            functionName: "balanceOf" as any,
             args: address
               ? [address as `0x${string}`]
               : ["0x0000000000000000000000000000000000000000"],

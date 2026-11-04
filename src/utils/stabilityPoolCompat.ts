@@ -2,6 +2,8 @@
  * Stability pool reads that differ between v2 and v3.
  * Live markets still answer the v2 names. haEUR2 answers only the v3 names.
  * Call the v3 name first and keep the v2 name when that call reverts.
+ * `balanceOf` / `totalSupply` match `assetBalanceOf` / `totalAssetSupply` on v3.
+ * v2 pools do not implement the ERC20 names.
  */
 
 export const STABILITY_POOL_WAD = 10n ** 18n;
@@ -12,6 +14,20 @@ export function pickDefinedBigint(
 ): bigint | undefined {
   if (typeof newer === "bigint") return newer;
   if (typeof older === "bigint") return older;
+  return undefined;
+}
+
+/** Multicall row that succeeded with a uint256. A revert is undefined, including a reported zero. */
+export function successfulBigint(
+  read: { status?: string; result?: unknown } | null | undefined,
+): bigint | undefined {
+  if (!read || read.status === "failure") return undefined;
+  if (
+    typeof read.result === "bigint" &&
+    (read.status === "success" || read.status === undefined)
+  ) {
+    return read.result;
+  }
   return undefined;
 }
 
@@ -128,6 +144,57 @@ type ContractReader = {
     args?: readonly unknown[];
   }) => Promise<unknown>;
 };
+
+/** v3 ERC20 `totalSupply`, then v2 `totalAssetSupply`. Same number on v3. */
+export async function readPoolTotalSupply(
+  client: ContractReader,
+  pool: `0x${string}`,
+  abi: readonly unknown[] | unknown[],
+): Promise<bigint> {
+  try {
+    const value = await client.readContract({
+      address: pool,
+      abi,
+      functionName: "totalSupply",
+    });
+    if (typeof value === "bigint") return value;
+  } catch {
+    // v2 pools have no ERC20 totalSupply.
+  }
+  const fallback = await client.readContract({
+    address: pool,
+    abi,
+    functionName: "totalAssetSupply",
+  });
+  return typeof fallback === "bigint" ? fallback : 0n;
+}
+
+/** v3 ERC20 `balanceOf`, then v2 `assetBalanceOf`. Same number on v3. */
+export async function readPoolBalance(
+  client: ContractReader,
+  pool: `0x${string}`,
+  account: `0x${string}`,
+  abi: readonly unknown[] | unknown[],
+): Promise<bigint> {
+  try {
+    const value = await client.readContract({
+      address: pool,
+      abi,
+      functionName: "balanceOf",
+      args: [account],
+    });
+    if (typeof value === "bigint") return value;
+  } catch {
+    // v2 pools have no ERC20 balanceOf.
+  }
+  const fallback = await client.readContract({
+    address: pool,
+    abi,
+    functionName: "assetBalanceOf",
+    args: [account],
+  });
+  return typeof fallback === "bigint" ? fallback : 0n;
+}
 
 /** v3 `claimable(account, tokens[])`, then v2 `claimable(account, token)`. */
 export async function readStabilityPoolClaimable(

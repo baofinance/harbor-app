@@ -6,6 +6,7 @@ import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { rewardsABI } from "@/abis/rewards";
 import { minterABI } from "@/abis/minter";
 import { CHAINLINK_AGGREGATOR_ABI } from "@/abis/chainlink";
+import { successfulBigint } from "@/utils/stabilityPoolCompat";
 
 export const usePoolData = (pools: Pool[]) => {
   const { address } = useAccount();
@@ -22,7 +23,18 @@ export const usePoolData = (pools: Pool[]) => {
         {
           address: pool.address,
           abi: stabilityPoolABI,
+          functionName: "totalSupply",
+        },
+        {
+          address: pool.address,
+          abi: stabilityPoolABI,
           functionName: "totalAssetSupply",
+        },
+        {
+          address: pool.address,
+          abi: stabilityPoolABI,
+          functionName: "balanceOf",
+          args: [userAddress],
         },
         {
           address: pool.address,
@@ -82,24 +94,26 @@ export const usePoolData = (pools: Pool[]) => {
     let dataIndex = 0;
     return pools.map((pool) => {
       const i = dataIndex;
-      const tvl = data[i]?.result as bigint | undefined;
-      const userDeposit = data[i + 1]?.result as bigint | undefined;
-      const rewards = data[i + 2]?.result as bigint | undefined;
+      const tvl =
+        successfulBigint(data[i]) ?? successfulBigint(data[i + 1]);
+      const userDeposit =
+        successfulBigint(data[i + 2]) ?? successfulBigint(data[i + 3]);
+      const rewards = data[i + 4]?.result as bigint | undefined;
 
       let price: bigint | undefined;
       let priceDecimals: number | undefined;
       let leverageRatio: bigint | undefined;
 
       if (pool.poolType === "collateral") {
-        const priceData = data[i + 3]?.result as any[] | undefined;
+        const priceData = data[i + 5]?.result as any[] | undefined;
         price = priceData?.[1] as bigint | undefined;
-        priceDecimals = data[i + 4]?.result as number | undefined;
-        dataIndex += 5;
+        priceDecimals = data[i + 6]?.result as number | undefined;
+        dataIndex += 7;
       } else {
-        price = data[i + 3]?.result as bigint | undefined;
+        price = data[i + 5]?.result as bigint | undefined;
         priceDecimals = 18; // LP token price is 18 decimals
-        leverageRatio = data[i + 4]?.result as bigint | undefined;
-        dataIndex += 5;
+        leverageRatio = data[i + 6]?.result as bigint | undefined;
+        dataIndex += 7;
       }
 
       let tvlUSD = 0;

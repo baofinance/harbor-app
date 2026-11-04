@@ -126,6 +126,20 @@ export const stabilityPoolABI = [
   },
   {
     type: "function",
+    name: "balanceOf",
+    inputs: [{ name: "account", type: "address", internalType: "address" }],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "totalSupply",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "totalAssetSupplyHistory",
     inputs: [{ name: "index", type: "uint256", internalType: "uint256" }],
     outputs: [

@@ -3,7 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { formatEther } from "viem";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { ERC20_ABI } from "@/config/contracts";
-import { readStabilityPoolClaimable } from "@/utils/stabilityPoolCompat";
+import {
+  readPoolBalance,
+  readPoolTotalSupply,
+  readStabilityPoolClaimable,
+} from "@/utils/stabilityPoolCompat";
 
 export interface RewardTokenData {
   address: `0x${string}`;
@@ -90,20 +94,19 @@ export function useStabilityPoolRewards({
         }
 
         // Get total pool supply for APR calculation
-        const totalSupply = (await client.readContract({
-          address: poolAddress,
-          abi: stabilityPoolABI,
-          functionName: "totalAssetSupply",
-          args: [],
-        })) as bigint;
+        const totalSupply = await readPoolTotalSupply(
+          client,
+          poolAddress,
+          stabilityPoolABI,
+        );
 
         // Get user balance for APR calculation
-        const userBalance = (await client.readContract({
-          address: poolAddress,
-          abi: stabilityPoolABI,
-          functionName: "assetBalanceOf",
-          args: [address],
-        })) as bigint;
+        const userBalance = await readPoolBalance(
+          client,
+          poolAddress,
+          address,
+          stabilityPoolABI,
+        );
 
         // Fetch data for each reward token
         const rewardTokensData = await Promise.all(

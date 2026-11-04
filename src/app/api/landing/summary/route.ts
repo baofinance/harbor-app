@@ -9,6 +9,7 @@ import { getPriceFeedAddress, queryChainlinkPrice } from "@/utils/priceFeeds";
 import { CHAINLINK_FEEDS } from "@/config/chainlink";
 import { genesisParticipatesInMaidenVoyageTotals } from "@/config/markets";
 import { fetchTideFlywheelSnapshot } from "@/lib/tideFlywheelServer";
+import { readPoolTotalSupply } from "@/utils/stabilityPoolCompat";
 
 export const runtime = "nodejs";
 
@@ -305,11 +306,7 @@ export async function GET(request: Request) {
             abi: stabilityPoolABI,
             functionName: "activeRewardTokens",
           }) as Promise<`0x${string}`[]>,
-          publicClient.readContract({
-            address: pool.address,
-            abi: stabilityPoolABI,
-            functionName: "totalAssetSupply",
-          }) as Promise<bigint>,
+          readPoolTotalSupply(publicClient, pool.address, stabilityPoolABI),
         ]);
 
         if (poolTVL > 0n && rewardTokens.length > 0) {

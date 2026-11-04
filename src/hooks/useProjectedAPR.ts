@@ -9,6 +9,7 @@ import { markets } from "@/config/markets";
 import { contracts, GENESIS_ABI } from "@/config/contracts.index";
 import { STABILITY_POOL_MANAGER_ABI, WSTETH_ABI, ERC20_ABI } from "@/abis/shared";
 import { computeHarborHarvestSplit } from "@/utils/harborHarvestSplit";
+import { successfulBigint } from "@/utils/stabilityPoolCompat";
 
 // Constants
 const STAKING_APR = 0.035; // 3.5% APR for stETH staking rewards
@@ -82,13 +83,23 @@ export function useProjectedAPR(
           abi: STABILITY_POOL_MANAGER_ABI,
           functionName: "harvestCutRatio",
         },
-        // Collateral pool reads
+        // Collateral pool supply: ERC20 totalSupply, then v2 totalAssetSupply
+        {
+          address: collateralPoolAddress as `0x${string}`,
+          abi: stabilityPoolABI,
+          functionName: "totalSupply",
+        },
         {
           address: collateralPoolAddress as `0x${string}`,
           abi: stabilityPoolABI,
           functionName: "totalAssetSupply",
         },
-        // Leveraged pool reads
+        // Leveraged pool supply: ERC20 totalSupply, then v2 totalAssetSupply
+        {
+          address: leveragedPoolAddress as `0x${string}`,
+          abi: stabilityPoolABI,
+          functionName: "totalSupply",
+        },
         {
           address: leveragedPoolAddress as `0x${string}`,
           abi: stabilityPoolABI,
@@ -203,14 +214,14 @@ export function useProjectedAPR(
       const harvestable = basicReads?.[0]?.result as bigint | undefined;
       const bountyRatio = basicReads?.[2]?.result as bigint | undefined;
       const cutRatio = basicReads?.[3]?.result as bigint | undefined;
-      const collateralPoolSupply = basicReads?.[4]?.result as
-        | bigint
-        | undefined;
-      const leveragedPoolSupply = basicReads?.[5]?.result as bigint | undefined;
-      const genesisEnded = basicReads?.[6]?.result as boolean | undefined;
-      const priceRaw = basicReads?.[7]?.result as bigint | undefined;
+      const collateralPoolSupply =
+        successfulBigint(basicReads?.[4]) ?? successfulBigint(basicReads?.[5]);
+      const leveragedPoolSupply =
+        successfulBigint(basicReads?.[6]) ?? successfulBigint(basicReads?.[7]);
+      const genesisEnded = basicReads?.[8]?.result as boolean | undefined;
+      const priceRaw = basicReads?.[9]?.result as bigint | undefined;
       const priceDecimals =
-        (basicReads?.[8]?.result as number | undefined) ?? 8;
+        (basicReads?.[10]?.result as number | undefined) ?? 8;
 
       // Extract wstETH reads
       const stEthPerToken = wstETHReads?.[0]?.result as bigint | undefined;
@@ -560,7 +571,19 @@ export function useUserProjectedAPR(
         {
           address: collateralPoolAddress as `0x${string}`,
           abi: stabilityPoolABI,
+          functionName: "balanceOf",
+          args: userAddress ? [userAddress] : undefined,
+        },
+        {
+          address: collateralPoolAddress as `0x${string}`,
+          abi: stabilityPoolABI,
           functionName: "assetBalanceOf",
+          args: userAddress ? [userAddress] : undefined,
+        },
+        {
+          address: leveragedPoolAddress as `0x${string}`,
+          abi: stabilityPoolABI,
+          functionName: "balanceOf",
           args: userAddress ? [userAddress] : undefined,
         },
         {
@@ -576,12 +599,10 @@ export function useUserProjectedAPR(
     });
 
   return useMemo(() => {
-    const userCollateralDeposit = userDeposits?.[0]?.result as
-      | bigint
-      | undefined;
-    const userLeveragedDeposit = userDeposits?.[1]?.result as
-      | bigint
-      | undefined;
+    const userCollateralDeposit =
+      successfulBigint(userDeposits?.[0]) ?? successfulBigint(userDeposits?.[1]);
+    const userLeveragedDeposit =
+      successfulBigint(userDeposits?.[2]) ?? successfulBigint(userDeposits?.[3]);
 
     // Calculate 7-day projected rewards based on APR
     let projected7DayRewardsCollateral: number | null = null;

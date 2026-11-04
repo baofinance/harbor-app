@@ -213,11 +213,11 @@ export function AnchorClaimCompoundDialogs({
                   offset += 5;
                   if (prevHasStabilityPoolManager) offset += 1;
                   if (prevHasCollateral) {
-                    offset += 4;
+                    offset += 5;
                     if (prevPeggedTokenAddress) offset += 1;
                   }
                   if (prevHasSail) {
-                    offset += 4;
+                    offset += 5;
                     if (prevPeggedTokenAddress) offset += 1;
                   }
                   if (prevHasPriceOracle) offset += 1;

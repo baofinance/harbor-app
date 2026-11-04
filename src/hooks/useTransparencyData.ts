@@ -86,10 +86,10 @@ export interface TransparencyData {
 
 // Number of contract reads per market
 const READS_PER_MARKET = 16;
-// Pool reads per market: 8 legacy reads, then 4 v3 fee/window reads.
-const POOL_READS_PER_MARKET = 12;
-// Number of user reads per market (2 pools * 2 reads each)
-const USER_READS_PER_MARKET = 4;
+// Pool reads per market: 8 legacy reads, 4 v3 fee/window reads, then totalSupply for each pool.
+const POOL_READS_PER_MARKET = 14;
+// User reads per market: assetBalanceOf + withdrawRequest per pool, then balanceOf per pool.
+const USER_READS_PER_MARKET = 6;
 
 /**
  * Transparency page data: one row per market from `markets` config that has a
@@ -158,6 +158,9 @@ export function useTransparencyData(): TransparencyData {
       { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "withdrawalWindow", chainId: cid },
       { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "earlyWithdrawalFeeRatio", chainId: cid },
       { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "withdrawalWindow", chainId: cid },
+      // ERC20 totalSupply. v2 reverts; parsers keep indexes 0 and 4.
+      { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "totalSupply", chainId: cid },
+      { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "totalSupply", chainId: cid },
     ];
   });
 
@@ -173,6 +176,8 @@ export function useTransparencyData(): TransparencyData {
           { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "withdrawRequest", args: [userAddress], chainId: cid },
           { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "assetBalanceOf", args: [userAddress], chainId: cid },
           { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "withdrawRequest", args: [userAddress], chainId: cid },
+          { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "balanceOf", args: [userAddress], chainId: cid },
+          { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "balanceOf", args: [userAddress], chainId: cid },
         ];
       })
     : [];
@@ -276,7 +281,7 @@ export function useTransparencyData(): TransparencyData {
         address: stabilityPoolCollateral,
         name: `${market.name} Anchor Pool`,
         type: "collateral" as const,
-        tvl: parseResult(baseIndex + 0, 0n),
+        tvl: succeeded<bigint>(baseIndex + 12) ?? parseResult(baseIndex + 0, 0n),
         activeRewardTokens: parseResult(baseIndex + 1, []),
         earlyWithdrawalFee: succeeded<bigint>(baseIndex + 8) ?? parseResult(baseIndex + 2, 0n),
         withdrawWindow: poolWindow(baseIndex + 9, baseIndex + 3),
@@ -285,7 +290,7 @@ export function useTransparencyData(): TransparencyData {
         address: stabilityPoolLeveraged,
         name: `${market.name} Sail Pool`,
         type: "leveraged" as const,
-        tvl: parseResult(baseIndex + 4, 0n),
+        tvl: succeeded<bigint>(baseIndex + 13) ?? parseResult(baseIndex + 4, 0n),
         activeRewardTokens: parseResult(baseIndex + 5, []),
         earlyWithdrawalFee: succeeded<bigint>(baseIndex + 10) ?? parseResult(baseIndex + 6, 0n),
         withdrawWindow: poolWindow(baseIndex + 11, baseIndex + 7),
@@ -309,7 +314,7 @@ export function useTransparencyData(): TransparencyData {
       return [
         {
           poolAddress: stabilityPoolCollateral,
-          assetBalance: parseResult(baseIndex + 0, 0n),
+          assetBalance: succeeded<bigint>(baseIndex + 4) ?? parseResult(baseIndex + 0, 0n),
           withdrawalRequest: {
             amount: collateralWithdrawRequest[0],
             requestedAt: collateralWithdrawRequest[1],
@@ -317,7 +322,7 @@ export function useTransparencyData(): TransparencyData {
         },
         {
           poolAddress: stabilityPoolLeveraged,
-          assetBalance: parseResult(baseIndex + 2, 0n),
+          assetBalance: succeeded<bigint>(baseIndex + 5) ?? parseResult(baseIndex + 2, 0n),
           withdrawalRequest: {
             amount: leveragedWithdrawRequest[0],
             requestedAt: leveragedWithdrawRequest[1],

@@ -7,6 +7,7 @@ import { markets } from "@/config/markets";
 import { useMemo } from "react";
 
 import { ERC20_ABI, WRAPPED_PRICE_ORACLE_ABI } from "@/abis/shared";
+import { successfulBigint } from "@/utils/stabilityPoolCompat";
 
 export interface AnchorMarksData {
   // ha token holdings
@@ -70,7 +71,7 @@ export function useAnchorMarks() {
         });
       }
 
-      // Read collateral stability pool balance
+      // Collateral pool: v2 assetBalanceOf, then v3 balanceOf (same number on v3).
       if (config.stabilityPoolCollateral) {
         reads.push({
           address: config.stabilityPoolCollateral,
@@ -78,14 +79,26 @@ export function useAnchorMarks() {
           functionName: "assetBalanceOf",
           args: [address],
         });
+        reads.push({
+          address: config.stabilityPoolCollateral,
+          abi: stabilityPoolABI,
+          functionName: "balanceOf",
+          args: [address],
+        });
       }
 
-      // Read sail stability pool balance
+      // Sail pool: v2 assetBalanceOf, then v3 balanceOf (same number on v3).
       if (config.stabilityPoolLeveraged) {
         reads.push({
           address: config.stabilityPoolLeveraged,
           abi: stabilityPoolABI,
           functionName: "assetBalanceOf",
+          args: [address],
+        });
+        reads.push({
+          address: config.stabilityPoolLeveraged,
+          abi: stabilityPoolABI,
+          functionName: "balanceOf",
           args: [address],
         });
       }
@@ -162,22 +175,22 @@ export function useAnchorMarks() {
         readIndex++;
       }
 
-      // Collateral pool balance
-      if (config.stabilityPoolCollateral && reads[readIndex]) {
-        const result = reads[readIndex];
-        if (result?.status === "success" && result.result) {
-          collateralPoolBalance += result.result as bigint;
-        }
-        readIndex++;
+      // Collateral pool balance. balanceOf wins when the pool is ERC20.
+      if (config.stabilityPoolCollateral) {
+        const balance =
+          successfulBigint(reads[readIndex + 1]) ??
+          successfulBigint(reads[readIndex]);
+        if (balance) collateralPoolBalance += balance;
+        readIndex += 2;
       }
 
-      // Sail pool balance
-      if (config.stabilityPoolLeveraged && reads[readIndex]) {
-        const result = reads[readIndex];
-        if (result?.status === "success" && result.result) {
-          sailPoolBalance += result.result as bigint;
-        }
-        readIndex++;
+      // Sail pool balance. balanceOf wins when the pool is ERC20.
+      if (config.stabilityPoolLeveraged) {
+        const balance =
+          successfulBigint(reads[readIndex + 1]) ??
+          successfulBigint(reads[readIndex]);
+        if (balance) sailPoolBalance += balance;
+        readIndex += 2;
       }
 
       // Price oracle

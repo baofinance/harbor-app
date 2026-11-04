@@ -1,4 +1,4 @@
-**Archived (March 2026)** — No DeBank code in this repo; for addresses see [`../CONTRACT_ADDRESSES.md`](../CONTRACT_ADDRESSES.md).
+**Archived (March 2026)** — No DeBank code in this repo. Current addresses are in [`../../DEBANK_CONTRACTS_LIST.txt`](../../DEBANK_CONTRACTS_LIST.txt). v3 pools use ERC20 `balanceOf` and `totalSupply` (same numbers as `assetBalanceOf` and `totalAssetSupply`). The v2 addresses below still use `assetBalanceOf`.
 
 # DeBank Integration - Contract Addresses
 
