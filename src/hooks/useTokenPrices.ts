@@ -37,7 +37,8 @@ export function useMultipleTokenPrices(
       return pegTargetPrices.btcPrice ?? 0;
     if (target === "eth" || target === "ethereum")
       return pegTargetPrices.ethPrice ?? 0;
-    if (target === "eur" || target === "euro")
+    // haEUR2 has no own USD feed. Use the EUR price, same as haEUR.
+    if (target === "eur" || target === "euro" || target === "eur2")
       return pegTargetPrices.eurPrice ?? 0;
     if (target === "gold") return pegTargetPrices.goldPrice ?? 0;
     if (target === "silver") return pegTargetPrices.silverPrice ?? 0;
