@@ -27,6 +27,8 @@ export type DepositAmountCardProps = {
   tokenRowLabel?: string;
   /** Label above the amount field (e.g. Sell amount). */
   amountSectionLabel?: string;
+  /** Short note under the balance, such as a pool minimum-supply cap. */
+  hint?: string | null;
   betweenTokenAndAmount?: ReactNode;
   afterAmount?: ReactNode;
   disabled?: boolean;
@@ -39,6 +41,7 @@ export function DepositAmountCard({
   showTokenSelector = true,
   tokenRowLabel,
   amountSectionLabel,
+  hint,
   betweenTokenAndAmount,
   afterAmount,
   disabled = false,
@@ -161,6 +164,10 @@ export function DepositAmountCard({
         >
           {formattedBalance}
         </DepositBalanceStrip>
+      ) : null}
+
+      {hint ? (
+        <p className="mt-1.5 text-xs leading-snug text-[#1E4775]/75">{hint}</p>
       ) : null}
 
       {error ? <p className="mt-1.5 text-xs text-red-600">{error}</p> : null}

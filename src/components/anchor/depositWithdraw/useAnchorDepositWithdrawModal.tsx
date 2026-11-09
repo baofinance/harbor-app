@@ -129,8 +129,10 @@ import type { AnchorDepositWithdrawModalProps } from "./types";
 import { useStabilityPoolReadPair } from "@/hooks/useStabilityPoolReadPair";
 import {
   asUintPair,
+  clampWithdrawToPoolMinimum,
   estimateStabilityPoolWithdrawal,
   harborTokenWithTitle,
+  immediatePoolWithdrawCap,
   isWithdrawalWindowOpen,
   pickDefinedBigint,
   stabilityPoolShareLabel,
@@ -4984,33 +4986,31 @@ export function useAnchorDepositWithdrawModal({
     selectWithdrawPoolRow,
   ]);
 
-  const collateralPoolImmediateCap = useMemo(() => {
-    if (
-      collateralPoolBalance === 0n ||
-      collateralPoolTotalSupply === undefined ||
-      collateralPoolMinTotalSupply === undefined
-    ) {
-      return collateralPoolBalance;
-    }
-    const total = collateralPoolTotalSupply as bigint;
-    const minTotal = collateralPoolMinTotalSupply as bigint;
-    const poolRoom = total > minTotal ? total - minTotal : 0n;
-    return collateralPoolBalance < poolRoom ? collateralPoolBalance : poolRoom;
-  }, [collateralPoolBalance, collateralPoolTotalSupply, collateralPoolMinTotalSupply]);
+  const collateralPoolImmediateCap = useMemo(
+    () =>
+      immediatePoolWithdrawCap(
+        collateralPoolBalance,
+        typeof collateralPoolTotalSupply === "bigint"
+          ? collateralPoolTotalSupply
+          : undefined,
+        typeof collateralPoolMinTotalSupply === "bigint"
+          ? collateralPoolMinTotalSupply
+          : undefined,
+      ),
+    [collateralPoolBalance, collateralPoolTotalSupply, collateralPoolMinTotalSupply],
+  );
 
-  const sailPoolImmediateCap = useMemo(() => {
-    if (
-      sailPoolBalance === 0n ||
-      sailPoolTotalSupply === undefined ||
-      sailPoolMinTotalSupply === undefined
-    ) {
-      return sailPoolBalance;
-    }
-    const total = sailPoolTotalSupply as bigint;
-    const minTotal = sailPoolMinTotalSupply as bigint;
-    const poolRoom = total > minTotal ? total - minTotal : 0n;
-    return sailPoolBalance < poolRoom ? sailPoolBalance : poolRoom;
-  }, [sailPoolBalance, sailPoolTotalSupply, sailPoolMinTotalSupply]);
+  const sailPoolImmediateCap = useMemo(
+    () =>
+      immediatePoolWithdrawCap(
+        sailPoolBalance,
+        typeof sailPoolTotalSupply === "bigint" ? sailPoolTotalSupply : undefined,
+        typeof sailPoolMinTotalSupply === "bigint"
+          ? sailPoolMinTotalSupply
+          : undefined,
+      ),
+    [sailPoolBalance, sailPoolTotalSupply, sailPoolMinTotalSupply],
+  );
 
   const totalStabilityPoolBalance = collateralPoolBalance + sailPoolBalance;
   const allowance = allowanceData || 0n;
@@ -5644,18 +5644,28 @@ export function useAnchorDepositWithdrawModal({
         return;
       }
       if (selectedRedeemPosition?.kind === "pool") {
-        const modeKey =
-          selectedRedeemPosition.poolType === "collateral"
-            ? "collateralPool"
-            : "sailPool";
-        handlePositionAmountChange(
-          modeKey,
-          value,
-          selectedRedeemPosition.balance,
-        );
+        const isCollateral = selectedRedeemPosition.poolType === "collateral";
+        const modeKey = isCollateral ? "collateralPool" : "sailPool";
+        const method = isCollateral
+          ? withdrawalMethods.collateralPool
+          : withdrawalMethods.sailPool;
+        const maxBalance =
+          method === "immediate"
+            ? isCollateral
+              ? collateralPoolImmediateCap
+              : sailPoolImmediateCap
+            : selectedRedeemPosition.balance;
+        handlePositionAmountChange(modeKey, value, maxBalance);
       }
     },
-    [selectedRedeemPosition, peggedBalance],
+    [
+      selectedRedeemPosition,
+      peggedBalance,
+      withdrawalMethods.collateralPool,
+      withdrawalMethods.sailPool,
+      collateralPoolImmediateCap,
+      sailPoolImmediateCap,
+    ],
   );
 
   const handleRedeemPositionMax = useCallback(() => {
@@ -5667,15 +5677,29 @@ export function useAnchorDepositWithdrawModal({
       }));
       return;
     }
-    const modeKey =
-      selectedRedeemPosition.poolType === "collateral"
-        ? "collateralPool"
-        : "sailPool";
+    const isCollateral = selectedRedeemPosition.poolType === "collateral";
+    const modeKey = isCollateral ? "collateralPool" : "sailPool";
+    const method = isCollateral
+      ? withdrawalMethods.collateralPool
+      : withdrawalMethods.sailPool;
+    const maxBalance =
+      method === "immediate"
+        ? isCollateral
+          ? collateralPoolImmediateCap
+          : sailPoolImmediateCap
+        : selectedRedeemPosition.balance;
     setPositionAmounts((prev) => ({
       ...prev,
-      [modeKey]: formatEther(selectedRedeemPosition.balance),
+      [modeKey]: formatEther(maxBalance),
     }));
-  }, [selectedRedeemPosition, peggedBalance]);
+  }, [
+    selectedRedeemPosition,
+    peggedBalance,
+    withdrawalMethods.collateralPool,
+    withdrawalMethods.sailPool,
+    collateralPoolImmediateCap,
+    sailPoolImmediateCap,
+  ]);
 
   // Check if any position amount exceeds its balance
   const positionExceedsBalance = useMemo(() => {
@@ -9158,18 +9182,62 @@ export function useAnchorDepositWithdrawModal({
         selectedPositions.wallet && positionAmounts.wallet
           ? parseEther(positionAmounts.wallet)
           : 0n;
-      const collateralAmount =
+      let collateralAmount =
         selectedPositions.collateralPool &&
         withdrawalMethods.collateralPool !== "request" &&
         positionAmounts.collateralPool
           ? parseEther(positionAmounts.collateralPool)
           : 0n;
-      const sailAmount =
+      let sailAmount =
         selectedPositions.sailPool &&
         withdrawalMethods.sailPool !== "request" &&
         positionAmounts.sailPool
           ? parseEther(positionAmounts.sailPool)
           : 0n;
+      // A full exit has to leave MIN_TOTAL_ASSET_SUPPLY in the pool. Wallet redeem does not.
+      if (
+        collateralAmount > 0n &&
+        withdrawalMethods.collateralPool === "immediate"
+      ) {
+        const clamped = clampWithdrawToPoolMinimum({
+          requested: collateralAmount,
+          balance: collateralPoolBalance,
+          totalSupply:
+            typeof collateralPoolTotalSupply === "bigint"
+              ? collateralPoolTotalSupply
+              : undefined,
+          minTotalSupply:
+            typeof collateralPoolMinTotalSupply === "bigint"
+              ? collateralPoolMinTotalSupply
+              : undefined,
+        });
+        if (clamped.blocked) {
+          throw new Error(
+            "Early withdraw is temporarily unavailable: the pool is at its minimum total supply. Use Request (free) or wait for TVL to increase."
+          );
+        }
+        collateralAmount = clamped.amount;
+      }
+      if (sailAmount > 0n && withdrawalMethods.sailPool === "immediate") {
+        const clamped = clampWithdrawToPoolMinimum({
+          requested: sailAmount,
+          balance: sailPoolBalance,
+          totalSupply:
+            typeof sailPoolTotalSupply === "bigint"
+              ? sailPoolTotalSupply
+              : undefined,
+          minTotalSupply:
+            typeof sailPoolMinTotalSupply === "bigint"
+              ? sailPoolMinTotalSupply
+              : undefined,
+        });
+        if (clamped.blocked) {
+          throw new Error(
+            "Early withdraw is temporarily unavailable: the pool is at its minimum total supply. Use Request (free) or wait for TVL to increase."
+          );
+        }
+        sailAmount = clamped.amount;
+      }
       const collateralIsImmediate =
         collateralAmount > 0n &&
         selectedPositions.collateralPool &&
@@ -9315,21 +9383,6 @@ export function useAnchorDepositWithdrawModal({
             )}, Want: ${formatEther(collateralAmount)}`
           );
         }
-        // Guard against StabilityPool MIN_TOTAL_ASSET_SUPPLY floor causing 0-withdraw "success" txs
-        if (withdrawalMethods.collateralPool === "immediate") {
-          if (collateralPoolImmediateCap === 0n) {
-            throw new Error(
-              "Early withdraw is temporarily unavailable: the pool is at its minimum total supply. Use Request (free) or wait for TVL to increase."
-            );
-          }
-          if (collateralAmount > collateralPoolImmediateCap) {
-            throw new Error(
-              `Early withdraw capped by pool minimum supply. Max withdrawable now: ${formatEther(
-                collateralPoolImmediateCap
-              )} ${peggedTokenSymbol}`
-            );
-          }
-        }
         totalPeggedTokens += collateralAmount;
       }
 
@@ -9368,21 +9421,6 @@ export function useAnchorDepositWithdrawModal({
               sailPoolBalance
             )}, Want: ${formatEther(sailAmount)}`
           );
-        }
-        // Guard against StabilityPool MIN_TOTAL_ASSET_SUPPLY floor causing 0-withdraw "success" txs
-        if (withdrawalMethods.sailPool === "immediate") {
-          if (sailPoolImmediateCap === 0n) {
-            throw new Error(
-              "Early withdraw is temporarily unavailable: the pool is at its minimum total supply. Use Request (free) or wait for TVL to increase."
-            );
-          }
-          if (sailAmount > sailPoolImmediateCap) {
-            throw new Error(
-              `Early withdraw capped by pool minimum supply. Max withdrawable now: ${formatEther(
-                sailPoolImmediateCap
-              )} ${peggedTokenSymbol}`
-            );
-          }
         }
         totalPeggedTokens += sailAmount;
       }
@@ -10410,6 +10448,39 @@ export function useAnchorDepositWithdrawModal({
           ? positionAmounts.sailPool
           : "";
 
+  const poolMinimumSupplyNote = useMemo(() => {
+    if (!selectedRedeemPosition || selectedRedeemPosition.kind !== "pool") {
+      return null;
+    }
+    if (redeemStepActionKind === "request") return null;
+    const isCollateral = selectedRedeemPosition.poolType === "collateral";
+    const minTotal = isCollateral
+      ? collateralPoolMinTotalSupply
+      : sailPoolMinTotalSupply;
+    const total = isCollateral ? collateralPoolTotalSupply : sailPoolTotalSupply;
+    if (typeof minTotal !== "bigint" || minTotal <= 0n) return null;
+    if (typeof total !== "bigint") return null;
+    const cap = isCollateral ? collateralPoolImmediateCap : sailPoolImmediateCap;
+    if (cap >= selectedRedeemPosition.balance) return null;
+    const symbol = peggedTokenSymbol || "ha";
+    const kept = formatUiAmount(formatEther(minTotal)).text;
+    if (cap <= 0n) {
+      return `This pool is at its ${kept} ${symbol} minimum supply, so nothing more can leave until someone deposits.`;
+    }
+    const maxNow = formatUiAmount(formatEther(cap)).text;
+    return `This pool keeps ${kept} ${symbol} as its minimum supply, so the most you can withdraw now is ${maxNow} ${symbol}.`;
+  }, [
+    selectedRedeemPosition,
+    redeemStepActionKind,
+    collateralPoolMinTotalSupply,
+    sailPoolMinTotalSupply,
+    collateralPoolTotalSupply,
+    sailPoolTotalSupply,
+    collateralPoolImmediateCap,
+    sailPoolImmediateCap,
+    peggedTokenSymbol,
+  ]);
+
   // Prefill full balance for wallet redeem / immediate pool withdraw once amounts are needed.
   useEffect(() => {
     if (!simpleMode || flowPage < 2) return;
@@ -10428,16 +10499,24 @@ export function useAnchorDepositWithdrawModal({
     }
 
     if (redeemStepActionKind === "request") return;
-    const modeKey =
-      selectedRedeemPosition.poolType === "collateral"
-        ? "collateralPool"
-        : "sailPool";
+    const isCollateral = selectedRedeemPosition.poolType === "collateral";
+    const modeKey = isCollateral ? "collateralPool" : "sailPool";
+    const maxBalance = isCollateral
+      ? collateralPoolImmediateCap
+      : sailPoolImmediateCap;
     setPositionAmounts((prev) => {
-      if (prev[modeKey]) return prev;
-      return {
-        ...prev,
-        [modeKey]: formatEther(selectedRedeemPosition.balance),
-      };
+      const filled = formatEther(maxBalance);
+      const current = prev[modeKey];
+      if (!current) return { ...prev, [modeKey]: filled };
+      try {
+        const parsed = parseEther(current);
+        if (parsed > maxBalance && parsed >= selectedRedeemPosition.balance) {
+          return { ...prev, [modeKey]: filled };
+        }
+      } catch {
+        return prev;
+      }
+      return prev;
     });
   }, [
     simpleMode,
@@ -10445,6 +10524,8 @@ export function useAnchorDepositWithdrawModal({
     selectedRedeemPosition,
     redeemStepActionKind,
     peggedBalance,
+    collateralPoolImmediateCap,
+    sailPoolImmediateCap,
   ]);
 
   const handleContinueToRedeemRoute = useCallback(() => {
@@ -12011,6 +12092,7 @@ export function useAnchorDepositWithdrawModal({
     redeemStepActionKind,
     redeemStepShowAmount,
     redeemStepAmountValue,
+    poolMinimumSupplyNote,
     selectedMarketHasPoolDeposit,
     marketIdWithAnyPoolDeposit,
     groupBalanceContracts,

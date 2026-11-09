@@ -62,6 +62,53 @@ export function isWithdrawalWindowOpen(
   return nowSec >= start && nowSec <= end;
 }
 
+/**
+ * Gross amount that can leave without taking the pool under `MIN_TOTAL_ASSET_SUPPLY`.
+ * Unknown supply reads leave the user's balance as the cap.
+ */
+export function immediatePoolWithdrawCap(
+  balance: bigint,
+  totalSupply: bigint | undefined,
+  minTotalSupply: bigint | undefined,
+): bigint {
+  if (
+    balance <= 0n ||
+    totalSupply === undefined ||
+    minTotalSupply === undefined
+  ) {
+    return balance < 0n ? 0n : balance;
+  }
+  const room =
+    totalSupply > minTotalSupply ? totalSupply - minTotalSupply : 0n;
+  return balance < room ? balance : room;
+}
+
+/**
+ * A withdrawal that would empty the pool past its minimum is reduced to the room above that minimum.
+ * Applies to an immediate stability-pool withdraw only. A wallet redeem does not call this.
+ */
+export function clampWithdrawToPoolMinimum(input: {
+  requested: bigint;
+  balance: bigint;
+  totalSupply?: bigint;
+  minTotalSupply?: bigint;
+}): { amount: bigint; blocked: boolean } {
+  const cap = immediatePoolWithdrawCap(
+    input.balance,
+    input.totalSupply,
+    input.minTotalSupply,
+  );
+  if (input.requested <= cap) return { amount: input.requested, blocked: false };
+  if (
+    cap === 0n &&
+    input.totalSupply !== undefined &&
+    input.minTotalSupply !== undefined
+  ) {
+    return { amount: 0n, blocked: true };
+  }
+  return { amount: cap, blocked: false };
+}
+
 export type WithdrawalEstimate = {
   leaving: bigint;
   feeAmount: bigint;

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  clampWithdrawToPoolMinimum,
   estimateStabilityPoolWithdrawal,
   harborTokenTitle,
   harborTokenWithTitle,
+  immediatePoolWithdrawCap,
   stabilityPoolShareLabel,
 } from "./stabilityPoolCompat";
 
@@ -40,6 +42,45 @@ describe("estimateStabilityPoolWithdrawal", () => {
     });
     expect(result.leaving).toBe(4n * wad);
     expect(result.feeAmount).toBe((4n * wad) / 20n);
+  });
+});
+
+describe("immediatePoolWithdrawCap", () => {
+  it("keeps one token in the pool on a full exit", () => {
+    const balance = 2559360260000000000n;
+    expect(immediatePoolWithdrawCap(balance, balance, wad)).toBe(
+      1559360260000000000n,
+    );
+  });
+
+  it("leaves a partial withdrawal that stays above the floor", () => {
+    const balance = 5n * wad;
+    expect(immediatePoolWithdrawCap(wad, balance, wad)).toBe(wad);
+  });
+});
+
+describe("clampWithdrawToPoolMinimum", () => {
+  it("reduces a full exit to the amount that can leave", () => {
+    const balance = 2559360260000000000n;
+    expect(
+      clampWithdrawToPoolMinimum({
+        requested: balance,
+        balance,
+        totalSupply: balance,
+        minTotalSupply: wad,
+      }),
+    ).toEqual({ amount: 1559360260000000000n, blocked: false });
+  });
+
+  it("blocks an immediate withdraw when the pool is already at the floor", () => {
+    expect(
+      clampWithdrawToPoolMinimum({
+        requested: wad,
+        balance: wad,
+        totalSupply: wad,
+        minTotalSupply: wad,
+      }),
+    ).toEqual({ amount: 0n, blocked: true });
   });
 });
 

@@ -142,6 +142,8 @@ export type AnchorRedeemPositionStepProps = {
   amount: string;
   onAmountChange: (value: string) => void;
   onMax: () => void;
+  /** Why MAX is below the deposit: the pool keeps its minimum supply. */
+  minimumSupplyNote?: string | null;
   disabled?: boolean;
   actionKind: AnchorRedeemStepActionKind;
   /** Free vs fast withdrawal toggle (pool, window not open). */
@@ -169,6 +171,7 @@ export function AnchorRedeemPositionStep({
   amount,
   onAmountChange,
   onMax,
+  minimumSupplyNote = null,
   disabled = false,
   actionKind,
   showEarlyWithdrawToggle = false,
@@ -247,6 +250,7 @@ export function AnchorRedeemPositionStep({
             customHandleMax: onMax,
             disabled,
           }}
+          hint={minimumSupplyNote}
         />
       ) : (
         <RequestWithdrawalInfoBox

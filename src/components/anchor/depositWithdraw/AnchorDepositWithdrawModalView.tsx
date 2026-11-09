@@ -220,6 +220,7 @@ export function AnchorDepositWithdrawModalView(
     redeemStepActionKind,
     redeemStepShowAmount,
     redeemStepAmountValue,
+    poolMinimumSupplyNote,
     selectedMarketHasPoolDeposit,
     marketIdWithAnyPoolDeposit,
     groupBalanceContracts,
@@ -1232,6 +1233,7 @@ export function AnchorDepositWithdrawModalView(
                             amount={redeemStepAmountValue}
                             onAmountChange={handleRedeemPositionAmountChange}
                             onMax={handleRedeemPositionMax}
+                            minimumSupplyNote={poolMinimumSupplyNote}
                             disabled={isProcessing}
                             actionKind={redeemStepActionKind}
                             showEarlyWithdrawToggle={
