@@ -19,7 +19,7 @@ import {
   type SailChartWindowPerformance,
   type SailMarketChartConfig,
 } from "@/utils/sailMarketChartSeries";
-import { rebaseSailChartHsPrices } from "@/utils/sailPriceRebase";
+import { rebaseSailChartHsPrices, sailChartEvents } from "@/utils/sailPriceRebase";
 import {
   SAIL_CHART_HS_COLOR,
   SAIL_CHART_LEVERAGE_TOKEN_LABEL,
@@ -48,10 +48,9 @@ const SAIL_CHART_COMPARISON_INFO = (
     <div>
       <p className="font-semibold text-white">Hyperliquid comparison</p>
       <p className="mt-1 text-white/85">
-        A same-capital backtest: both sides start with $1,000. Sail uses
-        historical token NAV with modeled mint/redeem fees. The Hyperliquid side
-        opens once at Sail’s leverage at the range start and is held without
-        rebalancing (no margin top-ups).
+        A same-capital backtest of a Hyperliquid perpetual. It opens once at
+        the leveraged token’s leverage at the range start and is held without
+        rebalancing. The green line stays the leveraged token’s own price return.
       </p>
     </div>
     <ul className="list-disc space-y-1 pl-4 text-white/85">
@@ -64,8 +63,8 @@ const SAIL_CHART_COMPARISON_INFO = (
         and hour-close liquidation checks.
       </li>
       <li>
-        Sail net is NAV after fees; Hyperliquid is account equity after those
-        costs. “Liquidated” means modeled equity hit zero under the hold.
+        Sail’s price return stays on the green line. Hyperliquid is account
+        equity after taker fees, slippage, funding, and hour-close liquidation.
       </li>
     </ul>
     <p className="text-white/70">
@@ -221,17 +220,17 @@ export function SailMarketChart({
   );
 
   const chartPoints = useMemo(
-    () =>
-      rebaseSailChartHsPrices(
-        marketId,
-        buildSailMarketChartPoints(config, mergedSubgraph, chainlinkHistories),
-      ),
-    [marketId, config, mergedSubgraph, chainlinkHistories]
+    () => buildSailMarketChartPoints(config, mergedSubgraph, chainlinkHistories),
+    [config, mergedSubgraph, chainlinkHistories]
   );
 
   const filteredData = useMemo(
-    () => filterSailChartPointsByRange(chartPoints, timeRange),
-    [chartPoints, timeRange]
+    () =>
+      rebaseSailChartHsPrices(
+        marketId,
+        filterSailChartPointsByRange(chartPoints, timeRange),
+      ),
+    [marketId, chartPoints, timeRange]
   );
   const benchmarkWindow = useMemo(() => {
     if (filteredData.length < 2) return { start: null, end: null };
@@ -265,26 +264,8 @@ export function SailMarketChart({
 
   const windowPerformance = useMemo(() => {
     if (!hasHsPriceData) return null;
-    const performance = computeSailChartWindowPerformance(filteredData);
-    const sailNetReturn = showPerpBenchmark
-      ? perpBenchmarkQuery.data?.benchmark.sailNetReturnPct
-      : null;
-    if (sailNetReturn == null) return performance;
-    return {
-      ...performance,
-      leverageTokenPerformancePct: sailNetReturn,
-      leverageTokenVsMarketPct:
-        performance.marketPerformancePct == null
-          ? null
-          : sailNetReturn - performance.marketPerformancePct,
-      leverageTokenIsNet: true,
-    };
-  }, [
-    filteredData,
-    hasHsPriceData,
-    showPerpBenchmark,
-    perpBenchmarkQuery.data,
-  ]);
+    return computeSailChartWindowPerformance(filteredData);
+  }, [filteredData, hasHsPriceData]);
 
   const formatTimestamp = useMemo(() => {
     return (timestamp: number) =>
@@ -382,6 +363,7 @@ export function SailMarketChart({
         <div className="mb-2 shrink-0">
           <SailPerpBenchmarkSummary
             data={perpBenchmarkQuery.data ?? null}
+            tokenReturnPct={windowPerformance?.leverageTokenPerformancePct ?? null}
             isLoading={perpBenchmarkQuery.isLoading}
             error={
               perpBenchmarkQuery.error instanceof Error
@@ -412,6 +394,8 @@ export function SailMarketChart({
             formatTimestamp={formatTimestamp}
             formatTooltipTimestamp={formatTooltipTimestamp}
             hideLegend={hideLegend}
+            events={sailChartEvents(marketId)}
+            verticalEventLabels={timeRange === "6M" || timeRange === "1Y"}
           />
         )}
       </div>

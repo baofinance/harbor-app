@@ -22,6 +22,7 @@ import {
 import {
   rebaseSailBenchmarkReturns,
   rebaseSailStatePrices,
+  sailBookRebaseApplies,
   sailPriceRebaseFor,
 } from "@/utils/sailPriceRebase";
 
@@ -453,12 +454,13 @@ export async function buildSailPerpBenchmark(
   const fundingByCoin = Object.fromEntries(
     marketData.map((data) => [data.coin, data.funding]),
   );
-  const states = rebaseSailStatePrices(
-    marketId,
-    dropPreLiveSailStates(
-      repriceSailStatesWithPegUsd(archiveStates, exposure, candlesByCoin),
-    ),
+  const pricedStates = dropPreLiveSailStates(
+    repriceSailStatesWithPegUsd(archiveStates, exposure, candlesByCoin),
   );
+  const applyBookRebase = sailBookRebaseApplies(marketId, startTimestamp);
+  const states = applyBookRebase
+    ? rebaseSailStatePrices(marketId, pricedStates, startTimestamp)
+    : pricedStates;
   if (states.length < 2) {
     throw new Error("Not enough priced Sail history exists for this range");
   }
@@ -480,11 +482,9 @@ export async function buildSailPerpBenchmark(
   warnings.push(
     "Sail USD prices use on-chain leveragedTokenPrice × peg USD when available (avoids subgraph placeholder prices).",
   );
-  const priceRebase = sailPriceRebaseFor(marketId);
-  if (priceRebase && endTimestamp >= priceRebase.fromTimestamp) {
-    warnings.push(
-      "stETH–EUR sail prices from the 13 Nov 2026 recap are rebased to price × supply against the 15 Oct pre-incident book, on the pre-incident share count.",
-    );
+  if (applyBookRebase) {
+    const note = sailPriceRebaseFor(marketId)?.note;
+    if (note) warnings.push(note);
   }
   const changedConfigs = await mapWithConcurrency(
     feeConfigChangeBlocks.filter(
@@ -548,6 +548,7 @@ export async function buildSailPerpBenchmark(
       sailRedeemFeeBpsByTimestamp,
     }),
     endTimestamp,
+    startTimestamp,
   );
 
   if (benchmark.points.length < 2) {

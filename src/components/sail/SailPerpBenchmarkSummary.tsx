@@ -24,10 +24,12 @@ function ReturnValue({ value }: { value: number }) {
 
 export function SailPerpBenchmarkSummary({
   data,
+  tokenReturnPct,
   isLoading,
   error,
 }: {
   data: SailPerpBenchmarkApiResponse | null;
+  tokenReturnPct: number | null;
   isLoading: boolean;
   error: string | null;
 }) {
@@ -62,8 +64,8 @@ export function SailPerpBenchmarkSummary({
   if (!data) return null;
 
   const { benchmark, assumptions } = data;
-  const sailVsPerpPct =
-    benchmark.sailNetReturnPct - benchmark.perpReturnPct;
+  const tokenVsPerpPct =
+    tokenReturnPct == null ? null : tokenReturnPct - benchmark.perpReturnPct;
   const costItems = [
     ["Trading fees", benchmark.costs.tradingFeesUsd],
     ["Slippage", benchmark.costs.slippageUsd],
@@ -80,15 +82,19 @@ export function SailPerpBenchmarkSummary({
           Hyperliquid comparison
         </span>
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
-          <span>
-            Sail net <ReturnValue value={benchmark.sailNetReturnPct} />
-          </span>
+          {tokenReturnPct != null ? (
+            <span>
+              Leveraged token <ReturnValue value={tokenReturnPct} />
+            </span>
+          ) : null}
           <span>
             Hyperliquid <ReturnValue value={benchmark.perpReturnPct} />
           </span>
-          <span>
-            Sail vs Hyperliquid <ReturnValue value={sailVsPerpPct} />
-          </span>
+          {tokenVsPerpPct != null ? (
+            <span>
+              Leveraged token vs Hyperliquid <ReturnValue value={tokenVsPerpPct} />
+            </span>
+          ) : null}
           {benchmark.liquidatedAt ? (
             <span className="font-semibold text-red-700">Liquidated</span>
           ) : null}

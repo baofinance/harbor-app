@@ -22,6 +22,11 @@ import {
   type SailMarketChartRechartsPoint,
 } from "@/utils/sailMarketChartSeries";
 import {
+  snapSailChartEvents,
+  type SailChartEvent,
+  type SnappedSailChartEvent,
+} from "@/utils/sailPriceRebase";
+import {
   SAIL_CHART_BASELINE_COLOR,
   SAIL_CHART_HS_COLOR,
   SAIL_CHART_LEVERAGE_TOKEN_LABEL,
@@ -36,6 +41,9 @@ interface SailMarketMultiSeriesChartProps {
   formatTimestamp: (timestamp: number) => string;
   formatTooltipTimestamp: (timestamp: number) => string;
   hideLegend?: boolean;
+  events?: SailChartEvent[];
+  /** 6M and 1Y put the two days close enough that horizontal names overlap. */
+  verticalEventLabels?: boolean;
 }
 
 const SERIES_COLORS = {
@@ -51,6 +59,7 @@ function MultiSeriesTooltip({
   formatTooltipTimestamp,
   config,
   comparePerformance,
+  markedEvents,
 }: {
   active?: boolean;
   payload?: Array<{ payload?: SailMarketChartRechartsPoint }>;
@@ -58,11 +67,15 @@ function MultiSeriesTooltip({
   formatTooltipTimestamp: (timestamp: number) => string;
   config: SailMarketChartConfig;
   comparePerformance: boolean;
+  markedEvents: SnappedSailChartEvent[];
 }) {
   if (!active || !payload?.length || label == null) return null;
 
   const row = payload[0]?.payload;
   if (!row) return null;
+  const eventHere = markedEvents.find(
+    (event) => event.pointTimestamp === row.timestamp,
+  );
 
   const baseAbs = row.defaultRatioAbs ?? row.defaultRatio;
   const hsAbs = row.hsPriceUsdAbs ?? row.hsPriceUsd;
@@ -80,21 +93,11 @@ function MultiSeriesTooltip({
   ];
 
   if (comparePerformance) {
-    const showNetComparison =
-      row.perpReturnPct != null && row.sailNetReturnPct != null;
-    items.push(
-      showNetComparison
-        ? {
-            label: "Sail net (return)",
-            value: formatSailChartPercentChange(row.sailNetReturnPct),
-            color: SERIES_COLORS.hsPriceUsd,
-          }
-        : {
-            label: `${SAIL_CHART_LEVERAGE_TOKEN_LABEL} (return)`,
-            value: `${formatSailChartPercentChange(row.hsPriceUsd)} · ${formatSailChartUsdValue(hsAbs)}`,
-            color: SERIES_COLORS.hsPriceUsd,
-          },
-    );
+    items.push({
+      label: `${SAIL_CHART_LEVERAGE_TOKEN_LABEL} (return)`,
+      value: `${formatSailChartPercentChange(row.hsPriceUsd)} · ${formatSailChartUsdValue(hsAbs)}`,
+      color: SERIES_COLORS.hsPriceUsd,
+    });
     if (row.perpReturnPct != null) {
       items.push({
         label: "Hyperliquid comparison (return)",
@@ -107,6 +110,14 @@ function MultiSeriesTooltip({
   return (
     <div className="rounded-lg bg-[#0c0c0c] p-3 shadow-lg">
       <p className="text-xs text-white/70">{formatTooltipTimestamp(label)}</p>
+      {eventHere ? (
+        <p
+          className="mt-1 text-xs font-semibold"
+          style={{ color: eventHere.tone === "incident" ? "#E7A07A" : "#7DCEA0" }}
+        >
+          {eventHere.label}
+        </p>
+      ) : null}
       <div className="mt-2 space-y-1">
         {items.map((item) => (
           <div key={item.label} className="flex items-center gap-2 text-sm">
@@ -120,6 +131,46 @@ function MultiSeriesTooltip({
         ))}
       </div>
     </div>
+  );
+}
+
+function SailChartEventLabel({
+  viewBox,
+  value,
+  fill,
+  vertical,
+  side = "left",
+}: {
+  viewBox?: { x?: number; y?: number; width?: number };
+  value?: string | number;
+  fill?: string;
+  vertical?: boolean;
+  side?: "left" | "right";
+}) {
+  const label = value == null ? "" : String(value);
+  if (!label || viewBox?.x == null || viewBox.y == null) return null;
+  const x = viewBox.x + (viewBox.width ?? 0) / 2;
+  const y = viewBox.y + 12;
+  if (!vertical) {
+    return (
+      <text x={x} y={y} fill={fill} fontSize={11} fontWeight={600} textAnchor="middle">
+        {label}
+      </text>
+    );
+  }
+  const anchorX = x + (side === "right" ? 16 : -4);
+  return (
+    <text
+      x={anchorX}
+      y={y}
+      fill={fill}
+      fontSize={11}
+      fontWeight={600}
+      textAnchor="end"
+      transform={`rotate(-90, ${anchorX}, ${y})`}
+    >
+      {label}
+    </text>
   );
 }
 
@@ -140,15 +191,15 @@ export function SailMarketMultiSeriesChart({
   formatTimestamp,
   formatTooltipTimestamp,
   hideLegend = false,
+  events = [],
+  verticalEventLabels = false,
 }: SailMarketMultiSeriesChartProps) {
   const comparePerformance = showHsPriceUsd;
   const chartData = toRechartsSailChartData(data, comparePerformance);
+  const markedEvents = snapSailChartEvents(data, events);
   const showPerpBenchmark =
     comparePerformance &&
     chartData.some((row) => row.perpReturnPct != null);
-  const showNetComparison =
-    showPerpBenchmark &&
-    chartData.some((row) => row.sailNetReturnPct != null);
 
   const legendPayload = comparePerformance
     ? [
@@ -158,9 +209,7 @@ export function SailMarketMultiSeriesChart({
           color: SERIES_COLORS.defaultRatio,
         },
         {
-          value: showNetComparison
-            ? "Sail net (% chg)"
-            : `${SAIL_CHART_LEVERAGE_TOKEN_LABEL} (% chg)`,
+          value: `${SAIL_CHART_LEVERAGE_TOKEN_LABEL} (% chg)`,
           type: "line" as const,
           color: SERIES_COLORS.hsPriceUsd,
         },
@@ -221,7 +270,7 @@ export function SailMarketMultiSeriesChart({
             stroke: comparePerformance ? SERIES_COLORS.defaultRatio : "#1E4775",
             opacity: 0.35,
           }}
-          domain={comparePerformance ? ["auto", "auto"] : ["auto", "auto"]}
+          domain={["auto", "auto"]}
           width={56}
           tickFormatter={(v) => {
             const n = Number(v);
@@ -240,12 +289,31 @@ export function SailMarketMultiSeriesChart({
             opacity={0.25}
           />
         ) : null}
+        {markedEvents.map((event) => (
+          <ReferenceLine
+            key={event.label}
+            yAxisId="left"
+            x={event.x}
+            stroke={event.tone === "incident" ? "#E7A07A" : "#7DCEA0"}
+            strokeDasharray="4 3"
+            strokeWidth={1.5}
+            ifOverflow="extendDomain"
+            label={{
+              value: event.label,
+              fill: event.tone === "incident" ? "#E7A07A" : "#7DCEA0",
+              vertical: verticalEventLabels,
+              side: event.tone === "incident" ? "left" : "right",
+              content: SailChartEventLabel,
+            }}
+          />
+        ))}
         <Tooltip
           content={
             <MultiSeriesTooltip
               formatTooltipTimestamp={formatTooltipTimestamp}
               config={config}
               comparePerformance={comparePerformance}
+              markedEvents={markedEvents}
             />
           }
         />
@@ -305,12 +373,8 @@ export function SailMarketMultiSeriesChart({
           <Line
             yAxisId="left"
             type="monotone"
-            dataKey={showNetComparison ? "sailNetReturnPct" : "hsPriceUsd"}
-            name={
-              showNetComparison
-                ? "Sail net (% chg)"
-                : `${SAIL_CHART_LEVERAGE_TOKEN_LABEL} (% chg)`
-            }
+            dataKey="hsPriceUsd"
+            name={`${SAIL_CHART_LEVERAGE_TOKEN_LABEL} (% chg)`}
             stroke={SERIES_COLORS.hsPriceUsd}
             strokeWidth={2.5}
             dot={false}
