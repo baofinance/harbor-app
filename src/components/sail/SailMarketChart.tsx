@@ -74,6 +74,33 @@ const SAIL_CHART_COMPARISON_INFO = (
   </div>
 );
 
+const STETH_SAIL_REMEDIATION_DOCS =
+  "https://docs.harborfinance.io/tech-docs/remediation/steth-sail-dilution";
+
+const SAIL_CHART_EVENTS_INFO = (
+  <div className="w-72 space-y-2 text-left text-sm leading-relaxed text-white">
+    <p>
+      <span className="font-semibold text-[#E7A07A]">Incident</span> is 16 Oct
+      2026. A capped rebalance over-minted the leveraged token, and its price
+      fell.
+    </p>
+    <p>
+      <span className="font-semibold text-[#7DCEA0]">Rebase</span> is 13 Nov
+      2026, when the remediation on this chart was applied. From that day the
+      price is the recovered book on the pre-incident share count. About 1.63
+      wstETH is still owed and is not in this price.
+    </p>
+    <a
+      href={STETH_SAIL_REMEDIATION_DOCS}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-block text-[#7DCEA0] underline underline-offset-2"
+    >
+      Remediation write-up
+    </a>
+  </div>
+);
+
 export type SailMarketChartProps = {
   marketId: string;
   market: DefinedMarket;
@@ -135,6 +162,7 @@ export function SailMarketChart({
   const [timeRange, setTimeRange] = useState<SailChartTimeRange>("1M");
   const [internalShowHsPriceUsd, setInternalShowHsPriceUsd] = useState(true);
   const [showPerpBenchmark, setShowPerpBenchmark] = useState(true);
+  const [showChartEvents, setShowChartEvents] = useState(true);
   const showHsPriceUsd = showHsPriceOverlay ?? internalShowHsPriceUsd;
   const setShowHsPriceUsd = onShowHsPriceOverlayChange ?? setInternalShowHsPriceUsd;
 
@@ -307,7 +335,7 @@ export function SailMarketChart({
 
   return (
     <div className="relative z-10 flex h-full min-h-0 flex-col">
-      <div className="mb-2 flex shrink-0 flex-wrap items-center gap-2">
+      <div className="relative z-20 mb-2 flex shrink-0 flex-wrap items-center gap-2">
         <OverlayToggle
           label={`Compare ${SAIL_CHART_LEVERAGE_TOKEN_LABEL}`}
           active={showHsPriceUsd}
@@ -325,6 +353,21 @@ export function SailMarketChart({
           color={CHART_BENCHMARK_SERIES_COLOR}
           disabled={!hasHsPriceData && !isBlockingLoading}
         />
+        {sailChartEvents(marketId).length > 0 ? (
+          <div className="group relative">
+            <OverlayToggle
+              label="Events"
+              active={showChartEvents}
+              onClick={() => setShowChartEvents((current) => !current)}
+              color="#E7A07A"
+            />
+            <div className="absolute left-0 top-full z-30 hidden pt-2 group-hover:block group-focus-within:block">
+              <div className="rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 shadow-xl">
+                {SAIL_CHART_EVENTS_INFO}
+              </div>
+            </div>
+          </div>
+        ) : null}
         <div className="flex min-w-0 flex-1 items-center gap-2 text-xs text-[#1E4775]/60">
           {isBlockingLoading ? (
             <span>Loading...</span>
@@ -394,8 +437,9 @@ export function SailMarketChart({
             formatTimestamp={formatTimestamp}
             formatTooltipTimestamp={formatTooltipTimestamp}
             hideLegend={hideLegend}
-            events={sailChartEvents(marketId)}
+            events={showChartEvents ? sailChartEvents(marketId) : []}
             verticalEventLabels={timeRange === "6M" || timeRange === "1Y"}
+            fixedPercentDomain={timeRange === "1Y" ? [-100, 100] : undefined}
           />
         )}
       </div>

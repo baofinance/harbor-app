@@ -44,6 +44,8 @@ interface SailMarketMultiSeriesChartProps {
   events?: SailChartEvent[];
   /** 6M and 1Y put the two days close enough that horizontal names overlap. */
   verticalEventLabels?: boolean;
+  /** Percent axis locked to this pair, matching the 6M chart on 1Y. */
+  fixedPercentDomain?: [number, number];
 }
 
 const SERIES_COLORS = {
@@ -193,6 +195,7 @@ export function SailMarketMultiSeriesChart({
   hideLegend = false,
   events = [],
   verticalEventLabels = false,
+  fixedPercentDomain,
 }: SailMarketMultiSeriesChartProps) {
   const comparePerformance = showHsPriceUsd;
   const chartData = toRechartsSailChartData(data, comparePerformance);
@@ -270,7 +273,12 @@ export function SailMarketMultiSeriesChart({
             stroke: comparePerformance ? SERIES_COLORS.defaultRatio : "#1E4775",
             opacity: 0.35,
           }}
-          domain={["auto", "auto"]}
+          domain={
+            comparePerformance && fixedPercentDomain
+              ? fixedPercentDomain
+              : ["auto", "auto"]
+          }
+          allowDataOverflow={comparePerformance && fixedPercentDomain != null}
           width={56}
           tickFormatter={(v) => {
             const n = Number(v);
