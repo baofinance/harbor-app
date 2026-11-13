@@ -19,6 +19,11 @@ import {
   type SailPerpExposure,
   type SailStateObservation,
 } from "@/utils/sailPerpBenchmark";
+import {
+  rebaseSailBenchmarkReturns,
+  rebaseSailStatePrices,
+  sailPriceRebaseFor,
+} from "@/utils/sailPriceRebase";
 
 const HYPERLIQUID_INFO_URL = "https://api.hyperliquid.xyz/info";
 const MAX_STATE_POINTS = 120;
@@ -448,8 +453,11 @@ export async function buildSailPerpBenchmark(
   const fundingByCoin = Object.fromEntries(
     marketData.map((data) => [data.coin, data.funding]),
   );
-  const states = dropPreLiveSailStates(
-    repriceSailStatesWithPegUsd(archiveStates, exposure, candlesByCoin),
+  const states = rebaseSailStatePrices(
+    marketId,
+    dropPreLiveSailStates(
+      repriceSailStatesWithPegUsd(archiveStates, exposure, candlesByCoin),
+    ),
   );
   if (states.length < 2) {
     throw new Error("Not enough priced Sail history exists for this range");
@@ -472,6 +480,12 @@ export async function buildSailPerpBenchmark(
   warnings.push(
     "Sail USD prices use on-chain leveragedTokenPrice × peg USD when available (avoids subgraph placeholder prices).",
   );
+  const priceRebase = sailPriceRebaseFor(marketId);
+  if (priceRebase && endTimestamp >= priceRebase.fromTimestamp) {
+    warnings.push(
+      "stETH–EUR sail prices from the 13 Nov 2026 recap are rebased to price × supply against the 15 Oct pre-incident book, on the pre-incident share count.",
+    );
+  }
   const changedConfigs = await mapWithConcurrency(
     feeConfigChangeBlocks.filter(
       (block) =>
@@ -523,14 +537,18 @@ export async function buildSailPerpBenchmark(
     sailMintFeeBps,
     sailRedeemFeeBps,
   };
-  const benchmark = runSailPerpBenchmark({
-    states,
-    candlesByCoin,
-    fundingByCoin,
-    exposure,
-    assumptions,
-    sailRedeemFeeBpsByTimestamp,
-  });
+  const benchmark = rebaseSailBenchmarkReturns(
+    marketId,
+    runSailPerpBenchmark({
+      states,
+      candlesByCoin,
+      fundingByCoin,
+      exposure,
+      assumptions,
+      sailRedeemFeeBpsByTimestamp,
+    }),
+    endTimestamp,
+  );
 
   if (benchmark.points.length < 2) {
     throw new Error(

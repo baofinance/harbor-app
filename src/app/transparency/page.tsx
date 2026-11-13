@@ -385,54 +385,67 @@ function MarketCard({
             ? collateralTokensWrapped * wrappedTokenPriceUSD
             : 0;
 
-    // Calculate distribution for pie chart: Anchor Supply (3 parts) + Sail Supply
+    // Bar height is each bucket's position (price × token amount), not raw supply.
+    // Both stability pools hold the anchor token, so they use the anchor price.
+    // Sail supply uses the sail price. That keeps a large sail mint from dwarfing haEUR.
     const distributionData = useMemo(() => {
         const anchorSupply = market.peggedTokenBalance; // Total haToken supply
         const sailSupply = market.leveragedTokenBalance; // Total Sail token supply
         const collateralPoolTVL = pools.find(p => p.type === "collateral")?.tvl || 0n;
         const sailPoolTVL = pools.find(p => p.type === "leveraged")?.tvl || 0n;
+        const anchorPrice = tokenPrices?.peggedPriceUSD ?? 0;
+        const sailPrice = tokenPrices?.leveragedPriceUSD ?? 0;
 
-        // Anchor Supply is divided into 3 parts:
         const anchorNotDeposited = anchorSupply > (collateralPoolTVL + sailPoolTVL)
             ? anchorSupply - collateralPoolTVL - sailPoolTVL
             : 0n;
 
-        const data = [];
+        const positionUsd = (amount: bigint, price: number) =>
+            price > 0 ? (Number(amount) / 1e18) * price : 0;
 
-        // Anchor Supply parts (3 sections)
-        if (anchorNotDeposited > 0n) {
+        const data: Array<{ name: string; value: number; rawValue: bigint }> = [];
+
+        const notDepositedUsd = positionUsd(anchorNotDeposited, anchorPrice);
+        if (notDepositedUsd > 0) {
             data.push({
                 name: "Not Deposited",
-                value: Number(anchorNotDeposited) / 1e18,
+                value: notDepositedUsd,
                 rawValue: anchorNotDeposited,
             });
         }
-        if (collateralPoolTVL > 0n) {
+        const collateralUsd = positionUsd(collateralPoolTVL, anchorPrice);
+        if (collateralUsd > 0) {
             data.push({
                 name: "Collateral SP",
-                value: Number(collateralPoolTVL) / 1e18,
+                value: collateralUsd,
                 rawValue: collateralPoolTVL,
             });
         }
-        if (sailPoolTVL > 0n) {
+        const sailPoolUsd = positionUsd(sailPoolTVL, anchorPrice);
+        if (sailPoolUsd > 0) {
             data.push({
                 name: "Sail SP",
-                value: Number(sailPoolTVL) / 1e18,
+                value: sailPoolUsd,
                 rawValue: sailPoolTVL,
             });
         }
-
-        // Sail Supply (as separate slice)
-        if (sailSupply > 0n) {
+        const sailSupplyUsd = positionUsd(sailSupply, sailPrice);
+        if (sailSupplyUsd > 0) {
             data.push({
                 name: "Sail Supply",
-                value: Number(sailSupply) / 1e18,
+                value: sailSupplyUsd,
                 rawValue: sailSupply,
             });
         }
 
         return data;
-    }, [market.peggedTokenBalance, market.leveragedTokenBalance, pools]);
+    }, [
+        market.peggedTokenBalance,
+        market.leveragedTokenBalance,
+        pools,
+        tokenPrices?.peggedPriceUSD,
+        tokenPrices?.leveragedPriceUSD,
+    ]);
 
     const BAR_CHART_CATEGORY_COLORS: Record<string, string> = {
         "Not Deposited": "#1E4775",
@@ -445,7 +458,8 @@ function MarketCard({
 
     const barchartPercentData = distributionData.map((item) => ({
         name: item.name,
-        value: (item.value / barChartTotalValue) * 100, // percent for the bar
+        value: barChartTotalValue > 0 ? (item.value / barChartTotalValue) * 100 : 0,
+        positionUsd: item.value,
     }));
 
     const barChartMaxPercent = Math.max(...barchartPercentData.map((d) => d.value));
@@ -744,7 +758,7 @@ function MarketCard({
                             {distributionData.length > 0 && (
                                 <div className="mt-2 mb-1">
                                     <h5 className="text-[#1E4775] font-semibold text-[10px] uppercase tracking-wider mb-1.5">
-                                        Supply Distribution
+                                        Position
                                     </h5>
                                     <div className="w-full" style={{height: "220px"}}>
                                         <ResponsiveContainer width="100%" height={250}>
@@ -774,7 +788,7 @@ function MarketCard({
                                                                     lineHeight: 1,           // remove extra line spacing
                                                                 }}
                                                             >
-                                                                <strong>{data.name}</strong>: {data.value.toFixed(1)}%
+                                                                <strong>{data.name}</strong>: {formatUSD(data.positionUsd)} ({data.value.toFixed(1)}%)
                                                             </div>
                                                         );
                                                     }}

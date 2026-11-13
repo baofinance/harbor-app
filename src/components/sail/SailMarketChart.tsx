@@ -19,6 +19,7 @@ import {
   type SailChartWindowPerformance,
   type SailMarketChartConfig,
 } from "@/utils/sailMarketChartSeries";
+import { rebaseSailChartHsPrices } from "@/utils/sailPriceRebase";
 import {
   SAIL_CHART_HS_COLOR,
   SAIL_CHART_LEVERAGE_TOKEN_LABEL,
@@ -221,8 +222,11 @@ export function SailMarketChart({
 
   const chartPoints = useMemo(
     () =>
-      buildSailMarketChartPoints(config, mergedSubgraph, chainlinkHistories),
-    [config, mergedSubgraph, chainlinkHistories]
+      rebaseSailChartHsPrices(
+        marketId,
+        buildSailMarketChartPoints(config, mergedSubgraph, chainlinkHistories),
+      ),
+    [marketId, config, mergedSubgraph, chainlinkHistories]
   );
 
   const filteredData = useMemo(
