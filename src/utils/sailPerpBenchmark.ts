@@ -260,6 +260,7 @@ export function runSailPerpBenchmark({
   exposure,
   assumptions,
   sailRedeemFeeBpsByTimestamp = [],
+  openingLeverageRatio: openingLeverageOverride,
 }: {
   states: SailStateObservation[];
   candlesByCoin: Partial<Record<PerpCoin, PerpCandle[]>>;
@@ -270,6 +271,11 @@ export function runSailPerpBenchmark({
     timestamp: number;
     feeBps: number;
   }>;
+  /**
+   * Size the book at this leverage instead of the first state's on-chain
+   * ratio. Used when that ratio is the diluted post-incident reading.
+   */
+  openingLeverageRatio?: number;
 }): SailPerpBenchmarkResult {
   const orderedStates = [...states]
     .filter(
@@ -377,7 +383,12 @@ export function runSailPerpBenchmark({
   };
 
   const initialState = stateAt(orderedStates, timeline[0]!) ?? firstState;
-  const openingLeverageRatio = initialState.leverageRatio;
+  const openingLeverageRatio =
+    openingLeverageOverride != null &&
+    Number.isFinite(openingLeverageOverride) &&
+    openingLeverageOverride > 0
+      ? openingLeverageOverride
+      : initialState.leverageRatio;
   tradeToTargets(
     targetPerpNotionals(equity, openingLeverageRatio, exposure),
   );

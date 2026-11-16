@@ -92,31 +92,44 @@ function formatChartEventDay(unixSeconds: number): string {
 
 function SailChartEventsInfo({ marketId }: { marketId: string }) {
   const rule = sailPriceRebaseFor(marketId);
-  if (!rule) return null;
+  const unpause = sailChartEvents(marketId).find((event) => event.tone === "unpause");
+  if (!rule && !unpause) return null;
   return (
     <div className="w-72 space-y-2 text-left text-sm leading-relaxed text-white">
-      <p>
-        <span className="font-semibold text-[#E7A07A]">Incident</span> is{" "}
-        {formatChartEventDay(rule.incidentTimestamp)}. A capped rebalance
-        over-minted the leveraged token, and its price fell.
-      </p>
-      <p>
-        <span className="font-semibold text-[#7DCEA0]">Rebase</span> is{" "}
-        {formatChartEventDay(rule.fromTimestamp)}, when this market&apos;s
-        remediation was applied to the chart. From that day the price is its
-        own recovered book on the pre-incident share count.
-        {marketId === "steth-eur"
-          ? " About 1.63 wstETH is still owed and is not in this price."
-          : ""}
-      </p>
-      <a
-        href={STETH_SAIL_REMEDIATION_DOCS}
-        target="_blank"
-        rel="noreferrer"
-        className="inline-block text-[#7DCEA0] underline underline-offset-2"
-      >
-        Remediation write-up
-      </a>
+      {rule ? (
+        <>
+          <p>
+            <span className="font-semibold text-[#E7A07A]">Incident</span> is{" "}
+            {formatChartEventDay(rule.incidentTimestamp)}. A capped rebalance
+            over-minted the leveraged token, and its price fell.
+          </p>
+          <p>
+            <span className="font-semibold text-[#7DCEA0]">Rebase</span> is{" "}
+            {formatChartEventDay(rule.fromTimestamp)}, when this market&apos;s
+            remediation was applied to the chart. From that day the price is its
+            own recovered book on the pre-incident share count.
+            {marketId === "steth-eur"
+              ? " About 1.63 wstETH is still owed and is not in this price."
+              : ""}
+          </p>
+          <a
+            href={STETH_SAIL_REMEDIATION_DOCS}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block text-[#7DCEA0] underline underline-offset-2"
+          >
+            Remediation write-up
+          </a>
+        </>
+      ) : null}
+      {unpause ? (
+        <p>
+          <span className="font-semibold text-[#9ECAFF]">Unpause</span> is{" "}
+          {formatChartEventDay(unpause.timestamp)}, when this market was turned
+          back on. The step is the price move during the pause, drawn in one
+          segment because no hourly points were recorded while it was paused.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -379,7 +392,11 @@ export function SailMarketChart({
               label="Events"
               active={showChartEvents}
               onClick={() => setShowChartEvents((current) => !current)}
-              color="#E7A07A"
+              color={
+                sailChartEvents(marketId).some((event) => event.tone === "incident")
+                  ? "#E7A07A"
+                  : "#9ECAFF"
+              }
             />
             <div className="absolute left-0 top-full z-30 hidden pt-2 group-hover:block group-focus-within:block">
               <div className="rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 shadow-xl">

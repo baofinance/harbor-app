@@ -23,6 +23,7 @@ import {
   rebaseSailBenchmarkReturns,
   rebaseSailStatePrices,
   sailBookRebaseApplies,
+  sailPerpOpeningLeverage,
   sailPriceRebaseFor,
 } from "@/utils/sailPriceRebase";
 
@@ -537,6 +538,12 @@ export async function buildSailPerpBenchmark(
     sailMintFeeBps,
     sailRedeemFeeBps,
   };
+  const onChainOpeningLeverage = states[0]!.leverageRatio;
+  const openingLeverageRatio = sailPerpOpeningLeverage(
+    marketId,
+    states[0]!.timestamp,
+    onChainOpeningLeverage,
+  );
   const benchmark = rebaseSailBenchmarkReturns(
     marketId,
     runSailPerpBenchmark({
@@ -546,6 +553,10 @@ export async function buildSailPerpBenchmark(
       exposure,
       assumptions,
       sailRedeemFeeBpsByTimestamp,
+      openingLeverageRatio:
+        openingLeverageRatio === onChainOpeningLeverage
+          ? undefined
+          : openingLeverageRatio,
     }),
     endTimestamp,
     startTimestamp,
@@ -584,7 +595,9 @@ export async function buildSailPerpBenchmark(
     "Liquidation uses hour-close equity and a documented maintenance-margin model; it is not an account-specific execution replay.",
   );
   warnings.push(
-    `Perp exposure is sized once at ${benchmark.openingLeverageRatio.toFixed(2)}x current leverage (Sail at range start) and held without rebalancing; effective leverage drifts with PnL.`,
+    openingLeverageRatio === onChainOpeningLeverage
+      ? `Perp exposure is sized once at ${benchmark.openingLeverageRatio.toFixed(2)}x current leverage (Sail at range start) and held without rebalancing; effective leverage drifts with PnL.`
+      : `Perp exposure is sized once at ${benchmark.openingLeverageRatio.toFixed(2)}x, the leverage before the collateral drop, and held without rebalancing. The on-chain ratio at the range start was ${onChainOpeningLeverage.toFixed(2)}x after the dilution.`,
   );
 
   return {

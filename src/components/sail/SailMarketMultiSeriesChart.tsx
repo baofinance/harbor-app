@@ -34,6 +34,12 @@ import {
   SAIL_CHART_RECHARTS_LEGEND_ICON_SIZE,
 } from "@/components/sail/advanced/sailAdvancedStyles";
 
+function sailChartEventColor(tone: SailChartEvent["tone"]): string {
+  if (tone === "incident") return "#E7A07A";
+  if (tone === "unpause") return "#9ECAFF";
+  return "#7DCEA0";
+}
+
 interface SailMarketMultiSeriesChartProps {
   data: SailMarketChartPoint[];
   config: SailMarketChartConfig;
@@ -115,7 +121,7 @@ function MultiSeriesTooltip({
       {eventHere ? (
         <p
           className="mt-1 text-xs font-semibold"
-          style={{ color: eventHere.tone === "incident" ? "#E7A07A" : "#7DCEA0" }}
+          style={{ color: sailChartEventColor(eventHere.tone) }}
         >
           {eventHere.label}
         </p>
@@ -302,15 +308,15 @@ export function SailMarketMultiSeriesChart({
             key={event.label}
             yAxisId="left"
             x={event.x}
-            stroke={event.tone === "incident" ? "#E7A07A" : "#7DCEA0"}
+            stroke={sailChartEventColor(event.tone)}
             strokeDasharray="4 3"
             strokeWidth={1.5}
             ifOverflow="extendDomain"
             label={{
               value: event.label,
-              fill: event.tone === "incident" ? "#E7A07A" : "#7DCEA0",
+              fill: sailChartEventColor(event.tone),
               vertical: verticalEventLabels,
-              side: event.tone === "incident" ? "left" : "right",
+              side: event.tone === "rebase" ? "right" : "left",
               content: SailChartEventLabel,
             }}
           />

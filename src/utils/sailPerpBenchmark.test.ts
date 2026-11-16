@@ -102,6 +102,41 @@ describe("runSailPerpBenchmark", () => {
     expect(result.perpReturnPct).toBeLessThan(0);
   });
 
+  it("sizes the book at an explicit opening leverage", () => {
+    const diluted = states.map((state) => ({ ...state, leverageRatio: 6.5 }));
+    const candles = {
+      ETH: [
+        { timestamp: states[0]!.timestamp, open: 100, high: 100, low: 100, close: 100 },
+        { timestamp: states[1]!.timestamp, open: 100, high: 100, low: 80, close: 80 },
+      ],
+    };
+    const openedAtDilution = runSailPerpBenchmark({
+      states: diluted,
+      exposure: { collateralCoin: "ETH", targetCoin: "BTC" },
+      assumptions,
+      candlesByCoin: {
+        ...candles,
+        BTC: candles.ETH.map((candle) => ({ ...candle, close: 100, high: 100, low: 100 })),
+      },
+      fundingByCoin: { ETH: [], BTC: [] },
+    });
+    const openedBefore = runSailPerpBenchmark({
+      states: diluted,
+      openingLeverageRatio: 2.3,
+      exposure: { collateralCoin: "ETH", targetCoin: "BTC" },
+      assumptions,
+      candlesByCoin: {
+        ...candles,
+        BTC: candles.ETH.map((candle) => ({ ...candle, close: 100, high: 100, low: 100 })),
+      },
+      fundingByCoin: { ETH: [], BTC: [] },
+    });
+
+    expect(openedAtDilution.openingLeverageRatio).toBe(6.5);
+    expect(openedBefore.openingLeverageRatio).toBe(2.3);
+    expect(openedBefore.perpReturnPct).toBeGreaterThan(openedAtDilution.perpReturnPct);
+  });
+
   it("does not resize when Sail leverage changes mid-period", () => {
     const changingLeverageStates: SailStateObservation[] = [
       {

@@ -27,7 +27,12 @@ const bookAfterRecap = STETH_EUR_PRICE_AFTER_RECAP * STETH_EUR_SUPPLY_AFTER_RECA
 /** Live unit price × this scale = today's book on the pre-incident share count. */
 const STETH_EUR_PRICE_SCALE =
   (bookAfterRecap / bookBeforeIncident) *
-  (STETH_EUR_PRICE_BEFORE_INCIDENT / STETH_EUR_PRICE_AFTER_RECAP);
+    (STETH_EUR_PRICE_BEFORE_INCIDENT / STETH_EUR_PRICE_AFTER_RECAP);
+/**
+ * leverageRatio() at block 26,199,194. On this minter that is
+ * collateralRatio / (collateralRatio − 1). CR then was 2.347348755734854735.
+ */
+const STETH_EUR_LEVERAGE_BEFORE_INCIDENT = 1.7421983326466888;
 
 /**
  * hsSTETH–BTC, read on its own minter. Do not reuse the EUR supplies.
@@ -46,6 +51,8 @@ const btcBookAfter = STETH_BTC_PRICE_AFTER_RECAP * STETH_BTC_SUPPLY_AFTER_RECAP;
 const STETH_BTC_PRICE_SCALE =
   (btcBookAfter / btcBookBefore) *
   (STETH_BTC_PRICE_BEFORE_INCIDENT / STETH_BTC_PRICE_AFTER_RECAP);
+/** leverageRatio() at block 26,204,583, the block before the exploit. */
+const STETH_BTC_LEVERAGE_BEFORE_INCIDENT = 2.3078997923852054;
 
 export type SailPriceRebase = {
   marketId: string;
@@ -60,6 +67,13 @@ export type SailPriceRebase = {
    */
   incidentTimestamp: number;
   priceScale: number;
+  /**
+   * leverageRatio() on the block before that market's collateral drop.
+   * Windows that open while the book is still diluted use this, because the
+   * on-chain ratio after the drop is the missing collateral, not a position
+   * a trader would have opened.
+   */
+  preIncidentLeverageRatio: number;
   /** Shown on the Hyperliquid comparison when this market's window is rebased. */
   note: string;
 };
@@ -70,6 +84,7 @@ export const STETH_EUR_SAIL_REBASE: SailPriceRebase = {
   fromTimestamp: 1_794_594_863,
   incidentTimestamp: 1_792_152_563,
   priceScale: STETH_EUR_PRICE_SCALE,
+  preIncidentLeverageRatio: STETH_EUR_LEVERAGE_BEFORE_INCIDENT,
   note: "stETH–EUR sail prices from the 13 Nov 2026 recap are rebased to price × supply against the 15 Oct pre-incident book, on the pre-incident share count.",
 };
 
@@ -79,6 +94,7 @@ export const STETH_BTC_SAIL_REBASE: SailPriceRebase = {
   fromTimestamp: 1_794_827_207,
   incidentTimestamp: 1_792_147_547,
   priceScale: STETH_BTC_PRICE_SCALE,
+  preIncidentLeverageRatio: STETH_BTC_LEVERAGE_BEFORE_INCIDENT,
   note: "stETH–BTC sail prices from the 16 Nov 2026 recap are rebased to price × supply against the pre-incident book, on that market's own pre-incident share count.",
 };
 
@@ -98,17 +114,49 @@ export function sailPriceRebaseFor(marketId: string): SailPriceRebase | null {
 export type SailChartEvent = {
   timestamp: number;
   label: string;
-  tone: "incident" | "rebase";
+  tone: "incident" | "rebase" | "unpause";
 };
 
-/** Days to mark on a chart that has a book rebase. Other markets get none. */
+/**
+ * First block where leveragedTokenPrice() succeeded again after the October
+ * pause. These markets were not part of the stETH dilution, so the marker
+ * does not change the price or the Hyperliquid leverage.
+ *
+ * eth-fxusd block 26,427,194. btc-fxusd block 26,427,189.
+ * fxusd-eur block 26,426,861.
+ */
+const SAIL_UNPAUSE_EVENTS: Record<string, SailChartEvent> = {
+  "eth-fxusd": {
+    timestamp: 1_794_827_327,
+    label: "Unpause",
+    tone: "unpause",
+  },
+  "btc-fxusd": {
+    timestamp: 1_794_827_267,
+    label: "Unpause",
+    tone: "unpause",
+  },
+  "fxusd-eur": {
+    timestamp: 1_794_823_319,
+    label: "Unpause",
+    tone: "unpause",
+  },
+};
+
+/** Incident and rebase on a restored stETH market, plus any unpause marker. */
 export function sailChartEvents(marketId: string): SailChartEvent[] {
   const rule = sailPriceRebaseFor(marketId);
-  if (!rule) return [];
-  return [
-    { timestamp: rule.incidentTimestamp, label: "Incident", tone: "incident" },
-    { timestamp: rule.fromTimestamp, label: "Rebase", tone: "rebase" },
-  ];
+  const events: SailChartEvent[] = rule
+    ? [
+        { timestamp: rule.incidentTimestamp, label: "Incident", tone: "incident" },
+        { timestamp: rule.fromTimestamp, label: "Rebase", tone: "rebase" },
+      ]
+    : [];
+  const unpause = SAIL_UNPAUSE_EVENTS[marketId];
+  if (unpause && !events.some((event) => event.timestamp === unpause.timestamp)) {
+    events.push(unpause);
+  }
+  return events;
 }
 
 export type SnappedSailChartEvent = SailChartEvent & {
@@ -157,6 +205,29 @@ export function snapSailChartEvents(
       },
     ];
   });
+}
+
+/**
+ * Leverage used to size the Hyperliquid book.
+ * A window that opens after the collateral drop and before the recap still
+ * reads the diluted on-chain ratio (about 5× on hsSTETH–BTC). Size that
+ * comparison at the pre-incident ratio instead. Windows that already start
+ * on the pre-incident or post-recap ratio keep the chain reading.
+ */
+export function sailPerpOpeningLeverage(
+  marketId: string,
+  firstStateTimestamp: number,
+  onChainLeverage: number,
+): number {
+  const rule = sailPriceRebaseFor(marketId);
+  if (!rule) return onChainLeverage;
+  if (
+    firstStateTimestamp >= rule.incidentTimestamp &&
+    firstStateTimestamp < rule.fromTimestamp
+  ) {
+    return rule.preIncidentLeverageRatio;
+  }
+  return onChainLeverage;
 }
 
 /** Book rebase only when this market has a rule and the window still starts before its incident. */

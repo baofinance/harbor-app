@@ -7,6 +7,8 @@ import {
   rebaseSailChartHsPrices,
   rebaseSailStatePrices,
   sailChartEvents,
+  sailPerpOpeningLeverage,
+  sailPriceRebaseFor,
   snapSailChartEvents,
 } from "@/utils/sailPriceRebase";
 
@@ -113,7 +115,39 @@ describe("sailPriceRebase", () => {
       STETH_BTC_SAIL_REBASE.incidentTimestamp,
       STETH_BTC_SAIL_REBASE.fromTimestamp,
     ]);
-    expect(sailChartEvents("fxusd-eur")).toEqual([]);
+    expect(sailChartEvents("fxusd-eur")).toEqual([
+      { timestamp: 1_794_823_319, label: "Unpause", tone: "unpause" },
+    ]);
+    expect(sailChartEvents("eth-fxusd").map((event) => event.label)).toEqual([
+      "Unpause",
+    ]);
+    expect(sailChartEvents("btc-fxusd")[0]?.timestamp).toBe(1_794_827_267);
+    expect(sailPriceRebaseFor("eth-fxusd")).toBeNull();
+  });
+
+  it("sizes Hyperliquid at the pre-incident leverage while the book is diluted", () => {
+    const diluted = STETH_EUR_SAIL_REBASE.incidentTimestamp + 3_600;
+    expect(sailPerpOpeningLeverage("btc-steth", diluted, 6.53)).toBe(
+      STETH_BTC_SAIL_REBASE.preIncidentLeverageRatio,
+    );
+    expect(sailPerpOpeningLeverage("steth-eur", diluted, 4.2)).toBe(
+      STETH_EUR_SAIL_REBASE.preIncidentLeverageRatio,
+    );
+    expect(
+      sailPerpOpeningLeverage(
+        "btc-steth",
+        STETH_BTC_SAIL_REBASE.incidentTimestamp - 1,
+        2.31,
+      ),
+    ).toBe(2.31);
+    expect(
+      sailPerpOpeningLeverage(
+        "btc-steth",
+        STETH_BTC_SAIL_REBASE.fromTimestamp,
+        2.48,
+      ),
+    ).toBe(2.48);
+    expect(sailPerpOpeningLeverage("fxusd-eur", diluted, 3)).toBe(3);
   });
 
   it("rebases stETH–BTC with its own supply, not the EUR scale", () => {
