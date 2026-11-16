@@ -19,7 +19,11 @@ import {
   type SailChartWindowPerformance,
   type SailMarketChartConfig,
 } from "@/utils/sailMarketChartSeries";
-import { rebaseSailChartHsPrices, sailChartEvents } from "@/utils/sailPriceRebase";
+import {
+  rebaseSailChartHsPrices,
+  sailChartEvents,
+  sailPriceRebaseFor,
+} from "@/utils/sailPriceRebase";
 import {
   SAIL_CHART_HS_COLOR,
   SAIL_CHART_LEVERAGE_TOKEN_LABEL,
@@ -77,29 +81,45 @@ const SAIL_CHART_COMPARISON_INFO = (
 const STETH_SAIL_REMEDIATION_DOCS =
   "https://docs.harborfinance.io/tech-docs/remediation/steth-sail-dilution";
 
-const SAIL_CHART_EVENTS_INFO = (
-  <div className="w-72 space-y-2 text-left text-sm leading-relaxed text-white">
-    <p>
-      <span className="font-semibold text-[#E7A07A]">Incident</span> is 16 Oct
-      2026. A capped rebalance over-minted the leveraged token, and its price
-      fell.
-    </p>
-    <p>
-      <span className="font-semibold text-[#7DCEA0]">Rebase</span> is 13 Nov
-      2026, when the remediation on this chart was applied. From that day the
-      price is the recovered book on the pre-incident share count. About 1.63
-      wstETH is still owed and is not in this price.
-    </p>
-    <a
-      href={STETH_SAIL_REMEDIATION_DOCS}
-      target="_blank"
-      rel="noreferrer"
-      className="inline-block text-[#7DCEA0] underline underline-offset-2"
-    >
-      Remediation write-up
-    </a>
-  </div>
-);
+function formatChartEventDay(unixSeconds: number): string {
+  return new Date(unixSeconds * 1000).toLocaleDateString("en-GB", {
+    timeZone: "UTC",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function SailChartEventsInfo({ marketId }: { marketId: string }) {
+  const rule = sailPriceRebaseFor(marketId);
+  if (!rule) return null;
+  return (
+    <div className="w-72 space-y-2 text-left text-sm leading-relaxed text-white">
+      <p>
+        <span className="font-semibold text-[#E7A07A]">Incident</span> is{" "}
+        {formatChartEventDay(rule.incidentTimestamp)}. A capped rebalance
+        over-minted the leveraged token, and its price fell.
+      </p>
+      <p>
+        <span className="font-semibold text-[#7DCEA0]">Rebase</span> is{" "}
+        {formatChartEventDay(rule.fromTimestamp)}, when this market&apos;s
+        remediation was applied to the chart. From that day the price is its
+        own recovered book on the pre-incident share count.
+        {marketId === "steth-eur"
+          ? " About 1.63 wstETH is still owed and is not in this price."
+          : ""}
+      </p>
+      <a
+        href={STETH_SAIL_REMEDIATION_DOCS}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-block text-[#7DCEA0] underline underline-offset-2"
+      >
+        Remediation write-up
+      </a>
+    </div>
+  );
+}
 
 export type SailMarketChartProps = {
   marketId: string;
@@ -363,7 +383,7 @@ export function SailMarketChart({
             />
             <div className="absolute left-0 top-full z-30 hidden pt-2 group-hover:block group-focus-within:block">
               <div className="rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 shadow-xl">
-                {SAIL_CHART_EVENTS_INFO}
+                <SailChartEventsInfo marketId={marketId} />
               </div>
             </div>
           </div>

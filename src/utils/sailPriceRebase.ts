@@ -29,6 +29,24 @@ const STETH_EUR_PRICE_SCALE =
   (bookAfterRecap / bookBeforeIncident) *
   (STETH_EUR_PRICE_BEFORE_INCIDENT / STETH_EUR_PRICE_AFTER_RECAP);
 
+/**
+ * hsSTETH–BTC, read on its own minter. Do not reuse the EUR supplies.
+ * Block 26,204,583, 16 Oct 2026 10:45 UTC, the block before the exploit:
+ *   0.677930642685253225 hs at 0.711732622310828724 haBTC.
+ * Block 26,427,184, 16 Nov 2026 11:06 UTC, the restoration mint:
+ *   5.372018515563421965 hs at 0.053521458060658126 haBTC.
+ */
+const STETH_BTC_SUPPLY_BEFORE_INCIDENT = 0.677930642685253225;
+const STETH_BTC_PRICE_BEFORE_INCIDENT = 0.711732622310828724;
+const STETH_BTC_SUPPLY_AFTER_RECAP = 5.372018515563421965;
+const STETH_BTC_PRICE_AFTER_RECAP = 0.053521458060658126;
+const btcBookBefore =
+  STETH_BTC_PRICE_BEFORE_INCIDENT * STETH_BTC_SUPPLY_BEFORE_INCIDENT;
+const btcBookAfter = STETH_BTC_PRICE_AFTER_RECAP * STETH_BTC_SUPPLY_AFTER_RECAP;
+const STETH_BTC_PRICE_SCALE =
+  (btcBookAfter / btcBookBefore) *
+  (STETH_BTC_PRICE_BEFORE_INCIDENT / STETH_BTC_PRICE_AFTER_RECAP);
+
 export type SailPriceRebase = {
   marketId: string;
   /** First block of the upgraded minter (recap mint). */
@@ -36,9 +54,9 @@ export type SailPriceRebase = {
   /** Block timestamp of `fromBlock` (2026-11-13T18:34:23Z). */
   fromTimestamp: number;
   /**
-   * Collateral drop on 16 Oct 2026, 12:09 UTC. Windows that open after this
-   * already start on the diluted unit price, so the book scale would turn a
-   * flat day into a fake ~9× gain.
+   * That market's collateral drop on 16 Oct 2026. Windows that open after
+   * this already start on the diluted unit price, so the book scale would
+   * turn a flat day into a fake multiple of the real move.
    */
   incidentTimestamp: number;
   priceScale: number;
@@ -55,13 +73,22 @@ export const STETH_EUR_SAIL_REBASE: SailPriceRebase = {
   note: "stETH–EUR sail prices from the 13 Nov 2026 recap are rebased to price × supply against the 15 Oct pre-incident book, on the pre-incident share count.",
 };
 
+export const STETH_BTC_SAIL_REBASE: SailPriceRebase = {
+  marketId: "btc-steth",
+  fromBlock: 26_427_184,
+  fromTimestamp: 1_794_827_207,
+  incidentTimestamp: 1_792_147_547,
+  priceScale: STETH_BTC_PRICE_SCALE,
+  note: "stETH–BTC sail prices from the 16 Nov 2026 recap are rebased to price × supply against the pre-incident book, on that market's own pre-incident share count.",
+};
+
 /**
- * Markets with a book rebase. hsSTETH–BTC is not listed: it needs its own
- * pre-incident price, post-issuance price, and supply. Every other market
- * keeps the raw unit price.
+ * Markets with a book rebase. Each entry uses that market's own price and
+ * supply. Every other market keeps the raw unit price.
  */
 const SAIL_PRICE_REBASES: Record<string, SailPriceRebase> = {
   "steth-eur": STETH_EUR_SAIL_REBASE,
+  "btc-steth": STETH_BTC_SAIL_REBASE,
 };
 
 export function sailPriceRebaseFor(marketId: string): SailPriceRebase | null {

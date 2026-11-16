@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SailPerpBenchmarkResult } from "@/utils/sailPerpBenchmark";
 import {
+  STETH_BTC_SAIL_REBASE,
   STETH_EUR_SAIL_REBASE,
   rebaseSailBenchmarkReturns,
   rebaseSailChartHsPrices,
@@ -103,13 +104,36 @@ describe("sailPriceRebase", () => {
     expect(result.points).toHaveLength(1);
   });
 
-  it("marks the incident and the rebase only on stETH–EUR", () => {
+  it("marks the incident and the rebase on the restored stETH sail markets", () => {
     expect(sailChartEvents("steth-eur").map((event) => event.label)).toEqual([
       "Incident",
       "Rebase",
     ]);
-    expect(sailChartEvents("btc-steth")).toEqual([]);
+    expect(sailChartEvents("btc-steth").map((event) => event.timestamp)).toEqual([
+      STETH_BTC_SAIL_REBASE.incidentTimestamp,
+      STETH_BTC_SAIL_REBASE.fromTimestamp,
+    ]);
     expect(sailChartEvents("fxusd-eur")).toEqual([]);
+  });
+
+  it("rebases stETH–BTC with its own supply, not the EUR scale", () => {
+    const supplyBefore = 0.677930642685253225;
+    const supplyAfter = 5.372018515563421965;
+    expect(STETH_BTC_SAIL_REBASE.priceScale).toBeCloseTo(supplyAfter / supplyBefore);
+    expect(STETH_BTC_SAIL_REBASE.priceScale).not.toBeCloseTo(
+      STETH_EUR_SAIL_REBASE.priceScale,
+    );
+    const states = rebaseSailStatePrices(
+      "btc-steth",
+      [
+        {
+          timestamp: STETH_BTC_SAIL_REBASE.fromTimestamp,
+          sailPriceUsd: 0.05,
+        },
+      ],
+      STETH_BTC_SAIL_REBASE.incidentTimestamp - 1,
+    );
+    expect(states[0]!.sailPriceUsd).toBeCloseTo(0.05 * STETH_BTC_SAIL_REBASE.priceScale);
   });
 
   it("snaps chart events onto the category Recharts will draw", () => {
@@ -153,7 +177,7 @@ describe("sailPriceRebase", () => {
   });
 
   it("leaves other markets on the raw unit price", () => {
-    for (const marketId of ["fxusd-eur", "btc-steth"]) {
+    for (const marketId of ["fxusd-eur"]) {
       const states = rebaseSailStatePrices(marketId, [
         {
           timestamp: STETH_EUR_SAIL_REBASE.fromTimestamp,
